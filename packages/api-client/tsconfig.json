@@ -1,0 +1,4 @@
+{
+  "extends": "@wishlist/config/tsconfig/library.json",
+  "include": ["src", "test", "orval.config.ts", "vitest.config.ts"]
+}

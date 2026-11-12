@@ -1,0 +1,36 @@
+{
+  "name": "@wishlist/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./zod": "./src/zod.ts",
+    "./realtime": "./src/realtime/index.ts"
+  },
+  "scripts": {
+    "generate": "orval --config orval.config.ts && prettier --write src/generated --log-level warn",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5",
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.90.5",
+    "@types/react": "^19.2.2",
+    "@wishlist/config": "workspace:*",
+    "eslint": "^9.39.1",
+    "orval": "^7.16.0",
+    "prettier": "^3.6.2",
+    "react": "^19.2.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

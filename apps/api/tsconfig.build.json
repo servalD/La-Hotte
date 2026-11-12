@@ -1,0 +1,10 @@
+{
+  "extends": "@wishlist/config/tsconfig/nest.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["**/*.spec.ts", "**/*.int-spec.ts"]
+}

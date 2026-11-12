@@ -1,0 +1,18 @@
+{
+  "extends": "@wishlist/config/tsconfig/next.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
+  },
+  "include": [
+    "next-env.d.ts",
+    "src",
+    "e2e",
+    "messages",
+    "*.config.ts",
+    "vitest.setup.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

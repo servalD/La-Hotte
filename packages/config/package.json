@@ -1,0 +1,39 @@
+{
+  "name": "@wishlist/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./prettier": "./prettier.config.mjs",
+    "./eslint/base": "./eslint/base.mjs",
+    "./eslint/nest": "./eslint/nest.mjs",
+    "./eslint/next": "./eslint/next.mjs",
+    "./eslint/architecture": "./eslint/rules/architecture.mjs",
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nest.json": "./tsconfig/nest.json",
+    "./tsconfig/next.json": "./tsconfig/next.json",
+    "./tsconfig/library.json": "./tsconfig/library.json"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.1",
+    "@next/eslint-plugin-next": "^15.5.6",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.46.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "eslint": "^9",
+    "prettier": "^3"
+  }
+}

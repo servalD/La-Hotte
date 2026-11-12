@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "La Hotte",
+    "tagline": "Les souhaits de toute la famille, et la surprise intacte.",
+    "skipToContent": "Aller au contenu"
+  },
+  "theme": {
+    "label": "Thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Comme l’appareil"
+  },
+  "foundation": {
+    "title": "Essai du socle",
+    "description": "Cette page vérifie que l’interface parle à l’API par le client généré. Elle disparaîtra avec les premiers vrais écrans.",
+    "whoSees": "Qui voit ça ? Personne d’autre que vous : c’est un essai.",
+    "titleLabel": "Titre du souhait",
+    "titleHint": "Entre 1 et 120 caractères.",
+    "priorityLabel": "Priorité",
+    "priority": {
+      "low": "Basse",
+      "normal": "Normale",
+      "high": "Haute"
+    },
+    "submit": "Ajouter",
+    "submitting": "Ajout…",
+    "created": "Ajouté : « {title} », priorité {priority}.",
+    "reloaded": "Relu depuis l’API : vue {view}.",
+    "errors": {
+      "titleRequired": "Donnez un titre à ce souhait.",
+      "titleTooLong": "120 caractères au plus.",
+      "network": "L’API ne répond pas. Vérifiez qu’elle est lancée, puis réessayez.",
+      "generic": "Ça n’a pas marché ({code}). Réessayez dans un instant."
+    }
+  }
+}

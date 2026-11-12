@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "La Hotte",
+    "tagline": "Everyone’s wishes, and the surprise kept safe.",
+    "skipToContent": "Skip to content"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Match device"
+  },
+  "foundation": {
+    "title": "Foundation check",
+    "description": "This page checks that the interface talks to the API through the generated client. It will go away with the first real screens.",
+    "whoSees": "Who sees this? Nobody but you: it’s a test.",
+    "titleLabel": "Wish title",
+    "titleHint": "Between 1 and 120 characters.",
+    "priorityLabel": "Priority",
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High"
+    },
+    "submit": "Add",
+    "submitting": "Adding…",
+    "created": "Added: “{title}”, {priority} priority.",
+    "reloaded": "Read back from the API: {view} view.",
+    "errors": {
+      "titleRequired": "Give this wish a title.",
+      "titleTooLong": "120 characters at most.",
+      "network": "The API isn’t responding. Check it’s running, then try again.",
+      "generic": "That didn’t work ({code}). Try again in a moment."
+    }
+  }
+}

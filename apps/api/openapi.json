@@ -1,0 +1,312 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1/example-items": {
+      "post": {
+        "operationId": "createExampleItem",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExampleItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExampleItemRecipientView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "example-items"
+        ]
+      }
+    },
+    "/api/v1/example-items/{id}": {
+      "get": {
+        "operationId": "getExampleItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ExampleItemRecipientView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ExampleItemGiverView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "recipient": "#/components/schemas/ExampleItemRecipientView",
+                      "giver": "#/components/schemas/ExampleItemGiverView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Vue polymorphe : la forme dépend du lecteur, discriminée par `view` (API-12).",
+        "tags": [
+          "example-items"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "La Hotte API",
+    "description": "Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.",
+    "version": "1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
+      }
+    },
+    "schemas": {
+      "CreateExampleItemDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Titre affiché du souhait.",
+            "minLength": 1,
+            "maxLength": 120,
+            "example": "Vélo de route"
+          },
+          "priority": {
+            "default": "normal",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamplePriority"
+              }
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "ExampleItemGiverView": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "enum": [
+              "giver"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamplePriority"
+              }
+            ]
+          },
+          "reservation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExampleReservationView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "title",
+          "priority",
+          "reservation"
+        ]
+      },
+      "ExampleItemRecipientView": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "enum": [
+              "recipient"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "priority": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamplePriority"
+              }
+            ]
+          }
+        },
+        "required": [
+          "view",
+          "id",
+          "title",
+          "priority"
+        ]
+      },
+      "ExamplePriority": {
+        "type": "string",
+        "enum": [
+          "low",
+          "normal",
+          "high"
+        ]
+      },
+      "ExampleReservationView": {
+        "type": "object",
+        "properties": {
+          "byName": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "byName",
+          "at"
+        ]
+      },
+      "FieldErrorDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Chemin du champ, en notation pointée (`items.0.title`).",
+            "example": "title"
+          },
+          "code": {
+            "type": "string",
+            "description": "Code stable de la contrainte non respectée.",
+            "example": "isLength"
+          },
+          "message": {
+            "type": "string",
+            "example": "title doit contenir entre 1 et 120 caractères"
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ]
+      },
+      "ProblemDetailsDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "about:blank"
+          },
+          "title": {
+            "type": "string",
+            "example": "Requête invalide"
+          },
+          "status": {
+            "type": "number",
+            "example": 400,
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string",
+            "description": "Code stable, exploitable par le client.",
+            "example": "VALIDATION_FAILED"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Identifiant de la requête, à citer pour un signalement."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldErrorDto"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,138 @@
+# CI-01 : étapes bloquantes à chaque demande de fusion. CI-02 : bout en bout sur main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  quality:
+    name: Lint, typage, tests, contrat, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Installation verrouillée
+        run: pnpm install --frozen-lockfile
+      - name: Formatage
+        run: pnpm format:check
+      - name: Lint (dont règles d'architecture, QA-03)
+        run: pnpm lint
+      - name: Sentinelle d'architecture (un import interdit doit échouer)
+        run: pnpm lint:architecture
+      - name: Typage
+        run: pnpm typecheck
+      - name: Tests unitaires, contrat et non-fuite
+        run: pnpm test
+      - name: Contrat généré à jour (API-02)
+        run: pnpm generate:check
+      - name: Build
+        run: pnpm build
+
+  integration:
+    name: Intégration (PostgreSQL, Redis)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: wishlist
+          POSTGRES_PASSWORD: wishlist
+          POSTGRES_DB: wishlist
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wishlist -d wishlist"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Identifiants éphémères du conteneur de CI, sans valeur hors de ce job.
+      DATABASE_URL: postgresql://wishlist_app:wishlist_app@localhost:5432/wishlist
+      DATABASE_MIGRATION_URL: postgresql://wishlist:wishlist@localhost:5432/wishlist
+      SHADOW_DATABASE_URL: postgresql://wishlist:wishlist@localhost:5432/wishlist_shadow
+      REDIS_URL: redis://localhost:6379
+      WEB_ORIGIN: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rôles de base (DAT-03)
+        run: psql postgresql://wishlist:wishlist@localhost:5432/wishlist -v ON_ERROR_STOP=1 -f docker/postgres/init.sql
+      - name: Migrations
+        run: pnpm db:migrate:deploy
+      - name: Schéma Prisma et migrations concordent
+        working-directory: apps/api
+        run: >-
+          pnpm exec prisma migrate diff --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
+      - name: Tests d'intégration
+        run: pnpm test:integration
+
+  security:
+    name: Dépendances et secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Audit des dépendances
+        run: pnpm audit --prod --audit-level high
+      - name: Détection de secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  e2e:
+    name: Bout en bout (CI-02)
+    if: github.ref == 'refs/heads/main'
+    needs: [quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wishlist/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @wishlist/web build
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
