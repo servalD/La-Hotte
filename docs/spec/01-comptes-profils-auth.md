@@ -18,7 +18,7 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 
 - **AUTH-10** TOTP (RFC 6238, 6 chiffres, 30 secondes). Activation : affichage du QR code, confirmation par un code valide, puis remise de 10 codes de secours à usage unique, affichés une seule fois.
 - **AUTH-11** Le secret TOTP est chiffré au repos avec une clé hors base de données. Un code déjà utilisé est refusé (anti-rejeu).
-- **AUTH-12** Le TOTP est demandé à chaque connexion, y compris par Google. Option « faire confiance à cet appareil 30 jours ».
+- **AUTH-12** Le TOTP est demandé à chaque connexion, y compris par Google. Option « faire confiance à cet appareil 30 jours » : l'appareil est enregistré (`trusted_device`, 12) et révocable depuis l'espace Compte.
 - **AUTH-13** Le TOTP est **obligatoire** pour les rôles `ADMIN` et `MODERATOR`, recommandé pour les autres (rappel à la création du deuxième profil).
 - **AUTH-14** Ré-authentification (mot de passe ou Google, plus TOTP s'il est actif) datant de moins de 10 minutes pour : changer e-mail ou mot de passe, activer ou désactiver le TOTP, réinitialiser ou désactiver le PIN d'un profil (PIN-05), supprimer un profil ou le compte, exporter les données.
 
@@ -28,16 +28,16 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 - **PRO-02** Un profil a : nom affiché, avatar (image ou couleur + initiales), date d'anniversaire facultative (jour et mois, année optionnelle), langue, devise par défaut, marqueur « profil enfant ».
 - **PRO-03** Toutes ces informations sont modifiables depuis le profil. L'e-mail et les moyens de connexion se modifient au niveau du compte.
 - **PRO-04** Après connexion, l'utilisateur choisit un profil (écran de sélection). S'il n'y en a qu'un, il est sélectionné d'office. Le changement de profil est accessible en un geste depuis l'en-tête.
-- **PRO-05** Un profil enfant ne peut pas publier dans le catalogue global, ni créer de lien sans validation d'un profil non-enfant du même compte, et son nom n'apparaît jamais hors de son cercle.
+- **PRO-05** Un profil enfant ne peut pas publier dans le catalogue global, ni créer de lien sans validation d'un profil non-enfant du même compte (le lien reste à l'état `AWAITING_GUARDIAN` tant qu'il n'est pas validé, puis passe à `PENDING`), et son nom n'apparaît jamais hors de son cercle.
 - **PRO-06** Supprimer un profil : ses listes personnelles sont supprimées après 30 jours de corbeille ; ses participations et commentaires sont conservés sous l'étiquette « Profil supprimé » pour ne pas fausser les comptes des autres.
 
 ## Code PIN
 
 - **PIN-01** Facultatif, 4 à 8 chiffres, propre à chaque profil. Désactivé par défaut.
 - **PIN-02** Vérifié côté serveur, haché en argon2id. Le serveur n'accepte aucune action au nom d'un profil protégé tant que la session n'a pas validé son PIN. Ce n'est pas un simple verrou d'interface.
-- **PIN-03** 5 erreurs consécutives : attente croissante (1, 5, 15 minutes…). Les autres profils du compte en sont notifiés.
+- **PIN-03** 5 erreurs consécutives : attente croissante (1, 5, 15 minutes…). Les autres profils du compte en sont notifiés : tant que le module de notifications n'existe pas (phase 4), la notification prend la forme d'une entrée au journal de sécurité et d'un e-mail au compte.
 - **PIN-04** **Créer ou changer son PIN, depuis son profil.** Un profil sans PIN peut s'en donner un depuis ses réglages. Un profil qui a un PIN peut le changer en saisissant **l'ancien PIN** puis le nouveau, sans ré-authentification du compte.
-- **PIN-05** **Réinitialiser ou désactiver un PIN, depuis l'espace Compte.** Ces deux actions ne se font pas depuis le profil : uniquement dans l'espace Compte (PIN-08), après ré-authentification (AUTH-14), pour n'importe quel profil du compte. Le profil concerné reçoit une notification visible à sa prochaine entrée.
+- **PIN-05** **Réinitialiser ou désactiver un PIN, depuis l'espace Compte.** Ces deux actions ne se font pas depuis le profil : uniquement dans l'espace Compte (PIN-08), après ré-authentification (AUTH-14), pour n'importe quel profil du compte. Le profil concerné reçoit une notification visible à sa prochaine entrée (`pin_reset_notice_at`, 12).
 - **PIN-06** **Limite assumée.** Quiconque connaît les identifiants du compte peut réinitialiser un PIN (PIN-05). Entre profils d'un même compte, le secret d'un souhait caché repose donc sur le PIN et sur la notification de réinitialisation. L'interface le dit clairement quand un profil sans PIN cache un élément à un autre profil du même compte, et propose d'en créer un.
 - **PIN-07** Le PIN est redemandé à chaque changement de profil et après 15 minutes d'inactivité sur un appareil partagé (réglable : jamais, 15 min, à chaque ouverture).
 - **PIN-08** **Espace Compte**, sur le modèle des services de streaming : accessible depuis l'écran de sélection des profils, hors de tout profil. Il regroupe e-mail, mot de passe, TOTP, Google, sessions, gestion des profils (créer, supprimer, réinitialiser ou désactiver un PIN) et export des données. Les actions sensibles y demandent la ré-authentification (AUTH-14). Il n'existe pas de profil « gestionnaire » : quiconque sait se connecter au compte y a accès.
