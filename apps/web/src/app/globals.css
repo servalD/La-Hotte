@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+@import '../styles/tokens.css';
+
+/* Thème sombre piloté par l'attribut data-theme (next-themes). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Les classes Tailwind lisent les jetons ; aucune couleur n'est écrite ailleurs. */
+@theme inline {
+  --color-background: var(--ds-color-background);
+  --color-surface: var(--ds-color-surface);
+  --color-surface-muted: var(--ds-color-surface-muted);
+  --color-foreground: var(--ds-color-foreground);
+  --color-foreground-muted: var(--ds-color-foreground-muted);
+  --color-border: var(--ds-color-border);
+  --color-border-strong: var(--ds-color-border-strong);
+  --color-primary: var(--ds-color-primary);
+  --color-primary-hover: var(--ds-color-primary-hover);
+  --color-primary-foreground: var(--ds-color-primary-foreground);
+  --color-danger: var(--ds-color-danger);
+  --color-danger-foreground: var(--ds-color-danger-foreground);
+  --color-state-purchased: var(--ds-color-state-purchased);
+  --color-state-received: var(--ds-color-state-received);
+  --color-focus-ring: var(--ds-color-focus-ring);
+  --color-profile-accent: var(--ds-color-profile-accent);
+
+  --font-sans: var(--ds-font-sans);
+
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+
+  --shadow-sm: var(--ds-shadow-sm);
+  --shadow-md: var(--ds-shadow-md);
+  --shadow-lg: var(--ds-shadow-lg);
+
+  --spacing-touch: var(--ds-size-touch);
+
+  --ease-enter: var(--ds-ease-enter);
+  --ease-exit: var(--ds-ease-exit);
+  --ease-standard: var(--ds-ease-standard);
+}
+
+@layer base {
+  html {
+    background-color: var(--ds-color-background);
+    color: var(--ds-color-foreground);
+    font-family: var(--ds-font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* A11Y-02 : focus toujours visible au clavier. */
+  :focus-visible {
+    outline: 2px solid var(--ds-color-focus-ring);
+    outline-offset: 2px;
+  }
+}

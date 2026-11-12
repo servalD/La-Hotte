@@ -1,0 +1,92 @@
+/*
+ * Jetons du système de design (DS-01). Seule source des couleurs, rayons, ombres, durées et courbes.
+ * Aucun composant n'écrit une valeur en dur : il utilise ces variables, via Tailwind ou motion.ts.
+ *
+ * Contrastes vérifiés (A11Y-03) : texte ≥ 4,5:1 sur le fond et la surface, bordures d'éléments
+ * interactifs ≥ 3:1. L'identité visuelle définitive reste à décider (10, question 1).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Couleurs — thème clair */
+  --ds-color-background: #fcfbf9;
+  --ds-color-surface: #ffffff;
+  --ds-color-surface-muted: #f5f3f0;
+  --ds-color-foreground: #1c1917;
+  --ds-color-foreground-muted: #57534e;
+  --ds-color-border: #e7e5e4;
+  --ds-color-border-strong: #78716c;
+  --ds-color-primary: #be123c;
+  --ds-color-primary-hover: #9f1239;
+  --ds-color-primary-foreground: #ffffff;
+  --ds-color-danger: #b91c1c;
+  --ds-color-danger-foreground: #ffffff;
+  /* États d'un cadeau : bleu = acheté, vert = reçu. Toujours doublés d'une icône et d'un libellé. */
+  --ds-color-state-purchased: #1d4ed8;
+  --ds-color-state-received: #15803d;
+  --ds-color-focus-ring: #1d4ed8;
+  /* Accent du profil actif (DS-03), remplacé à l'exécution par la couleur du profil. */
+  --ds-color-profile-accent: #be123c;
+
+  /* Typographie */
+  --ds-font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Rayons */
+  --ds-radius-sm: 0.375rem;
+  --ds-radius-md: 0.625rem;
+  --ds-radius-lg: 1rem;
+  --ds-radius-full: 9999px;
+
+  /* Ombres */
+  --ds-shadow-sm: 0 1px 2px rgb(28 25 23 / 0.06);
+  --ds-shadow-md: 0 4px 12px rgb(28 25 23 / 0.08);
+  --ds-shadow-lg: 0 12px 32px rgb(28 25 23 / 0.12);
+
+  /* Zones tactiles (≥ 44 px) */
+  --ds-size-touch: 2.75rem;
+
+  /* Mouvement (MOT-01, MOT-02) — miroir exact de src/styles/motion.ts, vérifié par un test. */
+  --ds-duration-micro: 120ms;
+  --ds-duration-element: 240ms;
+  --ds-duration-page: 360ms;
+  --ds-duration-celebration: 600ms;
+  --ds-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --ds-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ds-color-background: #141210;
+  --ds-color-surface: #1c1917;
+  --ds-color-surface-muted: #292524;
+  --ds-color-foreground: #fafaf9;
+  --ds-color-foreground-muted: #a8a29e;
+  --ds-color-border: #44403c;
+  --ds-color-border-strong: #a8a29e;
+  --ds-color-primary: #fb7185;
+  --ds-color-primary-hover: #fda4af;
+  --ds-color-primary-foreground: #1c1917;
+  --ds-color-danger: #f87171;
+  --ds-color-danger-foreground: #1c1917;
+  --ds-color-state-purchased: #60a5fa;
+  --ds-color-state-received: #4ade80;
+  --ds-color-focus-ring: #93c5fd;
+  --ds-color-profile-accent: #fb7185;
+
+  --ds-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --ds-shadow-md: 0 4px 12px rgb(0 0 0 / 0.45);
+  --ds-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.5);
+}
+
+/* MOT-04 : mouvement réduit — les transitions CSS deviennent quasi instantanées. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ds-duration-element: 1ms;
+    --ds-duration-page: 120ms;
+    --ds-duration-celebration: 1ms;
+  }
+}
