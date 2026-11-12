@@ -31,7 +31,7 @@ Sortie : une route d'exemple traverse les quatre couches, son client est génér
 
 ## Phase 1 — Comptes, profils, authentification
 
-Spec : `01`, `09`. ADR 0003.
+Spec : `01`, `09`. ADR 0003, ADR 0011 (essai de Better Auth fait le 2026-11-12 : voie maison retenue).
 
 | Tâche | Modèle |
 |---|---|
