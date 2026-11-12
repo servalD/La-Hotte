@@ -1,5 +1,5 @@
 import type { Attributes } from '@opentelemetry/api';
-import { type ExportResult, W3CTraceContextPropagator } from '@opentelemetry/core';
+import type { ExportResult } from '@opentelemetry/core';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
@@ -22,6 +22,7 @@ import {
 import { PrismaInstrumentation } from '@prisma/instrumentation';
 import * as Sentry from '@sentry/nestjs';
 import { installFatalHandlers } from './fatal';
+import { TraceParentOnlyPropagator } from './propagation';
 import { scrubAttributes, scrubSpan } from './scrub';
 import { buildSentryOptions, SERVICE_NAME } from './sentry-options';
 import { type TelemetryEnv, tracesSampleRatio } from './telemetry-env';
@@ -98,8 +99,8 @@ export function startTelemetry(env: TelemetryEnv): void {
       'service.version': env.RELEASE ?? 'dev',
       'deployment.environment.name': env.DEPLOY_ENVIRONMENT,
     }),
-    // `traceparent` seulement : pas de `baggage`, qui transporterait des valeurs arbitraires.
-    textMapPropagator: new W3CTraceContextPropagator(),
+    // `traceparent` seulement : ni `tracestate` ni `baggage` du client (voir `propagation.ts`).
+    textMapPropagator: new TraceParentOnlyPropagator(),
     sampler: new ParentBasedSampler({ root: new TraceIdRatioBasedSampler(tracesSampleRatio(env)) }),
     spanProcessors: [
       new BatchSpanProcessor({

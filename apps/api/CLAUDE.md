@@ -79,7 +79,7 @@ Prendre pour modèle le cas d'usage voisin le plus proche plutôt que d'inventer
 
 ## Commandes (dans `apps/api`)
 
-`pnpm dev` et `pnpm start` (avec `--import ./dist/instrument.js` et `--enable-source-maps`), `pnpm test` (`*.spec.ts` : unitaires et `test/contract`), `pnpm test:integration` (`test/integration/*.int-spec.ts`, base réelle), `pnpm openapi` (émet `openapi.json` sans base, en mode aperçu), `pnpm db:migrate`.
+`pnpm dev` et `pnpm start` (avec `--import ./dist/instrument.js` et `--enable-source-maps`), `pnpm test` (`*.spec.ts` : unitaires et `test/contract`), `pnpm test:integration` (`test/integration/*.int-spec.ts`, base réelle), `pnpm test:leak` (`test/leak/*.leak-spec.ts`, OBS-26 : construit, puis base réelle, faux collecteur et faux GlitchTip), `pnpm openapi` (émet `openapi.json` sans base, en mode aperçu), `pnpm db:migrate`.
 
 Base : la CLI Prisma utilise `DATABASE_MIGRATION_URL` (propriétaire) ; l'application `DATABASE_URL` (rôle `wishlist_app`, sans droit sur le schéma, DAT-03). Les contraintes `CHECK` (DAT-01) s'ajoutent à la main dans le `migration.sql`. Clés : UUID v7 produits par le port `IdGenerator`.
 
@@ -89,6 +89,7 @@ Base : la CLI Prisma utilise `DATABASE_MIGRATION_URL` (propriétaire) ; l'applic
 - Dépôts et transactions : PostgreSQL et Redis réels en conteneurs.
 - Chaque route : nominal, non connecté, interdit, validation. Modèle : `test/contract/example-items.spec.ts` et `createTestApp()`.
 - `test/contract/openapi-schema.spec.ts` refuse tout champ d'offreur dans un schéma `*RecipientView` d'`openapi.json`.
+- `test/leak/` (OBS-26) : toute nouvelle sortie de télémétrie (span, métrique, journal, rapport d'erreur) y ajoute un scénario avec marqueur ; une nouvelle barrière de `scrub` se vérifie en la retirant et en constatant que le test échoue.
 - Chaque test cite l'identifiant de la règle qu'il vérifie.
 
 ## Modèle

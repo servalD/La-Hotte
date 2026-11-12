@@ -99,6 +99,10 @@ jobs:
           --shadow-database-url "$SHADOW_DATABASE_URL" --exit-code
       - name: Tests d'intégration
         run: pnpm test:integration
+      # OBS-26 : bloquant. Ici et non dans `quality` : les requêtes Prisma marquées ont besoin
+      # d'une vraie base.
+      - name: Non-fuite de la télémétrie (OBS-26)
+        run: pnpm test:leak
 
   security:
     name: Dépendances et secrets
