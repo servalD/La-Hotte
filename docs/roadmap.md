@@ -39,17 +39,30 @@ Spec : `14` (OBS-01 à OBS-44), `09` (SEC-31). ADR 0012.
 
 | # | Tâche | Modèle |
 |---|---|---|
-| 1 | **Essai** : stack GlitchTip en local, coexistence SDK Sentry (`skipOpenTelemetrySetup`) et SDK OpenTelemetry sur NestJS 11 et Next 15, envoi de source maps par `glitchtip-cli`, relais `/monitoring`. Corriger l'ADR 0012 et OBS-30 à OBS-33 selon le résultat | opus |
-| 2 | Profil Compose `obs` (OBS-44) : `otel-collector`, `openobserve`, `glitchtip-web`, `glitchtip-worker`, `postgres-obs`, configurations dans `ops/observability/` | sonnet |
-| 3 | API : `instrument.ts` chargé en premier, `platform/telemetry` (SDK, exporteurs OTLP, Sentry), variables d'environnement validées, **module `scrub`** et filtre d'exceptions (5xx seulement, OBS-25), corrélation `trace_id` dans pino, port `Metrics` dans le noyau partagé | opus (scrub, filtre, port), sonnet (câblage) |
+| 1 | ~~**Essai**~~ **Fait le 2026-11-12.** Résultats dans l'ADR 0012 (section « Résultat de l'essai »), OBS-12, OBS-28 à OBS-35. Ce qu'il en change pour les tâches suivantes est ci-dessous | opus |
+| 2 | Profil Compose `obs` (OBS-44) : `otel-collector`, `openobserve`, `glitchtip` (un seul service, sans Valkey), `postgres-obs` (`max_locks_per_transaction=512`), configurations dans `ops/observability/`. `GLITCHTIP_DOMAIN` = l'URL réelle (OBS-35) | sonnet |
+| 3 | API : `instrument.ts` chargé par `node --import` (OBS-12), `platform/telemetry` (SDK, exporteurs OTLP, Sentry avec `dataCollection` fermé et `openTelemetryIntegration()`, `beforeSend` qui pose le `trace_id`, OBS-28), variables d'environnement validées, **module `scrub`** (liste des attributs : OBS-29) et filtre d'exceptions (5xx seulement, OBS-25), corrélation `trace_id` dans pino, port `Metrics` dans le noyau partagé | opus (scrub, filtre, port), sonnet (câblage) |
 | 4 | **Test de non-fuite de la télémétrie (OBS-26)** : exporteurs de test, marqueurs, CI bloquante | opus |
 | 5 | Web : `@sentry/nextjs` en erreurs seulement, `instrumentation.ts` pour les spans serveur, route `/monitoring` à liste blanche, CSP inchangée | sonnet, revue opus |
-| 6 | CI et déploiement : build avec cartes, `glitchtip-cli` (inject puis upload) au déploiement seulement, suppression des cartes de l'artefact servi, release = SHA | sonnet |
+| 6 | CI et déploiement : build avec cartes, `glitchtip-cli` compilée depuis crates.io `--locked` (OBS-35) pour `inject`, script `ops/observability/bundle-sourcemaps` pour le bundle et l'envoi (OBS-31, le `upload` de la CLI 1.0.0 est cassé), vérification côté serveur (OBS-34), au déploiement seulement, suppression des cartes de l'artefact servi, release = SHA | opus (script et vérification), sonnet (CI) |
 | 7 | Squelettes de `worker` et `fetcher` : même `instrument.ts` (au fil des phases où ils naissent) | sonnet |
 | 8 | Métriques métier au fil des phases : refus d'autorisation (phase 1), extraction et coût (phase 2), files (phase 4) | sonnet |
 | 9 | Tableaux de bord et règles d'alerte versionnés (OBS-05, OBS-42), canal d'alerte hors application (OBS-43), sonde externe (OBS-41), restrictions d'accès (OBS-27), rétentions (OBS-16) | opus (alertes, accès), sonnet (tableaux de bord) : en phase 7 |
 
 Sortie : critères d'acceptation « observabilité » de `14` pour l'API et le web ; test OBS-26 vert en CI ; `security-reviewer` sans point bloquant sur `scrub`.
+
+**Versions à épingler** (relevées par l'essai du 2026-11-12, à vérifier à l'installation) :
+
+| Composant | Version | Remarque |
+|---|---|---|
+| GlitchTip | 7.0.0 | image `glitchtip/glitchtip`, un seul service |
+| `glitchtip-cli` | 1.0.0 | compilée depuis crates.io `--locked` ; seul `sourcemaps inject` est utilisé |
+| `otel/opentelemetry-collector-contrib` | 0.165.0 | |
+| OpenObserve | v1.1.2 | mot de passe racine : 8 caractères au moins, avec majuscule, chiffre et caractère spécial |
+| `@sentry/nestjs`, `@sentry/nextjs` | 11.12.0 | `dataCollection` fermé ; `enableOpenTelemetrySetup` à `false` pour Next (vrai par défaut) |
+| `@opentelemetry/sdk-node` | 0.301.1 | |
+| `@opentelemetry/instrumentation-http` | 0.301.1 | pas la 0.301.2 (dépendance jamais publiée) |
+| `@prisma/instrumentation` | 6.19.x | pas la 7.x (fait échouer les requêtes avec Prisma 6.19) |
 
 ## Phase 1 — Comptes, profils, authentification
 

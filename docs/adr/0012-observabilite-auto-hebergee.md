@@ -39,6 +39,23 @@ Il faut voir ce qui casse (exceptions TypeScript avec une pile lisible), ce qui 
   - le relais navigateur `/monitoring` (l'option `tunnelRoute` du greffon Next de Sentry n'est pas prévue pour un hôte autre que Sentry : on écrit le relais nous-mêmes avec une liste blanche).
 - Les attributs des spans de bibliothèques instrumentées automatiquement (HTTP, base, Redis) sont à filtrer un par un : le défaut d'une instrumentation est de trop en dire.
 
+## Résultat de l'essai (2026-11-12)
+
+Les « points à confirmer » ci-dessus ont été vérifiés (tâche 1 de la phase 0 bis). Ce qui précède reste l'état de la décision au départ ; ce qui suit la corrige et prévaut.
+
+**Versions de l'essai :** GlitchTip 7.0.0 (essai croisé avec 6.2.6), `otel-collector-contrib` 0.165.0, OpenObserve 1.1.2, `@sentry/nestjs` et `@sentry/nextjs` 11.12.0, `@opentelemetry/sdk-node` 0.301.1, Prisma 6.19, NestJS 11.1, Next 15.5, `glitchtip-cli` 1.0.0.
+
+**Corrections à la décision**
+
+- **Point 3 (services).** Il n'y a pas de `glitchtip-worker` : depuis GlitchTip 7, un seul processus sert le HTTP et consomme la file, et refuse de démarrer avec un rôle de worker. Valkey/Redis est facultatif (`VALKEY_URL` vide : Postgres sert de file). PostgreSQL demande `max_locks_per_transaction=512`. Mémoire à vide : GlitchTip 172 Mio, sa base 78 Mio, collecteur 40 Mio, OpenObserve 287 Mio, soit environ 577 Mio.
+- **Point 4 (Sentry et OpenTelemetry).** `skipOpenTelemetrySetup` n'existe plus en Sentry 11 ; son équivalent inversé, `enableOpenTelemetrySetup`, est faux par défaut côté Node. Le montage retenu est celui que Sentry appelle « votre OpenTelemetry, Sentry lié » : OpenTelemetry possède les spans, Sentry les erreurs, avec `Sentry.openTelemetryIntegration()` et sans `tracesSampleRate`. Cette intégration seule ne suffit pas : le `trace_id` des erreurs ne correspond pas, car le span interne de Sentry l'emporte ; un `beforeSend` pose celui du span OpenTelemetry actif (vérifié : `trace_id` identique dans GlitchTip et dans le collecteur). Le processus se lance avec `node --import`, `--require` n'étant plus pris en charge.
+- **Nettoyage (points 6 et 10).** Sentry 11 collecte **tout** par défaut (cookies, en-têtes, corps, SQL, variables locales) et `sendDefaultPii` a disparu. La configuration `dataCollection` doit être fermée explicitement (OBS-28). Même fermée, les fils d'Ariane `console` et `http`, le message d'exception et le chemin de l'URL restent : `scrub` doit les traiter. Côté spans, les instrumentations posent par défaut l'URL complète, la chaîne de requête, le texte SQL avec ses valeurs, le message et la pile d'exception, les adresses réseau (liste dans OBS-29).
+- **Point 7 (source maps).** La route d'envoi par fichier répond 405 sur GlitchTip 7. `glitchtip-cli` 1.0.0 : `sourcemaps inject` fonctionne ; `sourcemaps upload` envoie chaque fichier brut et appelle l'assemblage, alors que le serveur attend un zip avec `manifest.json` ; le serveur rejette (« not a zip file ») et la CLI retourne un succès (même résultat avec GlitchTip 6.2.6). Un bundle fabriqué par un script maison (zip, manifest, envoi par morceaux, assemblage) est accepté et la pile est résolue en TypeScript. Décision : `inject` par la CLI, bundle par un script du dépôt, vérification côté serveur (OBS-31, OBS-34). La CLI n'a pas de binaire signé : on la compile depuis crates.io avec `--locked` (OBS-35).
+- **API et source maps.** `node --enable-source-maps` suffit à produire des piles TypeScript ; les cartes de l'API n'ont pas besoin de GlitchTip (OBS-32). Seul le navigateur dépend de GlitchTip pour des piles lisibles.
+- **Points inchangés, vérifiés.** Désactivation par défaut et indépendance vis-à-vis des pannes (OBS-14) : sans variables, aucune connexion sortante ; collecteur et GlitchTip arrêtés, la latence reste la même. Relais `/monitoring` : fonctionne avec `connect-src 'self'`, sans violation de la CSP, et refuse ce qui n'est pas pour notre projet (OBS-33).
+
+**Pièges de versions relevés** (à épingler, voir la roadmap) : `@opentelemetry/instrumentation-http` 0.301.2 dépend d'un paquet jamais publié (prendre 0.301.1) ; `@prisma/instrumentation` 7.x est incompatible avec Prisma 6.19 et fait échouer les requêtes (prendre 6.19) ; le SDK navigateur ajoute environ 300 ko de JavaScript au premier chargement d'une page vide (question ouverte 5 de `14`).
+
 ## Alternatives écartées
 
 - **Sentry auto-hébergé** : mêmes SDK et meilleure fonction de traces, mais une pile bien plus lourde pour un VPS unique.
