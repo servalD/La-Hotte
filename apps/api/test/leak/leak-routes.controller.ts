@@ -1,5 +1,8 @@
+import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { context, TraceFlags, trace } from '@opentelemetry/api';
+import { TraceState } from '@opentelemetry/core';
 import { Metrics } from '../../src/shared/domain';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
 
@@ -69,6 +72,32 @@ export class LeakRoutesController {
         })
         .on('error', reject);
     });
+  }
+
+  /**
+   * Span dont le parent et un lien portent un `traceState` arrivé par un autre chemin que
+   * l'extraction (échantillonneur, lien construit à la main) : seul `scrubSpanContext` l'arrête.
+   * Sans cette route, retirer cette seconde barrière laisserait le test vert (revue du
+   * 2026-11-12), le propagateur retirant déjà le `tracestate` du client.
+   */
+  @Post('span-context')
+  @HttpCode(204)
+  spanContext(@Body() body: LeakBody): void {
+    const marked = {
+      traceId: randomBytes(16).toString('hex'),
+      spanId: randomBytes(8).toString('hex'),
+      traceFlags: TraceFlags.SAMPLED,
+      isRemote: true,
+      traceState: new TraceState(`client=${body.marker}`),
+    };
+    trace
+      .getTracer('leak-test')
+      .startSpan(
+        'leak-span-context',
+        { links: [{ context: marked }] },
+        trace.setSpanContext(context.active(), marked),
+      )
+      .end();
   }
 
   /**

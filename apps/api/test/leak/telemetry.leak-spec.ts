@@ -158,6 +158,9 @@ async function playScenario(app: INestApplication): Promise<void> {
   await http.post('/api/v1/_leak/query-ok').set(markedHeaders).send(marker).expect(200);
   await http.post('/api/v1/_leak/metric').set(markedHeaders).send(marker).expect(204);
 
+  // `traceState` posé hors extraction, sur le parent et un lien (seconde barrière).
+  await http.post('/api/v1/_leak/span-context').set(markedHeaders).send(marker).expect(204);
+
   // Appel sortant vers un tiers, dans le contexte de trace venu du client.
   await http.post('/api/v1/_leak/outbound').set(markedHeaders).expect(204);
 }
@@ -192,6 +195,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     expect(traces).toContain('/api/v1/_leak/boom');
     expect(traces).toContain('/api/v1/example-items/:id');
     expect(traces).toMatch(/prisma:engine:db_query/);
+    expect(traces).toContain('leak-span-context');
 
     expect(findMarker(traces)).toBeUndefined();
   });

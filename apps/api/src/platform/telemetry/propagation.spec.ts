@@ -35,6 +35,16 @@ describe('TraceParentOnlyPropagator (OBS-29)', () => {
     expect(outgoing).toStrictEqual({ traceparent: `00-${TRACE_ID}-${SPAN_ID}-01` });
   });
 
+  it('sans traceparent valide, rend le contexte d’entrée tel quel', () => {
+    const local = trace.setSpanContext(ROOT_CONTEXT, {
+      traceId: 'c'.repeat(32),
+      spanId: 'd'.repeat(16),
+      traceFlags: 1,
+    });
+    const context = propagator.extract(local, { tracestate: 'x=y' }, defaultTextMapGetter);
+    expect(context).toBe(local);
+  });
+
   it('ne déclare que traceparent', () => {
     expect(propagator.fields()).toEqual(['traceparent']);
   });

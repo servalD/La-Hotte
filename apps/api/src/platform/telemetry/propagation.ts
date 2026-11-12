@@ -25,7 +25,8 @@ export class TraceParentOnlyPropagator implements TextMapPropagator {
   extract(context: Context, carrier: unknown, getter: TextMapGetter): Context {
     const extracted = this.inner.extract(context, carrier, getter);
     const remote = trace.getSpanContext(extracted);
-    if (!remote?.traceState) return extracted;
+    // Rien d'extrait (en-tête absent ou invalide) : le contexte d'entrée est rendu tel quel.
+    if (!remote?.traceState || remote === trace.getSpanContext(context)) return extracted;
     const withoutState: SpanContext = {
       traceId: remote.traceId,
       spanId: remote.spanId,
