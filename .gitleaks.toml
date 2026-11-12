@@ -1,0 +1,8 @@
+# Détection de secrets (CI-01). Les identifiants de développement local et de CI sont publics
+# par construction (conteneurs éphémères) et ne sont réutilisés nulle part.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Identifiants de développement local et de CI"
+paths = ['''docker/postgres/init\.sql''', '''docker-compose\.yml''', '''\.env\.example''', '''\.github/workflows/ci\.yml''']

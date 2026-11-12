@@ -1,0 +1,29 @@
+{
+  "name": "wishlist",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "generate": "pnpm --filter @wishlist/api openapi && pnpm --filter @wishlist/api-client generate",
+    "generate:check": "pnpm generate && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated",
+    "db:migrate": "pnpm --filter @wishlist/api db:migrate",
+    "db:migrate:deploy": "pnpm --filter @wishlist/api db:migrate:deploy",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint:architecture": "node scripts/architecture-canary.mjs"
+  },
+  "devDependencies": {
+    "@wishlist/config": "workspace:*",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8"
+  }
+}
