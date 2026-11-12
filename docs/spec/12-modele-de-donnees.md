@@ -46,8 +46,9 @@ erDiagram
 | `auth_identity` | `account_id`, `provider` (`GOOGLE`), `subject` | (`provider`, `subject`) unique |
 | `recovery_code` | `account_id`, `code_hash`, `used_at?` | |
 | `session` | `account_id`, `token_hash`, `active_profile_id?`, `unlocked_profile_ids`, `reauth_at?`, `trusted_device`, `user_agent`, `last_seen_at`, `expires_at` | `token_hash` unique |
-| `profile` | `account_id`, `display_name`, `avatar`, `accent_color`, `birthday_day?`, `birthday_month?`, `birthday_year?`, `locale`, `currency`, `timezone`, `is_child`, `pin_hash?`, `pin_failed_count`, `pin_locked_until?` | 10 profils au plus par compte |
-| `profile_link` | `profile_a_id`, `profile_b_id`, `status` (`PENDING`/`ACCEPTED`), `requested_by` | paire unique, `a < b` |
+| `trusted_device` | `account_id`, `token_hash`, `user_agent`, `created_at`, `expires_at`, `revoked_at?` | `token_hash` unique ; valable 30 jours (AUTH-12), révocable depuis l'espace Compte |
+| `profile` | `account_id`, `display_name`, `avatar`, `accent_color`, `birthday_day?`, `birthday_month?`, `birthday_year?`, `locale`, `currency`, `timezone`, `is_child`, `pin_hash?`, `pin_failed_count`, `pin_locked_until?`, `pin_reset_notice_at?` | 10 profils au plus par compte |
+| `profile_link` | `profile_a_id`, `profile_b_id`, `status` (`PENDING`/`AWAITING_GUARDIAN`/`ACCEPTED`), `requested_by` | paire unique, `a < b` |
 | `profile_block` | `blocker_id`, `blocked_id` | paire unique |
 | `invitation` | `kind` (`LINK`/`LIST`/`EVENT`), `target_id`, `token_hash`, `created_by`, `max_uses`, `used_count`, `expires_at`, `revoked_at?` | `token_hash` unique |
 
@@ -107,7 +108,7 @@ Le coût total d'un élément n'est pas stocké : `quantity × unit_price_minor`
 ## Contraintes transversales
 
 - **DAT-01** Les invariants critiques sont garantis **en base** et pas seulement dans le code : unicités ci-dessus, contraintes `CHECK` (quantité, montants positifs, cohérence giftlist), clés étrangères avec comportement de suppression explicite.
-- **DAT-02** Les tables en ajout seul (`ledger_entry`, `audit_log`, `security_log`, `visibility_change_log`) n'accordent ni `UPDATE` ni `DELETE` au rôle de base de données de l'application.
+- **DAT-02** Les tables en ajout seul (`ledger_entry`, `audit_log`, `security_log`, `visibility_change_log`) n'accordent ni `UPDATE` ni `DELETE` au rôle de base de données de l'application. Les privilèges par défaut de l'environnement accordent ces droits sur toute nouvelle table : **la migration qui crée une table en ajout seul les retire explicitement** au rôle applicatif (`REVOKE UPDATE, DELETE`), et un test d'intégration le vérifie pour chaque table de cette liste. Le rôle applicatif n'a aucun droit d'écriture sur `_prisma_migrations`.
 - **DAT-03** Deux rôles de base de données : un pour l'application, un pour les migrations. L'application n'a pas le droit de modifier le schéma.
 - **DAT-04** Le fil `GIVERS` et le fil `PUBLIC` sont dans la même table mais ne sont jamais lus par la même requête : le dépôt expose deux méthodes distinctes, et celle du fil des offreurs exige une preuve que le demandeur n'est pas destinataire.
 - **DAT-05** Sécurité au niveau des lignes (RLS) de PostgreSQL en **défense supplémentaire** sur `comment`, `contribution`, `purchase` et `list_item` : la session de base porte l'identifiant du profil actif, et une politique interdit à un destinataire la lecture des lignes d'offreurs. Le moteur de visibilité reste la barrière principale.

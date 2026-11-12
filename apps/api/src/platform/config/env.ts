@@ -2,12 +2,19 @@ import { z } from 'zod';
 
 /** Variables d'environnement validées au démarrage. Aucune valeur n'est journalisée (SEC-21). */
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Obligatoire, sans valeur par défaut : un déploiement qui l'oublie doit échouer au démarrage
+  // plutôt que de s'exécuter en mode développement.
+  NODE_ENV: z.enum(['development', 'test', 'production']),
+  // Documentation interactive de l'API : développement seulement ET réglage explicite.
+  ENABLE_API_DOCS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  WEB_ORIGIN: z.string().url(),
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
+  WEB_ORIGIN: z.url(),
+  DATABASE_URL: z.url(),
+  REDIS_URL: z.url(),
 });
 
 export type Env = z.infer<typeof envSchema>;

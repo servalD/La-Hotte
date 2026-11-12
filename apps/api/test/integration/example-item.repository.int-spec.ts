@@ -45,6 +45,23 @@ describe('PrismaExampleItemRepository', () => {
   });
 });
 
+describe('DAT-02 droits du rôle applicatif', () => {
+  it('ne peut ni modifier ni effacer l’historique des migrations', async () => {
+    await expect(prisma.$executeRawUnsafe('DELETE FROM "_prisma_migrations"')).rejects.toThrow(
+      /permission denied/i,
+    );
+    await expect(
+      prisma.$executeRawUnsafe(`UPDATE "_prisma_migrations" SET logs = 'x'`),
+    ).rejects.toThrow(/permission denied/i);
+  });
+
+  it('peut lire l’historique des migrations', async () => {
+    await expect(
+      prisma.$queryRaw`SELECT count(*) FROM "_prisma_migrations"`,
+    ).resolves.toBeDefined();
+  });
+});
+
 describe('OBS-06 /health/ready', () => {
   it('signale la base et Redis disponibles', async () => {
     await request(app.getHttpServer())

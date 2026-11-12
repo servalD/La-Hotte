@@ -40,7 +40,7 @@ export const config = {
   matcher: [
     // Pages uniquement : ni l'API (servie par NestJS), ni les fichiers statiques.
     {
-      source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!api/|_next/static|_next/image|favicon.ico).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

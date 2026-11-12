@@ -71,6 +71,9 @@ Chaque exigence de la demande initiale, et l'endroit où elle est spécifiée. �
 | Le destinataire peut-il savoir qu'un souhait est réservé ? | Non, d'aucune façon | LST-17 |
 | Un souhait secrètement acheté est-il reproposé à la reprise ? | Oui, tant que le destinataire ne l'a pas coché « reçu » | LST-14, EVT-22, EVT-26 |
 | Qui gère les PIN ? | Chaque profil change le sien avec l'ancien PIN ; réinitialiser ou désactiver se fait dans l'espace Compte avec ré-authentification | PIN-04, PIN-05, PIN-08 |
+| Bibliothèque d'authentification | Essai de Better Auth fait ; voie maison retenue (rejeu TOTP, jeton de session en clair, codes de secours chiffrés, appareils de confiance non révocables) | ADR 0011 ; AUTH-04, AUTH-11, AUTH-12 |
+| Notification d'un PIN erroné avant la phase 4 | Journal de sécurité + e-mail au compte ; notification dans l'application en phase 4 | PIN-03 |
+| Lien demandé par un profil enfant | Statut `AWAITING_GUARDIAN` jusqu'à validation par un profil non-enfant du compte | PRO-05 |
 | Écart de prix à l'achat | Réparti sur les parts en Tout ou Pourcentage ; sinon reporté sur le dernier participant, qui peut refuser une hausse ; reste à couvrir avec notification sélective | CPT-16 à CPT-19 |
 
 ## Décisions restant à prendre

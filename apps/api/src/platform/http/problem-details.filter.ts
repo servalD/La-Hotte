@@ -57,6 +57,22 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       const status = exception.getStatus();
       return problem(status, genericCodeFor(status), ctx);
     }
+    // Erreurs de l'analyseur de corps d'Express (JSON invalide, corps trop volumineux, charset
+    // inconnu) : ce sont des erreurs du client, pas des erreurs internes. Elles portent un
+    // statut 4xx ; on n'en reprend jamais le message (il peut citer le contenu reçu).
+    const clientStatus = clientErrorStatus(exception);
+    if (clientStatus !== null) {
+      return problem(clientStatus, genericCodeFor(clientStatus), ctx);
+    }
     return problem(500, 'INTERNAL_ERROR', ctx);
   }
+}
+
+function clientErrorStatus(exception: unknown): number | null {
+  if (typeof exception !== 'object' || exception === null) return null;
+  const candidate = exception as { status?: unknown; statusCode?: unknown };
+  const status = typeof candidate.status === 'number' ? candidate.status : candidate.statusCode;
+  return typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 499
+    ? status
+    : null;
 }

@@ -3,11 +3,23 @@ packages:
   - packages/*
 
 onlyBuiltDependencies:
-  - '@nestjs/core'
   - '@prisma/client'
   - '@prisma/engines'
   - '@swc/core'
   - esbuild
   - prisma
-  - sharp
   - unrs-resolver
+
+# Next.js épingle un postcss vulnérable (GHSA-r28c-9q8g-f849, GHSA-6g55-p6wh-862q, GHSA-fxqj-rqcc-2cmp).
+overrides:
+  postcss: '>=8.5.23'
+
+auditConfig:
+  # Exception datée (revue de sécurité de la phase 0, à lever au plus tard le 2027-02-12) :
+  # deepmerge-ts est une dépendance de la CLI Prisma (@prisma/config), jamais chargée par l'API
+  # en exécution ; le correctif exige Prisma 7, planifié après la phase 1 (ADR 0010).
+  ignoreGhsas:
+    - GHSA-ggr8-5vv4-36mx
+    # Même échéance : zod 3 embarqué par eslint-plugin-react-hooks (outil de lint, jamais livré ni
+    # exécuté en production). Le code applicatif est passé à zod 4.
+    - GHSA-mrhx-c7xc-m3w5

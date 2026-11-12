@@ -31,6 +31,21 @@ export function configureApp(app: INestApplication): void {
     }),
   );
 
+  // SEC-13 : Permissions-Policy (helmet 8 ne la pose pas). L'API n'a besoin d'aucune capacité.
+  app.use(
+    (
+      _req: unknown,
+      res: { setHeader: (name: string, value: string) => void },
+      next: () => void,
+    ) => {
+      res.setHeader(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+      );
+      next();
+    },
+  );
+
   // SEC-14 : seule l'origine de l'application web, avec identifiants.
   app.enableCors({
     // Une origine étrangère ne reçoit aucun en-tête CORS (pas même l'origine autorisée).

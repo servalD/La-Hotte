@@ -24,7 +24,7 @@ export const createExampleItemBody = zod.object({
  * @summary Vue polymorphe : la forme dépend du lecteur, discriminée par `view` (API-12).
  */
 export const getExampleItemParams = zod.object({
-  id: zod.string().uuid(),
+  id: zod.uuid(),
 });
 
 export const getExampleItemResponseTitleMax = 120;
@@ -36,19 +36,19 @@ export const getExampleItemResponseReservationByNameMax = 80;
 export const getExampleItemResponse = zod.union([
   zod.object({
     view: zod.enum(['recipient']),
-    id: zod.string().uuid(),
+    id: zod.uuid(),
     title: zod.string().min(1).max(getExampleItemResponseTitleMax),
     priority: zod.enum(['low', 'normal', 'high']),
   }),
   zod.object({
     view: zod.enum(['giver']),
-    id: zod.string().uuid(),
+    id: zod.uuid(),
     title: zod.string().min(1).max(getExampleItemResponseTitleMaxOne),
     priority: zod.enum(['low', 'normal', 'high']),
     reservation: zod
       .object({
         byName: zod.string().max(getExampleItemResponseReservationByNameMax),
-        at: zod.string().datetime({}),
+        at: zod.iso.datetime({}),
       })
       .nullable(),
   }),
