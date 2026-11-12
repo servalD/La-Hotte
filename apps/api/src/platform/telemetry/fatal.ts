@@ -73,7 +73,8 @@ export function createFatalHandler(deps: FatalDependencies) {
     } catch {
       flushing = Promise.resolve();
     }
-    void flushing.finally(exitOnce);
+    // `then(f, f)` et non `finally` : un vidage rejeté ne doit pas créer un nouveau rejet non géré.
+    void flushing.then(exitOnce, exitOnce);
   };
 }
 

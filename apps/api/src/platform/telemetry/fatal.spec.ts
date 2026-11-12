@@ -76,10 +76,19 @@ describe('erreurs fatales (OBS-45)', () => {
       flush: () => Promise.reject(new Error('GlitchTip injoignable')),
     });
 
-    handle(`rejet par une chaîne ${MARKER}`, 'auto.node.onunhandledrejection');
-    await nextTick();
+    // Régression vue en CI le 2026-11-12 : `flush().finally(…)` produisait un rejet non géré.
+    const unhandled: unknown[] = [];
+    const record = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', record);
+    try {
+      handle(`rejet par une chaîne ${MARKER}`, 'auto.node.onunhandledrejection');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      process.off('unhandledRejection', record);
+    }
 
     expect(exits).toEqual([1]);
+    expect(unhandled).toEqual([]);
   });
 
   // Troisième passe de revue : `Sentry.close` qui ne se résout jamais laissait le processus
