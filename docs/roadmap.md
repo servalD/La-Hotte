@@ -26,8 +26,30 @@ Objectif : un dépôt où tout changement passe par les mêmes contrôles.
 | Squelette Next.js : système de design, jetons, thèmes, i18n, composants de base, jetons d'animation | sonnet |
 | CI complète (CI-01), en-têtes de sécurité, CSP | sonnet, revue opus |
 | Tous les `CLAUDE.md` mis à jour avec les commandes réelles | sonnet |
+| Trivy sur le dépôt en CI, action épinglée par commit, exceptions à échéance (CI-05 à CI-07) — ajouté le 2026-11-12 | sonnet |
+| Épingler par commit les autres actions tierces du workflow (CI-07) | sonnet |
 
 Sortie : une route d'exemple traverse les quatre couches, son client est généré, la CI est verte et refuse un import interdit.
+
+## Phase 0 bis — Observabilité
+
+Spec : `14` (OBS-01 à OBS-44), `09` (SEC-31). ADR 0012.
+
+**À faire avant le premier code de la phase 1 qui manipule des mots de passe ou des sessions** : c'est là qu'une exception mal nettoyée fuit le plus. Les tâches 1 à 3 d'abord ; les suivantes peuvent s'intercaler.
+
+| # | Tâche | Modèle |
+|---|---|---|
+| 1 | **Essai** : stack GlitchTip en local, coexistence SDK Sentry (`skipOpenTelemetrySetup`) et SDK OpenTelemetry sur NestJS 11 et Next 15, envoi de source maps par `glitchtip-cli`, relais `/monitoring`. Corriger l'ADR 0012 et OBS-30 à OBS-33 selon le résultat | opus |
+| 2 | Profil Compose `obs` (OBS-44) : `otel-collector`, `openobserve`, `glitchtip-web`, `glitchtip-worker`, `postgres-obs`, configurations dans `ops/observability/` | sonnet |
+| 3 | API : `instrument.ts` chargé en premier, `platform/telemetry` (SDK, exporteurs OTLP, Sentry), variables d'environnement validées, **module `scrub`** et filtre d'exceptions (5xx seulement, OBS-25), corrélation `trace_id` dans pino, port `Metrics` dans le noyau partagé | opus (scrub, filtre, port), sonnet (câblage) |
+| 4 | **Test de non-fuite de la télémétrie (OBS-26)** : exporteurs de test, marqueurs, CI bloquante | opus |
+| 5 | Web : `@sentry/nextjs` en erreurs seulement, `instrumentation.ts` pour les spans serveur, route `/monitoring` à liste blanche, CSP inchangée | sonnet, revue opus |
+| 6 | CI et déploiement : build avec cartes, `glitchtip-cli` (inject puis upload) au déploiement seulement, suppression des cartes de l'artefact servi, release = SHA | sonnet |
+| 7 | Squelettes de `worker` et `fetcher` : même `instrument.ts` (au fil des phases où ils naissent) | sonnet |
+| 8 | Métriques métier au fil des phases : refus d'autorisation (phase 1), extraction et coût (phase 2), files (phase 4) | sonnet |
+| 9 | Tableaux de bord et règles d'alerte versionnés (OBS-05, OBS-42), canal d'alerte hors application (OBS-43), sonde externe (OBS-41), restrictions d'accès (OBS-27), rétentions (OBS-16) | opus (alertes, accès), sonnet (tableaux de bord) : en phase 7 |
+
+Sortie : critères d'acceptation « observabilité » de `14` pour l'API et le web ; test OBS-26 vert en CI ; `security-reviewer` sans point bloquant sur `scrub`.
 
 ## Phase 1 — Comptes, profils, authentification
 
@@ -133,6 +155,7 @@ Spec : `11`, `14`. ADR 0008.
 | Catalogue global, modération, signalements | sonnet, revue opus |
 | Export et suppression des données | opus |
 | Production : Compose, Caddy, sauvegardes, restauration testée, observabilité, alertes | sonnet, revue opus |
+| Trivy sur chaque image construite avant publication ; rapport hebdomadaire planifié des images tierces (CI-05) | sonnet |
 | Revue de sécurité complète et test d'intrusion ciblé sur la surprise (SEC-42) | opus |
 
 Sortie : restauration réussie et chronométrée ; aucune fuite trouvée ; ouverture sur invitation.

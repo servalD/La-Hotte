@@ -46,6 +46,8 @@ Chaque exigence de la demande initiale, et l'endroit où elle est spécifiée. �
 | 40 | Choisir les bons skills | `CLAUDE.md` (section Skills), agents | |
 | 41 | `CLAUDE.md` aux bons endroits | Racine, `apps/api`, `apps/web`, `packages/api-client`, `docs` | |
 | 42 | Directives Opus 5.5 / Sonnet 5.5 pour optimiser les crédits | `CLAUDE.md`, `.claude/agents/`, `.claude/settings.json`, `docs/roadmap.md` | |
+| 43 | Auto-hébergé : GlitchTip (alertes d'exceptions TypeScript, source maps, SDK Sentry) et OpenObserve (journaux, métriques, traces OpenTelemetry de toute la pile), code adapté | `14` OBS-01 à OBS-44, DEP-02 ; `09` SEC-31, SEC-32, RGPD-03 ; ADR 0012 ; `roadmap.md` phase 0 bis | Demande du 2026-11-12. Ajout : nettoyage de la télémétrie (OBS-20 à OBS-27), car un rapport d'erreur peut révéler une surprise |
+| 44 | Analyse Trivy dans la CI | `14` CI-05 à CI-07 ; `09` SEC-41 ; `.github/workflows/ci.yml` (job `trivy`) ; `roadmap.md` phases 0 et 7 | Demande du 2026-11-12. Ajout : action épinglée par commit, la CI de Trivy ayant elle-même été compromise en mars 2026 |
 
 ## Incohérences et manques relevés dans la demande
 

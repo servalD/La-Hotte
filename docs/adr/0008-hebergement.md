@@ -26,6 +26,10 @@ Un VPS chez un hébergeur européen, Docker Compose, services décrits en DEP-02
 - Une seule machine : pas de haute disponibilité (objectif 99,5 %).
 - PostgreSQL auto-hébergé : la sauvegarde continue et le test de restauration sont obligatoires avant l'ouverture.
 
+## Ajout du 2026-11-12 : observabilité
+
+L'ADR 0012 ajoute au Compose de production un collecteur OpenTelemetry, OpenObserve, GlitchTip (web et worker) et une base PostgreSQL dédiée, sur un réseau `obs` distinct. Conséquences pour cet ADR : le dimensionnement du VPS est à mesurer (OBS-40) et une sonde externe devient nécessaire (OBS-41), puisque la surveillance partage le sort du serveur.
+
 ## À trancher
 
 - Hébergeur précis.

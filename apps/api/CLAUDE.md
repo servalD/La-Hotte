@@ -72,7 +72,7 @@ Prendre pour modèle le cas d'usage voisin le plus proche plutôt que d'inventer
 - **Compta** : entiers en unités mineures ; transaction avec verrou sur l'élément ; écriture au journal dans la même transaction.
 - **Temps réel** : émettre après validation de la transaction, par salon, à travers `visibility`. Aucune écriture par WebSocket.
 - **Erreurs** : `application/problem+json` avec un `code` stable ; aucun détail interne.
-- **Journaux** : pas de contenu de liste, de commentaire, de jeton ni de code.
+- **Journaux et télémétrie** : pas de contenu de liste, de commentaire, de jeton ni de code (SEC-31), ni dans les traces, métriques ou rapports d'erreur (OBS-20). Tout passe par `platform/telemetry/scrub`. Les cas d'usage comptent via le port `Metrics`, jamais en important la bibliothèque. Un message d'exception n'interpole aucune donnée d'utilisateur. Seules les erreurs inattendues vont à GlitchTip (OBS-25). Journaliser le domaine d'une URL d'article, jamais l'URL.
 - **SQL** : Prisma ou requêtes paramétrées ; aucune concaténation.
 - **Appels sortants vers une URL d'utilisateur** : uniquement par le service `fetcher`.
 
