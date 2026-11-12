@@ -1,7 +1,13 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
+import { parseBrowserTelemetryEnv } from './src/lib/telemetry/env';
+
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+// OBS-47 : les variables du navigateur sont inscrites dans le bundle ; une valeur invalide fait
+// échouer le build en nommant la variable, jamais sa valeur.
+parseBrowserTelemetryEnv(process.env);
 
 // En développement, l'API tourne à part ; en production, Caddy sert web et API sur la même
 // origine (ADR 0008). La réécriture reproduit cette même origine en local.

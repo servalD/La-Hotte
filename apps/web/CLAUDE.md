@@ -26,6 +26,7 @@ src/styles/         jetons (couleurs, espacements, durées, courbes)
 - **Sécurité** : CSP à nonce posée par `src/middleware.ts` (SEC-13), autres en-têtes dans `next.config.ts`.
 - **Écran d'essai** : `src/features/example` (formulaire → Zod généré → hook généré → relecture polymorphe). À supprimer avec le module `example` de l'API.
 - Le lint interdit `fetch`, `localStorage`, `sessionStorage` et `dangerouslySetInnerHTML` dans `src`.
+- **Télémétrie** (OBS-47, OBS-48) : `src/lib/telemetry/` ; serveur démarré par `src/instrumentation.ts` (runtime Node seulement, imports sous `if (process.env.NEXT_RUNTIME === 'nodejs')` pour que la branche disparaisse du build Edge), navigateur par `src/instrumentation-client.ts`, relais `src/app/monitoring/route.ts` (seul `fetch` autorisé hors `lib/api`). Variables serveur comme l'API (`SENTRY_DSN`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `DEPLOY_ENVIRONMENT`, `RELEASE`, `TRACES_SAMPLE_RATIO`), navigateur au build (`NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_DEPLOY_ENVIRONMENT`, `NEXT_PUBLIC_RELEASE`). Sans elles, rien n'est démarré. Pas de `withSentryConfig` ni de `NodeSDK`. `scrub.ts` est pur (serveur, navigateur, relais) ; `server-stack.ts` est Node seulement, jamais importé côté client.
 
 ## Règles
 
