@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
-import { Clock, IdGenerator } from '../shared/domain';
+import { Clock, IdGenerator, Metrics } from '../shared/domain';
 import { AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
 import { ProblemDetailsFilter } from './http/problem-details.filter';
@@ -9,6 +9,8 @@ import { SystemClock, UuidV7IdGenerator } from './ids/system.providers';
 import { LoggingModule } from './logging/logging.module';
 import { PrismaService } from './prisma/prisma.service';
 import { RedisService } from './redis/redis.service';
+import { ErrorReporter, SentryErrorReporter, TelemetryShutdown } from './telemetry/error-reporter';
+import { OtelMetrics } from './telemetry/otel-metrics';
 
 @Global()
 @Module({
@@ -29,9 +31,12 @@ class ConfigModule {}
     RedisService,
     { provide: IdGenerator, useClass: UuidV7IdGenerator },
     { provide: Clock, useClass: SystemClock },
+    { provide: Metrics, useClass: OtelMetrics },
+    { provide: ErrorReporter, useClass: SentryErrorReporter },
+    TelemetryShutdown,
     { provide: APP_FILTER, useClass: ProblemDetailsFilter },
     { provide: APP_PIPE, useFactory: createValidationPipe },
   ],
-  exports: [PrismaService, RedisService, IdGenerator, Clock],
+  exports: [PrismaService, RedisService, IdGenerator, Clock, Metrics, ErrorReporter],
 })
 export class PlatformModule {}

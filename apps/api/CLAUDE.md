@@ -26,9 +26,10 @@ Hors modules :
 
 ```
 src/shared/<couche>/   noyau partagé (DomainError, ports IdGenerator et Clock), mêmes règles de couches
-src/platform/          technique : config, journaux, Prisma, Redis, erreurs RFC 9457, validation, santé
+src/platform/          technique : config, journaux, Prisma, Redis, erreurs RFC 9457, validation, santé, télémétrie
 src/openapi/           construction et émission de openapi.json
 src/bootstrap.ts       préfixe /api/v1, helmet, CORS ; partagé par main.ts et les tests de contrat
+src/instrument.ts      Sentry et OpenTelemetry, chargé par `node --import` avant l'application (OBS-12)
 ```
 
 `domain` et `application` n'importent jamais `platform` : ils passent par un port. La règle `architecture/layers` (`packages/config/eslint/rules/architecture.mjs`) vérifie tout cela ; les fichiers de test en sont exemptés.
@@ -78,7 +79,7 @@ Prendre pour modèle le cas d'usage voisin le plus proche plutôt que d'inventer
 
 ## Commandes (dans `apps/api`)
 
-`pnpm dev`, `pnpm test` (`*.spec.ts` : unitaires et `test/contract`), `pnpm test:integration` (`test/integration/*.int-spec.ts`, base réelle), `pnpm openapi` (émet `openapi.json` sans base, en mode aperçu), `pnpm db:migrate`.
+`pnpm dev` et `pnpm start` (avec `--import ./dist/instrument.js` et `--enable-source-maps`), `pnpm test` (`*.spec.ts` : unitaires et `test/contract`), `pnpm test:integration` (`test/integration/*.int-spec.ts`, base réelle), `pnpm openapi` (émet `openapi.json` sans base, en mode aperçu), `pnpm db:migrate`.
 
 Base : la CLI Prisma utilise `DATABASE_MIGRATION_URL` (propriétaire) ; l'application `DATABASE_URL` (rôle `wishlist_app`, sans droit sur le schéma, DAT-03). Les contraintes `CHECK` (DAT-01) s'ajoutent à la main dans le `migration.sql`. Clés : UUID v7 produits par le port `IdGenerator`.
 
