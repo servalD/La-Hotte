@@ -1,0 +1,38 @@
+// Traduction de docs/spec/12-modele-de-donnees.md. La spec reste la référence.
+// Conventions : UUID v7 fournis par l'application, snake_case en base, created_at / updated_at partout,
+// version sur les entités modifiables hors ligne, énumérations en types de base.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  // La CLI (migrations) utilise le rôle propriétaire du schéma ; l'application se connecte
+  // avec DATABASE_URL (rôle sans droit sur le schéma, DAT-03), passé à PrismaClient.
+  url               = env("DATABASE_MIGRATION_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+// Module type de la phase 0 (apps/api/src/modules/example). À retirer quand les modules réels
+// l'auront remplacé comme modèle, en deux déploiements (DAT-07).
+enum ExamplePriority {
+  LOW
+  NORMAL
+  HIGH
+
+  @@map("example_priority")
+}
+
+model ExampleItem {
+  id             String          @id @db.Uuid
+  title          String          @db.VarChar(120)
+  priority       ExamplePriority @default(NORMAL)
+  reservedByName String?         @map("reserved_by_name") @db.VarChar(80)
+  reservedAt     DateTime?       @map("reserved_at") @db.Timestamptz(3)
+  version        Int             @default(1)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("example_item")
+}
