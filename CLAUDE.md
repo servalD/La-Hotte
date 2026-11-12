@@ -33,22 +33,23 @@ docs                spec, ADR, roadmap                        → docs/CLAUDE.md
 
 Node 22, pnpm 10. À la racine :
 
-| Commande                            | Effet                                                                                             |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `docker compose up -d`              | PostgreSQL 17 et Redis 7 locaux (rôles DAT-03 créés au premier démarrage)                         |
-| `pnpm install`                      | Dépendances ; génère aussi le client Prisma                                                       |
-| `pnpm dev`                          | API (`:4000`) et web (`:3000`, qui relaie `/api` vers l'API)                                      |
-| `pnpm lint`                         | ESLint, dont la règle d'architecture `architecture/layers` (QA-03)                                |
-| `pnpm lint:architecture`            | Sentinelle : vérifie qu'un import interdit fait bien échouer le lint                              |
-| `pnpm typecheck`                    | TypeScript strict partout                                                                         |
-| `pnpm test`                         | Unitaires, contrat (API montée, ports en mémoire), non-fuite, composants                          |
-| `pnpm test:integration`             | Dépôts et santé contre PostgreSQL et Redis réels (après `docker compose up -d` et les migrations) |
-| `pnpm test:e2e`                     | Playwright bureau + mobile avec axe (après `pnpm build`)                                          |
-| `pnpm generate`                     | DTO → `apps/api/openapi.json` → `packages/api-client` (Orval)                                     |
-| `pnpm generate:check`               | Idem, puis échoue si le résultat diffère du dépôt (API-02)                                        |
-| `pnpm db:migrate`                   | `prisma migrate dev` (nouvelle migration en local)                                                |
-| `pnpm db:migrate:deploy`            | Applique les migrations (CI, production)                                                          |
-| `pnpm format` / `pnpm format:check` | Prettier                                                                                          |
+| Commande                             | Effet                                                                                                                                                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docker compose up -d`               | PostgreSQL 17 et Redis 7 locaux (rôles DAT-03 créés au premier démarrage)                                                                                                                                                                              |
+| `docker compose --profile obs up -d` | Ajoute GlitchTip (`:8000`), OpenObserve (`:5080`), collecteur OTLP (`:4317`, `:4318`) (OBS-44). Pour l'arrêter seule : `docker compose stop glitchtip openobserve otel-collector postgres-obs` (`--profile obs stop` arrête aussi PostgreSQL et Redis) |
+| `pnpm install`                       | Dépendances ; génère aussi le client Prisma                                                                                                                                                                                                            |
+| `pnpm dev`                           | API (`:4000`) et web (`:3000`, qui relaie `/api` vers l'API)                                                                                                                                                                                           |
+| `pnpm lint`                          | ESLint, dont la règle d'architecture `architecture/layers` (QA-03)                                                                                                                                                                                     |
+| `pnpm lint:architecture`             | Sentinelle : vérifie qu'un import interdit fait bien échouer le lint                                                                                                                                                                                   |
+| `pnpm typecheck`                     | TypeScript strict partout                                                                                                                                                                                                                              |
+| `pnpm test`                          | Unitaires, contrat (API montée, ports en mémoire), non-fuite, composants                                                                                                                                                                               |
+| `pnpm test:integration`              | Dépôts et santé contre PostgreSQL et Redis réels (après `docker compose up -d` et les migrations)                                                                                                                                                      |
+| `pnpm test:e2e`                      | Playwright bureau + mobile avec axe (après `pnpm build`)                                                                                                                                                                                               |
+| `pnpm generate`                      | DTO → `apps/api/openapi.json` → `packages/api-client` (Orval)                                                                                                                                                                                          |
+| `pnpm generate:check`                | Idem, puis échoue si le résultat diffère du dépôt (API-02)                                                                                                                                                                                             |
+| `pnpm db:migrate`                    | `prisma migrate dev` (nouvelle migration en local)                                                                                                                                                                                                     |
+| `pnpm db:migrate:deploy`             | Applique les migrations (CI, production)                                                                                                                                                                                                               |
+| `pnpm format` / `pnpm format:check`  | Prettier                                                                                                                                                                                                                                               |
 
 Première installation : copier `apps/api/.env.example` en `apps/api/.env`.
 
