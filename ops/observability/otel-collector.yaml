@@ -14,8 +14,8 @@ processors:
     limit_mib: 128
   batch: {}
 
-  # OBS-22 : seconde barrière, après `apps/api/src/platform/telemetry/scrub.ts`.
-  # Les deux listes (OBS-29) doivent rester alignées.
+  # OBS-22 : seconde barrière, après `apps/api/src/platform/telemetry/scrub.ts` et
+  # `apps/web/src/lib/telemetry/scrub.ts`. Les trois listes (OBS-29) doivent rester alignées.
   attributes/scrub:
     actions:
       - {
@@ -29,6 +29,8 @@ processors:
           action: delete,
         }
       - { pattern: '^(enduser\..*|user\.(id|name|full_name|email))$', action: delete }
+      # Next : copie du nom de span d'origine, qui contient l'URL résolue (OBS-21).
+      - { pattern: '^next\.span_name$', action: delete }
       - {
           pattern: '^(http\.(request|response)\.(header\..*|body.*)|rpc\.(request|response)\.metadata\..*|messaging\.message\.body.*|gen_ai\.(prompt|completion|input|output).*)$',
           action: delete,
@@ -58,6 +60,8 @@ processors:
     trace_statements:
       - 'set(span.status.message, "")'
       - 'set(span.trace_state, "")'
+      # Next nomme ses spans d'après l'URL résolue : pas de chaîne de requête ni de fragment.
+      - 'replace_pattern(span.name, "[?#].*$", "")'
 
 exporters:
   otlphttp/openobserve:

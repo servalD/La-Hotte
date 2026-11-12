@@ -36,18 +36,18 @@ modules/<module>/
 
 ## Stratégie de tests
 
-| Niveau | Cible | Outil | Exigence |
-|---|---|---|---|
-| Unitaire | Domaine et cas d'usage (ports simulés en mémoire) | Vitest | Toutes les règles numérotées de la spec ont au moins un test qui cite leur identifiant |
-| **Matrice de visibilité** | Moteur de visibilité | Vitest, cas générés | Toutes les combinaisons de VIS-33 ; bloquant |
-| Propriétés | Arrondis et sommes de la compta | fast-check | La somme des parts égale toujours le total ; aucune séquence d'opérations ne dépasse le coût |
-| Intégration | Dépôts, transactions, contraintes, concurrence | Vitest + PostgreSQL et Redis réels en conteneurs | Chaque dépôt ; les courses de CPT-03 |
-| Contrat | API vue de l'extérieur | Supertest sur l'application montée | Chaque route : cas nominal, non connecté, interdit, validation |
-| **Non-fuite** | Réponses et trames reçues par un destinataire | Tests dédiés | Aucun champ ni événement d'offreur, sur toutes les routes et tous les salons |
-| Bout en bout | Parcours clés de `10-ux-motion.md` | Playwright (bureau et mobile émulé) | Les six parcours, plus hors ligne et multi-profils en parallèle |
-| Accessibilité | Écrans principaux | axe dans Playwright | Zéro violation sérieuse |
-| Sécurité | SSRF, injection, en-têtes, routes sans session | Tests dédiés + analyse statique | Les critères de `02` et `09` |
-| Extraction | Jeu de pages marchandes enregistrées | Tests sur pages figées | Taux de champs corrects suivi dans le temps ; pas d'appel réel au modèle en CI |
+| Niveau                    | Cible                                             | Outil                                            | Exigence                                                                                     |
+| ------------------------- | ------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Unitaire                  | Domaine et cas d'usage (ports simulés en mémoire) | Vitest                                           | Toutes les règles numérotées de la spec ont au moins un test qui cite leur identifiant       |
+| **Matrice de visibilité** | Moteur de visibilité                              | Vitest, cas générés                              | Toutes les combinaisons de VIS-33 ; bloquant                                                 |
+| Propriétés                | Arrondis et sommes de la compta                   | fast-check                                       | La somme des parts égale toujours le total ; aucune séquence d'opérations ne dépasse le coût |
+| Intégration               | Dépôts, transactions, contraintes, concurrence    | Vitest + PostgreSQL et Redis réels en conteneurs | Chaque dépôt ; les courses de CPT-03                                                         |
+| Contrat                   | API vue de l'extérieur                            | Supertest sur l'application montée               | Chaque route : cas nominal, non connecté, interdit, validation                               |
+| **Non-fuite**             | Réponses et trames reçues par un destinataire     | Tests dédiés                                     | Aucun champ ni événement d'offreur, sur toutes les routes et tous les salons                 |
+| Bout en bout              | Parcours clés de `10-ux-motion.md`                | Playwright (bureau et mobile émulé)              | Les six parcours, plus hors ligne et multi-profils en parallèle                              |
+| Accessibilité             | Écrans principaux                                 | axe dans Playwright                              | Zéro violation sérieuse                                                                      |
+| Sécurité                  | SSRF, injection, en-têtes, routes sans session    | Tests dédiés + analyse statique                  | Les critères de `02` et `09`                                                                 |
+| Extraction                | Jeu de pages marchandes enregistrées              | Tests sur pages figées                           | Taux de champs corrects suivi dans le temps ; pas d'appel réel au modèle en CI               |
 
 - **QA-10** Les tests de non-fuite sont écrits **avant** la fonctionnalité qu'ils protègent.
 - **QA-11** Couverture : 90 % sur `domain` et `application`, 100 % des branches sur le moteur de visibilité et la compta. Pas d'objectif chiffré sur l'interface.
@@ -66,6 +66,7 @@ modules/<module>/
   - **les images tierces** que nous déployons (PostgreSQL, Redis, Caddy, collecteur, OpenObserve, GlitchTip) : rapport hebdomadaire planifié, **non bloquant**, qui ouvre une tâche de mise à jour. Une CVE dans l'image de quelqu'un d'autre n'est pas un défaut de notre changement.
 
   Les secrets restent l'affaire de gitleaks (CI-01) : Trivy ne les cherche pas, pour ne pas dupliquer les alertes.
+
 - **CI-06** **Exceptions.** Une vulnérabilité acceptée est inscrite dans `.trivyignore.yaml` avec son identifiant, la raison (pourquoi on n'est pas exposé), et une **date d'expiration de 90 jours au plus**. Passé ce délai, l'exception disparaît et la CI échoue de nouveau. Aucune exception n'est ajoutée sans être lue en revue.
 - **CI-07** **Chaîne d'approvisionnement de la CI.** En mars 2026, les tags de `aquasecurity/trivy-action` ont été réécrits pour voler des secrets de CI. Règles qui en découlent : toute action tierce est appelée par **commit complet** et jamais par tag ; ce commit est vérifié à la main (signature, appartenance à l'historique du dépôt amont, version publiée) avant d'être adopté ; la version du binaire Trivy est fixée dans le workflow, pas laissée au défaut de l'action ; la montée de version se fait par une demande de fusion dédiée. Les actions `actions/*` de GitHub et les autres actions tierces du workflow (`pnpm/action-setup`, `gitleaks/gitleaks-action`) sont à épingler de la même façon (tâche de la roadmap).
 
@@ -74,19 +75,19 @@ modules/<module>/
 - **DEP-01** Trois environnements : local (Docker Compose), préproduction, production. Mêmes images, configuration par variables d'environnement.
 - **DEP-02** Production sur un VPS dans l'Union européenne, Docker Compose. Les services d'observabilité (ADR 0012) sont sur un réseau Docker `obs` distinct, que les services applicatifs rejoignent pour envoyer leur télémétrie :
 
-| Service | Rôle | Exposition |
-|---|---|---|
-| `caddy` | Proxy inverse, TLS automatique, en-têtes de sécurité | 80, 443 |
-| `web` | Next.js | interne |
-| `api` | NestJS (REST + WebSocket) | interne |
-| `worker` | Files BullMQ : notifications, e-mails, rappels | interne |
-| `fetcher` | Récupération d'URL et d'images, **réseau isolé**, sortie filtrée (EXT-44) | aucune entrée |
-| `postgres` | Données | interne |
-| `redis` | Sessions, files, pub/sub | interne |
-| `otel-collector` | Reçoit l'OTLP des services, nettoie, exporte vers OpenObserve (OBS-11) | interne |
-| `openobserve` | Journaux, métriques, traces (OBS-02, OBS-03) | restreinte (OBS-27) |
-| `glitchtip` | Erreurs (OBS-04). Un seul processus sert le HTTP et consomme la file : il n'y a plus de worker séparé depuis GlitchTip 7 (ADR 0012). Valkey/Redis est facultatif et n'est pas déployé | restreinte (OBS-27) |
-| `postgres-obs` | Base de GlitchTip, instance séparée de celle de l'application | interne |
+| Service          | Rôle                                                                                                                                                                                  | Exposition          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `caddy`          | Proxy inverse, TLS automatique, en-têtes de sécurité                                                                                                                                  | 80, 443             |
+| `web`            | Next.js                                                                                                                                                                               | interne             |
+| `api`            | NestJS (REST + WebSocket)                                                                                                                                                             | interne             |
+| `worker`         | Files BullMQ : notifications, e-mails, rappels                                                                                                                                        | interne             |
+| `fetcher`        | Récupération d'URL et d'images, **réseau isolé**, sortie filtrée (EXT-44)                                                                                                             | aucune entrée       |
+| `postgres`       | Données                                                                                                                                                                               | interne             |
+| `redis`          | Sessions, files, pub/sub                                                                                                                                                              | interne             |
+| `otel-collector` | Reçoit l'OTLP des services, nettoie, exporte vers OpenObserve (OBS-11)                                                                                                                | interne             |
+| `openobserve`    | Journaux, métriques, traces (OBS-02, OBS-03)                                                                                                                                          | restreinte (OBS-27) |
+| `glitchtip`      | Erreurs (OBS-04). Un seul processus sert le HTTP et consomme la file : il n'y a plus de worker séparé depuis GlitchTip 7 (ADR 0012). Valkey/Redis est facultatif et n'est pas déployé | restreinte (OBS-27) |
+| `postgres-obs`   | Base de GlitchTip, instance séparée de celle de l'application                                                                                                                         | interne             |
 
 - **DEP-03** Conteneurs sans privilèges, système de fichiers en lecture seule quand c'est possible, images minimales, mises à jour de sécurité automatiques de l'hôte, pare-feu ne laissant que 80, 443 et l'accès d'administration par clé.
 - **DEP-04** Déploiement : image construite et analysée en CI, migration de base, démarrage, vérification de santé, bascule ; retour arrière par l'image précédente. Les migrations sont compatibles avec la version précédente du code (DAT-07).
@@ -116,6 +117,8 @@ Décision : `docs/adr/0012-observabilite-auto-hebergee.md`. GlitchTip pour les e
 - **OBS-15** Échantillonnage des traces : 100 % en préproduction, 10 % en production (réglable par variable d'environnement). Les erreurs sont toujours envoyées à GlitchTip.
 - **OBS-16** Rétention : erreurs 90 jours, journaux 30 jours (SEC-33), traces 14 jours, métriques 90 jours. Le journal de sécurité (SEC-30) reste en base de données, pour 12 mois : OpenObserve n'en est pas la source de vérité.
 - **OBS-46** Variables de l'API, validées au démarrage, toutes facultatives (OBS-14) : `SENTRY_DSN` (GlitchTip), `OTEL_EXPORTER_OTLP_ENDPOINT` (base OTLP/HTTP du collecteur, sans `/v1/traces`), `DEPLOY_ENVIRONMENT` (`development`, `preview`, `production` ; distinct de `NODE_ENV`, la préproduction tournant en `production`), `RELEASE` (SHA), `TRACES_SAMPLE_RATIO` (OBS-15). Une variable vide vaut une variable absente. Une valeur invalide fait échouer le démarrage en nommant la variable, jamais sa valeur.
+- **OBS-47** Variables du web, toutes facultatives (OBS-14). Serveur Next, lues au démarrage, mêmes noms et mêmes règles que l'API (OBS-46) : `SENTRY_DSN`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `DEPLOY_ENVIRONMENT`, `RELEASE`, `TRACES_SAMPLE_RATIO`. Navigateur, inscrites dans le bundle au build : `NEXT_PUBLIC_SENTRY_DSN` (projet GlitchTip du navigateur ; c'est aussi la liste blanche du relais, OBS-33), `NEXT_PUBLIC_DEPLOY_ENVIRONMENT`, `NEXT_PUBLIC_RELEASE`. Une valeur invalide fait échouer le build en nommant la variable ; dans le navigateur, elle désactive le SDK sans empêcher l'application de démarrer. Le navigateur ne contacte jamais l'hôte du DSN : tout passe par `/monitoring`.
+- **OBS-48** **Serveur Next** (tâche 5, 2026-11-13). OpenTelemetry est démarré par `register()` dans `src/instrumentation.ts`, runtime Node seulement (rien dans le runtime Edge du middleware), avec un fournisseur de traces minimal plutôt que `NodeSDK` (qui charge l'exporteur gRPC et des détecteurs de ressource). Next produit lui-même ses spans ; il les nomme d'après l'URL résolue et en recopie le nom dans `next.span_name`. Le nettoyage (`apps/web/src/lib/telemetry/scrub.ts`, mêmes listes que l'API, vérifié par un test) retire `next.span_name`, remplace le nom d'une requête entrante par la méthode et le gabarit de route (`(route inconnue)` sinon), ne garde un autre chemin que dans les noms dont Next 15.5 le remplit avec un gabarit de fichier (`render route (app)`, `generateMetadata`… : liste à revérifier à chaque montée de version de Next) et remplace tout autre chemin, dont celui du span de middleware, réduit une URL de `fetch` à son origine et retire toute chaîne de requête ; le collecteur retire aussi `next.span_name` et la chaîne de requête des noms. `enableOpenTelemetrySetup` reste à faux (vérifié par un test) : à vrai, Sentry recopierait le nom brut du span racine (`GET /items/abc?url=…`) dans l'en-tête `trace` des enveloppes, qu'aucun `beforeSend` ne filtre. Les erreurs de requête passent par notre `onRequestError`, pas par `Sentry.captureRequestError` (qui transmet l'erreur d'origine et le chemin résolu) : copie nettoyée (OBS-45) avec le gabarit de route. Exceptions et rejets non gérés : Next garde ses gestionnaires (le processus ne s'arrête pas) et nous signalons une copie nettoyée. **Écart connu** : Next écrit lui-même l'erreur brute, message compris, sur sa sortie d'erreur (`uncaughtException:`, erreurs de rendu) ; ces journaux ne doivent pas être collectés tels quels avant traitement (voir la roadmap).
 
 ### Confidentialité de la télémétrie
 
@@ -138,7 +141,7 @@ C'est ici que le produit diffère : un rapport d'erreur est un canal de sortie c
 - **OBS-30** Le navigateur ne reçoit jamais de source maps : générées au build, envoyées à GlitchTip, retirées de ce qui est publié.
 - **OBS-31** Deux temps, au déploiement seulement et pas sur les demandes de fusion ; release = SHA du commit. (1) `glitchtip-cli sourcemaps inject` ajoute les identifiants de débogage. (2) Un script du dépôt (`ops/observability/bundle-sourcemaps`) fabrique le bundle zip avec son `manifest.json` (organisation, release, et pour chaque fichier : `url`, `type` `minified_source` ou `source_map`, `headers` `debug-id` et `Sourcemap`), l'envoie par le protocole d'envoi par morceaux de GlitchTip (multipart `file_gzip`, nom du fichier = SHA-1 du zip) puis appelle `POST /api/0/organizations/{org}/releases/{version}/assemble/`. La commande `sourcemaps upload` de `glitchtip-cli` 1.0.0 n'est pas utilisée : elle envoie chaque fichier brut, que le serveur rejette (« not a zip file »), tout en retournant un succès. `sentry-cli` n'est pas utilisé (voir l'ADR 0012). Le script est à supprimer quand une version de la CLI aura été vérifiée de bout en bout (OBS-34). La route historique d'envoi par fichier (`releases/{version}/files/`) répond 405 sur GlitchTip 7.
 - **OBS-32** L'API, le worker et le fetcher sont lancés avec `node --enable-source-maps` : les piles envoyées sont déjà en TypeScript, sans dépendre de la résolution par GlitchTip. Leurs cartes restent dans l'image (Node en a besoin à l'exécution) mais ne sont servies à personne. Le chemin absolu des fichiers apparaît dans les piles ; c'est un chemin d'image, jamais un chemin d'utilisateur. L'envoi des cartes de ces processus à GlitchTip (OBS-31) est facultatif.
-- **OBS-33** Les erreurs du navigateur transitent par un relais de notre origine, `/monitoring` : route Next écrite par nous, qui n'accepte que les enveloppes destinées à notre projet GlitchTip (liste blanche), avec taille et débit limités. La CSP garde `connect-src 'self'`. Un relais qui accepterait n'importe quelle destination serait un relais ouvert. Comportement vérifié par l'essai : DSN étranger, autre projet ou autre clé → 403 ; corps non JSON ou sans DSN → 400 ; corps au-delà de 200 000 octets → 413 ; autre méthode que POST → 405. Le relais ne retransmet ni en-têtes ni adresse du navigateur, seulement le corps, vers une destination fixe. Chaque cas est un test.
+- **OBS-33** Les erreurs du navigateur transitent par un relais de notre origine, `/monitoring` : route Next écrite par nous, qui n'accepte que les enveloppes destinées à notre projet GlitchTip (liste blanche), avec taille et débit limités. La CSP garde `connect-src 'self'`. Un relais qui accepterait n'importe quelle destination serait un relais ouvert. Comportement vérifié par l'essai : DSN étranger, autre projet ou autre clé → 403 ; corps non JSON ou sans DSN → 400 ; corps au-delà de 200 000 octets → 413 ; autre méthode que POST → 405. Le relais ne retransmet ni en-têtes ni adresse du navigateur, seulement le corps, vers une destination fixe. Chaque cas est un test. Mise en œuvre (tâche 5, 2026-11-13, `apps/web/src/lib/telemetry/relay.ts`) : la liste blanche est le DSN du navigateur (`NEXT_PUBLIC_SENTRY_DSN`), et la destination l'adresse d'envoi d'enveloppes de ce même DSN ; seuls les éléments `event` sont transmis (sessions, rapports, transactions abandonnés), chacun nettoyé à nouveau par la fonction du navigateur, car ce que le navigateur envoie n'est pas digne de confiance ; l'en-tête de l'enveloppe est reconstruit (`dsn`, `event_id`, `sent_at`, `sdk`), sans le contexte d'échantillonnage `trace` ; une seule erreur par enveloppe (400 au-delà : le SDK n'en envoie qu'une) ; requête d'une autre origine refusée (403 si `Sec-Fetch-Site` n'est pas `same-origin`, ou, sans cet en-tête, si `Origin` est étrangère), pour qu'une page tierce ne fasse pas poster les navigateurs de ses visiteurs ; débit limité à 30 enveloppes par minute et par adresse et 600 au total (429), l'adresse retenue étant la dernière de `X-Forwarded-For`, celle qu'ajoute Caddy, réduite à son /64 en IPv6, gardée en mémoire le temps de la fenêtre seulement. Hypothèse de déploiement : Next n'est joignable que derrière Caddy (port non publié) et Caddy ne déclare pas de `trusted_proxies` ; sinon la dernière adresse est celle d'un proxy ou une valeur forgée, et la limite par adresse ne vaut plus ; sans DSN configuré, 404 (OBS-14) ; GlitchTip en échec ou muet au-delà de 5 s, 502. L'envoi vers GlitchTip ne crée pas de span et ne porte pas de `traceparent`.
 - **OBS-34** **L'envoi des cartes se vérifie côté serveur.** L'assemblage est asynchrone : l'envoi peut réussir et le serveur rejeter ensuite le bundle. Après l'envoi, le déploiement interroge GlitchTip (fichiers de la release) et échoue s'il n'y trouve pas les cartes attendues. Un test de bout en bout provoque une erreur dans un build de préproduction et vérifie qu'elle apparaît avec un fichier et une ligne TypeScript.
 - **OBS-35** **Chaîne d'approvisionnement de la CLI.** `glitchtip-cli` n'a pas de binaire signé ni de somme de contrôle publiée (artefact de CI GitLab). Elle est compilée depuis crates.io (`cargo install glitchtip-cli --locked --version <fixée>`) dans la CI, comme CI-07 le demande pour tout outil tiers ; la version est fixée et sa montée de version passe par une demande de fusion dédiée. Elle refuse d'envoyer vers un hôte différent de l'URL configurée : `GLITCHTIP_DOMAIN` doit être l'URL réelle par laquelle la CLI joint GlitchTip.
 
@@ -152,7 +155,7 @@ C'est ici que le produit diffère : un rapport d'erreur est un canal de sortie c
 
 ### Critères d'acceptation (observabilité)
 
-- Sans variable de télémétrie, l'API démarre, répond, et n'émet aucune connexion sortante.
+- Sans variable de télémétrie, l'API et le web démarrent, répondent, et n'émettent aucune connexion sortante.
 - Collecteur, OpenObserve ou GlitchTip arrêtés : l'API répond avec la même latence et sans erreur.
 - Le test OBS-26 est vert.
 - Une exception provoquée en préproduction apparaît dans GlitchTip avec une pile lisible (fichier et ligne TypeScript) et un identifiant de trace qui ouvre la trace correspondante dans OpenObserve.
@@ -166,18 +169,18 @@ C'est ici que le produit diffère : un rapport d'erreur est un canal de sortie c
 2. ~~Coexistence Sentry et OpenTelemetry~~ Tranchée par l'essai du 2026-11-12 : OBS-12, OBS-28.
 3. Choix de la sonde externe (service gratuit ou second petit serveur).
 4. Taille du VPS une fois la pile mesurée ; séparer la surveillance sur un second serveur si elle pèse trop.
-5. Poids du SDK Sentry dans le navigateur : l'application d'essai, vide, pèse 302 ko de JavaScript au premier chargement avec le SDK. À mesurer sur la vraie application contre l'objectif de 2 s ; charger le SDK en différé si le budget est dépassé.
+5. Poids du SDK Sentry dans le navigateur : l'application d'essai, vide, pèse 302 ko de JavaScript au premier chargement avec le SDK ; l'application réelle, 294 ko pour `/` (build du 2026-11-13, tâche 5, SDK chargé avant l'hydratation pour capter les erreurs du premier rendu). À mesurer sur la vraie application contre l'objectif de 2 s ; charger le SDK en différé si le budget est dépassé.
 
 ## Objectifs de performance
 
-| Mesure | Cible |
-|---|---|
-| Premier affichage utile sur mobile 4G | < 2 s |
-| Réaction à un geste | < 100 ms |
-| Réponse d'API, 95e centile | < 300 ms |
-| Diffusion d'un événement temps réel | < 1 s |
-| Fiche complétée après collage d'un lien, médiane | < 6 s |
-| Disponibilité mensuelle | 99,5 % |
+| Mesure                                           | Cible    |
+| ------------------------------------------------ | -------- |
+| Premier affichage utile sur mobile 4G            | < 2 s    |
+| Réaction à un geste                              | < 100 ms |
+| Réponse d'API, 95e centile                       | < 300 ms |
+| Diffusion d'un événement temps réel              | < 1 s    |
+| Fiche complétée après collage d'un lien, médiane | < 6 s    |
+| Disponibilité mensuelle                          | 99,5 %   |
 
 ## Critères d'acceptation
 
