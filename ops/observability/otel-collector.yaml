@@ -1,0 +1,86 @@
+# Collecteur OpenTelemetry (OBS-44). Reçoit l'OTLP des applications, exporte vers OpenObserve.
+# Développement local uniquement : identifiants de dev, jamais réutilisés ailleurs.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+  batch: {}
+
+  # OBS-22 : seconde barrière, après `apps/api/src/platform/telemetry/scrub.ts`.
+  # Les deux listes (OBS-29) doivent rester alignées.
+  attributes/scrub:
+    actions:
+      - {
+          pattern: '^(url\.(full|query|path|fragment)|http\.(url|target|client_ip|user_agent))$',
+          action: delete,
+        }
+      - { pattern: '^(db\.query\.text|db\.statement|db\.query\.parameter\..*)$', action: delete }
+      - { pattern: '^exception\..*$', action: delete }
+      - {
+          pattern: '^(client\.(address|port)|network\.peer\.(address|port)|net\.peer\.ip|user_agent\.original)$',
+          action: delete,
+        }
+      - { pattern: '^(enduser\..*|user\.(id|name|full_name|email))$', action: delete }
+      - {
+          pattern: '^(http\.(request|response)\.(header\..*|body.*)|rpc\.(request|response)\.metadata\..*|messaging\.message\.body.*|gen_ai\.(prompt|completion|input|output).*)$',
+          action: delete,
+        }
+  resource/scrub:
+    attributes:
+      - { key: process.command, action: delete }
+      - { key: process.command_args, action: delete }
+      - { key: process.command_line, action: delete }
+      - { key: process.executable.path, action: delete }
+      - { key: process.owner, action: delete }
+      - { key: host.name, action: delete }
+      - { key: host.id, action: delete }
+      - { key: host.ip, action: delete }
+      - { key: host.mac, action: delete }
+  # Pas d'événement `exception` sur les spans, pas de message de statut (OBS-29).
+  filter/exception-events:
+    error_mode: ignore
+    traces:
+      spanevent:
+        - 'name == "exception"'
+  transform/status-message:
+    error_mode: ignore
+    trace_statements:
+      - 'set(span.status.message, "")'
+
+exporters:
+  otlphttp/openobserve:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      # base64("dev@example.com:Dev-Obs-1!") ; voir docker-compose.yml
+      Authorization: Basic ZGV2QGV4YW1wbGUuY29tOkRldi1PYnMtMSE=
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors:
+        [
+          memory_limiter,
+          resource/scrub,
+          attributes/scrub,
+          filter/exception-events,
+          transform/status-message,
+          batch,
+        ]
+      exporters: [otlphttp/openobserve]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/scrub, attributes/scrub, batch]
+      exporters: [otlphttp/openobserve]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/scrub, attributes/scrub, batch]
+      exporters: [otlphttp/openobserve]

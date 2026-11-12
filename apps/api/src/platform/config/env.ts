@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { telemetryEnvShape } from '../telemetry/telemetry-env';
 
 /** Variables d'environnement validées au démarrage. Aucune valeur n'est journalisée (SEC-21). */
 const envSchema = z.object({
@@ -15,6 +16,7 @@ const envSchema = z.object({
   WEB_ORIGIN: z.url(),
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
+  ...telemetryEnvShape,
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -30,7 +30,7 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 | **Abus de ressources** | Extraction en masse, envoi massif d'invitations | Plafonds par profil, compte et IP |
 | **Administrateur trop curieux** | Lecture des listes privées | Pas d'accès aux contenus, journal d'audit immuable (`11-admin-rbac.md`) |
 | **Fuite de la base ou d'une sauvegarde** | Vol d'un export | Chiffrement au repos, secrets TOTP chiffrés par clé externe, sauvegardes chiffrées |
-| **Dépendance compromise** | Paquet npm malveillant | Verrouillage des versions, audit en CI, mises à jour revues, scripts d'installation désactivés |
+| **Dépendance compromise** | Paquet npm malveillant | Verrouillage des versions, audit et analyse Trivy en CI, actions de CI épinglées par commit (CI-07), mises à jour revues, scripts d'installation désactivés |
 
 ## Exigences
 
@@ -60,14 +60,14 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 ### Journalisation et détection
 
 - **SEC-30** Journal de sécurité : connexions, échecs, changements de moyens d'authentification, réinitialisations de PIN, refus d'autorisation, actions d'administration, tentatives d'abonnement refusées (RT-03).
-- **SEC-31** Les journaux ne contiennent ni mot de passe, ni code, ni jeton, ni contenu de liste ou de commentaire.
-- **SEC-32** Alertes : pic de refus d'autorisation pour un compte, échecs de connexion répétés, pic d'erreurs d'extraction.
+- **SEC-31** Les journaux ne contiennent ni mot de passe, ni code, ni jeton, ni contenu de liste ou de commentaire. La règle vaut pour toute la télémétrie : traces, métriques, rapports d'erreur (`14`, OBS-20 à OBS-27).
+- **SEC-32** Alertes : pic de refus d'autorisation pour un compte, échecs de connexion répétés, pic d'erreurs d'extraction. Mises en œuvre dans OpenObserve et GlitchTip (OBS-05, OBS-43).
 - **SEC-33** Conservation : 12 mois pour le journal de sécurité, 30 jours pour les journaux techniques.
 
 ### Cycle de développement
 
 - **SEC-40** Toute modification touchant l'authentification, le moteur de visibilité, la compta, l'extraction ou le temps réel passe par l'agent `security-reviewer` avant fusion (voir `CLAUDE.md`).
-- **SEC-41** CI bloquante : analyse statique, audit des dépendances, détection de secrets, tests de la matrice de visibilité.
+- **SEC-41** CI bloquante : analyse statique, audit des dépendances, analyse Trivy des dépendances, de la configuration et des images (`14`, CI-05 à CI-07), détection de secrets, tests de la matrice de visibilité.
 - **SEC-42** Test d'intrusion ciblé sur la règle de surprise avant ouverture au public.
 - **SEC-43** Procédure de divulgation : fichier `security.txt` et adresse de contact.
 
@@ -75,7 +75,7 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 
 - **RGPD-01** Hébergement et sauvegardes dans l'Union européenne.
 - **RGPD-02** Minimisation : pas de date de naissance complète exigée, pas d'adresse postale, pas de numéro de téléphone, pas de coordonnées bancaires.
-- **RGPD-03** Registre des sous-traitants : hébergeur, envoi d'e-mails, Anthropic (extraction ; uniquement le contenu public de pages et les photos d'articles, sans donnée d'identification, EXT-33), Google (connexion).
+- **RGPD-03** Registre des sous-traitants : hébergeur, envoi d'e-mails, Anthropic (extraction ; uniquement le contenu public de pages et les photos d'articles, sans donnée d'identification, EXT-33), Google (connexion). L'observabilité (GlitchTip, OpenObserve, collecteur) est auto-hébergée dans l'Union européenne : elle n'ajoute aucun sous-traitant.
 - **RGPD-04** Droit d'accès et de portabilité : export complet du compte en JSON, par profil, après ré-authentification. L'export respecte la règle de surprise (il ne contient pas ce que le profil ne peut pas voir).
 - **RGPD-05** Droit à l'effacement : suppression du compte effective sous 30 jours, sauvegardes purgées sous 90 jours. Les écritures de compta impliquant des tiers sont conservées anonymisées (PRO-06).
 - **RGPD-06** Mineurs : un profil enfant est créé et géré par le titulaire du compte, qui déclare en avoir l'autorité. Un mineur de moins de 15 ans ne crée pas de compte autonome. Restrictions de PRO-05.

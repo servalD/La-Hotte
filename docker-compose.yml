@@ -32,6 +32,70 @@ services:
       timeout: 3s
       retries: 10
 
+  # --- Observabilité (OBS-44) : `docker compose --profile obs up -d`. Absente du développement ordinaire (OBS-14).
+  postgres-obs:
+    profiles: [obs]
+    image: postgres:17-alpine
+    command: ['postgres', '-c', 'max_locks_per_transaction=512']
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: glitchtip
+      POSTGRES_DB: glitchtip
+    volumes:
+      - postgres-obs-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U glitchtip -d glitchtip']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  glitchtip:
+    profiles: [obs]
+    image: glitchtip/glitchtip:7.0.0
+    depends_on:
+      postgres-obs:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://glitchtip:glitchtip@postgres-obs:5432/glitchtip
+      SECRET_KEY: dev-only-glitchtip-secret-key-change-me
+      # OBS-35 : l'URL réelle par laquelle la CLI et les SDK joignent GlitchTip.
+      GLITCHTIP_DOMAIN: http://localhost:8000
+      VALKEY_URL: ''
+      ENABLE_USER_REGISTRATION: 'true'
+      ENABLE_ORGANIZATION_CREATION: 'true'
+      DEFAULT_FROM_EMAIL: glitchtip@localhost
+    ports:
+      - '127.0.0.1:8000:8000'
+    volumes:
+      - glitchtip-uploads:/code/uploads
+
+  openobserve:
+    profiles: [obs]
+    image: public.ecr.aws/zinclabs/openobserve:v1.1.2
+    environment:
+      ZO_ROOT_USER_EMAIL: dev@example.com
+      ZO_ROOT_USER_PASSWORD: Dev-Obs-1!
+      ZO_DATA_DIR: /data
+    ports:
+      - '127.0.0.1:5080:5080'
+    volumes:
+      - openobserve-data:/data
+
+  otel-collector:
+    profiles: [obs]
+    image: otel/opentelemetry-collector-contrib:0.165.0
+    command: ['--config=/etc/otelcol/config.yaml']
+    depends_on:
+      - openobserve
+    ports:
+      - '127.0.0.1:4317:4317'
+      - '127.0.0.1:4318:4318'
+    volumes:
+      - ./ops/observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+
 volumes:
   postgres-data:
   redis-data:
+  postgres-obs-data:
+  glitchtip-uploads:
+  openobserve-data:

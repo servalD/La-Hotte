@@ -120,6 +120,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  trivy:
+    name: Trivy (dépendances, configuration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # CI-05. L'action est épinglée par commit complet : en mars 2026 les tags de
+      # aquasecurity/trivy-action ont été réécrits pour voler des secrets. Le commit a été vérifié
+      # à la main (signé, dans l'historique de master, release v0.36.0). Pour monter de version :
+      # refaire cette vérification, ne jamais remettre un tag. La version du binaire est fixée ici
+      # plutôt que laissée au défaut de l'action, qui est plus ancien.
+      - name: Trivy, dépôt (vulnérabilités des dépendances, mauvaises configurations)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.2
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          skip-dirs: '**/node_modules,.git,.turbo'
+          trivyignores: .trivyignore.yaml
+          exit-code: '1'
+
   e2e:
     name: Bout en bout (CI-02)
     if: github.ref == 'refs/heads/main'

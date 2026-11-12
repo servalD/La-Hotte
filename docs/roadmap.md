@@ -26,8 +26,54 @@ Objectif : un dépôt où tout changement passe par les mêmes contrôles.
 | Squelette Next.js : système de design, jetons, thèmes, i18n, composants de base, jetons d'animation | sonnet |
 | CI complète (CI-01), en-têtes de sécurité, CSP | sonnet, revue opus |
 | Tous les `CLAUDE.md` mis à jour avec les commandes réelles | sonnet |
+| Trivy sur le dépôt en CI, action épinglée par commit, exceptions à échéance (CI-05 à CI-07) — ajouté le 2026-11-12 | sonnet |
+| Épingler par commit les autres actions tierces du workflow (CI-07) | sonnet |
 
 Sortie : une route d'exemple traverse les quatre couches, son client est généré, la CI est verte et refuse un import interdit.
+
+## Phase 0 bis — Observabilité
+
+Spec : `14` (OBS-01 à OBS-44), `09` (SEC-31). ADR 0012.
+
+**À faire avant le premier code de la phase 1 qui manipule des mots de passe ou des sessions** : c'est là qu'une exception mal nettoyée fuit le plus. Les tâches 1 à 3 d'abord ; les suivantes peuvent s'intercaler.
+
+| # | Tâche | Modèle |
+|---|---|---|
+| 1 | ~~**Essai**~~ **Fait le 2026-11-12.** Résultats dans l'ADR 0012 (section « Résultat de l'essai »), OBS-12, OBS-28 à OBS-35. Ce qu'il en change pour les tâches suivantes est ci-dessous | opus |
+| 2 | ~~Profil Compose `obs` (OBS-44) : `otel-collector`, `openobserve`, `glitchtip` (un seul service, sans Valkey), `postgres-obs` (`max_locks_per_transaction=512`), configurations dans `ops/observability/`. `GLITCHTIP_DOMAIN` = l'URL réelle (OBS-35)~~ **Fait le 2026-11-12** : `docker compose --profile obs up -d`, GlitchTip `:8000`, OpenObserve `:5080`, OTLP `:4317`/`:4318` ; trace de contrôle livrée jusqu'à OpenObserve | sonnet |
+| 3 | ~~API : `instrument.ts` chargé par `node --import` (OBS-12), `platform/telemetry` (SDK, exporteurs OTLP, Sentry avec `dataCollection` fermé et `openTelemetryIntegration()`, `beforeSend` qui pose le `trace_id`, OBS-28), variables d'environnement validées, **module `scrub`** (liste des attributs : OBS-29) et filtre d'exceptions (5xx seulement, OBS-25), corrélation `trace_id` dans pino, port `Metrics` dans le noyau partagé~~ **Fait le 2026-11-12** : `apps/api/src/platform/telemetry/`, `src/instrument.ts`, seconde barrière dans `ops/observability/otel-collector.yaml`. Essai de bout en bout : aucun marqueur dans GlitchTip, OpenObserve ni les journaux, même `trace_id` partout ; fuite du message par les cadres de pile trouvée et corrigée (OBS-45) | opus (scrub, filtre, port), sonnet (câblage) |
+| 4 | **Test de non-fuite de la télémétrie (OBS-26)** : exporteurs de test, marqueurs, CI bloquante. Doit couvrir, à l'endroit où ils sont branchés (revue de sécurité du 2026-11-12) : `sanitizeError` dans `SentryErrorReporter` (espionner `captureException` ou client à transport de test), le sérialiseur `err` du module de journaux monté, `ScrubbingSpanExporter` et la vue de métriques dans `telemetry.ts`, les exceptions et rejets non gérés, et une requête Prisma `$queryRaw` portant un marqueur | opus |
+| 5 | Web : `@sentry/nextjs` en erreurs seulement, `instrumentation.ts` pour les spans serveur, route `/monitoring` à liste blanche, CSP inchangée | sonnet, revue opus |
+| 6 | CI et déploiement : build avec cartes, `glitchtip-cli` compilée depuis crates.io `--locked` (OBS-35) pour `inject`, script `ops/observability/bundle-sourcemaps` pour le bundle et l'envoi (OBS-31, le `upload` de la CLI 1.0.0 est cassé), vérification côté serveur (OBS-34), au déploiement seulement, suppression des cartes de l'artefact servi, release = SHA | opus (script et vérification), sonnet (CI) |
+| 7 | Squelettes de `worker` et `fetcher` : même `instrument.ts` (au fil des phases où ils naissent) | sonnet |
+| 8 | Métriques métier au fil des phases : refus d'autorisation (phase 1), extraction et coût (phase 2), files (phase 4) | sonnet |
+| 9 | Tableaux de bord et règles d'alerte versionnés (OBS-05, OBS-42), canal d'alerte hors application (OBS-43), sonde externe (OBS-41), restrictions d'accès (OBS-27), rétentions (OBS-16) | opus (alertes, accès), sonnet (tableaux de bord) : en phase 7 |
+
+**Suites de la revue de sécurité du 2026-11-12** (tâches 2 et 3), à traiter avant la phase 1 :
+
+- `traceparent` venu d'internet : la racine publique ne respecte pas la décision d'échantillonnage d'un parent distant (`remoteParentSampled` et `remoteParentNotSampled` = échantillonneur racine), et Caddy retire `traceparent` et `tracestate` entrants. Le fetcher (phase 2) ne propage rien vers des hôtes externes.
+- Port `Metrics` : liste blanche de clés d'étiquettes dans la vue du SDK (`createAllowListAttributesProcessor`) et contrôle de la forme des valeurs dans l'adaptateur, au lieu de la liste noire.
+- Spans : passer de la liste noire à une liste blanche avant la phase 2 (attributs `gen_ai.*` de l'extraction).
+- Collecteur : nettoyer aussi les attributs des événements et des liens de span (`transform` sur `spanevent`).
+- Journal de requête : gabarit de route au lieu du chemin résolu (OBS-21).
+- Image de l'API (pas encore de Dockerfile) : vérifier que `APP_ROOT` (`apps/api/src/platform/telemetry/scrub.ts`) désigne la racine de l'application dans l'image ; sinon aucun cadre n'est de confiance et les piles sont vides.
+- Lisibilité des piles : cadres `eval` et `async Promise.all (index n)` écartés par le filtre de confiance ; à rouvrir si cela gêne.
+- Production : `Host` validé par Caddy, identifiants du collecteur par `${env:…}`, récepteur OTLP limité au réseau interne (OBS-27).
+
+Sortie : critères d'acceptation « observabilité » de `14` pour l'API et le web ; test OBS-26 vert en CI ; `security-reviewer` sans point bloquant sur `scrub`.
+
+**Versions à épingler** (relevées par l'essai du 2026-11-12, à vérifier à l'installation) :
+
+| Composant | Version | Remarque |
+|---|---|---|
+| GlitchTip | 7.0.0 | image `glitchtip/glitchtip`, un seul service |
+| `glitchtip-cli` | 1.0.0 | compilée depuis crates.io `--locked` ; seul `sourcemaps inject` est utilisé |
+| `otel/opentelemetry-collector-contrib` | 0.165.0 | |
+| OpenObserve | v1.1.2 | mot de passe racine : 8 caractères au moins, avec majuscule, chiffre et caractère spécial |
+| `@sentry/nestjs`, `@sentry/nextjs` | 11.12.0 | `dataCollection` fermé ; `enableOpenTelemetrySetup` à `false` pour Next (vrai par défaut) |
+| `@opentelemetry/sdk-node` | 0.301.1 | |
+| `@opentelemetry/instrumentation-http` | 0.301.1 | pas la 0.301.2 (dépendance jamais publiée) |
+| `@prisma/instrumentation` | 6.19.x | pas la 7.x (fait échouer les requêtes avec Prisma 6.19) |
 
 ## Phase 1 — Comptes, profils, authentification
 
@@ -133,6 +179,7 @@ Spec : `11`, `14`. ADR 0008.
 | Catalogue global, modération, signalements | sonnet, revue opus |
 | Export et suppression des données | opus |
 | Production : Compose, Caddy, sauvegardes, restauration testée, observabilité, alertes | sonnet, revue opus |
+| Trivy sur chaque image construite avant publication ; rapport hebdomadaire planifié des images tierces (CI-05) | sonnet |
 | Revue de sécurité complète et test d'intrusion ciblé sur la surprise (SEC-42) | opus |
 
 Sortie : restauration réussie et chronométrée ; aucune fuite trouvée ; ouverture sur invitation.
