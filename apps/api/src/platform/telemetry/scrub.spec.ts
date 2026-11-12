@@ -128,9 +128,10 @@ describe('scrubSpan (OBS-22, OBS-29)', () => {
       traceFlags: 1,
       isRemote: true,
     };
-    expect(scrubbed.spanContext()).toEqual(expected);
-    expect(scrubbed.parentSpanContext).toEqual(expected);
-    expect(scrubbed.links[0]?.context).toEqual(expected);
+    // `toStrictEqual` : une clé `traceState: undefined` présente échouerait aussi.
+    expect(scrubbed.spanContext()).toStrictEqual(expected);
+    expect(scrubbed.parentSpanContext).toStrictEqual(expected);
+    expect(scrubbed.links[0]?.context).toStrictEqual(expected);
   });
 });
 

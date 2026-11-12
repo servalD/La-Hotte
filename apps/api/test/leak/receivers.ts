@@ -10,7 +10,8 @@ import type { TestProject } from 'vitest/node';
  * tout ce qui sort réellement des exporteurs, corps décompressé.
  */
 
-export type Channel = 'traces' | 'metrics' | 'logs' | 'errors' | 'other';
+/** `outbound` : en-têtes d'une requête sortante de l'application (propagation vers un tiers). */
+export type Channel = 'traces' | 'metrics' | 'logs' | 'errors' | 'outbound' | 'other';
 
 export interface ReceivedRecord {
   channel: Channel;
@@ -60,6 +61,11 @@ export default async function setup(project: TestProject): Promise<() => Promise
     if (request.method === 'POST' && path === '/_reset') {
       records = [];
       response.end();
+      return;
+    }
+    if (path === '/_outbound') {
+      records.push({ channel: 'outbound', path, body: JSON.stringify(request.headers) });
+      response.end('{}');
       return;
     }
     readBody(request)

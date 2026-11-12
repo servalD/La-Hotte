@@ -51,7 +51,7 @@ Spec : `14` (OBS-01 à OBS-44), `09` (SEC-31). ADR 0012.
 
 **Suites de la revue de sécurité du 2026-11-12** (tâches 2 et 3), à traiter avant la phase 1 :
 
-- `traceparent` venu d'internet : la racine publique ne respecte pas la décision d'échantillonnage d'un parent distant (`remoteParentSampled` et `remoteParentNotSampled` = échantillonneur racine), et Caddy retire `traceparent` et `tracestate` entrants. Le fetcher (phase 2) ne propage rien vers des hôtes externes. Déjà fait (tâche 4) : le `tracestate` du client ne sort plus dans les spans (`scrubSpanContext`, et `set(span.trace_state, "")` au collecteur), vérifié par le test OBS-26.
+- `traceparent` venu d'internet : la racine publique ne respecte pas la décision d'échantillonnage d'un parent distant (`remoteParentSampled` et `remoteParentNotSampled` = échantillonneur racine), et Caddy retire `traceparent` et `tracestate` entrants. Le fetcher (phase 2) ne propage rien vers des hôtes externes. Déjà fait (tâche 4) : le `tracestate` du client est écarté à l'entrée (`TraceParentOnlyPropagator`) et à l'export (`scrubSpanContext`, et `set(span.trace_state, "")` au collecteur), ni exporté ni réinjecté dans les requêtes sortantes, vérifié par le test OBS-26. Reste : l'échantillonnage du parent distant et le retrait par Caddy.
 - Port `Metrics` : liste blanche de clés d'étiquettes dans la vue du SDK (`createAllowListAttributesProcessor`) et contrôle de la forme des valeurs dans l'adaptateur, au lieu de la liste noire. Ajouter alors au test OBS-26 (`test/leak/leak-routes.controller.ts`, route `metric`) un marqueur sous une clé libre, qui passe aujourd'hui.
 - Spans : passer de la liste noire à une liste blanche avant la phase 2 (attributs `gen_ai.*` de l'extraction).
 - Collecteur : nettoyer aussi les attributs des événements et des liens de span (`transform` sur `spanevent`).
@@ -66,6 +66,8 @@ Spec : `14` (OBS-01 à OBS-44), `09` (SEC-31). ADR 0012.
 - Niveau `debug` : le test OBS-26 tourne en `info`. Décider dans la spec : `debug` interdit en production, ou test aussi à ce niveau.
 - Test OBS-26 à étendre au fil des phases : montants passant jusqu'à Prisma et aux métriques (compta), valeurs écrites dans Redis (`dbStatementSerializer` d'ioredis), sorties du worker et du fetcher.
 - `route` du journal : ne contient que le sous-chemin si un `express.Router` est un jour monté sous un préfixe.
+- Collecteur : `error_mode: ignore` sur `filter/exception-events` et `transform/status-message` laisse passer un lot non nettoyé en cas d'erreur d'exécution. Passer à `propagate` (le lot est abandonné) ou consigner le choix, et vérifier sur un collecteur en marche que `trace_state` arrive vide dans OpenObserve.
+- Test OBS-26, volet A : la capture de sortie ne voit pas une écriture directe sur les descripteurs 1 et 2 (second logger pino, `fs.writeSync`, code natif). Lancer aussi le volet A dans un processus enfant dont on lit la sortie brute, comme le volet B.
 
 Sortie : critères d'acceptation « observabilité » de `14` pour l'API et le web ; test OBS-26 vert en CI ; `security-reviewer` sans point bloquant sur `scrub`.
 

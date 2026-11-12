@@ -45,7 +45,9 @@ processors:
       - { key: host.ip, action: delete }
       - { key: host.mac, action: delete }
   # Pas d'événement `exception` sur les spans, pas de message de statut (OBS-29), pas de
-  # `trace_state` (texte libre venu de l'en-tête `tracestate` du client, test OBS-26).
+  # `trace_state` (texte libre venu de l'en-tête `tracestate` du client, test OBS-26). OTTL n'a pas
+  # de contexte pour les liens de span : leur `trace_state` n'est retiré que par l'API
+  # (`TraceParentOnlyPropagator` à l'entrée, `scrubSpanContext` à l'export).
   filter/exception-events:
     error_mode: ignore
     traces:

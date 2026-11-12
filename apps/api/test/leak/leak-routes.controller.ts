@@ -1,6 +1,14 @@
+import { createRequire } from 'node:module';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { Metrics } from '../../src/shared/domain';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
+
+/**
+ * `http` en CommonJS, comme dans l'API compilée : l'instrumentation modifie l'objet exporté par
+ * `require`. Un import ESM (`import { get } from 'node:http'`, transformé par Vitest) recevrait
+ * la fonction d'origine, non instrumentée, et le test ne verrait aucune propagation.
+ */
+const http = createRequire(__filename)('node:http') as typeof import('node:http');
 
 /** Corps libre : ces routes n'existent qu'en test et reçoivent les marqueurs tels quels. */
 type LeakBody = { marker: string };
@@ -39,6 +47,28 @@ export class LeakRoutesController {
   async query(@Body() body: LeakBody): Promise<{ ok: true }> {
     await this.prisma.$queryRaw`SELECT ${body.marker}::text AS value`;
     return { ok: true };
+  }
+
+  /**
+   * Requête sortante vers un tiers (ici le faux récepteur) : le contexte de trace propagé ne
+   * doit rien porter du client (`tracestate`, `baggage`), revue de sécurité du 2026-11-12.
+   * `node:http`, instrumenté comme le sera tout client sortant (`fetch` ne l'est pas ici).
+   */
+  @Post('outbound')
+  @HttpCode(204)
+  async outbound(): Promise<void> {
+    // `localhost` et non `127.0.0.1` : les envois vers GlitchTip (même hôte et port que le faux
+    // récepteur) ne sont pas tracés, donc sans `traceparent` (`isGlitchTip`, telemetry.ts).
+    const target = new URL('/_outbound', process.env.OTEL_EXPORTER_OTLP_ENDPOINT);
+    target.hostname = 'localhost';
+    await new Promise<void>((resolve, reject) => {
+      http
+        .get(target, (response) => {
+          response.resume();
+          response.on('end', resolve);
+        })
+        .on('error', reject);
+    });
   }
 
   /**

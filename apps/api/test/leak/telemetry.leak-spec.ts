@@ -35,6 +35,8 @@ const capturingDestination: LogDestination = {
   },
 };
 
+const CLIENT_TRACE_ID = randomBytes(16).toString('hex');
+
 /** En-têtes porteurs de marqueur sur chaque requête. */
 const markedHeaders = {
   Authorization: `Bearer ${MARKER}`,
@@ -42,10 +44,13 @@ const markedHeaders = {
   'Idempotency-Key': MARKER,
   'User-Agent': `navigateur ${MARKER}`,
   'X-Request-Id': MARKER,
-  // Contexte de trace venu du client : `tracestate` et `baggage` sont du texte libre.
-  traceparent: `00-${randomBytes(16).toString('hex')}-${randomBytes(8).toString('hex')}-01`,
+  // Contexte de trace venu du client : `tracestate` et `baggage` sont du texte libre ; les clés
+  // `sentry-*` du `baggage` et `sentry-trace` iraient dans l'enveloppe si le propagateur de
+  // Sentry était un jour actif.
+  traceparent: `00-${CLIENT_TRACE_ID}-${randomBytes(8).toString('hex')}-01`,
   tracestate: `client=${MARKER}`,
-  baggage: `panier=${MARKER}`,
+  baggage: `panier=${MARKER},sentry-transaction=${MARKER},sentry-release=${MARKER},sentry-environment=${MARKER}`,
+  'sentry-trace': `${randomBytes(16).toString('hex')}-${randomBytes(8).toString('hex')}-1`,
 };
 
 function bodies(channel: Channel): string {
@@ -81,33 +86,29 @@ beforeAll(async () => {
   // Depuis la compilation du module : les journaux de Nest émis avant `useLogger` comptent aussi.
   output = captureOutput();
 
-  const moduleRef = await Test.createTestingModule({
-    imports: [AppModule],
-    controllers: [LeakRoutesController],
-  })
-    .overrideProvider(LogDestination)
-    .useValue(capturingDestination)
-    .compile();
-  const app: INestApplication = moduleRef.createNestApplication({ bufferLogs: true });
+  let app: INestApplication | undefined;
   try {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+      controllers: [LeakRoutesController],
+    })
+      .overrideProvider(LogDestination)
+      .useValue(capturingDestination)
+      .compile();
+    app = moduleRef.createNestApplication({ bufferLogs: true });
     configureApp(app);
     await app.init();
     await playScenario(app);
   } finally {
-    // Même en cas d'échec : sinon Prisma, Redis et les exporteurs retiennent le processus et le
-    // job de CI attend son délai au lieu d'échouer.
+    // Même en cas d'échec, compilation comprise : sinon Prisma, Redis et les exporteurs
+    // retiennent le processus et le job de CI attend son délai au lieu d'échouer.
     // `close` appelle `shutdownTelemetry` (TelemetryShutdown) : spans, métriques et Sentry vidés.
-    await app.close();
+    await app?.close();
     await shutdownTelemetry();
     output.restore();
   }
   records = await fetchRecords(receiverUrl);
 }, 60_000);
-
-afterAll(() => {
-  // Si la compilation du module a échoué avant le `try`.
-  output.restore();
-});
 
 async function playScenario(app: INestApplication): Promise<void> {
   const http = request(app.getHttpServer());
@@ -156,6 +157,9 @@ async function playScenario(app: INestApplication): Promise<void> {
   await http.post('/api/v1/_leak/query').set(markedHeaders).send(marker).expect(500);
   await http.post('/api/v1/_leak/query-ok').set(markedHeaders).send(marker).expect(200);
   await http.post('/api/v1/_leak/metric').set(markedHeaders).send(marker).expect(204);
+
+  // Appel sortant vers un tiers, dans le contexte de trace venu du client.
+  await http.post('/api/v1/_leak/outbound').set(markedHeaders).expect(204);
 }
 
 describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
@@ -230,9 +234,23 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     }
   });
 
+  it('appel sortant (OBS-29) : traceparent propagé, rien du client (tracestate, baggage)', () => {
+    const outbound = records.filter((record) => record.channel === 'outbound');
+    expect(outbound).toHaveLength(1);
+    const headers = JSON.parse(outbound[0]?.body ?? '{}') as Record<string, string>;
+    // Même trace que le client (corrélation), nouveau span parent.
+    expect(headers.traceparent).toMatch(new RegExp(`^00-${CLIENT_TRACE_ID}-[0-9a-f]{16}-01$`));
+    expect(headers).not.toHaveProperty('tracestate');
+    expect(headers).not.toHaveProperty('baggage');
+    expect(headers).not.toHaveProperty('sentry-trace');
+    expect(findMarker(outbound[0]?.body ?? '')).toBeUndefined();
+  });
+
   it('aucun autre canal, et aucun marqueur nulle part', () => {
     expect(
-      records.filter((record) => !['traces', 'metrics', 'errors'].includes(record.channel)),
+      records.filter(
+        (record) => !['traces', 'metrics', 'errors', 'outbound'].includes(record.channel),
+      ),
     ).toEqual([]);
     expect(findMarker(records.map((record) => record.body).join('\n'))).toBeUndefined();
   });
