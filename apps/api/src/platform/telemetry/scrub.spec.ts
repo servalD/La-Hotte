@@ -99,6 +99,39 @@ describe('scrubSpan (OBS-22, OBS-29)', () => {
     expect(scrubbed.attributes).toEqual({ 'http.route': '/api/v1/items/:id' });
     expect(scrubbed.spanContext().traceId).toBe('a'.repeat(32));
   });
+
+  // Constaté par le test OBS-26 le 2026-11-12 : l'en-tête `tracestate` du client ressortait.
+  it('retire le traceState du span, du parent et des liens, garde les identifiants', () => {
+    const traceState = {
+      set: () => traceState,
+      unset: () => traceState,
+      get: () => MARKER,
+      serialize: () => `client=${MARKER}`,
+    };
+    const context = {
+      traceId: 'a'.repeat(32),
+      spanId: 'b'.repeat(16),
+      traceFlags: 1,
+      traceState,
+      isRemote: true,
+    };
+    const scrubbed = scrubSpan(
+      fakeSpan({
+        spanContext: () => context,
+        parentSpanContext: context,
+        links: [{ context }],
+      }),
+    );
+    const expected = {
+      traceId: 'a'.repeat(32),
+      spanId: 'b'.repeat(16),
+      traceFlags: 1,
+      isRemote: true,
+    };
+    expect(scrubbed.spanContext()).toEqual(expected);
+    expect(scrubbed.parentSpanContext).toEqual(expected);
+    expect(scrubbed.links[0]?.context).toEqual(expected);
+  });
 });
 
 describe('scrubStack et scrubError (OBS-25)', () => {

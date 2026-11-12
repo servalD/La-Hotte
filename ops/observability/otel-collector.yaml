@@ -44,7 +44,8 @@ processors:
       - { key: host.id, action: delete }
       - { key: host.ip, action: delete }
       - { key: host.mac, action: delete }
-  # Pas d'événement `exception` sur les spans, pas de message de statut (OBS-29).
+  # Pas d'événement `exception` sur les spans, pas de message de statut (OBS-29), pas de
+  # `trace_state` (texte libre venu de l'en-tête `tracestate` du client, test OBS-26).
   filter/exception-events:
     error_mode: ignore
     traces:
@@ -54,6 +55,7 @@ processors:
     error_mode: ignore
     trace_statements:
       - 'set(span.status.message, "")'
+      - 'set(span.trace_state, "")'
 
 exporters:
   otlphttp/openobserve:

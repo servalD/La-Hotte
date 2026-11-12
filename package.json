@@ -12,6 +12,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:integration": "turbo run test:integration",
+    "test:leak": "turbo run test:leak",
     "test:e2e": "turbo run test:e2e",
     "generate": "pnpm --filter @wishlist/api openapi && pnpm --filter @wishlist/api-client generate",
     "generate:check": "pnpm generate && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/generated",

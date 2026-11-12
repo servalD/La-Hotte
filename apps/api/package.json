@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:leak": "nest build && vitest run --config vitest.leak.config.ts",
     "openapi": "nest build && node dist/openapi/emit-openapi.js",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",

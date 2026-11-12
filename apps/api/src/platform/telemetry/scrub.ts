@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { Attributes } from '@opentelemetry/api';
+import type { Attributes, SpanContext } from '@opentelemetry/api';
 import type { ReadableSpan, TimedEvent } from '@opentelemetry/sdk-trace';
 import type { ErrorEvent, Exception, StackFrame } from '@sentry/nestjs';
 
@@ -92,9 +92,23 @@ export function scrubAttributes(attributes: Attributes): Attributes {
 }
 
 /**
+ * Contexte de span sans `traceState` : il est extrait de l'en-tête `tracestate` du client, texte
+ * libre recopié tel quel dans l'export (constaté par le test OBS-26 le 2026-11-12).
+ */
+export function scrubSpanContext(context: SpanContext): SpanContext {
+  return {
+    traceId: context.traceId,
+    spanId: context.spanId,
+    traceFlags: context.traceFlags,
+    ...(context.isRemote !== undefined ? { isRemote: context.isRemote } : {}),
+  };
+}
+
+/**
  * Span nettoyé, reconstruit champ par champ (les spans du SDK ne sont pas modifiables une fois
  * terminés). Retire les événements `exception`, le message de statut (souvent le message de
- * l'exception) et les attributs interdits du span, de ses événements et de ses liens.
+ * l'exception), le `traceState` des contextes et les attributs interdits du span, de ses
+ * événements et de ses liens.
  */
 export function scrubSpan(span: ReadableSpan): ReadableSpan {
   const events: TimedEvent[] = span.events
@@ -108,17 +122,20 @@ export function scrubSpan(span: ReadableSpan): ReadableSpan {
         : {}),
     }));
 
+  const spanContext = scrubSpanContext(span.spanContext());
   return {
     name: span.name,
     kind: span.kind,
-    spanContext: () => span.spanContext(),
-    ...(span.parentSpanContext ? { parentSpanContext: span.parentSpanContext } : {}),
+    spanContext: () => spanContext,
+    ...(span.parentSpanContext
+      ? { parentSpanContext: scrubSpanContext(span.parentSpanContext) }
+      : {}),
     startTime: span.startTime,
     endTime: span.endTime,
     status: { code: span.status.code },
     attributes: scrubAttributes(span.attributes),
     links: span.links.map((link) => ({
-      context: link.context,
+      context: scrubSpanContext(link.context),
       ...(link.attributes ? { attributes: scrubAttributes(link.attributes) } : {}),
     })),
     events,

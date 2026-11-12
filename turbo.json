@@ -30,6 +30,11 @@
         "LOG_LEVEL"
       ]
     },
+    "test:leak": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "passThroughEnv": ["NODE_ENV", "DATABASE_URL", "REDIS_URL", "WEB_ORIGIN", "LOG_LEVEL"]
+    },
     "test:e2e": {
       "dependsOn": ["^build"],
       "cache": false
