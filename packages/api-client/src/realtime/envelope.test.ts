@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { envelope } from './envelope';
 
-const sample = envelope('item.removed', z.object({ itemId: z.string().uuid() }).strict());
+const sample = envelope('item.removed', z.object({ itemId: z.uuid() }).strict());
 
 describe('enveloppe temps réel (API-32)', () => {
   const valid = {

@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
+import { ExampleItem } from '../../src/modules/example/domain/example-item';
 import { createTestApp } from './create-test-app';
 import type { InMemoryExampleItemRepository } from '../../src/modules/example';
 
@@ -84,6 +85,28 @@ describe('GET /api/v1/example-items/:id', () => {
     expect(res.body).not.toHaveProperty('reservation');
   });
 
+  it('VIS-20 : élément réservé, aucune donnée d’offreur ne sort, sous aucun nom', async () => {
+    const SENTINEL = 'SENTINELLE-OFFREUR';
+    const id = '0190f3c2-0000-7000-8000-000000000042';
+    await exampleItems.save(
+      ExampleItem.restore({
+        id,
+        title: 'Vélo',
+        priority: 'high',
+        reservation: { byName: SENTINEL, at: new Date('2026-11-12T10:00:00Z') },
+        version: 2,
+        createdAt: new Date('2026-11-12T09:00:00Z'),
+      }),
+    );
+
+    const res = await request(app.getHttpServer()).get(`/api/v1/example-items/${id}`).expect(200);
+
+    expect(Object.keys(res.body as object).sort()).toEqual(['id', 'priority', 'title', 'view']);
+    expect(JSON.stringify(res.body)).not.toContain(SENTINEL);
+    expect(res.text).not.toContain(SENTINEL);
+    expect(res.text).not.toContain('2026-11-12T10:00:00');
+  });
+
   it('SEC-04 : introuvable renvoie 404 problem+json', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/example-items/0190f3c2-0000-7000-8000-000000000000')
@@ -124,6 +147,7 @@ describe('Socle HTTP', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(res.headers['strict-transport-security']).toContain('preload');
+    expect(res.headers['permissions-policy']).toContain('camera=()');
   });
 
   it('SEC-14 : CORS limité à l’origine de l’application web', async () => {

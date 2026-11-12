@@ -1,8 +1,14 @@
-# Détection de secrets (CI-01). Les identifiants de développement local et de CI sont publics
-# par construction (conteneurs éphémères) et ne sont réutilisés nulle part.
+# Détection de secrets (CI-01).
+# Les identifiants de développement local et de CI sont publics par construction (conteneurs
+# éphémères, jamais réutilisés ailleurs). On exempte ces VALEURS, pas des fichiers entiers :
+# un vrai secret ajouté plus tard dans ci.yml ou docker-compose.yml reste détecté.
 [extend]
 useDefault = true
 
 [allowlist]
 description = "Identifiants de développement local et de CI"
-paths = ['''docker/postgres/init\.sql''', '''docker-compose\.yml''', '''\.env\.example''', '''\.github/workflows/ci\.yml''']
+regexes = [
+  '''wishlist_app''',
+  '''wishlist:wishlist@''',
+  '''POSTGRES_PASSWORD:\s*wishlist''',
+]

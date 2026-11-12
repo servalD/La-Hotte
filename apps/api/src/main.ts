@@ -17,8 +17,8 @@ async function main(): Promise<void> {
   configureApp(app);
 
   const { env } = app.get(AppConfig);
-  // Documentation interactive en développement seulement (13, question 1).
-  if (env.NODE_ENV === 'development') {
+  // Documentation interactive : développement seulement ET ENABLE_API_DOCS=true (13, question 1).
+  if (env.NODE_ENV === 'development' && env.ENABLE_API_DOCS) {
     SwaggerModule.setup('api/docs', app, buildOpenApiDocument(app));
   }
 

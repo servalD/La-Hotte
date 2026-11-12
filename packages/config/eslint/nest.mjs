@@ -22,6 +22,25 @@ export function nest({ tsconfigRootDir, domainAllowedPackages = [] }) {
       },
     },
     {
+      // SEC-11 : jamais de SQL construit à la main hors des tests.
+      files: ['src/**/*.ts'],
+      rules: {
+        'no-restricted-properties': [
+          'error',
+          {
+            property: '$queryRawUnsafe',
+            message:
+              'SQL brut non paramétré interdit (SEC-11) : utiliser $queryRaw`...` ou Prisma.',
+          },
+          {
+            property: '$executeRawUnsafe',
+            message:
+              'SQL brut non paramétré interdit (SEC-11) : utiliser $executeRaw`...` ou Prisma.',
+          },
+        ],
+      },
+    },
+    {
       files: ['src/**/domain/**/*.ts'],
       rules: {
         'no-restricted-syntax': [

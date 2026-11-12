@@ -4,16 +4,13 @@ import { z } from 'zod';
 // Un schéma par type d'événement ; jamais de champ d'offreur facultatif dans un événement
 // destiné à un salon public : deux schémas distincts.
 
-export function envelope<TType extends string, TData extends z.ZodTypeAny>(
-  type: TType,
-  data: TData,
-) {
+export function envelope<TType extends string, TData extends z.ZodType>(type: TType, data: TData) {
   return z
     .object({
       type: z.literal(type),
-      id: z.string().uuid(),
+      id: z.uuid(),
       seq: z.number().int().nonnegative(),
-      at: z.string().datetime(),
+      at: z.iso.datetime(),
       data,
     })
     .strict();
