@@ -133,6 +133,28 @@ describe('Socle HTTP', () => {
     });
   });
 
+  it('API-14 : un corps trop volumineux donne 413 problem+json, pas une erreur interne', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/example-items')
+      .send({ title: 'x'.repeat(200_000) })
+      .expect(413);
+
+    expect(res.headers['content-type']).toMatch(PROBLEM);
+    expect(res.body).toMatchObject({ status: 413, code: 'PAYLOAD_TOO_LARGE' });
+  });
+
+  it('API-14 : un JSON invalide donne 400 problem+json sans écho du contenu', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/example-items')
+      .set('Content-Type', 'application/json')
+      .send('{"title": "valeur-piegee", ')
+      .expect(400);
+
+    expect(res.headers['content-type']).toMatch(PROBLEM);
+    expect(res.body).toMatchObject({ status: 400, code: 'BAD_REQUEST' });
+    expect(res.text).not.toContain('valeur-piegee');
+  });
+
   it('OBS-01 : identifiant de requête propagé', async () => {
     const res = await request(app.getHttpServer())
       .get('/health/live')
