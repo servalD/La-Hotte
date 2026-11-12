@@ -1,0 +1,17 @@
+# Exceptions Trivy (CI-06). Chaque entrée : identifiant, raison, échéance de 90 jours au plus.
+# Une entrée échue ne protège plus : la CI échoue de nouveau et il faut corriger ou renouveler
+# en revue. Ne jamais ajouter d'exception pour faire passer la CI sans avoir lu la vulnérabilité.
+vulnerabilities:
+  # deepmerge-ts 7.1.5 : épuisement de pile sur des graphes d'objets récursifs.
+  # Tiré par prisma > @prisma/config 6.19.3, qui ne s'en sert que pour fusionner le fichier
+  # prisma.config.* écrit par un développeur (loadConfigTsOrJs). Nous n'en avons pas, et aucune
+  # donnée d'utilisateur n'y passe. Pas de correctif dans la série Prisma 6 (6.19.3 est la dernière) ;
+  # Trivy le compte « production » parce que @prisma/client demande prisma en dépendance de pair.
+  # À lever par la montée de Prisma (dette notée dans l'ADR 0010).
+  - id: CVE-2026-40345
+    paths:
+      - 'pnpm-lock.yaml'
+    statement: >-
+      Non exposé : fusion de la configuration du développeur par la CLI Prisma, jamais d'entrée
+      d'utilisateur. Corrigé en amont dans une version majeure de Prisma que nous n'avons pas encore adoptée.
+    expired_at: 2027-02-10
