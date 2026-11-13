@@ -30,6 +30,8 @@ export interface RateLimitPolicy {
   readonly windowMs: number;
   /** Un succès remet ce compteur à zéro. Jamais vrai pour un compteur qu'un tiers peut vider. */
   readonly resetOnSuccess: boolean;
+  /** Plafond du délai croissant ; à défaut, `RATE_LIMIT_MAX_DELAY_MS`. */
+  readonly maxDelayMs?: number;
 }
 
 export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolicy>> = {
@@ -39,7 +41,10 @@ export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolic
   login_account: { threshold: 20, windowMs: HOUR, resetOnSuccess: false },
   login_ip: { threshold: 50, windowMs: HOUR, resetOnSuccess: false },
   // Remis à zéro par un succès du second facteur seulement (ADR 0013, « Pré-authentification »).
-  second_factor: { threshold: 5, windowMs: 24 * HOUR, resetOnSuccess: true },
+  // Plafond d'une heure (revue SEC-40 de la tranche 3, I1) : un tiers qui connaît le mot de passe
+  // garde au plus 24 essais par jour, soit environ 2,6 % de réussite par an ; le titulaire est
+  // averti au premier dépassement du seuil (AUTH-07).
+  second_factor: { threshold: 5, windowMs: 24 * HOUR, resetOnSuccess: true, maxDelayMs: HOUR },
   reauth: { threshold: 5, windowMs: 24 * HOUR, resetOnSuccess: true },
   // Demandes, pas échecs : chaque demande est comptée.
   register_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
@@ -54,13 +59,22 @@ export const RATE_LIMIT_BASE_DELAY_MS = SECOND;
 export const RATE_LIMIT_MAX_DELAY_MS = 15 * MINUTE;
 
 /**
- * Délai croissant : 1 s au seuil, puis 2 s, 4 s… plafonné à 15 minutes. Jamais de blocage
- * définitif (AUTH-07).
+ * Délai croissant : 1 s au seuil, puis 2 s, 4 s… plafonné à 15 minutes (une heure pour le second
+ * facteur). Jamais de blocage définitif (AUTH-07).
  */
-export function rateLimitDelayMs(failures: number, threshold: number): number {
+export function rateLimitDelayMs(
+  failures: number,
+  threshold: number,
+  maxDelayMs: number = RATE_LIMIT_MAX_DELAY_MS,
+): number {
   if (failures < threshold) return 0;
   const exponent = Math.min(failures - threshold, 30);
-  return Math.min(RATE_LIMIT_BASE_DELAY_MS * 2 ** exponent, RATE_LIMIT_MAX_DELAY_MS);
+  return Math.min(RATE_LIMIT_BASE_DELAY_MS * 2 ** exponent, maxDelayMs);
+}
+
+/** Plafond du délai d'une portée. */
+export function maxDelayFor(scope: RateLimitScope): number {
+  return RATE_LIMIT_POLICIES[scope].maxDelayMs ?? RATE_LIMIT_MAX_DELAY_MS;
 }
 
 /**

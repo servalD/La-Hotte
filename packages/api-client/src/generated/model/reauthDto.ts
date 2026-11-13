@@ -12,4 +12,11 @@ export interface ReauthDto {
    * @maxLength 256
    */
   password: string;
+  /**
+   * AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours).
+   * @minLength 6
+   * @maxLength 32
+   * @pattern ^[0-9A-Za-z -]{6,32}$
+   */
+  code?: string;
 }

@@ -26,4 +26,11 @@ export class SessionStatusView {
 
   @ApiProperty({ type: SessionSummaryView, nullable: true })
   session!: SessionSummaryView | null;
+
+  /**
+   * Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code
+   * (`POST /auth/totp/verify`). Expire en 5 minutes.
+   */
+  @ApiProperty()
+  secondFactorPending!: boolean;
 }

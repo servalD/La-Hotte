@@ -75,17 +75,3 @@ export class SessionNotFoundError extends DomainError {
     super('Session introuvable.');
   }
 }
-
-/**
- * Second facteur attendu mais pas encore pris en charge (tranche 3 de la phase 1) : refus en échec
- * fermé plutôt qu'une session sans second facteur.
- */
-export class SecondFactorUnavailableError extends DomainError {
-  readonly kind = 'unavailable';
-  readonly code = 'SERVICE_UNAVAILABLE';
-  override readonly retryAfterSeconds = 60;
-
-  constructor() {
-    super('Service momentanément indisponible.');
-  }
-}

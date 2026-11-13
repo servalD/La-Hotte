@@ -8,6 +8,7 @@
 
 export * from './accountSessionListView';
 export * from './accountSessionView';
+export * from './accountView';
 export * from './createExampleItemDto';
 export * from './emailDto';
 export * from './emailTokenDto';
@@ -25,7 +26,15 @@ export * from './newPasswordDto';
 export * from './passwordResetConfirmDto';
 export * from './problemDetailsDto';
 export * from './reauthDto';
+export * from './recoveryCodesView';
 export * from './registerDto';
+export * from './secondFactorDto';
 export * from './sessionStatusView';
 export * from './sessionStatusViewSession';
 export * from './sessionSummaryView';
+export * from './totpActivationView';
+export * from './totpActivationViewSession';
+export * from './totpCodeDto';
+export * from './totpEnrollmentView';
+export * from './trustedDeviceListView';
+export * from './trustedDeviceView';

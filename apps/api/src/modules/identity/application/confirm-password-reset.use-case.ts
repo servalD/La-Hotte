@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { AccountTokenInvalidError } from '../domain/account.errors';
 import { AccountRepository } from '../domain/account.ports';
-import { SecretTokens, SecurityLog } from '../domain/ports';
+import { RateLimiter, SecretTokens, SecurityLog } from '../domain/ports';
 import type { ClientInfo } from './client-info';
 import { PasswordPolicy } from './password-policy';
 import { SessionLifecycle } from './session-lifecycle';
@@ -22,6 +22,7 @@ export class ConfirmPasswordReset {
     private readonly tokens: SecretTokens,
     private readonly lifecycle: SessionLifecycle,
     private readonly securityLog: SecurityLog,
+    private readonly limiter: RateLimiter,
     private readonly clock: Clock,
   ) {}
 
@@ -49,6 +50,10 @@ export class ConfirmPasswordReset {
         now: this.clock.now(),
       }),
     );
+    // Le titulaire averti de codes faux réinitialise, comme l'e-mail le lui conseille : il ne
+    // doit pas attendre ensuite le délai du second facteur que le tiers a provoqué. Le lien reçu
+    // par e-mail est une preuve plus forte qu'un code (revue SEC-40 de la tranche 3, N3).
+    await this.limiter.clear([{ scope: 'second_factor', parts: [consumed.accountId] }]);
     await this.securityLog.record({
       accountId: consumed.accountId,
       event: 'password.reset',

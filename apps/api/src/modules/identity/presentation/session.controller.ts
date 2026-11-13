@@ -6,9 +6,12 @@ import {
   CsrfTokens,
   type ResolvedSession,
   SecretTokens,
+  VerifySecondFactor,
 } from '../application/contract';
 import {
+  clearPendingCookie,
   clearSessionCookies,
+  PENDING_COOKIE,
   PRESESSION_COOKIE,
   readCookie,
   SESSION_COOKIE,
@@ -24,13 +27,15 @@ import { SessionStatusView } from './dto/session-status.view';
 export class SessionController {
   constructor(
     private readonly authorizeProfile: AuthorizeProfile,
+    private readonly secondFactor: VerifySecondFactor,
     private readonly csrf: CsrfTokens,
     private readonly tokens: SecretTokens,
   ) {}
 
   /**
    * État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la
-   * pré-session (CSRF de connexion). Ne prolonge jamais le déverrouillage du profil.
+   * pré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne
+   * prolonge jamais le déverrouillage du profil.
    */
   @Get()
   @Public()
@@ -40,6 +45,11 @@ export class SessionController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<SessionStatusView> {
+    const pendingCookie = readCookie(request, PENDING_COOKIE);
+    const secondFactorPending = await this.secondFactor.isPending(pendingCookie);
+    // Pré-authentification expirée ou invalidée : cookie retiré du navigateur.
+    if (pendingCookie !== null && !secondFactorPending) clearPendingCookie(response);
+
     if (session) {
       const csrfToken = this.csrf.forSession(session.record.tokenHash);
       setCsrfCookie(response, csrfToken);
@@ -56,6 +66,7 @@ export class SessionController {
           profileUnlocked: profile.unlocked,
           expiresAt: session.record.expiresAt.toISOString(),
         },
+        secondFactorPending,
       };
     }
 
@@ -66,6 +77,6 @@ export class SessionController {
       current && this.tokens.isWellFormed(current) ? current : this.tokens.generate();
     const csrfToken = this.csrf.forPresession(presessionId);
     setPresessionCookies(response, { presessionId, csrfToken });
-    return { authenticated: false, csrfToken, session: null };
+    return { authenticated: false, csrfToken, session: null, secondFactorPending };
   }
 }

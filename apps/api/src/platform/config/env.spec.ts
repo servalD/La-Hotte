@@ -7,6 +7,7 @@ const valid = {
   REDIS_URL: 'redis://localhost:6379',
   CSRF_SECRET: 'c'.repeat(32),
   KEY_HMAC_SECRET: 'k'.repeat(32),
+  SECRET_ENCRYPTION_KEYS: `0:${Buffer.alloc(32, 7).toString('base64')}`,
   REGISTRATION_MODE: 'OPEN',
   SMTP_URL: 'smtp://localhost:1025',
   MAIL_FROM: 'noreply@lahotte.test',
@@ -52,6 +53,7 @@ describe('parseEnv', () => {
       CSRF_SECRET: 'p'.repeat(40),
       KEY_HMAC_SECRET: 'q'.repeat(40),
       SMTP_URL: 'smtps://smtp.example:465',
+      SECRET_ENCRYPTION_KEYS: `1:${Buffer.alloc(32, 9).toString('base64')}`,
     };
     expect(parseEnv(production).TRUSTED_PROXY_HOPS).toBe(1);
     const { TRUSTED_PROXY_HOPS: _omitted, ...withoutHops } = production;
@@ -65,6 +67,42 @@ describe('parseEnv', () => {
     expect(
       parseEnv({ ...production, SMTP_URL: 'smtp://smtp.example:587?requireTLS=true' }).SMTP_URL,
     ).toContain('requireTLS');
+  });
+
+  it('SEC-22 : trousseau bien formé ; identifiant 0 et clés factices refusés en production', () => {
+    const key = (fill: number): string => Buffer.alloc(32, fill).toString('base64');
+    const keys = parseEnv({
+      ...valid,
+      SECRET_ENCRYPTION_KEYS: `2:${key(1)}, 1:${key(2)}`,
+    }).SECRET_ENCRYPTION_KEYS;
+    expect(keys.map((k) => k.id)).toEqual([2, 1]);
+    expect(keys[0]?.key.length).toBe(32);
+    for (const invalid of [
+      '',
+      key(1),
+      `1:${Buffer.alloc(16, 1).toString('base64')}`,
+      `1:${key(1)},1:${key(2)}`,
+      `256:${key(1)}`,
+    ]) {
+      expect(() => parseEnv({ ...valid, SECRET_ENCRYPTION_KEYS: invalid })).toThrowError(
+        /SECRET_ENCRYPTION_KEYS/,
+      );
+    }
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      TRUSTED_PROXY_HOPS: '1',
+      CSRF_SECRET: 'p'.repeat(40),
+      KEY_HMAC_SECRET: 'q'.repeat(40),
+      SMTP_URL: 'smtps://smtp.example:465',
+    };
+    expect(() => parseEnv({ ...production, SECRET_ENCRYPTION_KEYS: `0:${key(3)}` })).toThrowError(
+      /SECRET_ENCRYPTION_KEYS/,
+    );
+    const devKey = Buffer.from('dev-only-secret-encryption-key-0').toString('base64');
+    expect(() => parseEnv({ ...production, SECRET_ENCRYPTION_KEYS: `5:${devKey}` })).toThrowError(
+      /SECRET_ENCRYPTION_KEYS/,
+    );
   });
 
   it('nomme la variable fautive sans jamais afficher de valeur (SEC-21)', () => {

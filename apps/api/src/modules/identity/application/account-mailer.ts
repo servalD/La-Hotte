@@ -20,7 +20,11 @@ type MailKind =
   | { readonly kind: 'reset_password'; readonly token: string }
   | { readonly kind: 'registration_attempt' }
   | { readonly kind: 'email_taken_notice' }
-  | { readonly kind: 'password_changed' };
+  | { readonly kind: 'password_changed' }
+  | { readonly kind: 'totp_enabled' }
+  | { readonly kind: 'totp_disabled' }
+  | { readonly kind: 'recovery_code_used' }
+  | { readonly kind: 'second_factor_attempts' };
 
 const SIGNATURE = '\n\n— La Hotte';
 
@@ -122,6 +126,50 @@ export class AccountMailer {
             'appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
             'réinitialisez-le sans attendre :\n' +
             `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'totp_enabled':
+        return {
+          to,
+          subject: 'Double authentification activée',
+          text:
+            'La double authentification vient d’être activée sur votre compte La Hotte. Chaque ' +
+            'connexion demandera désormais un code de votre application d’authentification.\n\n' +
+            'Si vous n’en êtes pas à l’origine, réinitialisez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'totp_disabled':
+        return {
+          to,
+          subject: 'Double authentification désactivée',
+          text:
+            'La double authentification vient d’être désactivée sur votre compte La Hotte, et ' +
+            'les autres appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
+            'réinitialisez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'recovery_code_used':
+        return {
+          to,
+          subject: 'Code de secours utilisé',
+          text:
+            'Un code de secours vient de servir à se connecter à votre compte La Hotte. Chaque ' +
+            'code ne sert qu’une fois ; vous pouvez en générer de nouveaux dans votre espace ' +
+            'Compte.\n\nSi vous n’en êtes pas à l’origine, réinitialisez votre mot de passe sans ' +
+            `attendre :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'second_factor_attempts':
+        return {
+          to,
+          subject: 'Codes de double authentification erronés',
+          text:
+            'Plusieurs codes de double authentification erronés viennent d’être saisis sur votre ' +
+            'compte La Hotte, après votre mot de passe : quelqu’un d’autre le connaît sans doute.' +
+            '\n\nChangez-le sans attendre ; la réinitialisation déconnecte aussi tous les ' +
+            `appareils :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
             SIGNATURE,
         };
       case 'email_taken_notice':

@@ -6,8 +6,8 @@ import { AppConfig } from '../../../platform/config/env';
 import { RedisService } from '../../../platform/redis/redis.service';
 import { EventThrottle, type RateLimitCheck, RateLimiter } from '../domain/ports';
 import {
+  maxDelayFor,
   RATE_LIMIT_BASE_DELAY_MS,
-  RATE_LIMIT_MAX_DELAY_MS,
   RATE_LIMIT_POLICIES,
   type RateLimitSubject,
 } from '../domain/rate-limit';
@@ -27,19 +27,19 @@ const RESERVATION_MS = 10_000;
  * passe donc pas tout entière avant d'être comptée.
  * Renvoie l'attente en millisecondes, 0 si l'essai est réservé.
  * KEYS : compteur₁, réservations₁, compteur₂, réservations₂…
- * ARGV : maintenant, base, plafond, réservation, puis fenêtre₁, seuil₁, fenêtre₂, seuil₂…
+ * ARGV : maintenant, base, réservation, puis fenêtre₁, seuil₁, plafond₁, fenêtre₂, seuil₂, plafond₂…
  */
 const CHECK = `
 local now = tonumber(ARGV[1])
 local base = tonumber(ARGV[2])
-local cap = tonumber(ARGV[3])
 local wait = 0
 local busy = false
 for i = 1, #KEYS / 2 do
   local counter = KEYS[2 * i - 1]
   local pending = KEYS[2 * i]
-  local window = tonumber(ARGV[3 + 2 * i])
-  local threshold = tonumber(ARGV[4 + 2 * i])
+  local window = tonumber(ARGV[1 + 3 * i])
+  local threshold = tonumber(ARGV[2 + 3 * i])
+  local cap = tonumber(ARGV[3 + 3 * i])
   redis.call('ZREMRANGEBYSCORE', counter, '-inf', now - window)
   redis.call('ZREMRANGEBYSCORE', pending, '-inf', now)
   local failures = redis.call('ZCARD', counter)
@@ -55,22 +55,27 @@ end
 if wait > 0 then return math.ceil(wait) end
 if busy then return base end
 for i = 1, #KEYS / 2 do
-  redis.call('ZADD', KEYS[2 * i], now + ${RESERVATION_MS}, ARGV[4])
+  redis.call('ZADD', KEYS[2 * i], now + ${RESERVATION_MS}, ARGV[3])
   redis.call('PEXPIRE', KEYS[2 * i], ${RESERVATION_MS})
 end
 return 0`;
 
 /**
- * Échec : horodatage ajouté à chaque compteur, réservation rendue.
+ * Échec : horodatage ajouté à chaque compteur, réservation rendue. Renvoie le nombre d'échecs de
+ * chaque compteur dans sa fenêtre.
  * ARGV : maintenant, membre, réservation, puis fenêtres.
  */
 const FAIL = `
+local counts = {}
 for i = 1, #KEYS / 2 do
+  local window = tonumber(ARGV[3 + i])
   redis.call('ZADD', KEYS[2 * i - 1], ARGV[1], ARGV[2])
-  redis.call('PEXPIRE', KEYS[2 * i - 1], ARGV[3 + i])
+  redis.call('ZREMRANGEBYSCORE', KEYS[2 * i - 1], '-inf', tonumber(ARGV[1]) - window)
+  redis.call('PEXPIRE', KEYS[2 * i - 1], window)
   redis.call('ZREM', KEYS[2 * i], ARGV[3])
+  counts[i] = redis.call('ZCARD', KEYS[2 * i - 1])
 end
-return 1`;
+return counts`;
 
 /**
  * Réduit une adresse IPv6 à son /64 (ADR 0013) : un hôte en dispose d'ordinaire d'un bloc entier.
@@ -115,7 +120,11 @@ export class RedisRateLimiter extends RateLimiter {
     const keys = subjects.flatMap((subject) => this.keys(subject));
     const args = subjects.flatMap((subject) => {
       const policy = RATE_LIMIT_POLICIES[subject.scope];
-      return [String(policy.windowMs), String(subject.threshold ?? policy.threshold)];
+      return [
+        String(policy.windowMs),
+        String(subject.threshold ?? policy.threshold),
+        String(maxDelayFor(subject.scope)),
+      ];
     });
     const wait = Number(
       await this.redis((r) =>
@@ -125,7 +134,6 @@ export class RedisRateLimiter extends RateLimiter {
           ...keys,
           String(now.getTime()),
           String(RATE_LIMIT_BASE_DELAY_MS),
-          String(RATE_LIMIT_MAX_DELAY_MS),
           reservation,
           ...args,
         ),
@@ -140,15 +148,16 @@ export class RedisRateLimiter extends RateLimiter {
     subjects: readonly RateLimitSubject[],
     now: Date,
     reservation: string,
-  ): Promise<void> {
-    if (subjects.length === 0) return;
+  ): Promise<readonly number[]> {
+    if (subjects.length === 0) return [];
     const keys = subjects.flatMap((subject) => this.keys(subject));
     const windows = subjects.map((subject) => String(RATE_LIMIT_POLICIES[subject.scope].windowMs));
     // Membre unique : deux échecs à la même milliseconde comptent pour deux.
     const member = `${now.getTime()}-${randomBytes(6).toString('hex')}`;
-    await this.redis((r) =>
+    const counts = await this.redis((r) =>
       r.eval(FAIL, keys.length, ...keys, String(now.getTime()), member, reservation, ...windows),
     );
+    return Array.isArray(counts) ? counts.map(Number) : [];
   }
 
   async recordSuccess(subjects: readonly RateLimitSubject[], reservation: string): Promise<void> {
@@ -163,6 +172,11 @@ export class RedisRateLimiter extends RateLimiter {
       }
       return batch.exec();
     });
+  }
+
+  async clear(subjects: readonly RateLimitSubject[]): Promise<void> {
+    if (subjects.length === 0) return;
+    await this.redis((r) => r.del(...subjects.map((subject) => this.keys(subject)[0])));
   }
 
   private keys(subject: RateLimitSubject): [string, string] {

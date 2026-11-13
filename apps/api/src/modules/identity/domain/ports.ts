@@ -143,6 +143,8 @@ export abstract class SecretTokens {
   abstract generate(): string;
   /** SHA-256 en hexadécimal. */
   abstract hash(token: string): string;
+  /** AUTH-10 : code de secours de 80 bits, 16 caractères de Crockford (non formaté). */
+  abstract generateRecoveryCode(): string;
   /** Forme d'un jeton tiré par `generate` (refus rapide de toute autre valeur). */
   abstract isWellFormed(token: string): boolean;
 }
@@ -178,14 +180,22 @@ export interface RateLimitCheck {
  */
 export abstract class RateLimiter {
   abstract check(subjects: readonly RateLimitSubject[], now: Date): Promise<RateLimitCheck>;
-  /** Échec : compté sur chaque sujet, réservation rendue. */
+  /**
+   * Échec : compté sur chaque sujet, réservation rendue. Renvoie, pour chaque sujet dans l'ordre,
+   * le nombre d'échecs dans la fenêtre, celui-ci compris (alerte au franchissement du seuil).
+   */
   abstract recordFailure(
     subjects: readonly RateLimitSubject[],
     now: Date,
     reservation: string,
-  ): Promise<void>;
+  ): Promise<readonly number[]>;
   /** Succès : compteurs `resetOnSuccess` vidés, réservation rendue. */
   abstract recordSuccess(subjects: readonly RateLimitSubject[], reservation: string): Promise<void>;
+  /**
+   * Compteurs vidés hors de tout essai, par une preuve plus forte que le facteur compté (lien de
+   * réinitialisation reçu par e-mail). Les réservations en cours ne sont pas touchées.
+   */
+  abstract clear(subjects: readonly RateLimitSubject[]): Promise<void>;
 }
 
 /**
@@ -213,6 +223,15 @@ export const SECURITY_EVENTS = [
   'email.change_requested',
   'email.changed',
   'email.change_cancelled',
+  'login.second_factor_required',
+  'totp.failed',
+  'totp.enrollment_started',
+  'totp.enabled',
+  'totp.disabled',
+  'recovery.code_used',
+  'recovery.codes_regenerated',
+  'device.trusted',
+  'device.revoked',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 

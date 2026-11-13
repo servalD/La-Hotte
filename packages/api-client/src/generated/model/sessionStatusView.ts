@@ -13,4 +13,7 @@ export interface SessionStatusView {
   csrfToken: string;
   /** @nullable */
   session: SessionStatusViewSession;
+  /** Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code
+(`POST /auth/totp/verify`). Expire en 5 minutes. */
+  secondFactorPending: boolean;
 }

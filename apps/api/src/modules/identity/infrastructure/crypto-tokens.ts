@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { Injectable } from '@nestjs/common';
 import { AppConfig } from '../../../platform/config/env';
 import { CsrfTokens, SecretTokens } from '../domain/ports';
+import { encodeRecoveryCode } from '../domain/second-factor';
 
 /** 32 octets en base64url, sans remplissage : 43 caractères. */
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -19,6 +20,10 @@ export class CryptoSecretTokens extends SecretTokens {
 
   isWellFormed(token: string): boolean {
     return TOKEN_PATTERN.test(token);
+  }
+
+  generateRecoveryCode(): string {
+    return encodeRecoveryCode(randomBytes(10));
   }
 }
 

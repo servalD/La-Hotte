@@ -37,5 +37,17 @@ export { RequestEmailChange } from './request-email-change.use-case';
 export { RequestPasswordReset } from './request-password-reset.use-case';
 export { ResolveSession, type ResolvedSession, sessionRef } from './resolve-session.use-case';
 export { type IssuedSession, SessionLifecycle } from './session-lifecycle';
-export { SignInWithPassword } from './sign-in-with-password.use-case';
+export { type SignInResult, SignInWithPassword } from './sign-in-with-password.use-case';
 export { VerifyEmail } from './verify-email.use-case';
+export { DisableTotp } from './disable-totp.use-case';
+export { ActivateTotp, StartTotpEnrollment } from './enroll-totp.use-case';
+export { type AccountSummary, GetAccount } from './get-account.use-case';
+export {
+  ListTrustedDevices,
+  RevokeTrustedDevice,
+  type TrustedDeviceView,
+} from './manage-trusted-devices.use-case';
+export { RegenerateRecoveryCodes } from './regenerate-recovery-codes.use-case';
+export { type SecondFactorOutcome, VerifySecondFactor } from './verify-second-factor.use-case';
+export { RECOVERY_CODE_COUNT } from '../domain/second-factor';
+export { PENDING_SECOND_FACTOR_TTL_MS, TRUSTED_DEVICE_LIFETIME_MS } from '../domain/second-factor';

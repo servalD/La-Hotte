@@ -54,7 +54,7 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 
 - **SEC-20** TLS 1.2 minimum partout, y compris entre conteneurs exposés. HSTS avec préchargement.
 - **SEC-21** Aucun secret dans le dépôt, les images ou les journaux. Secrets fournis par l'environnement d'exécution, renouvelables sans redéploiement de code.
-- **SEC-22** Chiffrement applicatif pour : secrets TOTP, codes de secours (hachés), jetons Google, clés de chiffrement de cache. Clé maîtresse hors base, rotation prévue.
+- **SEC-22** Chiffrement applicatif pour : secrets TOTP, codes de secours (hachés), jetons Google, clés de chiffrement de cache. Clé maîtresse hors base, rotation prévue. Mise en œuvre : AES-256-GCM, trousseau `SECRET_ENCRYPTION_KEYS` (`id:clé`, clés de 32 octets) fourni par l'environnement ; la première clé chiffre, toutes déchiffrent ; le chiffré porte l'identifiant de sa clé, et l'en-tête comme le compte propriétaire sont authentifiés (un chiffré recopié sur un autre compte ne se déchiffre pas). L'identifiant 0 est réservé au développement et refusé en production. Les codes de secours (80 bits) sont stockés en SHA-256, comme les jetons de session : leur entropie rend un hachage lent inutile.
 - **SEC-23** Base de données et sauvegardes chiffrées au repos. Sauvegardes quotidiennes, test de restauration mensuel.
 
 ### Journalisation et détection

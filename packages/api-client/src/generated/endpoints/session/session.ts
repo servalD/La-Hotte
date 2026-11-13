@@ -27,7 +27,8 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
  * @summary État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la
-pré-session (CSRF de connexion). Ne prolonge jamais le déverrouillage du profil.
+pré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne
+prolonge jamais le déverrouillage du profil.
  */
 export const getGetSessionUrl = () => {
   return `/api/v1/session`;
@@ -116,7 +117,8 @@ export function useGetSession<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
  * @summary État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la
-pré-session (CSRF de connexion). Ne prolonge jamais le déverrouillage du profil.
+pré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne
+prolonge jamais le déverrouillage du profil.
  */
 
 export function useGetSession<

@@ -5,6 +5,10 @@ export const SESSION_COOKIE = '__Host-lh_session';
 export const CSRF_COOKIE = '__Host-lh_csrf';
 export const PRESESSION_COOKIE = '__Host-lh_presession';
 export const UNLOCK_COOKIE = '__Host-lh_unlock';
+/** ADR 0013 : pré-authentification (mot de passe validé, second facteur attendu). */
+export const PENDING_COOKIE = '__Host-lh_pending';
+/** AUTH-12, ADR 0013 : appareil de confiance. */
+export const DEVICE_COOKIE = '__Host-lh_device';
 
 const PRESESSION_MAX_AGE_MS = 60 * 60 * 1000;
 
@@ -64,6 +68,31 @@ export function setCsrfCookie(response: Response, csrfToken: string): void {
 /** ADR 0013 : la pré-session disparaît à l'ouverture d'une session. */
 export function clearPresessionCookie(response: Response): void {
   response.clearCookie(PRESESSION_COOKIE, { ...HOST_COOKIE, httpOnly: true });
+}
+
+/**
+ * Pré-authentification : `SameSite=Strict`, elle ne sert qu'à un `POST` de la même origine ; durée
+ * de l'état côté serveur (5 minutes).
+ */
+export function setPendingCookie(response: Response, token: string, maxAgeMs: number): void {
+  response.cookie(PENDING_COOKIE, token, {
+    ...HOST_COOKIE,
+    sameSite: 'strict',
+    httpOnly: true,
+    maxAge: maxAgeMs,
+  });
+}
+
+export function clearPendingCookie(response: Response): void {
+  response.clearCookie(PENDING_COOKIE, { ...HOST_COOKIE, sameSite: 'strict', httpOnly: true });
+}
+
+export function setDeviceCookie(response: Response, token: string, maxAgeMs: number): void {
+  response.cookie(DEVICE_COOKIE, token, { ...HOST_COOKIE, httpOnly: true, maxAge: maxAgeMs });
+}
+
+export function clearDeviceCookie(response: Response): void {
+  response.clearCookie(DEVICE_COOKIE, { ...HOST_COOKIE, httpOnly: true });
 }
 
 export function clearSessionCookies(response: Response): void {

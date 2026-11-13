@@ -14,4 +14,7 @@ regexes = [
   # Secrets factices de session (ADR 0013) en test, en CI et dans `.env.example` : la
   # configuration de production les refuse au démarrage (`NON_PRODUCTION_SECRET`, env.ts).
   '''(test|ci-only|dev-only)-(csrf|key-hmac)-secret-0123456789abcdef''',
+  # Clés factices du trousseau de chiffrement (SEC-22) : `dev-only-`, `test-only-` et
+  # `ci-only-secret-encryption-key…` en base64, refusées en production (env.ts).
+  '''ZGV2LW9ubHktc2VjcmV0LWVuY3J5cHRpb24ta2V5LTA=|dGVzdC1vbmx5LXNlY3JldC1lbmNyeXB0aW9uLWtleTA=|Y2ktb25seS1zZWNyZXQtZW5jcnlwdGlvbi1rZXktMDA=''',
 ]

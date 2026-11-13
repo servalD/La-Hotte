@@ -101,6 +101,9 @@ importers:
       nodemailer:
         specifier: 10.2.1
         version: 10.2.1
+      otplib:
+        specifier: 13.5.0
+        version: 13.5.0
       pino:
         specifier: ^10.1.0
         version: 10.4.0
@@ -164,7 +167,7 @@ importers:
         version: 1.6.0(@swc/core@1.16.22)(esbuild@0.28.2)(rollup@4.68.2)(vite@7.3.8(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1))(webpack@5.106.2(@swc/core@1.16.22)(esbuild@0.28.2)(lightningcss@1.33.0))
       vitest:
         specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
+        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.4.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
 
   apps/web:
     dependencies:
@@ -267,7 +270,7 @@ importers:
         version: 9.39.5(jiti@2.7.0)
       jsdom:
         specifier: ^27.0.1
-        version: 27.4.0(@noble/hashes@1.8.0)
+        version: 27.4.0(@noble/hashes@2.4.0)
       tailwindcss:
         specifier: ^4.1.16
         version: 4.3.5
@@ -276,7 +279,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
+        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.4.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
 
   packages/api-client:
     dependencies:
@@ -310,7 +313,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
+        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.4.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
 
   packages/config:
     dependencies:
@@ -347,7 +350,7 @@ importers:
         version: 9.39.5(jiti@2.7.0)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
+        version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.4.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1)
 
 packages:
 
@@ -1504,6 +1507,10 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
+  '@noble/hashes@2.4.0':
+    resolution: {integrity: sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==}
+    engines: {node: '>= 20.19.0'}
+
   '@node-rs/argon2-android-arm-eabi@2.2.2':
     resolution: {integrity: sha512-c11BOrPLBWNC1cDyzGB+Bil+flmxfZbB2hv8EhcobmAsFKMyqkHPNhUY4qhcjv1U+4+Vmw4G8H+l224iO2g/Dw==}
     engines: {node: '>= 10'}
@@ -1813,6 +1820,24 @@ packages:
 
   '@orval/zod@7.21.0':
     resolution: {integrity: sha512-bTMAxdtJ8/KxDusTRL0u57YN7H0VWim8pbWj5eQYwo3xABs+puYdF3kKZ2c2biB/jUwgJJEnVkwbZV8XjxaWYw==}
+
+  '@otplib/core@13.5.0':
+    resolution: {integrity: sha512-2rURdkYkb3BDhMs3j/oCCPTve1ybJ6ruLfLfSe1ZSPV+y6RFTbLfAuT0m0ZCnps88ogkIq9t/+Li/kg5RofQwQ==}
+
+  '@otplib/hotp@13.5.0':
+    resolution: {integrity: sha512-1EwwAti05CeWJn4xXOVMBK9N6dIJlJw/cQkQyiL9OVlkeS452wAve3ffodi+5IUZdWoF1wxVug38RisdxDqDWw==}
+
+  '@otplib/plugin-base32-scure@13.5.0':
+    resolution: {integrity: sha512-3JEIHindUMiIeNL0jXepSAkZ/7IkWq4sPdG9eXK0lrMXZG9RdKu5oz/4tuuTodtsFUPYhKlRMqv5xUvQIkMIaA==}
+
+  '@otplib/plugin-crypto-noble@13.5.0':
+    resolution: {integrity: sha512-fihOAGFvc4b8XTKyIK3jifFP2nLrUNc2bOaJ3UkUKJjy1XI2FbHKG0WmOH+jFsPfa6VsOnouCnEmSznDxIe0pA==}
+
+  '@otplib/totp@13.5.0':
+    resolution: {integrity: sha512-GD9LzQnbHDwXCp79s8AaiA5cJR6luX5fEr9AN32AWx4ooRvllPbMkG80gHSA0jbGCnAIX/ChyOtTZ8tgJHMkSg==}
+
+  '@otplib/uri@13.5.0':
+    resolution: {integrity: sha512-LsL1hqTEgJHY40U2eb/Qp6OR1tKkNGwHQTrqqjIuJj0cawGWkLEmeUFK1MHzWBQ4bgy5IdeB5Et7gIDSAH/CRw==}
 
   '@oxc-parser/binding-android-arm-eabi@0.152.0':
     resolution: {integrity: sha512-393VtirINkae4XHBTkq/yQxhOwEr4V+r0et37P2fp+sYZSdYgZTRDPo5Um8vBh0QjMZ+RmaMy4PP0qwr4cTMwA==}
@@ -2929,6 +2954,9 @@ packages:
 
   '@schummar/icu-type-parser@1.21.5':
     resolution: {integrity: sha512-bXHSaW5jRTmke9Vd0h5P7BtWZG9Znqb8gSDxZnxaGSJnGwPLDPfS+3g0BKzeWqzgZPsIVZkM7m2tbo18cm5HBw==}
+
+  '@scure/base@2.4.0':
+    resolution: {integrity: sha512-thZ1TuJwFwBblOhgsjDKvvGirBxNp+wSvY/DR6tJBJOTDhdAAcHJ8Vbr2eFnqaxeca4+t0i9KBf+uHYGWwZORg==}
 
   '@sentry/browser-utils@11.12.0':
     resolution: {integrity: sha512-OttAHqf557R1gfLQRqb/dpGUK1UQd21qkeeN0KA/ThuymYXTNY+qTpJIOqmzgpk6fOmE922mTT6xmnMEiGYZBQ==}
@@ -5509,6 +5537,9 @@ packages:
     engines: {node: '>=22.18.0'}
     hasBin: true
 
+  otplib@13.5.0:
+    resolution: {integrity: sha512-RpcC6aq4rANX6MverMuU3pqHVLgMPO7vl6qR8ga7YzoEHlPJknJ58cSVAaf3jBYnasiQVQHXXl2mj/4pYlsVEQ==}
+
   own-keys@1.0.2:
     resolution: {integrity: sha512-19YVAg7T+WTrxggPukVq7DjTv6+PJ867TmhCvBsYwmbFCsZd344rq2Ld1p0wo8f8Qrrhgp82c6FJRqdXWtSEhg==}
     engines: {node: '>= 0.4'}
@@ -7204,9 +7235,9 @@ snapshots:
       '@eslint/core': 0.17.0
       levn: 0.4.1
 
-  '@exodus/bytes@1.16.0(@noble/hashes@1.8.0)':
+  '@exodus/bytes@1.16.0(@noble/hashes@2.4.0)':
     optionalDependencies:
-      '@noble/hashes': 1.8.0
+      '@noble/hashes': 2.4.0
 
   '@exodus/schemasafe@1.3.0': {}
 
@@ -7741,6 +7772,8 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
+  '@noble/hashes@2.4.0': {}
+
   '@node-rs/argon2-android-arm-eabi@2.2.2':
     optional: true
 
@@ -8167,6 +8200,33 @@ snapshots:
       - openapi-types
       - supports-color
       - typescript
+
+  '@otplib/core@13.5.0': {}
+
+  '@otplib/hotp@13.5.0':
+    dependencies:
+      '@otplib/core': 13.5.0
+      '@otplib/uri': 13.5.0
+
+  '@otplib/plugin-base32-scure@13.5.0':
+    dependencies:
+      '@otplib/core': 13.5.0
+      '@scure/base': 2.4.0
+
+  '@otplib/plugin-crypto-noble@13.5.0':
+    dependencies:
+      '@noble/hashes': 2.4.0
+      '@otplib/core': 13.5.0
+
+  '@otplib/totp@13.5.0':
+    dependencies:
+      '@otplib/core': 13.5.0
+      '@otplib/hotp': 13.5.0
+      '@otplib/uri': 13.5.0
+
+  '@otplib/uri@13.5.0':
+    dependencies:
+      '@otplib/core': 13.5.0
 
   '@oxc-parser/binding-android-arm-eabi@0.152.0':
     optional: true
@@ -9212,6 +9272,8 @@ snapshots:
   '@scarf/scarf@1.4.0': {}
 
   '@schummar/icu-type-parser@1.21.5': {}
+
+  '@scure/base@2.4.0': {}
 
   '@sentry/browser-utils@11.12.0':
     dependencies:
@@ -11366,9 +11428,9 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  html-encoding-sniffer@6.0.0(@noble/hashes@1.8.0):
+  html-encoding-sniffer@6.0.0(@noble/hashes@2.4.0):
     dependencies:
-      '@exodus/bytes': 1.16.0(@noble/hashes@1.8.0)
+      '@exodus/bytes': 1.16.0(@noble/hashes@2.4.0)
     transitivePeerDependencies:
       - '@noble/hashes'
 
@@ -11627,15 +11689,15 @@ snapshots:
     dependencies:
       argparse: 3.0.4
 
-  jsdom@27.4.0(@noble/hashes@1.8.0):
+  jsdom@27.4.0(@noble/hashes@2.4.0):
     dependencies:
       '@acemir/cssom': 0.9.32
       '@asamuzakjp/dom-selector': 6.8.1
-      '@exodus/bytes': 1.16.0(@noble/hashes@1.8.0)
+      '@exodus/bytes': 1.16.0(@noble/hashes@2.4.0)
       cssstyle: 5.3.7
       data-urls: 6.0.1
       decimal.js: 10.6.0
-      html-encoding-sniffer: 6.0.0(@noble/hashes@1.8.0)
+      html-encoding-sniffer: 6.0.0(@noble/hashes@2.4.0)
       http-proxy-agent: 7.0.2
       https-proxy-agent: 7.0.6
       is-potential-custom-element-name: 1.0.1
@@ -12203,6 +12265,15 @@ snapshots:
       - openapi-types
       - supports-color
       - typescript
+
+  otplib@13.5.0:
+    dependencies:
+      '@otplib/core': 13.5.0
+      '@otplib/hotp': 13.5.0
+      '@otplib/plugin-base32-scure': 13.5.0
+      '@otplib/plugin-crypto-noble': 13.5.0
+      '@otplib/totp': 13.5.0
+      '@otplib/uri': 13.5.0
 
   own-keys@1.0.2:
     dependencies:
@@ -13387,7 +13458,7 @@ snapshots:
       terser: 5.51.2
       yaml: 2.9.1
 
-  vitest@3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1):
+  vitest@3.2.7(@types/node@22.20.5)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.4.0))(lightningcss@1.33.0)(terser@5.51.2)(yaml@2.9.1):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.7
@@ -13414,7 +13485,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.5
-      jsdom: 27.4.0(@noble/hashes@1.8.0)
+      jsdom: 27.4.0(@noble/hashes@2.4.0)
     transitivePeerDependencies:
       - jiti
       - less

@@ -16,12 +16,20 @@ export {
   SessionStore,
 } from './domain/ports';
 export {
+  PendingSecondFactors,
+  SecondFactorRepository,
+  TrustedDeviceRepository,
+} from './domain/second-factor.ports';
+export {
   FakePasswordHasher,
   InMemoryAccountRepository,
   InMemoryBackgroundTasks,
   InMemoryBreachChecker,
   InMemoryEventThrottle,
   InMemoryMailSender,
+  InMemoryPendingSecondFactors,
+  InMemorySecondFactorRepository,
+  InMemoryTrustedDeviceRepository,
   InMemoryProfileLockPolicies,
   InMemoryRateLimiter,
   InMemorySecurityLog,

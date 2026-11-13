@@ -50,7 +50,9 @@ export const verifyEmailBody = zod.object({
 });
 
 /**
- * @summary Connexion (AUTH-07) : nouvelle session, ancienne session du navigateur révoquée.
+ * @summary Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si
+le TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le
+client poste le code à `POST /auth/totp/verify`.
  */
 export const signInBodyEmailMin = 3;
 export const signInBodyEmailMax = 254;
@@ -73,6 +75,11 @@ export const signInResponse = zod.object({
       expiresAt: zod.iso.datetime({}),
     })
     .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
 });
 
 /**
@@ -99,6 +106,11 @@ export const changePasswordResponse = zod.object({
       expiresAt: zod.iso.datetime({}),
     })
     .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
 });
 
 /**
@@ -134,12 +146,25 @@ export const confirmPasswordResetBody = zod.object({
 });
 
 /**
- * @summary AUTH-14 : même session, nouveau jeton, `reauth_at` posé ; jeton CSRF renouvelé.
+ * @summary AUTH-14 : mot de passe, plus un code si le TOTP est actif. Même session, nouveau jeton,
+`reauth_at` posé ; jeton CSRF renouvelé.
  */
 export const reauthenticateBodyPasswordMax = 256;
 
+export const reauthenticateBodyCodeMin = 6;
+export const reauthenticateBodyCodeMax = 32;
+
+export const reauthenticateBodyCodeRegExp = new RegExp('^[0-9A-Za-z -]{6,32}$');
+
 export const reauthenticateBody = zod.object({
   password: zod.string().min(1).max(reauthenticateBodyPasswordMax),
+  code: zod
+    .string()
+    .min(reauthenticateBodyCodeMin)
+    .max(reauthenticateBodyCodeMax)
+    .regex(reauthenticateBodyCodeRegExp)
+    .optional()
+    .describe('AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours).'),
 });
 
 export const reauthenticateResponse = zod.object({
@@ -153,6 +178,24 @@ export const reauthenticateResponse = zod.object({
       expiresAt: zod.iso.datetime({}),
     })
     .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
+});
+
+/**
+ * @summary AUTH-10, AUTH-14 : les anciens codes de secours sont invalidés.
+ */
+export const regenerateRecoveryCodesResponseRecoveryCodesMin = 10;
+export const regenerateRecoveryCodesResponseRecoveryCodesMax = 10;
+
+export const regenerateRecoveryCodesResponse = zod.object({
+  recoveryCodes: zod
+    .array(zod.string())
+    .min(regenerateRecoveryCodesResponseRecoveryCodesMin)
+    .max(regenerateRecoveryCodesResponseRecoveryCodesMax),
 });
 
 /**
@@ -198,4 +241,115 @@ export const registerAccountBody = zod.object({
     .max(registerAccountBodyTimezoneMax)
     .optional()
     .describe('Fuseau IANA du navigateur ; à défaut, Europe\/Paris.'),
+});
+
+/**
+ * @summary AUTH-05, AUTH-10, AUTH-14 : confirmation par un code ; toutes les autres sessions tombent,
+celle-ci est remplacée ; codes de secours, une seule fois.
+ */
+export const activateTotpBodyCodeMin = 6;
+export const activateTotpBodyCodeMax = 6;
+
+export const activateTotpBodyCodeRegExp = new RegExp('^\\d{6}$');
+
+export const activateTotpBody = zod.object({
+  code: zod
+    .string()
+    .min(activateTotpBodyCodeMin)
+    .max(activateTotpBodyCodeMax)
+    .regex(activateTotpBodyCodeRegExp),
+});
+
+export const activateTotpResponseRecoveryCodesMin = 10;
+export const activateTotpResponseRecoveryCodesMax = 10;
+
+export const activateTotpResponse = zod.object({
+  authenticated: zod.boolean(),
+  csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
+  session: zod
+    .object({
+      id: zod.uuid(),
+      activeProfileId: zod.uuid().nullable(),
+      profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
+      expiresAt: zod.iso.datetime({}),
+    })
+    .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
+  recoveryCodes: zod
+    .array(zod.string())
+    .min(activateTotpResponseRecoveryCodesMin)
+    .max(activateTotpResponseRecoveryCodesMax),
+});
+
+/**
+ * @summary AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.
+ */
+export const disableTotpResponse = zod.object({
+  authenticated: zod.boolean(),
+  csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
+  session: zod
+    .object({
+      id: zod.uuid(),
+      activeProfileId: zod.uuid().nullable(),
+      profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
+      expiresAt: zod.iso.datetime({}),
+    })
+    .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
+});
+
+/**
+ * @summary AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif.
+ */
+export const startTotpEnrollmentResponse = zod.object({
+  secret: zod.string().describe('Secret base32, pour une saisie à la main.'),
+  otpauthUri: zod.string().describe('URI otpauth:\/\/ à afficher en QR code.'),
+});
+
+/**
+ * @summary Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification
+du cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.
+ */
+export const verifySecondFactorBodyCodeMin = 6;
+export const verifySecondFactorBodyCodeMax = 32;
+
+export const verifySecondFactorBodyCodeRegExp = new RegExp('^[0-9A-Za-z -]{6,32}$');
+export const verifySecondFactorBodyTrustDeviceDefault = false;
+
+export const verifySecondFactorBody = zod.object({
+  code: zod
+    .string()
+    .min(verifySecondFactorBodyCodeMin)
+    .max(verifySecondFactorBodyCodeMax)
+    .regex(verifySecondFactorBodyCodeRegExp),
+  trustDevice: zod
+    .boolean()
+    .optional()
+    .describe('« Faire confiance à cet appareil 30 jours » (AUTH-12).'),
+});
+
+export const verifySecondFactorResponse = zod.object({
+  authenticated: zod.boolean(),
+  csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
+  session: zod
+    .object({
+      id: zod.uuid(),
+      activeProfileId: zod.uuid().nullable(),
+      profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
+      expiresAt: zod.iso.datetime({}),
+    })
+    .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
 });

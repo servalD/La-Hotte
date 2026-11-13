@@ -21,8 +21,13 @@ import type {
   PasswordResetConfirmDto,
   ProblemDetailsDto,
   ReauthDto,
+  RecoveryCodesView,
   RegisterDto,
+  SecondFactorDto,
   SessionStatusView,
+  TotpActivationView,
+  TotpCodeDto,
+  TotpEnrollmentView,
 } from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
@@ -286,7 +291,9 @@ export const useVerifyEmail = <TError = ErrorType<ProblemDetailsDto>, TContext =
   return useMutation(mutationOptions, queryClient);
 };
 /**
- * @summary Connexion (AUTH-07) : nouvelle session, ancienne session du navigateur révoquée.
+ * @summary Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si
+le TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le
+client poste le code à `POST /auth/totp/verify`.
  */
 export const getSignInUrl = () => {
   return `/api/v1/auth/login`;
@@ -344,7 +351,9 @@ export type SignInMutationBody = LoginDto;
 export type SignInMutationError = ErrorType<ProblemDetailsDto>;
 
 /**
- * @summary Connexion (AUTH-07) : nouvelle session, ancienne session du navigateur révoquée.
+ * @summary Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si
+le TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le
+client poste le code à `POST /auth/totp/verify`.
  */
 export const useSignIn = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
   options?: {
@@ -669,7 +678,8 @@ export const useConfirmPasswordReset = <TError = ErrorType<ProblemDetailsDto>, T
   return useMutation(mutationOptions, queryClient);
 };
 /**
- * @summary AUTH-14 : même session, nouveau jeton, `reauth_at` posé ; jeton CSRF renouvelé.
+ * @summary AUTH-14 : mot de passe, plus un code si le TOTP est actif. Même session, nouveau jeton,
+`reauth_at` posé ; jeton CSRF renouvelé.
  */
 export const getReauthenticateUrl = () => {
   return `/api/v1/auth/reauth`;
@@ -728,7 +738,8 @@ export type ReauthenticateMutationBody = ReauthDto;
 export type ReauthenticateMutationError = ErrorType<ProblemDetailsDto>;
 
 /**
- * @summary AUTH-14 : même session, nouveau jeton, `reauth_at` posé ; jeton CSRF renouvelé.
+ * @summary AUTH-14 : mot de passe, plus un code si le TOTP est actif. Même session, nouveau jeton,
+`reauth_at` posé ; jeton CSRF renouvelé.
  */
 export const useReauthenticate = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
   options?: {
@@ -748,6 +759,89 @@ export const useReauthenticate = <TError = ErrorType<ProblemDetailsDto>, TContex
   TContext
 > => {
   const mutationOptions = getReauthenticateMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-10, AUTH-14 : les anciens codes de secours sont invalidés.
+ */
+export const getRegenerateRecoveryCodesUrl = () => {
+  return `/api/v1/auth/recovery-codes`;
+};
+
+export const regenerateRecoveryCodes = async (
+  options?: RequestInit,
+): Promise<RecoveryCodesView> => {
+  return apiFetch<RecoveryCodesView>(getRegenerateRecoveryCodesUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getRegenerateRecoveryCodesMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateRecoveryCodes>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof regenerateRecoveryCodes>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['regenerateRecoveryCodes'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof regenerateRecoveryCodes>>,
+    void
+  > = () => {
+    return regenerateRecoveryCodes(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegenerateRecoveryCodesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof regenerateRecoveryCodes>>
+>;
+
+export type RegenerateRecoveryCodesMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-10, AUTH-14 : les anciens codes de secours sont invalidés.
+ */
+export const useRegenerateRecoveryCodes = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof regenerateRecoveryCodes>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof regenerateRecoveryCodes>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationOptions = getRegenerateRecoveryCodesMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
@@ -835,6 +929,299 @@ export const useRegisterAccount = <TError = ErrorType<ProblemDetailsDto>, TConte
   TContext
 > => {
   const mutationOptions = getRegisterAccountMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-05, AUTH-10, AUTH-14 : confirmation par un code ; toutes les autres sessions tombent,
+celle-ci est remplacée ; codes de secours, une seule fois.
+ */
+export const getActivateTotpUrl = () => {
+  return `/api/v1/auth/totp/activate`;
+};
+
+export const activateTotp = async (
+  totpCodeDto: TotpCodeDto,
+  options?: RequestInit,
+): Promise<TotpActivationView> => {
+  return apiFetch<TotpActivationView>(getActivateTotpUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(totpCodeDto),
+  });
+};
+
+export const getActivateTotpMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateTotp>>,
+    TError,
+    { data: TotpCodeDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof activateTotp>>,
+  TError,
+  { data: TotpCodeDto },
+  TContext
+> => {
+  const mutationKey = ['activateTotp'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof activateTotp>>,
+    { data: TotpCodeDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return activateTotp(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActivateTotpMutationResult = NonNullable<Awaited<ReturnType<typeof activateTotp>>>;
+export type ActivateTotpMutationBody = TotpCodeDto;
+export type ActivateTotpMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-05, AUTH-10, AUTH-14 : confirmation par un code ; toutes les autres sessions tombent,
+celle-ci est remplacée ; codes de secours, une seule fois.
+ */
+export const useActivateTotp = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof activateTotp>>,
+      TError,
+      { data: TotpCodeDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof activateTotp>>,
+  TError,
+  { data: TotpCodeDto },
+  TContext
+> => {
+  const mutationOptions = getActivateTotpMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.
+ */
+export const getDisableTotpUrl = () => {
+  return `/api/v1/auth/totp/disable`;
+};
+
+export const disableTotp = async (options?: RequestInit): Promise<SessionStatusView> => {
+  return apiFetch<SessionStatusView>(getDisableTotpUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getDisableTotpMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof disableTotp>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof disableTotp>>, TError, void, TContext> => {
+  const mutationKey = ['disableTotp'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof disableTotp>>, void> = () => {
+    return disableTotp(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisableTotpMutationResult = NonNullable<Awaited<ReturnType<typeof disableTotp>>>;
+
+export type DisableTotpMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.
+ */
+export const useDisableTotp = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof disableTotp>>, TError, void, TContext>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof disableTotp>>, TError, void, TContext> => {
+  const mutationOptions = getDisableTotpMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif.
+ */
+export const getStartTotpEnrollmentUrl = () => {
+  return `/api/v1/auth/totp/enroll`;
+};
+
+export const startTotpEnrollment = async (options?: RequestInit): Promise<TotpEnrollmentView> => {
+  return apiFetch<TotpEnrollmentView>(getStartTotpEnrollmentUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getStartTotpEnrollmentMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startTotpEnrollment>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof startTotpEnrollment>>, TError, void, TContext> => {
+  const mutationKey = ['startTotpEnrollment'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startTotpEnrollment>>,
+    void
+  > = () => {
+    return startTotpEnrollment(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartTotpEnrollmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startTotpEnrollment>>
+>;
+
+export type StartTotpEnrollmentMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif.
+ */
+export const useStartTotpEnrollment = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof startTotpEnrollment>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof startTotpEnrollment>>, TError, void, TContext> => {
+  const mutationOptions = getStartTotpEnrollmentMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification
+du cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.
+ */
+export const getVerifySecondFactorUrl = () => {
+  return `/api/v1/auth/totp/verify`;
+};
+
+export const verifySecondFactor = async (
+  secondFactorDto: SecondFactorDto,
+  options?: RequestInit,
+): Promise<SessionStatusView> => {
+  return apiFetch<SessionStatusView>(getVerifySecondFactorUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(secondFactorDto),
+  });
+};
+
+export const getVerifySecondFactorMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifySecondFactor>>,
+    TError,
+    { data: SecondFactorDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifySecondFactor>>,
+  TError,
+  { data: SecondFactorDto },
+  TContext
+> => {
+  const mutationKey = ['verifySecondFactor'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifySecondFactor>>,
+    { data: SecondFactorDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifySecondFactor(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifySecondFactorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifySecondFactor>>
+>;
+export type VerifySecondFactorMutationBody = SecondFactorDto;
+export type VerifySecondFactorMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification
+du cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.
+ */
+export const useVerifySecondFactor = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof verifySecondFactor>>,
+      TError,
+      { data: SecondFactorDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof verifySecondFactor>>,
+  TError,
+  { data: SecondFactorDto },
+  TContext
+> => {
+  const mutationOptions = getVerifySecondFactorMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

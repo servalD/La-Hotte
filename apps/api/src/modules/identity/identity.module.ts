@@ -18,6 +18,31 @@ import { ResolveSession } from './application/resolve-session.use-case';
 import { SessionLifecycle } from './application/session-lifecycle';
 import { SignInWithPassword } from './application/sign-in-with-password.use-case';
 import { VerifyEmail } from './application/verify-email.use-case';
+import { DisableTotp } from './application/disable-totp.use-case';
+import { ActivateTotp, StartTotpEnrollment } from './application/enroll-totp.use-case';
+import { GetAccount } from './application/get-account.use-case';
+import {
+  ListTrustedDevices,
+  RevokeTrustedDevice,
+} from './application/manage-trusted-devices.use-case';
+import { RegenerateRecoveryCodes } from './application/regenerate-recovery-codes.use-case';
+import { SecondFactorVerifier } from './application/second-factor-verifier';
+import { VerifySecondFactor } from './application/verify-second-factor.use-case';
+import {
+  PendingSecondFactors,
+  SecondFactorRepository,
+  SecretCipher,
+  TotpEngine,
+  TrustedDeviceRepository,
+} from './domain/second-factor.ports';
+import { AesGcmSecretCipher } from './infrastructure/aes-secret-cipher';
+import { OtplibTotpEngine } from './infrastructure/otplib-totp-engine';
+import {
+  PrismaSecondFactorRepository,
+  PrismaTrustedDeviceRepository,
+} from './infrastructure/prisma-second-factor-repository';
+import { RedisPendingSecondFactors } from './infrastructure/redis-pending-second-factors';
+import { AccountController, TrustedDevicesController } from './presentation/account.controller';
 import {
   AccountRepository,
   BackgroundTasks,
@@ -60,10 +85,16 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
 
 /**
  * Module `identity` (ADR 0011, ADR 0013) : sessions, gardes, limitation, journal de sécurité,
- * comptes par mot de passe.
+ * comptes par mot de passe, second facteur (TOTP, codes de secours, appareils de confiance).
  */
 @Module({
-  controllers: [SessionController, SessionsController, AuthController],
+  controllers: [
+    SessionController,
+    SessionsController,
+    AuthController,
+    AccountController,
+    TrustedDevicesController,
+  ],
   providers: [
     ResolveSession,
     AuthorizeProfile,
@@ -86,6 +117,15 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
     RevokeSession,
     PurgeUnverifiedAccounts,
     UnverifiedPurgeScheduler,
+    SecondFactorVerifier,
+    VerifySecondFactor,
+    StartTotpEnrollment,
+    ActivateTotp,
+    DisableTotp,
+    RegenerateRecoveryCodes,
+    ListTrustedDevices,
+    RevokeTrustedDevice,
+    GetAccount,
     { provide: SessionStore, useClass: RedisSessionStore },
     { provide: SecretTokens, useClass: CryptoSecretTokens },
     { provide: CsrfTokens, useClass: HmacCsrfTokens },
@@ -100,6 +140,11 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
     { provide: PasswordBreachChecker, useClass: HibpBreachChecker },
     { provide: BackgroundTasks, useClass: InProcessBackgroundTasks },
     { provide: IdentitySettings, useClass: EnvIdentitySettings },
+    { provide: SecondFactorRepository, useClass: PrismaSecondFactorRepository },
+    { provide: TrustedDeviceRepository, useClass: PrismaTrustedDeviceRepository },
+    { provide: PendingSecondFactors, useClass: RedisPendingSecondFactors },
+    { provide: SecretCipher, useClass: AesGcmSecretCipher },
+    { provide: TotpEngine, useClass: OtplibTotpEngine },
     // Refus par défaut sur toutes les routes de l'application (SEC-01).
     { provide: APP_GUARD, useClass: IdentityGuardChain },
   ],

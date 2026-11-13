@@ -40,6 +40,8 @@ const PUBLIC_ROUTES = [
   // Avant session (ADR 0013, « CSRF » : jeton de pré-session).
   'POST /api/v1/auth/register',
   'POST /api/v1/auth/login',
+  // Second facteur : pré-authentification (`__Host-lh_pending`), pas encore de session (AUTH-12).
+  'POST /api/v1/auth/totp/verify',
   'POST /api/v1/auth/email/verify',
   'POST /api/v1/auth/email/cancel',
   'POST /api/v1/auth/password/reset',
@@ -146,6 +148,7 @@ describe('GET /api/v1/session (API-21)', () => {
       authenticated: false,
       csrfToken: expect.any(String),
       session: null,
+      secondFactorPending: false,
     });
     const cookies = cookiesOf(res);
     const presession = cookies.find((c) => c.startsWith(`${PRESESSION_COOKIE}=`));
@@ -178,6 +181,7 @@ describe('GET /api/v1/session (API-21)', () => {
         profileUnlocked: true,
         expiresAt: expect.any(String),
       },
+      secondFactorPending: false,
     });
     expect(res.text).not.toContain(user.token);
     expect(res.text).not.toContain(user.tokenHash);

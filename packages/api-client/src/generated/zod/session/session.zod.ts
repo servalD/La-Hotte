@@ -9,7 +9,8 @@ import * as zod from 'zod';
 
 /**
  * @summary État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la
-pré-session (CSRF de connexion). Ne prolonge jamais le déverrouillage du profil.
+pré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne
+prolonge jamais le déverrouillage du profil.
  */
 export const getSessionResponse = zod.object({
   authenticated: zod.boolean(),
@@ -22,4 +23,9 @@ export const getSessionResponse = zod.object({
       expiresAt: zod.iso.datetime({}),
     })
     .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
 });

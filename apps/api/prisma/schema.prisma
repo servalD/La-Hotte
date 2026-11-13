@@ -87,6 +87,8 @@ model Account {
   status          AccountStatus @default(ACTIVE)
   totpSecretEnc   Bytes?        @map("totp_secret_enc")
   totpEnabledAt   DateTime?     @map("totp_enabled_at") @db.Timestamptz(3)
+  /// AUTH-11 : dernier pas de temps TOTP accepté ; un code de ce pas ou d'un pas antérieur est refusé.
+  totpLastStep    Int?          @map("totp_last_step")
   ageAttestedAt   DateTime      @map("age_attested_at") @db.Timestamptz(3)
   authEpoch       Int           @default(0) @map("auth_epoch")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -117,17 +119,19 @@ model AuthIdentity {
   @@map("auth_identity")
 }
 
+/// Codes de secours (AUTH-10, SEC-22) : 80 bits tirés par le serveur, stockés en SHA-256.
 model RecoveryCode {
   id        String    @id @db.Uuid
   accountId String    @map("account_id") @db.Uuid
-  codeHash  String    @map("code_hash") @db.VarChar(255)
+  /// SHA-256 du code normalisé, en hexadécimal.
+  codeHash  String    @map("code_hash") @db.Char(64)
   usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
-  @@index([accountId])
+  @@unique([accountId, codeHash])
   @@map("recovery_code")
 }
 

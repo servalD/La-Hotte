@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   Equals,
+  IsBoolean,
   IsEmail,
   IsOptional,
   IsString,
@@ -77,11 +78,46 @@ export class LoginDto {
   password!: string;
 }
 
+/**
+ * Code du second facteur : 6 chiffres TOTP, ou code de secours (16 caractères, tirets et espaces
+ * tolérés). La forme exacte est vérifiée par le domaine ; ici, une borne.
+ */
+const SECOND_FACTOR_CODE = /^[0-9A-Za-z -]{6,32}$/;
+
 export class ReauthDto {
   @IsString()
   @Length(1, PASSWORD_MAX_LENGTH)
   @ApiProperty({ minLength: 1, maxLength: PASSWORD_MAX_LENGTH, format: 'password' })
   password!: string;
+
+  /** AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours). */
+  @IsOptional()
+  @IsString()
+  @Matches(SECOND_FACTOR_CODE)
+  @ApiProperty({ required: false, pattern: SECOND_FACTOR_CODE.source, minLength: 6, maxLength: 32 })
+  code?: string;
+}
+
+/** Second facteur à la connexion (AUTH-10, AUTH-12). */
+export class SecondFactorDto {
+  @IsString()
+  @Matches(SECOND_FACTOR_CODE)
+  @ApiProperty({ pattern: SECOND_FACTOR_CODE.source, minLength: 6, maxLength: 32 })
+  code!: string;
+
+  /** « Faire confiance à cet appareil 30 jours » (AUTH-12). */
+  @IsOptional()
+  @IsBoolean()
+  @ApiProperty({ required: false, default: false })
+  trustDevice?: boolean;
+}
+
+/** Confirmation de l'activation du TOTP : un code de l'application, 6 chiffres. */
+export class TotpCodeDto {
+  @IsString()
+  @Matches(/^\d{6}$/)
+  @ApiProperty({ pattern: '^\\d{6}$', minLength: 6, maxLength: 6 })
+  code!: string;
 }
 
 export class EmailDto {

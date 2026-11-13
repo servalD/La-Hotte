@@ -19,6 +19,18 @@ const envSchema = z.object({
   // ADR 0013. Secrets de 32 caractères au moins ; des clés distinctes, jamais réutilisées.
   CSRF_SECRET: z.string().min(32),
   KEY_HMAC_SECRET: z.string().min(32),
+  // SEC-22, AUTH-11 : trousseau de chiffrement applicatif (secrets TOTP), hors base. Forme
+  // `id:clé[,id:clé…]`, `id` entier de 0 à 255, clé de 32 octets en base64 ; la première chiffre,
+  // toutes déchiffrent (rotation). L'identifiant 0 est réservé au développement, aux tests et à
+  // la CI : la production le refuse.
+  SECRET_ENCRYPTION_KEYS: z
+    .string()
+    .min(1)
+    .transform((raw, ctx) => {
+      const keys = parseKeyring(raw);
+      if (!keys) ctx.addIssue({ code: 'custom', message: 'trousseau invalide' });
+      return keys ?? [];
+    }),
   // Nombre de mandataires de confiance devant l'API (`trust proxy` d'Express) : 1 en production
   // (Caddy), 0 en développement. Seule source de l'adresse du client (SEC-30).
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
@@ -31,6 +43,28 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/** Clé du trousseau de chiffrement applicatif (SEC-22). */
+export interface EncryptionKey {
+  readonly id: number;
+  readonly key: Buffer;
+}
+
+const KEYRING_ENTRY = /^(\d{1,3}):([A-Za-z0-9+/]{43}=)$/;
+
+/** `null` si une entrée est mal formée, une clé n'a pas 32 octets ou un identifiant est répété. */
+export function parseKeyring(raw: string): EncryptionKey[] | null {
+  const keys: EncryptionKey[] = [];
+  for (const entry of raw.split(',')) {
+    const match = KEYRING_ENTRY.exec(entry.trim());
+    if (!match?.[1] || !match[2]) return null;
+    const id = Number(match[1]);
+    const key = Buffer.from(match[2], 'base64');
+    if (id > 255 || key.length !== 32 || keys.some((k) => k.id === id)) return null;
+    keys.push({ id, key });
+  }
+  return keys.length > 0 ? keys : null;
+}
 
 export function parseEnv(source: NodeJS.ProcessEnv): Env {
   const result = envSchema.safeParse(source);
@@ -65,6 +99,13 @@ function productionProblems(source: NodeJS.ProcessEnv, env: Env): string[] {
   }
   if (NON_PRODUCTION_SECRET.test(env.CSRF_SECRET)) problems.push('CSRF_SECRET');
   if (NON_PRODUCTION_SECRET.test(env.KEY_HMAC_SECRET)) problems.push('KEY_HMAC_SECRET');
+  if (
+    env.SECRET_ENCRYPTION_KEYS.some(
+      (k) => k.id === 0 || NON_PRODUCTION_SECRET.test(k.key.toString('latin1')),
+    )
+  ) {
+    problems.push('SECRET_ENCRYPTION_KEYS');
+  }
   const smtp = new URL(env.SMTP_URL);
   if (smtp.protocol !== 'smtps:' && smtp.searchParams.get('requireTLS') !== 'true') {
     problems.push('SMTP_URL');

@@ -1,6 +1,37 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/account": {
+      "get": {
+        "operationId": "getAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/auth/email": {
       "put": {
         "operationId": "requestEmailChange",
@@ -142,7 +173,7 @@
             }
           }
         },
-        "summary": "Connexion (AUTH-07) : nouvelle session, ancienne session du navigateur révoquée.",
+        "summary": "Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si\nle TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le\nclient poste le code à `POST /auth/totp/verify`.",
         "tags": [
           "auth"
         ]
@@ -321,7 +352,39 @@
             }
           }
         },
-        "summary": "AUTH-14 : même session, nouveau jeton, `reauth_at` posé ; jeton CSRF renouvelé.",
+        "summary": "AUTH-14 : mot de passe, plus un code si le TOTP est actif. Même session, nouveau jeton,\n`reauth_at` posé ; jeton CSRF renouvelé.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/recovery-codes": {
+      "post": {
+        "operationId": "regenerateRecoveryCodes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-10, AUTH-14 : les anciens codes de secours sont invalidés.",
         "tags": [
           "auth"
         ]
@@ -357,6 +420,154 @@
           }
         },
         "summary": "AUTH-01, AUTH-09 : même réponse (`202`), même délai, que l'adresse ait déjà un compte ou non.\nAucune session n'est ouverte ; le lien de vérification part par e-mail.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/activate": {
+      "post": {
+        "operationId": "activateTotp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpActivationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-05, AUTH-10, AUTH-14 : confirmation par un code ; toutes les autres sessions tombent,\ncelle-ci est remplacée ; codes de secours, une seule fois.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/disable": {
+      "post": {
+        "operationId": "disableTotp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/enroll": {
+      "post": {
+        "operationId": "startTotpEnrollment",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpEnrollmentView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/verify": {
+      "post": {
+        "operationId": "verifySecondFactor",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification\ndu cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.",
         "tags": [
           "auth"
         ]
@@ -485,7 +696,7 @@
             }
           }
         },
-        "summary": "État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la\npré-session (CSRF de connexion). Ne prolonge jamais le déverrouillage du profil.",
+        "summary": "État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la\npré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne\nprolonge jamais le déverrouillage du profil.",
         "tags": [
           "session"
         ]
@@ -556,6 +767,72 @@
           "sessions"
         ]
       }
+    },
+    "/api/v1/trusted-devices": {
+      "get": {
+        "operationId": "listTrustedDevices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustedDeviceListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/trusted-devices/{id}": {
+      "delete": {
+        "operationId": "revokeTrustedDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Révoque l'appareil et les sessions ouvertes grâce à lui. `404` pour un appareil inconnu comme\npour celui d'un autre compte (SEC-04).",
+        "tags": [
+          "account"
+        ]
+      }
     }
   },
   "info": {
@@ -621,6 +898,37 @@
           "createdAt",
           "lastSeenAt",
           "current"
+        ]
+      },
+      "AccountView": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "totpEnabled": {
+            "type": "boolean",
+            "description": "La ré-authentification demande alors un code (AUTH-14)."
+          },
+          "recoveryCodesRemaining": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "email",
+          "emailVerified",
+          "hasPassword",
+          "totpEnabled",
+          "recoveryCodesRemaining"
         ]
       },
       "CreateExampleItemDto": {
@@ -904,10 +1212,36 @@
             "minLength": 1,
             "maxLength": 256,
             "format": "password"
+          },
+          "code": {
+            "type": "string",
+            "description": "AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours).",
+            "pattern": "^[0-9A-Za-z -]{6,32}$",
+            "minLength": 6,
+            "maxLength": 32
           }
         },
         "required": [
           "password"
+        ]
+      },
+      "RecoveryCodesView": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "minItems": 10,
+            "maxItems": 10,
+            "example": [
+              "7K2M-9QXA-4T0P-ZR8H"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "recoveryCodes"
         ]
       },
       "RegisterDto": {
@@ -959,6 +1293,25 @@
           "ageAttested"
         ]
       },
+      "SecondFactorDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9A-Za-z -]{6,32}$",
+            "minLength": 6,
+            "maxLength": 32
+          },
+          "trustDevice": {
+            "type": "boolean",
+            "description": "« Faire confiance à cet appareil 30 jours » (AUTH-12).",
+            "default": false
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
       "SessionStatusView": {
         "type": "object",
         "properties": {
@@ -977,12 +1330,17 @@
                 "$ref": "#/components/schemas/SessionSummaryView"
               }
             ]
+          },
+          "secondFactorPending": {
+            "type": "boolean",
+            "description": "Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST /auth/totp/verify`). Expire en 5 minutes."
           }
         },
         "required": [
           "authenticated",
           "csrfToken",
-          "session"
+          "session",
+          "secondFactorPending"
         ]
       },
       "SessionSummaryView": {
@@ -1011,6 +1369,126 @@
           "activeProfileId",
           "profileUnlocked",
           "expiresAt"
+        ]
+      },
+      "TotpActivationView": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation."
+          },
+          "session": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionSummaryView"
+              }
+            ]
+          },
+          "secondFactorPending": {
+            "type": "boolean",
+            "description": "Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST /auth/totp/verify`). Expire en 5 minutes."
+          },
+          "recoveryCodes": {
+            "minItems": 10,
+            "maxItems": 10,
+            "example": [
+              "7K2M-9QXA-4T0P-ZR8H"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "authenticated",
+          "csrfToken",
+          "session",
+          "secondFactorPending",
+          "recoveryCodes"
+        ]
+      },
+      "TotpCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "minLength": 6,
+            "maxLength": 6
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "TotpEnrollmentView": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "Secret base32, pour une saisie à la main."
+          },
+          "otpauthUri": {
+            "type": "string",
+            "description": "URI otpauth:// à afficher en QR code."
+          }
+        },
+        "required": [
+          "secret",
+          "otpauthUri"
+        ]
+      },
+      "TrustedDeviceListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrustedDeviceView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "TrustedDeviceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Appareil de ce navigateur."
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "createdAt",
+          "expiresAt",
+          "current"
         ]
       }
     }

@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Clock, IdGenerator } from '../../../shared/domain';
-import { IdentityEvents, SecretTokens, type SessionRef, SessionStore } from '../domain/ports';
+import {
+  type AccountAuthState,
+  IdentityEvents,
+  SecretTokens,
+  type SessionRef,
+  SessionStore,
+} from '../domain/ports';
 import { newSessionExpiry, type SessionRecord } from '../domain/session';
 import { SessionRequiredError } from '../domain/session.errors';
 
@@ -33,6 +39,11 @@ export class SessionLifecycle {
    */
   async observeEpoch(accountId: string): Promise<number | null> {
     return (await this.store.accountState(accountId))?.epoch ?? null;
+  }
+
+  /** Comme `observeEpoch`, avec le rôle et le statut (AUTH-13). */
+  async observe(accountId: string): Promise<AccountAuthState | null> {
+    return this.store.accountState(accountId);
   }
 
   /**

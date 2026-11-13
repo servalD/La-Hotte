@@ -2,26 +2,41 @@ import { Body, Controller, HttpCode, Post, Put, Req, Res } from '@nestjs/common'
 import { ApiAcceptedResponse, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import {
+  ActivateTotp,
   AuthorizeProfile,
   CancelEmailChange,
   ChangePassword,
   ConfirmPasswordReset,
   CsrfTokens,
+  DisableTotp,
   type IssuedSession,
+  PENDING_SECOND_FACTOR_TTL_MS,
   Reauthenticate,
+  RegenerateRecoveryCodes,
   RegisterAccount,
   RequestEmailChange,
   RequestPasswordReset,
   type ResolvedSession,
+  SecretTokens,
   sessionRef,
   SignInWithPassword,
   SignOut,
+  StartTotpEnrollment,
+  TRUSTED_DEVICE_LIFETIME_MS,
   VerifyEmail,
+  VerifySecondFactor,
 } from '../application/contract';
 import {
+  clearDeviceCookie,
+  clearPendingCookie,
   clearPresessionCookie,
   clearSessionCookies,
+  DEVICE_COOKIE,
+  PENDING_COOKIE,
+  PRESESSION_COOKIE,
   readCookie,
+  setDeviceCookie,
+  setPendingCookie,
   setSessionCookies,
   UNLOCK_COOKIE,
 } from './cookies';
@@ -41,7 +56,14 @@ import {
   PasswordResetConfirmDto,
   ReauthDto,
   RegisterDto,
+  SecondFactorDto,
+  TotpCodeDto,
 } from './dto/auth.dto';
+import {
+  RecoveryCodesView,
+  TotpActivationView,
+  TotpEnrollmentView,
+} from './dto/second-factor.view';
 import { SessionStatusView } from './dto/session-status.view';
 
 /**
@@ -64,7 +86,13 @@ export class AuthController {
     private readonly changePasswordUseCase: ChangePassword,
     private readonly requestChange: RequestEmailChange,
     private readonly authorizeProfile: AuthorizeProfile,
+    private readonly secondFactor: VerifySecondFactor,
+    private readonly startEnrollment: StartTotpEnrollment,
+    private readonly activate: ActivateTotp,
+    private readonly disable: DisableTotp,
+    private readonly regenerate: RegenerateRecoveryCodes,
     private readonly csrf: CsrfTokens,
+    private readonly tokens: SecretTokens,
   ) {}
 
   /**
@@ -90,7 +118,11 @@ export class AuthController {
     });
   }
 
-  /** Connexion (AUTH-07) : nouvelle session, ancienne session du navigateur révoquée. */
+  /**
+   * Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si
+   * le TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le
+   * client poste le code à `POST /auth/totp/verify`.
+   */
   @Post('login')
   @Public()
   @HttpCode(200)
@@ -102,14 +134,124 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<SessionStatusView> {
-    const issued = await this.signInWithPassword.execute({
+    const result = await this.signInWithPassword.execute({
       email: body.email,
       password: body.password,
       client,
       previous: current ? sessionRef(current.record) : null,
+      deviceToken: readCookie(request, DEVICE_COOKIE),
+    });
+    if (result.kind === 'second_factor') {
+      setPendingCookie(response, result.pendingToken, PENDING_SECOND_FACTOR_TTL_MS);
+      return {
+        authenticated: false,
+        csrfToken: this.beforeSessionCsrf(request, current),
+        session: null,
+        secondFactorPending: true,
+      };
+    }
+    clearPresessionCookie(response);
+    clearPendingCookie(response);
+    return this.open(result.issued, request, response);
+  }
+
+  /**
+   * Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification
+   * du cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.
+   */
+  @Post('totp/verify')
+  @Public()
+  @HttpCode(200)
+  @ApiOkResponse({ type: SessionStatusView })
+  async verifySecondFactor(
+    @Body() body: SecondFactorDto,
+    @CurrentSession() current: ResolvedSession | null,
+    @ClientContext() client: ClientContextValue,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SessionStatusView> {
+    const outcome = await this.secondFactor.execute({
+      pendingToken: readCookie(request, PENDING_COOKIE),
+      code: body.code,
+      trustDevice: body.trustDevice ?? false,
+      client,
+      previous: current ? sessionRef(current.record) : null,
     });
     clearPresessionCookie(response);
+    clearPendingCookie(response);
+    if (outcome.deviceToken) {
+      setDeviceCookie(response, outcome.deviceToken, TRUSTED_DEVICE_LIFETIME_MS);
+    }
+    return this.open(outcome.issued, request, response);
+  }
+
+  /** AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif. */
+  @Post('totp/enroll')
+  @AccountScope()
+  @RequiresRecentReauth()
+  @HttpCode(200)
+  @ApiOkResponse({ type: TotpEnrollmentView })
+  async startTotpEnrollment(
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+  ): Promise<TotpEnrollmentView> {
+    return this.startEnrollment.execute({ accountId: current.record.accountId, client });
+  }
+
+  /**
+   * AUTH-05, AUTH-10, AUTH-14 : confirmation par un code ; toutes les autres sessions tombent,
+   * celle-ci est remplacée ; codes de secours, une seule fois.
+   */
+  @Post('totp/activate')
+  @AccountScope()
+  @RequiresRecentReauth()
+  @HttpCode(200)
+  @ApiOkResponse({ type: TotpActivationView })
+  async activateTotp(
+    @Body() body: TotpCodeDto,
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<TotpActivationView> {
+    const result = await this.activate.execute({
+      accountId: current.record.accountId,
+      code: body.code,
+      client,
+    });
+    const status = await this.open(result.issued, request, response);
+    return Object.assign(status, { recoveryCodes: result.recoveryCodes });
+  }
+
+  /** AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée. */
+  @Post('totp/disable')
+  @AccountScope()
+  @RequiresRecentReauth()
+  @HttpCode(200)
+  @ApiOkResponse({ type: SessionStatusView })
+  async disableTotp(
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SessionStatusView> {
+    const issued = await this.disable.execute({ session: sessionRef(current.record), client });
+    // Les appareils de confiance sont révoqués : le cookie de ce navigateur ne sert plus.
+    clearDeviceCookie(response);
     return this.open(issued, request, response);
+  }
+
+  /** AUTH-10, AUTH-14 : les anciens codes de secours sont invalidés. */
+  @Post('recovery-codes')
+  @AccountScope()
+  @RequiresRecentReauth()
+  @HttpCode(200)
+  @ApiOkResponse({ type: RecoveryCodesView })
+  async regenerateRecoveryCodes(
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+  ): Promise<RecoveryCodesView> {
+    return this.regenerate.execute({ accountId: current.record.accountId, client });
   }
 
   /** Déconnexion : session courante révoquée, cookies retirés. */
@@ -125,7 +267,10 @@ export class AuthController {
     clearSessionCookies(response);
   }
 
-  /** AUTH-14 : même session, nouveau jeton, `reauth_at` posé ; jeton CSRF renouvelé. */
+  /**
+   * AUTH-14 : mot de passe, plus un code si le TOTP est actif. Même session, nouveau jeton,
+   * `reauth_at` posé ; jeton CSRF renouvelé.
+   */
   @Post('reauth')
   @AccountScope()
   @HttpCode(200)
@@ -140,6 +285,7 @@ export class AuthController {
     const issued = await this.reauth.execute({
       session: sessionRef(current.record),
       password: body.password,
+      code: body.code ?? null,
       client,
     });
     return this.open(issued, request, response);
@@ -261,6 +407,19 @@ export class AuthController {
         profileUnlocked: profile.unlocked,
         expiresAt: issued.record.expiresAt.toISOString(),
       },
+      secondFactorPending: false,
     };
+  }
+
+  /**
+   * Jeton CSRF à utiliser pour le second facteur : celui de la pré-session, ou à défaut celui de
+   * la session que le navigateur avait déjà (la garde a accepté l'un des deux).
+   */
+  private beforeSessionCsrf(request: Request, current: ResolvedSession | null): string {
+    const presession = readCookie(request, PRESESSION_COOKIE);
+    if (presession && this.tokens.isWellFormed(presession)) {
+      return this.csrf.forPresession(presession);
+    }
+    return current ? this.csrf.forSession(current.record.tokenHash) : '';
   }
 }

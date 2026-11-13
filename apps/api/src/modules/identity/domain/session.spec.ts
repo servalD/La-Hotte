@@ -1,4 +1,9 @@
-import { rateLimitDelayMs, RATE_LIMIT_MAX_DELAY_MS, RATE_LIMIT_POLICIES } from './rate-limit';
+import {
+  maxDelayFor,
+  rateLimitDelayMs,
+  RATE_LIMIT_MAX_DELAY_MS,
+  RATE_LIMIT_POLICIES,
+} from './rate-limit';
 import {
   hasRecentReauth,
   isProfileUnlocked,
@@ -154,6 +159,12 @@ describe('Limitation (AUTH-07)', () => {
     expect(rateLimitDelayMs(7, 5)).toBe(4000);
     expect(rateLimitDelayMs(500, 5)).toBe(RATE_LIMIT_MAX_DELAY_MS);
     expect(RATE_LIMIT_MAX_DELAY_MS).toBe(15 * MINUTE);
+  });
+
+  it('second facteur : délai plafonné à une heure (revue SEC-40 de la tranche 3, I1)', () => {
+    expect(maxDelayFor('second_factor')).toBe(60 * MINUTE);
+    expect(maxDelayFor('login_pair')).toBe(RATE_LIMIT_MAX_DELAY_MS);
+    expect(rateLimitDelayMs(500, 5, maxDelayFor('second_factor'))).toBe(60 * MINUTE);
   });
 
   it('ADR 0013 : seuls le couple (compte, IP) et le second facteur sont vidés par un succès', () => {

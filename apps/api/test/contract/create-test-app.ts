@@ -15,6 +15,9 @@ import {
   InMemoryBreachChecker,
   InMemoryEventThrottle,
   InMemoryMailSender,
+  InMemoryPendingSecondFactors,
+  InMemorySecondFactorRepository,
+  InMemoryTrustedDeviceRepository,
   InMemoryProfileLockPolicies,
   InMemoryRateLimiter,
   InMemorySecurityLog,
@@ -22,11 +25,14 @@ import {
   MailSender,
   PasswordBreachChecker,
   PasswordHasher,
+  PendingSecondFactors,
   ProfileLockPolicies,
   RateLimiter,
+  SecondFactorRepository,
   SecurityLog,
   SessionStore,
   StaticIdentitySettings,
+  TrustedDeviceRepository,
 } from '../../src/modules/identity/testing';
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
@@ -42,6 +48,9 @@ export interface TestIdentity {
   readonly background: InMemoryBackgroundTasks;
   readonly rateLimiter: InMemoryRateLimiter;
   readonly settings: StaticIdentitySettings;
+  readonly secondFactors: InMemorySecondFactorRepository;
+  readonly trustedDevices: InMemoryTrustedDeviceRepository;
+  readonly pendingSecondFactors: InMemoryPendingSecondFactors;
   /** Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé). */
   signIn(options?: { pin?: boolean; relock?: PinRelock; withProfile?: boolean }): Promise<SignedIn>;
 }
@@ -68,6 +77,9 @@ export async function createTestApp(
   const background = new InMemoryBackgroundTasks();
   const rateLimiter = new InMemoryRateLimiter();
   const settings = new StaticIdentitySettings();
+  const secondFactors = new InMemorySecondFactorRepository(accounts, sessions);
+  const trustedDevices = new InMemoryTrustedDeviceRepository(accounts);
+  const pendingSecondFactors = new InMemoryPendingSecondFactors();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -96,6 +108,12 @@ export async function createTestApp(
     .useValue(background)
     .overrideProvider(IdentitySettings)
     .useValue(settings)
+    .overrideProvider(SecondFactorRepository)
+    .useValue(secondFactors)
+    .overrideProvider(TrustedDeviceRepository)
+    .useValue(trustedDevices)
+    .overrideProvider(PendingSecondFactors)
+    .useValue(pendingSecondFactors)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
@@ -114,6 +132,9 @@ export async function createTestApp(
     background,
     rateLimiter,
     settings,
+    secondFactors,
+    trustedDevices,
+    pendingSecondFactors,
     async signIn({ pin = false, relock = 'IDLE_15', withProfile = true } = {}) {
       const accountId = randomUUID();
       const profileId = randomUUID();

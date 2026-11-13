@@ -61,6 +61,47 @@ describe('RedisRateLimiter', () => {
     }
   });
 
+  it('plafond par portée : une heure pour le second facteur, 15 minutes ailleurs (AUTH-07)', async () => {
+    const factor: RateLimitSubject = { scope: 'second_factor', parts: [randomUUID()] };
+    const pair: RateLimitSubject = { scope: 'login_pair', parts: [randomUUID(), '203.0.113.8'] };
+    // Échecs posés au même instant : chaque essai est réservé à un instant où le délai est passé.
+    for (const subject of [factor, pair]) {
+      for (let i = 0; i < 20; i += 1) {
+        const check = await limiter.check([subject], at(i * 3_600_000));
+        if (!check.reservation) throw new Error('essai attendu');
+        await limiter.recordFailure([subject], t0, check.reservation);
+      }
+    }
+    expect((await limiter.check([factor], t0)).retryAfterMs).toBe(3_600_000);
+    expect((await limiter.check([pair], t0)).retryAfterMs).toBe(900_000);
+  });
+
+  it('recordFailure renvoie les échecs dans la fenêtre, par sujet et dans l’ordre', async () => {
+    const factor: RateLimitSubject = { scope: 'second_factor', parts: [randomUUID()] };
+    const account: RateLimitSubject = { scope: 'login_account', parts: [randomUUID()] };
+    const counts: number[][] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const check = await limiter.check([factor, account], t0);
+      if (!check.reservation) throw new Error('essai attendu');
+      counts.push([...(await limiter.recordFailure([factor, account], t0, check.reservation))]);
+    }
+    expect(counts).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ]);
+    // Deux heures plus tard : la fenêtre d'une heure du compte est purgée, pas celle de 24 h.
+    const later = await limiter.check([factor, account], at(7_200_000));
+    if (!later.reservation) throw new Error('essai attendu');
+    expect(
+      await limiter.recordFailure([factor, account], at(7_200_000), later.reservation),
+    ).toEqual([4, 1]);
+    await limiter.clear([factor]);
+    const cleared = await limiter.check([factor], at(7_200_000));
+    if (!cleared.reservation) throw new Error('essai attendu');
+    expect(await limiter.recordFailure([factor], at(7_200_000), cleared.reservation)).toEqual([1]);
+  });
+
   it('revue SEC-40 B2 : une rafale parallèle sous le seuil ne dépasse jamais le seuil', async () => {
     const factor: RateLimitSubject = { scope: 'second_factor', parts: [randomUUID()] };
     const burst = await Promise.all(Array.from({ length: 200 }, () => limiter.check([factor], t0)));

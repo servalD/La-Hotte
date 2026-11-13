@@ -33,7 +33,23 @@ import {
   type SessionRef,
   SessionStore,
 } from '../domain/ports';
-import { RATE_LIMIT_POLICIES, rateLimitDelayMs, type RateLimitSubject } from '../domain/rate-limit';
+import {
+  maxDelayFor,
+  RATE_LIMIT_POLICIES,
+  rateLimitDelayMs,
+  type RateLimitSubject,
+} from '../domain/rate-limit';
+import type {
+  NewTrustedDevice,
+  PendingSecondFactor,
+  TotpState,
+  TrustedDeviceSummary,
+} from '../domain/second-factor';
+import {
+  PendingSecondFactors,
+  SecondFactorRepository,
+  TrustedDeviceRepository,
+} from '../domain/second-factor.ports';
 import type {
   AccountRole,
   CachedSession,
@@ -288,7 +304,7 @@ export class InMemoryRateLimiter extends RateLimiter {
       const threshold = subject.threshold ?? RATE_LIMIT_POLICIES[subject.scope].threshold;
       const times = this.recent(subject, now);
       const last = times.at(-1);
-      const delay = rateLimitDelayMs(times.length, threshold);
+      const delay = rateLimitDelayMs(times.length, threshold, maxDelayFor(subject.scope));
       if (delay > 0 && last !== undefined) wait = Math.max(wait, last + delay - now.getTime());
       const inflight = this.pending.get(this.key(subject))?.size ?? 0;
       if (inflight > 0 && times.length + inflight >= threshold) busy = true;
@@ -308,11 +324,17 @@ export class InMemoryRateLimiter extends RateLimiter {
     subjects: readonly RateLimitSubject[],
     now: Date,
     reservation: string,
-  ): Promise<void> {
-    for (const subject of subjects) {
-      this.failures.set(this.key(subject), [...this.recent(subject, now), now.getTime()]);
+  ): Promise<readonly number[]> {
+    return subjects.map((subject) => {
+      const times = [...this.recent(subject, now), now.getTime()];
+      this.failures.set(this.key(subject), times);
       this.pending.get(this.key(subject))?.delete(reservation);
-    }
+      return times.length;
+    });
+  }
+
+  async clear(subjects: readonly RateLimitSubject[]): Promise<void> {
+    for (const subject of subjects) this.failures.delete(this.key(subject));
   }
 
   async recordSuccess(subjects: readonly RateLimitSubject[], reservation: string): Promise<void> {
@@ -680,5 +702,173 @@ export class StaticIdentitySettings extends IdentitySettings {
     readonly webOrigin = 'http://localhost:3000',
   ) {
     super();
+  }
+}
+
+/**
+ * TOTP et codes de secours en mémoire. L'état « TOTP actif » est celui du compte en mémoire
+ * (`totpEnabled`), pour que la connexion le voie ; l'époque passe par le magasin de sessions.
+ */
+export class InMemorySecondFactorRepository extends SecondFactorRepository {
+  readonly secrets = new Map<string, Uint8Array>();
+  readonly lastSteps = new Map<string, number>();
+  /** Codes de secours par compte : hash → date d'usage. */
+  readonly recoveryCodes = new Map<string, Map<string, Date | null>>();
+
+  constructor(
+    private readonly accounts: InMemoryAccountRepository,
+    private readonly sessions: InMemorySessionStore,
+  ) {
+    super();
+  }
+
+  private enabled(accountId: string): boolean {
+    return this.accounts.rows.get(accountId)?.totpEnabled ?? false;
+  }
+
+  async findTotp(accountId: string): Promise<TotpState | null> {
+    if (!this.accounts.rows.has(accountId)) return null;
+    return {
+      secretEnc: this.secrets.get(accountId) ?? null,
+      enabled: this.enabled(accountId),
+      lastStep: this.lastSteps.get(accountId) ?? null,
+    };
+  }
+
+  async startEnrollment(accountId: string, secretEnc: Uint8Array): Promise<boolean> {
+    if (!this.accounts.rows.has(accountId) || this.enabled(accountId)) return false;
+    this.secrets.set(accountId, secretEnc);
+    return true;
+  }
+
+  async activate(input: {
+    accountId: string;
+    secretEnc: Uint8Array;
+    step: number;
+    recoveryCodeHashes: readonly string[];
+    authEpoch: number;
+    now: Date;
+  }): Promise<boolean> {
+    const row = this.accounts.rows.get(input.accountId);
+    const current = this.secrets.get(input.accountId);
+    if (!row || row.totpEnabled || !current || !sameBytes(current, input.secretEnc)) return false;
+    row.totpEnabled = true;
+    this.sessions.commitEpoch(input.accountId, input.authEpoch);
+    this.lastSteps.set(input.accountId, input.step);
+    this.recoveryCodes.set(
+      input.accountId,
+      new Map(input.recoveryCodeHashes.map((hash) => [hash, null])),
+    );
+    return true;
+  }
+
+  async consumeStep(accountId: string, step: number): Promise<boolean> {
+    const last = this.lastSteps.get(accountId);
+    if (!this.enabled(accountId) || (last !== undefined && last >= step)) return false;
+    this.lastSteps.set(accountId, step);
+    return true;
+  }
+
+  async consumeRecoveryCode(accountId: string, codeHash: string, now: Date): Promise<boolean> {
+    const codes = this.recoveryCodes.get(accountId);
+    if (!this.enabled(accountId) || !codes?.has(codeHash) || codes.get(codeHash)) return false;
+    codes.set(codeHash, now);
+    return true;
+  }
+
+  async replaceRecoveryCodes(accountId: string, codeHashes: readonly string[]): Promise<boolean> {
+    if (!this.enabled(accountId)) return false;
+    this.recoveryCodes.set(accountId, new Map(codeHashes.map((hash) => [hash, null])));
+    return true;
+  }
+
+  async countUnusedRecoveryCodes(accountId: string): Promise<number> {
+    return [...(this.recoveryCodes.get(accountId)?.values() ?? [])].filter((used) => !used).length;
+  }
+
+  async disable(accountId: string, authEpoch: number, now: Date): Promise<void> {
+    const row = this.accounts.rows.get(accountId);
+    if (!row) throw new Error('Compte introuvable');
+    row.totpEnabled = false;
+    this.secrets.delete(accountId);
+    this.lastSteps.delete(accountId);
+    this.recoveryCodes.delete(accountId);
+    this.accounts.trustedDevicesRevokedAt.set(accountId, now);
+    this.sessions.commitEpoch(accountId, authEpoch);
+  }
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  return a.length === b.length && a.every((byte, i) => byte === b[i]);
+}
+
+/** Appareils de confiance en mémoire ; une réinitialisation (AUTH-06) les révoque tous. */
+export class InMemoryTrustedDeviceRepository extends TrustedDeviceRepository {
+  readonly devices = new Map<string, NewTrustedDevice & { revokedAt: Date | null }>();
+
+  constructor(private readonly accounts: InMemoryAccountRepository) {
+    super();
+  }
+
+  private active(device: NewTrustedDevice & { revokedAt: Date | null }, now: Date): boolean {
+    const resetAt = this.accounts.trustedDevicesRevokedAt.get(device.accountId);
+    return (
+      !device.revokedAt &&
+      device.expiresAt.getTime() > now.getTime() &&
+      (!resetAt || resetAt.getTime() < device.createdAt.getTime())
+    );
+  }
+
+  async create(device: NewTrustedDevice): Promise<void> {
+    this.devices.set(device.id, { ...device, revokedAt: null });
+  }
+
+  async findActive(
+    tokenHash: string,
+    now: Date,
+  ): Promise<{ id: string; accountId: string } | null> {
+    const device = [...this.devices.values()].find(
+      (d) => d.tokenHash === tokenHash && this.active(d, now),
+    );
+    return device ? { id: device.id, accountId: device.accountId } : null;
+  }
+
+  async listActive(accountId: string, now: Date): Promise<TrustedDeviceSummary[]> {
+    return [...this.devices.values()]
+      .filter((d) => d.accountId === accountId && this.active(d, now))
+      .map(({ id, userAgent, createdAt, expiresAt }) => ({ id, userAgent, createdAt, expiresAt }));
+  }
+
+  async revoke(accountId: string, deviceId: string, now: Date): Promise<boolean> {
+    const device = this.devices.get(deviceId);
+    if (device?.accountId !== accountId || !this.active(device, now)) return false;
+    device.revokedAt = now;
+    return true;
+  }
+}
+
+/** Pré-authentifications en mémoire, avec leur durée de vie (horloge réelle). */
+export class InMemoryPendingSecondFactors extends PendingSecondFactors {
+  readonly entries = new Map<string, { pending: PendingSecondFactor; expiresAt: number }>();
+
+  async create(tokenHash: string, pending: PendingSecondFactor, ttlMs: number): Promise<void> {
+    this.entries.set(tokenHash, { pending, expiresAt: Date.now() + ttlMs });
+  }
+
+  async find(tokenHash: string): Promise<PendingSecondFactor | null> {
+    const entry = this.entries.get(tokenHash);
+    if (!entry || entry.expiresAt <= Date.now()) return null;
+    return entry.pending;
+  }
+
+  async consume(tokenHash: string): Promise<PendingSecondFactor | null> {
+    const found = await this.find(tokenHash);
+    this.entries.delete(tokenHash);
+    return found;
+  }
+
+  /** Simule l'expiration des 5 minutes. */
+  expireAll(): void {
+    for (const entry of this.entries.values()) entry.expiresAt = 0;
   }
 }

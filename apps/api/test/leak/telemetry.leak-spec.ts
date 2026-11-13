@@ -5,6 +5,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as Sentry from '@sentry/nestjs';
 import request from 'supertest';
+import { generate } from 'otplib';
 import { inject } from 'vitest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
@@ -50,6 +51,12 @@ const sessionSecrets: Record<string, string> = {};
  * de session ouvert par la connexion.
  */
 const authSecrets: Record<string, string> = {};
+/**
+ * Secrets du second facteur (AUTH-10 à AUTH-12, SEC-22) : secret TOTP, codes de secours (forme
+ * affichée et forme normalisée), jetons de pré-authentification et d'appareil de confiance. Les
+ * codes TOTP (6 chiffres) ne se cherchent pas : un horodatage peut les contenir par hasard.
+ */
+const secondFactorSecrets: Record<string, string> = {};
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
 const mail = new InMemoryMailSender();
 const background = new InMemoryBackgroundTasks();
@@ -346,6 +353,62 @@ async function playAuthScenario(
     .send({ newPassword: thirdPassword })
     .expect(200);
   await http.delete(`/api/v1/sessions/${randomUUID()}`).set(sessionOf(changed)).expect(404);
+
+  // Second facteur (tranche 3) : secret, codes de secours, pré-authentification et appareil de
+  // confiance passent par le corps, la base, Redis et les cookies ; rien ne doit en sortir.
+  const totpSession = sessionOf(
+    await http
+      .post('/api/v1/auth/reauth')
+      .set(sessionOf(changed))
+      .send({ password: thirdPassword })
+      .expect(200),
+  );
+  const enrolled = await http.post('/api/v1/auth/totp/enroll').set(totpSession).expect(200);
+  secondFactorSecrets.totpSecret = enrolled.body.secret as string;
+  const activated = await http
+    .post('/api/v1/auth/totp/activate')
+    .set(totpSession)
+    .send({ code: await generate({ secret: secondFactorSecrets.totpSecret }) })
+    .expect(200);
+  const recoveryCodes = activated.body.recoveryCodes as string[];
+  secondFactorSecrets.recoveryCode = recoveryCodes[0] ?? '';
+  secondFactorSecrets.recoveryCodeRaw = secondFactorSecrets.recoveryCode.replace(/-/g, '');
+  secondFactorSecrets.unusedRecoveryCode = (recoveryCodes[1] ?? '').replace(/-/g, '');
+  const pendingLogin = await http
+    .post('/api/v1/auth/login')
+    .set(before)
+    .send({ email, password: thirdPassword })
+    .expect(200);
+  const pendingCookie = ([] as string[])
+    .concat((pendingLogin.headers['set-cookie'] as unknown as string[] | undefined) ?? [])
+    .find((cookie) => cookie.startsWith('__Host-lh_pending='))
+    ?.split(';')[0];
+  secondFactorSecrets.pendingToken = decodeURIComponent(pendingCookie?.split('=')[1] ?? '');
+  const pending = { ...before, Cookie: `${before.Cookie}; ${pendingCookie ?? ''}` };
+  // Code porteur du marqueur (refusé par la validation), puis code faux (compté), puis juste.
+  await http.post('/api/v1/auth/totp/verify').set(pending).send({ code: MARKER }).expect(400);
+  await http.post('/api/v1/auth/totp/verify').set(pending).send({ code: '000000' }).expect(401);
+  const trusted = await http
+    .post('/api/v1/auth/totp/verify')
+    .set(pending)
+    .send({ code: secondFactorSecrets.recoveryCode, trustDevice: true })
+    .expect(200);
+  const deviceCookie = ([] as string[])
+    .concat((trusted.headers['set-cookie'] as unknown as string[] | undefined) ?? [])
+    .find((cookie) => cookie.startsWith('__Host-lh_device='))
+    ?.split(';')[0];
+  secondFactorSecrets.deviceToken = decodeURIComponent(deviceCookie?.split('=')[1] ?? '');
+  const trustedSession = sessionOf(trusted);
+  const devices = await http
+    .get('/api/v1/trusted-devices')
+    .set({ ...trustedSession, Cookie: `${trustedSession.Cookie ?? ''}; ${deviceCookie ?? ''}` })
+    .expect(200);
+  await http.get('/api/v1/account').set(trustedSession).expect(200);
+  await http
+    .delete(`/api/v1/trusted-devices/${(devices.body.items as { id: string }[])[0]?.id ?? ''}`)
+    .set(trustedSession)
+    .expect(204);
+
   await http
     .post('/api/v1/auth/email/verify')
     .set(before)
@@ -497,6 +560,37 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     }
     for (const [name, secret] of Object.entries(authSecrets)) {
       expect(secret.length).toBeGreaterThan(20);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('AUTH-10 à AUTH-12, SEC-22 : secret TOTP, codes de secours et jetons du second facteur absents de toute sortie', () => {
+    expect(Object.keys(secondFactorSecrets).sort()).toEqual(
+      [
+        'deviceToken',
+        'pendingToken',
+        'recoveryCode',
+        'recoveryCodeRaw',
+        'totpSecret',
+        'unusedRecoveryCode',
+      ].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    // Les routes du second facteur ont bien été tracées (pas de faux vert).
+    for (const route of [
+      '/api/v1/auth/totp/verify',
+      '/api/v1/auth/totp/activate',
+      '/api/v1/trusted-devices/:id',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(secondFactorSecrets)) {
+      expect(secret.length).toBeGreaterThanOrEqual(16);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }
   });
