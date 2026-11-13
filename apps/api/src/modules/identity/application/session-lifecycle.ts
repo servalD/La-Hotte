@@ -106,6 +106,35 @@ export class SessionLifecycle {
     }
   }
 
+  /**
+   * AUTH-05 : session désignée par le client. Le hash est lu par `id` **et** `account_id` avant
+   * toute marque : une session d'un autre compte n'est jamais touchée. `null` si introuvable.
+   */
+  async revokeOwned(accountId: string, sessionId: string): Promise<SessionRef | null> {
+    const ref = await this.store.findOwned(accountId, sessionId);
+    if (!ref) return null;
+    await this.revoke(ref);
+    return ref;
+  }
+
+  async list(accountId: string): Promise<SessionRecord[]> {
+    return this.store.listForAccount(accountId);
+  }
+
+  /**
+   * Événement qui doit tout révoquer (ADR 0013, ADR 0014) : époque portée à E+1 dans Redis
+   * (tout est refusé tout de suite), `apply(E+2)` écrit l'époque et le changement dans sa
+   * transaction, Redis est porté à E+2, puis les lignes de session sont révoquées (nettoyage).
+   * Renvoie l'époque écrite, à passer à `create` pour une session ouverte ensuite.
+   */
+  async changeEpoch(accountId: string, apply: (epoch: number) => Promise<void>): Promise<number> {
+    const epoch = await this.store.beginEpochChange(accountId);
+    await apply(epoch);
+    await this.store.completeEpochChange(accountId, epoch);
+    await this.revokeAll(accountId);
+    return epoch;
+  }
+
   /** PIN-07 : changer de profil reverrouille et efface la ré-authentification. */
   async selectProfile(ref: SessionRef, profileId: string | null): Promise<void> {
     await this.store.setActiveProfile(ref, profileId);

@@ -1,5 +1,11 @@
 // Ce que la présentation peut connaître du module (QA-03) : cas d'usage, ports servant de jetons
 // d'injection, erreurs et règles nécessaires aux gardes.
+export {
+  DISPLAY_NAME_MAX_LENGTH,
+  EMAIL_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+} from '../domain/account';
 export { CsrfTokens, SecretTokens, type SessionRef } from '../domain/ports';
 export { hasRecentReauth, REAUTH_MAX_AGE_MS, REAUTH_PIN_MAX_AGE_MS } from '../domain/session';
 export {
@@ -12,7 +18,24 @@ export {
   AuthorizeProfile,
   type ProfileAccessState,
 } from './authorize-profile.use-case';
+export { CancelEmailChange } from './cancel-email-change.use-case';
+export { ChangePassword } from './change-password.use-case';
 export { CheckSessionAccess } from './check-session-access.use-case';
+export type { ClientInfo } from './client-info';
+export { ConfirmPasswordReset } from './confirm-password-reset.use-case';
+export {
+  ListSessions,
+  RevokeSession,
+  type SessionSummary,
+  SignOut,
+} from './manage-sessions.use-case';
+export { PurgeUnverifiedAccounts } from './purge-unverified-accounts.use-case';
+export { Reauthenticate } from './reauthenticate.use-case';
+export { RegisterAccount } from './register-account.use-case';
 export { ReportCsrfRejection } from './report-csrf-rejection.use-case';
+export { RequestEmailChange } from './request-email-change.use-case';
+export { RequestPasswordReset } from './request-password-reset.use-case';
 export { ResolveSession, type ResolvedSession, sessionRef } from './resolve-session.use-case';
 export { type IssuedSession, SessionLifecycle } from './session-lifecycle';
+export { SignInWithPassword } from './sign-in-with-password.use-case';
+export { VerifyEmail } from './verify-email.use-case';

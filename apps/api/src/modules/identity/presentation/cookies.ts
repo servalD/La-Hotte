@@ -61,6 +61,11 @@ export function setCsrfCookie(response: Response, csrfToken: string): void {
   response.cookie(CSRF_COOKIE, csrfToken, { ...HOST_COOKIE, httpOnly: false });
 }
 
+/** ADR 0013 : la pré-session disparaît à l'ouverture d'une session. */
+export function clearPresessionCookie(response: Response): void {
+  response.clearCookie(PRESESSION_COOKIE, { ...HOST_COOKIE, httpOnly: true });
+}
+
 export function clearSessionCookies(response: Response): void {
   response.clearCookie(SESSION_COOKIE, { ...HOST_COOKIE, httpOnly: true });
   response.clearCookie(UNLOCK_COOKIE, { ...HOST_COOKIE, httpOnly: true });

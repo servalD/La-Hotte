@@ -33,7 +33,18 @@ const http = () => request(app.getHttpServer());
 const MINUTE = 60_000;
 
 /** Routes publiques : liste explicite (SEC-01). Toute nouvelle route publique s'ajoute ici, en revue. */
-const PUBLIC_ROUTES = ['GET /api/v1/session', 'GET /health/live', 'GET /health/ready'];
+const PUBLIC_ROUTES = [
+  'GET /api/v1/session',
+  'GET /health/live',
+  'GET /health/ready',
+  // Avant session (ADR 0013, « CSRF » : jeton de pré-session).
+  'POST /api/v1/auth/register',
+  'POST /api/v1/auth/login',
+  'POST /api/v1/auth/email/verify',
+  'POST /api/v1/auth/email/cancel',
+  'POST /api/v1/auth/password/reset',
+  'POST /api/v1/auth/password/reset/confirm',
+];
 /** Seul `GET` autorisé à modifier l'état (API-21). */
 const OIDC_CALLBACK_ROUTES = ['GET /api/v1/auth/google/callback'];
 

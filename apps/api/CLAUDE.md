@@ -59,7 +59,7 @@ Une garde globale (`IdentityGuardChain`) enchaîne session, CSRF, profil et ré-
 
 Les autres modules n'en importent que `modules/identity` (décorateurs, `CheckSessionAccess`, `IdentityEvents`) : ni le magasin de sessions ni le cycle de vie. Les jetons des ports et les doubles en mémoire sont dans `modules/identity/testing`, réservé aux tests.
 
-Tests : `createTestApp()` remplace les ports d'`identity` par leurs doubles en mémoire et fournit `identity.signIn({ pin, relock, withProfile })` ; `test/support/sign-in.ts` ouvre une session réelle (`createAccountWithProfile` puis `signIn`) pour l'intégration et la non-fuite. Une mutation porte `user.mutation` (cookie, `X-CSRF-Token`, `Origin`), une lecture `Cookie: user.cookie`.
+Tests : `createTestApp()` remplace les ports d'`identity` par leurs doubles en mémoire et fournit `identity.signIn({ pin, relock, withProfile })` ; les tâches de fond (e-mails, inscription) ne s'exécutent qu'à `identity.background.flush()`, le dernier jeton envoyé se lit par `identity.mail.lastToken(adresse)`, et `identity.rateLimiter.reset()` vide les compteurs (toutes les requêtes de supertest ont la même adresse) ; `test/support/sign-in.ts` ouvre une session réelle (`createAccountWithProfile` puis `signIn`) pour l'intégration et la non-fuite. Une mutation porte `user.mutation` (cookie, `X-CSRF-Token`, `Origin`), une lecture `Cookie: user.cookie`.
 
 ## Ajouter un cas d'usage
 

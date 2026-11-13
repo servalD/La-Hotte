@@ -2,6 +2,23 @@
 // Doubles en mémoire des ports du module, pour les tests de cas d'usage et de contrat. Ils
 // reproduisent la sémantique des adaptateurs réels : cache et lignes séparés, marques de
 // révocation, époque, réhydratation verrouillée.
+import { createHash } from 'node:crypto';
+import type {
+  AccountCredentials,
+  AccountTokenPurpose,
+  ConsumedAccountToken,
+  NewAccount,
+  NewAccountToken,
+  NewProfile,
+  RegistrationMode,
+} from '../domain/account';
+import {
+  AccountRepository,
+  BackgroundTasks,
+  IdentitySettings,
+  PasswordBreachChecker,
+  PasswordHasher,
+} from '../domain/account.ports';
 import {
   type AccountAuthState,
   EventThrottle,
@@ -154,6 +171,23 @@ export class InMemorySessionStore extends SessionStore {
     return refs;
   }
 
+  async findOwned(accountId: string, sessionId: string): Promise<SessionRef | null> {
+    const row = this.rows.get(sessionId);
+    return row?.accountId === accountId
+      ? { id: row.id, accountId, tokenHash: row.tokenHash }
+      : null;
+  }
+
+  async listForAccount(accountId: string): Promise<SessionRecord[]> {
+    return [...this.rows.values()].filter((row) => row.accountId === accountId);
+  }
+
+  /** Compte suspendu ou réactivé (purge, AUTH-15). */
+  setActive(accountId: string, active: boolean): void {
+    const account = this.accounts.get(accountId);
+    if (account) account.active = active;
+  }
+
   async rotateToken(ref: SessionRef, newTokenHash: string, reauthAt: Date): Promise<boolean> {
     this.revokedMarks.add(ref.tokenHash);
     this.cache.delete(ref.tokenHash);
@@ -241,6 +275,12 @@ export class InMemoryRateLimiter extends RateLimiter {
   private readonly pending = new Map<string, Set<string>>();
   private next = 0;
 
+  /** Tous les tests d'un fichier partagent l'adresse de supertest : compteurs vidés entre eux. */
+  reset(): void {
+    this.failures.clear();
+    this.pending.clear();
+  }
+
   async check(subjects: readonly RateLimitSubject[], now: Date): Promise<RateLimitCheck> {
     let wait = 0;
     let busy = false;
@@ -313,5 +353,332 @@ export class InMemoryMailSender extends MailSender {
 
   async send(message: MailMessage): Promise<void> {
     this.sent.push(message);
+  }
+
+  /** Dernier jeton envoyé à `to` (fragment du lien). */
+  lastToken(to: string): string | null {
+    const mail = this.sent.filter((m) => m.to === to).at(-1);
+    return mail ? (/#([A-Za-z0-9_-]+)/.exec(mail.text)?.[1] ?? null) : null;
+  }
+}
+
+interface MemoryAccountRow {
+  id: string;
+  email: string;
+  passwordHash: string | null;
+  emailVerifiedAt: Date | null;
+  totpEnabled: boolean;
+  createdAt: Date;
+}
+
+interface MemoryTokenRow extends NewAccountToken {
+  usedAt: Date | null;
+}
+
+/**
+ * Comptes en mémoire. L'état d'authentification (rôle, statut, époque) est celui du magasin de
+ * sessions en mémoire, pour que sessions et comptes restent cohérents dans les tests.
+ */
+export class InMemoryAccountRepository extends AccountRepository {
+  readonly rows = new Map<string, MemoryAccountRow>();
+  readonly profiles = new Map<string, NewProfile & { accountId: string }>();
+  readonly tokens = new Map<string, MemoryTokenRow>();
+  readonly trustedDevicesRevokedAt = new Map<string, Date>();
+
+  constructor(private readonly sessions: InMemorySessionStore) {
+    super();
+  }
+
+  /** Compte prêt à l'emploi (tests). */
+  seed(row: Partial<MemoryAccountRow> & { id: string; email: string }): void {
+    this.rows.set(row.id, {
+      passwordHash: null,
+      emailVerifiedAt: new Date(),
+      totpEnabled: false,
+      createdAt: new Date(),
+      ...row,
+    });
+    this.sessions.addAccount(row.id);
+  }
+
+  private credentials(row: MemoryAccountRow): AccountCredentials {
+    return {
+      accountId: row.id,
+      email: row.email,
+      passwordHash: row.passwordHash,
+      active: this.sessions.accounts.get(row.id)?.active ?? false,
+      emailVerified: row.emailVerifiedAt !== null,
+      totpEnabled: row.totpEnabled,
+    };
+  }
+
+  async findByEmail(email: string): Promise<AccountCredentials | null> {
+    const row = [...this.rows.values()].find((r) => r.email === email);
+    return row ? this.credentials(row) : null;
+  }
+
+  async findById(accountId: string): Promise<AccountCredentials | null> {
+    const row = this.rows.get(accountId);
+    return row ? this.credentials(row) : null;
+  }
+
+  async create(
+    account: NewAccount,
+    verifyToken: NewAccountToken,
+  ): Promise<'created' | 'email_taken'> {
+    if (await this.findByEmail(account.email)) return 'email_taken';
+    this.rows.set(account.id, {
+      id: account.id,
+      email: account.email,
+      passwordHash: account.passwordHash,
+      emailVerifiedAt: null,
+      totpEnabled: false,
+      createdAt: account.createdAt,
+    });
+    this.sessions.addAccount(account.id);
+    this.profiles.set(account.profile.id, { ...account.profile, accountId: account.id });
+    this.tokens.set(verifyToken.tokenHash, { ...verifyToken, usedAt: null });
+    return 'created';
+  }
+
+  async issueToken(token: NewAccountToken): Promise<void> {
+    if (token.purpose !== 'EMAIL_CHANGE_CANCEL') {
+      for (const row of this.tokens.values()) {
+        if (row.accountId === token.accountId && row.purpose === token.purpose && !row.usedAt) {
+          row.usedAt = token.createdAt;
+        }
+      }
+    }
+    this.tokens.set(token.tokenHash, { ...token, usedAt: null });
+  }
+
+  private openRow(
+    tokenHash: string,
+    purposes: readonly AccountTokenPurpose[],
+    now: Date,
+  ): MemoryTokenRow | null {
+    const row = this.tokens.get(tokenHash);
+    if (
+      !row ||
+      row.usedAt ||
+      row.expiresAt.getTime() <= now.getTime() ||
+      !purposes.includes(row.purpose) ||
+      !this.sessions.accounts.get(row.accountId)?.active
+    ) {
+      return null;
+    }
+    return row;
+  }
+
+  async findOpenToken(
+    tokenHash: string,
+    purposes: readonly AccountTokenPurpose[],
+    now: Date,
+  ): Promise<ConsumedAccountToken | null> {
+    const row = this.openRow(tokenHash, purposes, now);
+    return row
+      ? {
+          accountId: row.accountId,
+          purpose: row.purpose,
+          newEmail: row.newEmail,
+          createdAt: row.createdAt,
+        }
+      : null;
+  }
+
+  async consumeToken(
+    tokenHash: string,
+    purposes: readonly AccountTokenPurpose[],
+    now: Date,
+  ): Promise<ConsumedAccountToken | null> {
+    const found = await this.findOpenToken(tokenHash, purposes, now);
+    const row = this.tokens.get(tokenHash);
+    if (found && row) row.usedAt = now;
+    return found;
+  }
+
+  async isEmailReserved(
+    email: string,
+    exceptAccountId: string | null,
+    now: Date,
+  ): Promise<boolean> {
+    return [...this.tokens.values()].some(
+      (t) =>
+        t.purpose === 'EMAIL_CHANGE_CANCEL' &&
+        t.newEmail === email &&
+        !t.usedAt &&
+        t.expiresAt.getTime() > now.getTime() &&
+        t.accountId !== exceptAccountId,
+    );
+  }
+
+  async markEmailVerified(accountId: string, now: Date): Promise<void> {
+    const row = this.rows.get(accountId);
+    if (row && !row.emailVerifiedAt) row.emailVerifiedAt = now;
+  }
+
+  async setPassword(input: {
+    accountId: string;
+    passwordHash: string;
+    authEpoch: number;
+    reset: boolean;
+    now: Date;
+  }): Promise<void> {
+    const row = this.rows.get(input.accountId);
+    if (!row) throw new Error('Compte introuvable');
+    row.passwordHash = input.passwordHash;
+    this.sessions.commitEpoch(input.accountId, input.authEpoch);
+    if (!input.reset) return;
+    row.emailVerifiedAt ??= input.now;
+    this.trustedDevicesRevokedAt.set(input.accountId, input.now);
+    for (const token of this.tokens.values()) {
+      if (token.accountId === input.accountId && token.purpose === 'PASSWORD_RESET') {
+        token.usedAt ??= input.now;
+      }
+    }
+  }
+
+  async changeEmail(accountId: string, newEmail: string, now: Date): Promise<boolean> {
+    const row = this.rows.get(accountId);
+    if (
+      !row ||
+      (await this.isEmailReserved(newEmail, accountId, now)) ||
+      [...this.rows.values()].some((r) => r.email === newEmail && r.id !== accountId)
+    ) {
+      return false;
+    }
+    row.email = newEmail;
+    row.emailVerifiedAt = now;
+    for (const token of this.tokens.values()) {
+      if (
+        token.accountId === accountId &&
+        (token.purpose === 'EMAIL_VERIFY' || token.purpose === 'EMAIL_CHANGE')
+      ) {
+        token.usedAt ??= now;
+      }
+    }
+    return true;
+  }
+
+  async restoreEmail(input: {
+    tokenHash: string;
+    accountId: string;
+    authEpoch: number;
+    now: Date;
+  }): Promise<{ status: 'restored'; email: string } | { status: 'invalid' | 'taken' }> {
+    // Tout ou rien, comme la transaction de l'adaptateur.
+    const token = this.openRow(input.tokenHash, ['EMAIL_CHANGE_CANCEL'], input.now);
+    const row = this.rows.get(input.accountId);
+    if (token?.accountId !== input.accountId || !token.newEmail || !row) {
+      return { status: 'invalid' };
+    }
+    const email = token.newEmail;
+    if ([...this.rows.values()].some((r) => r.email === email && r.id !== input.accountId)) {
+      return { status: 'taken' };
+    }
+    token.usedAt = input.now;
+    row.email = email;
+    row.passwordHash = null;
+    this.sessions.commitEpoch(input.accountId, input.authEpoch);
+    for (const other of this.tokens.values()) {
+      if (other.accountId !== input.accountId || other.usedAt) continue;
+      const later =
+        other.purpose === 'EMAIL_CHANGE_CANCEL' &&
+        other.createdAt.getTime() > token.createdAt.getTime();
+      if (other.purpose !== 'EMAIL_CHANGE_CANCEL' || later) other.usedAt = input.now;
+    }
+    return { status: 'restored', email };
+  }
+
+  async findUnverifiedBefore(cutoff: Date, limit: number): Promise<string[]> {
+    return [...this.rows.values()]
+      .filter((r) => !r.emailVerifiedAt && r.createdAt.getTime() < cutoff.getTime())
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(0, limit)
+      .map((r) => r.id);
+  }
+
+  async suspendUnverified(accountId: string, cutoff: Date, authEpoch: number): Promise<boolean> {
+    this.sessions.commitEpoch(accountId, authEpoch);
+    const row = this.rows.get(accountId);
+    if (!row || row.emailVerifiedAt || row.createdAt.getTime() >= cutoff.getTime()) return false;
+    this.sessions.setActive(accountId, false);
+    return true;
+  }
+
+  async deleteUnverified(accountId: string): Promise<boolean> {
+    const row = this.rows.get(accountId);
+    if (!row || row.emailVerifiedAt || this.sessions.accounts.get(accountId)?.active) return false;
+    if ([...this.sessions.rows.values()].some((s) => s.accountId === accountId)) {
+      throw new Error('Session restante (RESTRICT)');
+    }
+    for (const [id, profile] of this.profiles) {
+      if (profile.accountId === accountId) this.profiles.delete(id);
+    }
+    for (const [hash, token] of this.tokens) {
+      if (token.accountId === accountId) this.tokens.delete(hash);
+    }
+    this.rows.delete(accountId);
+    this.sessions.accounts.delete(accountId);
+    return true;
+  }
+}
+
+/**
+ * Hachage rapide pour les tests (pas d'argon2) : même contrat, dont la vérification « factice »
+ * sans hash, comptée pour qu'un test puisse vérifier qu'elle a bien lieu.
+ */
+export class FakePasswordHasher extends PasswordHasher {
+  dummyVerifications = 0;
+
+  async hash(password: string): Promise<string> {
+    return `fake$${createHash('sha256').update(password).digest('hex')}`;
+  }
+
+  async verify(hash: string | null, password: string): Promise<boolean> {
+    if (hash === null) {
+      this.dummyVerifications += 1;
+      return false;
+    }
+    return hash === (await this.hash(password));
+  }
+}
+
+export class InMemoryBreachChecker extends PasswordBreachChecker {
+  readonly breached = new Set<string>(['motdepasse123', 'password1234']);
+
+  async isBreached(password: string): Promise<boolean> {
+    return this.breached.has(password);
+  }
+}
+
+/** Tâches de fond retenues ; `flush()` les exécute toutes, comme après la réponse. */
+export class InMemoryBackgroundTasks extends BackgroundTasks {
+  private readonly pending: Array<{ name: string; task: () => Promise<void> }> = [];
+  readonly failures: string[] = [];
+
+  run(name: string, task: () => Promise<void>): void {
+    this.pending.push({ name, task });
+  }
+
+  async flush(): Promise<void> {
+    while (this.pending.length > 0) {
+      const next = this.pending.shift();
+      if (!next) break;
+      try {
+        await next.task();
+      } catch {
+        this.failures.push(next.name);
+      }
+    }
+  }
+}
+
+export class StaticIdentitySettings extends IdentitySettings {
+  constructor(
+    public registrationMode: RegistrationMode = 'OPEN',
+    readonly webOrigin = 'http://localhost:3000',
+  ) {
+    super();
   }
 }

@@ -99,6 +99,15 @@ export abstract class SessionStore {
   abstract revokeAllForAccount(accountId: string, exceptSessionId?: string): Promise<SessionRef[]>;
 
   /**
+   * Référence d'une session lue par `id` **et** `account_id` (AUTH-05) : seul moyen de révoquer
+   * une session désignée par le client. `null` si elle n'existe pas ou est d'un autre compte.
+   */
+  abstract findOwned(accountId: string, sessionId: string): Promise<SessionRef | null>;
+
+  /** Sessions du compte, depuis PostgreSQL (AUTH-05). */
+  abstract listForAccount(accountId: string): Promise<SessionRecord[]>;
+
+  /**
    * Rotation (ré-authentification) : même `id`, nouveau jeton, ancien jeton révoqué. Faux si la
    * session a été révoquée entre-temps.
    */
@@ -188,7 +197,23 @@ export abstract class EventThrottle {
   abstract firstInWindow(parts: readonly string[], windowMs: number): Promise<boolean>;
 }
 
-export const SECURITY_EVENTS = ['csrf.rejected', 'session.revoked'] as const;
+/** SEC-30. Forme vérifiée en base (`security_log_event_format`). */
+export const SECURITY_EVENTS = [
+  'csrf.rejected',
+  'session.revoked',
+  'account.registered',
+  'account.purged',
+  'login.succeeded',
+  'login.failed',
+  'reauth.succeeded',
+  'reauth.failed',
+  'password.changed',
+  'password.reset',
+  'email.verified',
+  'email.change_requested',
+  'email.changed',
+  'email.change_cancelled',
+] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 
 /** Journal de sécurité (SEC-30), en ajout seul (DAT-02). */

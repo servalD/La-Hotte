@@ -12,6 +12,14 @@ import { LogDestination } from '../../src/platform/logging/logging.module';
 import { RedisService } from '../../src/platform/redis/redis.service';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
 import { shutdownTelemetry } from '../../src/platform/telemetry/telemetry';
+import {
+  BackgroundTasks,
+  InMemoryBackgroundTasks,
+  InMemoryBreachChecker,
+  InMemoryMailSender,
+  MailSender,
+  PasswordBreachChecker,
+} from '../../src/modules/identity/testing';
 import { createAccountWithProfile, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
@@ -36,6 +44,15 @@ let output: OutputCapture = { text: () => '', restore: () => undefined };
  * pré-session, identifiant de pré-session. Aucun ne doit sortir par un canal d'observation.
  */
 const sessionSecrets: Record<string, string> = {};
+/**
+ * Secrets d'authentification (ADR 0013, « Télémétrie » ; SEC-31) : e-mail normalisé (en
+ * minuscules, donc hors d'atteinte du marqueur), mots de passe, jetons envoyés par e-mail, jeton
+ * de session ouvert par la connexion.
+ */
+const authSecrets: Record<string, string> = {};
+/** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
+const mail = new InMemoryMailSender();
+const background = new InMemoryBackgroundTasks();
 
 const capturingDestination: LogDestination = {
   write: (line: string) => {
@@ -102,6 +119,12 @@ beforeAll(async () => {
     })
       .overrideProvider(LogDestination)
       .useValue(capturingDestination)
+      .overrideProvider(MailSender)
+      .useValue(mail)
+      .overrideProvider(BackgroundTasks)
+      .useValue(background)
+      .overrideProvider(PasswordBreachChecker)
+      .useValue(new InMemoryBreachChecker())
       .compile();
     app = moduleRef.createNestApplication({ bufferLogs: true });
     configureApp(app);
@@ -208,6 +231,133 @@ async function playScenario(app: INestApplication): Promise<void> {
 
   // Appel sortant vers un tiers, dans le contexte de trace venu du client.
   await http.post('/api/v1/_leak/outbound').set(authenticated).expect(204);
+
+  await playAuthScenario(app, pre.body.csrfToken as string, presessionCookie?.split(';')[0] ?? '');
+}
+
+/**
+ * Comptes par mot de passe (tranche 2) : e-mail, mot de passe, nom et jetons passent par le corps,
+ * la base (paramètres SQL), Redis (clés de limitation) et les e-mails ; rien ne doit en sortir.
+ */
+async function playAuthScenario(
+  app: INestApplication,
+  presessionCsrf: string,
+  presessionCookie: string,
+): Promise<void> {
+  const http = request(app.getHttpServer());
+  // Compteurs de limitation des exécutions précédentes (même adresse de test).
+  const redis = await app.get(RedisService).ready();
+  const stale = await redis.keys('rl*');
+  if (stale.length > 0) await redis.del(...stale);
+
+  const email = `${MARKER}@lahotte.test`;
+  const password = `phrase ${MARKER} secrète`;
+  const newPassword = `nouvelle ${MARKER} phrase`;
+  authSecrets.email = email.toLowerCase();
+  authSecrets.password = password;
+  authSecrets.newPassword = newPassword;
+  const before = {
+    ...markedHeaders,
+    Cookie: `${presessionCookie}; session=${MARKER}`,
+    'X-CSRF-Token': presessionCsrf,
+    Origin: 'http://localhost:3000',
+  };
+
+  await http
+    .post('/api/v1/auth/register')
+    .set(before)
+    .send({ email, password, displayName: `Nom ${MARKER}`, ageAttested: true })
+    .expect(202);
+  await background.flush();
+  authSecrets.verifyToken = mail.lastToken(email.toLowerCase()) ?? '';
+  await http
+    .post('/api/v1/auth/email/verify')
+    .set(before)
+    .send({ token: authSecrets.verifyToken })
+    .expect(204);
+
+  // Échec (journal de sécurité, compteurs), puis succès.
+  await http
+    .post('/api/v1/auth/login')
+    .set(before)
+    .send({ email, password: `faux ${MARKER} mot` })
+    .expect(401);
+  const login = await http
+    .post('/api/v1/auth/login')
+    .set(before)
+    .send({ email, password })
+    .expect(200);
+  const sessionCookie = ([] as string[])
+    .concat((login.headers['set-cookie'] as unknown as string[] | undefined) ?? [])
+    .find((cookie) => cookie.startsWith('__Host-lh_session='));
+  authSecrets.loginSession = decodeURIComponent(sessionCookie?.split(';')[0]?.split('=')[1] ?? '');
+
+  // Réinitialisation : jeton par e-mail, puis confirmation ; jeton forgé refusé (400).
+  await http.post('/api/v1/auth/password/reset').set(before).send({ email }).expect(202);
+  await background.flush();
+  authSecrets.resetToken = mail.lastToken(email.toLowerCase()) ?? '';
+  await http
+    .post('/api/v1/auth/password/reset/confirm')
+    .set(before)
+    .send({ token: authSecrets.resetToken, newPassword })
+    .expect(204);
+  await http
+    .post('/api/v1/auth/password/reset/confirm')
+    .set(before)
+    .send({ token: MARKER, newPassword })
+    .expect(400);
+
+  // Espace Compte : ré-authentification, changement d'e-mail (nouvelle adresse en tâche de fond),
+  // changement de mot de passe, révocation d'une session inconnue, confirmation puis annulation.
+  const sessionOf = (res: request.Response): Record<string, string> => {
+    const token = ([] as string[])
+      .concat((res.headers['set-cookie'] as unknown as string[] | undefined) ?? [])
+      .find((cookie) => cookie.startsWith('__Host-lh_session='))
+      ?.split(';')[0];
+    return {
+      ...markedHeaders,
+      Cookie: `${token ?? ''}; session=${MARKER}`,
+      'X-CSRF-Token': res.body.csrfToken as string,
+      Origin: 'http://localhost:3000',
+    };
+  };
+  const relogged = await http
+    .post('/api/v1/auth/login')
+    .set(before)
+    .send({ email, password: newPassword })
+    .expect(200);
+  const reauthed = await http
+    .post('/api/v1/auth/reauth')
+    .set(sessionOf(relogged))
+    .send({ password: newPassword })
+    .expect(200);
+  const account = sessionOf(reauthed);
+  const otherEmail = `autre_${MARKER}@lahotte.test`;
+  authSecrets.otherEmail = otherEmail.toLowerCase();
+  await http.put('/api/v1/auth/email').set(account).send({ email: otherEmail }).expect(202);
+  await background.flush();
+  authSecrets.cancelToken = mail.lastToken(email.toLowerCase()) ?? '';
+  authSecrets.changeToken = mail.lastToken(otherEmail.toLowerCase()) ?? '';
+  const thirdPassword = `troisième ${MARKER} phrase`;
+  authSecrets.thirdPassword = thirdPassword;
+  const changed = await http
+    .put('/api/v1/auth/password')
+    .set(account)
+    .send({ newPassword: thirdPassword })
+    .expect(200);
+  await http.delete(`/api/v1/sessions/${randomUUID()}`).set(sessionOf(changed)).expect(404);
+  await http
+    .post('/api/v1/auth/email/verify')
+    .set(before)
+    .send({ token: authSecrets.changeToken })
+    .expect(204);
+  await http
+    .post('/api/v1/auth/email/cancel')
+    .set(before)
+    .send({ token: authSecrets.cancelToken })
+    .expect(204);
+  await background.flush();
+  expect(background.failures).toEqual([]);
 }
 
 describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
@@ -315,6 +465,37 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       records.map((record) => record.body).join('\n'),
     ].join('\n');
     for (const [name, secret] of Object.entries(sessionSecrets)) {
+      expect(secret.length).toBeGreaterThan(20);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('SEC-31, ADR 0013 : e-mail, mots de passe et jetons d’authentification absents de toute sortie', () => {
+    expect(Object.keys(authSecrets).sort()).toEqual(
+      [
+        'cancelToken',
+        'changeToken',
+        'email',
+        'loginSession',
+        'newPassword',
+        'otherEmail',
+        'password',
+        'resetToken',
+        'thirdPassword',
+        'verifyToken',
+      ].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    // Les routes d'authentification ont bien été tracées (pas de faux vert).
+    for (const route of ['/api/v1/auth/login', '/api/v1/auth/email', '/api/v1/sessions/:id']) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(authSecrets)) {
       expect(secret.length).toBeGreaterThan(20);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }

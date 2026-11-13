@@ -5,7 +5,14 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
 import { ExampleItemRepository, InMemoryExampleItemRepository } from '../../src/modules/example';
 import {
+  AccountRepository,
+  BackgroundTasks,
   EventThrottle,
+  FakePasswordHasher,
+  IdentitySettings,
+  InMemoryAccountRepository,
+  InMemoryBackgroundTasks,
+  InMemoryBreachChecker,
   InMemoryEventThrottle,
   InMemoryMailSender,
   InMemoryProfileLockPolicies,
@@ -13,10 +20,13 @@ import {
   InMemorySecurityLog,
   InMemorySessionStore,
   MailSender,
+  PasswordBreachChecker,
+  PasswordHasher,
   ProfileLockPolicies,
   RateLimiter,
   SecurityLog,
   SessionStore,
+  StaticIdentitySettings,
 } from '../../src/modules/identity/testing';
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
@@ -26,6 +36,12 @@ export interface TestIdentity {
   readonly profiles: InMemoryProfileLockPolicies;
   readonly securityLog: InMemorySecurityLog;
   readonly mail: InMemoryMailSender;
+  readonly accounts: InMemoryAccountRepository;
+  readonly hasher: FakePasswordHasher;
+  readonly breaches: InMemoryBreachChecker;
+  readonly background: InMemoryBackgroundTasks;
+  readonly rateLimiter: InMemoryRateLimiter;
+  readonly settings: StaticIdentitySettings;
   /** Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé). */
   signIn(options?: { pin?: boolean; relock?: PinRelock; withProfile?: boolean }): Promise<SignedIn>;
 }
@@ -46,6 +62,12 @@ export async function createTestApp(
   const profiles = new InMemoryProfileLockPolicies();
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
+  const accounts = new InMemoryAccountRepository(sessions);
+  const hasher = new FakePasswordHasher();
+  const breaches = new InMemoryBreachChecker();
+  const background = new InMemoryBackgroundTasks();
+  const rateLimiter = new InMemoryRateLimiter();
+  const settings = new StaticIdentitySettings();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -57,13 +79,23 @@ export async function createTestApp(
     .overrideProvider(ProfileLockPolicies)
     .useValue(profiles)
     .overrideProvider(RateLimiter)
-    .useValue(new InMemoryRateLimiter())
+    .useValue(rateLimiter)
     .overrideProvider(EventThrottle)
     .useValue(new InMemoryEventThrottle())
     .overrideProvider(SecurityLog)
     .useValue(securityLog)
     .overrideProvider(MailSender)
     .useValue(mail)
+    .overrideProvider(AccountRepository)
+    .useValue(accounts)
+    .overrideProvider(PasswordHasher)
+    .useValue(hasher)
+    .overrideProvider(PasswordBreachChecker)
+    .useValue(breaches)
+    .overrideProvider(BackgroundTasks)
+    .useValue(background)
+    .overrideProvider(IdentitySettings)
+    .useValue(settings)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
@@ -76,6 +108,12 @@ export async function createTestApp(
     profiles,
     securityLog,
     mail,
+    accounts,
+    hasher,
+    breaches,
+    background,
+    rateLimiter,
+    settings,
     async signIn({ pin = false, relock = 'IDLE_15', withProfile = true } = {}) {
       const accountId = randomUUID();
       const profileId = randomUUID();

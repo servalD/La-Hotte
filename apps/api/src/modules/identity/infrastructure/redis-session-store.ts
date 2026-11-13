@@ -93,6 +93,19 @@ interface CacheJson {
   unlock: { profileId: string; at: number; nonce: string | null } | null;
 }
 
+/**
+ * Résultat d'un `MULTI` contrôlé commande par commande : une commande refusée dans la transaction
+ * (`[[err, res]]`) ne passe pas en silence. Levée ici, elle devient `IdentityUnavailableError`.
+ */
+async function checked(
+  pending: Promise<[error: Error | null, result: unknown][] | null>,
+): Promise<void> {
+  const results = await pending;
+  if (results === null || results.some(([error]) => error !== null)) {
+    throw new Error('Transaction Redis refusée');
+  }
+}
+
 const ms = (date: Date): number => date.getTime();
 const dateOrNull = (value: number | null): Date | null => (value === null ? null : new Date(value));
 
@@ -356,7 +369,7 @@ export class RedisSessionStore extends SessionStore {
     await this.redis((r) => {
       const batch = r.multi();
       for (const hash of hashes) batch.del(sessKey(hash)).srem(accountSessionsKey(accountId), hash);
-      return batch.exec();
+      return checked(batch.exec());
     });
   }
 
@@ -364,8 +377,25 @@ export class RedisSessionStore extends SessionStore {
     await this.redis((r) => {
       const batch = r.multi();
       for (const hash of hashes) batch.set(revokedKey(hash), '1', 'PX', REVOCATION_MARK_MS);
-      return batch.exec();
+      return checked(batch.exec());
     });
+  }
+
+  async findOwned(accountId: string, sessionId: string): Promise<SessionRef | null> {
+    const row = await this.prisma.session.findFirst({
+      where: { id: sessionId, accountId },
+      select: { id: true, accountId: true, tokenHash: true },
+    });
+    return row ? { id: row.id, accountId: row.accountId, tokenHash: row.tokenHash } : null;
+  }
+
+  async listForAccount(accountId: string): Promise<SessionRecord[]> {
+    const rows = (await this.prisma.session.findMany({
+      where: { accountId },
+      include: SESSION_WITH_ACCOUNT,
+      orderBy: { lastSeenAt: 'desc' },
+    })) as SessionRow[];
+    return rows.map(rowToRecord);
   }
 
   async revokeAllForAccount(accountId: string, exceptSessionId?: string): Promise<SessionRef[]> {
@@ -387,12 +417,14 @@ export class RedisSessionStore extends SessionStore {
     for (const hash of cached) {
       if (handled.has(hash) || hash === kept) continue;
       await this.redis((r) =>
-        r
-          .multi()
-          .set(revokedKey(hash), '1', 'PX', REVOCATION_MARK_MS)
-          .del(sessKey(hash))
-          .srem(accountSessionsKey(accountId), hash)
-          .exec(),
+        checked(
+          r
+            .multi()
+            .set(revokedKey(hash), '1', 'PX', REVOCATION_MARK_MS)
+            .del(sessKey(hash))
+            .srem(accountSessionsKey(accountId), hash)
+            .exec(),
+        ),
       );
     }
     return revoked;
@@ -406,11 +438,13 @@ export class RedisSessionStore extends SessionStore {
       data: { tokenHash: newTokenHash, reauthAt },
     });
     await this.redis((r) =>
-      r
-        .multi()
-        .del(sessKey(ref.tokenHash))
-        .srem(accountSessionsKey(ref.accountId), ref.tokenHash)
-        .exec(),
+      checked(
+        r
+          .multi()
+          .del(sessKey(ref.tokenHash))
+          .srem(accountSessionsKey(ref.accountId), ref.tokenHash)
+          .exec(),
+      ),
     );
     if (count === 0) return false;
 

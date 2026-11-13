@@ -7,7 +7,7 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 ## Compte
 
 - **AUTH-01** Inscription par e-mail + mot de passe, ou par Google (OpenID Connect, flux code + PKCE). L'e-mail doit être vérifié avant toute action sociale (invitation, lien, publication).
-- **AUTH-02** Mot de passe : 12 caractères minimum, pas de règle de composition, refus des mots de passe présents dans les fuites connues (vérification k-anonyme), haché en argon2id.
+- **AUTH-02** Mot de passe : 12 caractères minimum, 256 au plus (borne contre un hachage coûteux), pas de règle de composition, refus des mots de passe présents dans les fuites connues (vérification k-anonyme : seuls les 5 premiers caractères du SHA-1 quittent le serveur, réponse avec bourrage), haché en argon2id (19 Mio, 2 passes, 1 fil). Si le service de vérification ne répond pas (3 secondes), le mot de passe est accepté sans vérification et la panne est comptée : une indisponibilité d'un tiers ne bloque ni l'inscription ni la réinitialisation.
 - **AUTH-03** Un compte peut avoir les deux méthodes. Associer Google à un compte existant exige d'être connecté à ce compte ; jamais de fusion automatique sur simple égalité d'e-mail non vérifié.
 - **AUTH-04** Session : identifiant opaque en cookie `HttpOnly`, `Secure`, `SameSite=Lax`, stocké côté serveur. Durée glissante de 30 jours, 12 heures pour un compte administrateur ou modérateur. Aucun jeton d'accès dans le stockage du navigateur. Forme du jeton, stockage, rotation, révocation et CSRF : ADR 0013.
 - **AUTH-05** L'utilisateur voit la liste de ses sessions (appareil, dernière activité) et peut les révoquer. Changer de mot de passe ou désactiver le TOTP révoque toutes les autres sessions. Un changement de rôle ou la suspension du compte révoque toutes ses sessions. Durée absolue d'une session : 90 jours, 24 heures pour un compte administrateur ou modérateur (ADR 0013).
@@ -15,8 +15,8 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 - **AUTH-07** Limitation des tentatives par compte et par adresse IP, avec délai croissant. Pas de blocage définitif (éviter le déni de service ciblé). Les échecs du second facteur sont comptés par compte : recommencer le premier facteur ne remet pas le compteur à zéro (ADR 0013).
 - **AUTH-08** **Âge.** L'inscription exige de déclarer avoir 15 ans ou plus (case à cocher, non précochée). La déclaration est horodatée sur le compte (`age_attested_at`, 12). Aucune date de naissance n'est demandée au compte (RGPD-02). Une personne de moins de 15 ans a un profil enfant dans le compte d'un parent (RGPD-06).
 - **AUTH-09** **Mode d'inscription**, réglé par l'environnement : `OPEN` (inscription libre) ou `INVITE_ONLY` (inscription possible seulement avec un jeton d'invitation valide, LNK-01, y compris par Google ; l'invitation n'est consommée qu'à la vérification de l'e-mail, pour que son état ne révèle rien ; si elle est épuisée à ce moment, la vérification est refusée par un message neutre et le compte est supprimé). Dans les deux modes, la réponse à une inscription ne révèle pas si l'e-mail a déjà un compte : même réponse, même délai ; le titulaire existant reçoit un e-mail l'avertissant de la tentative. La valeur retenue au lancement reste à décider (`11`, Q2).
-- **AUTH-15** **Compte non vérifié.** Tant que son e-mail n'est pas vérifié, un compte ne peut **rien créer** (ni profil supplémentaire, ni liste, ni fiche article, ni action sociale, AUTH-01), ni activer le TOTP, ni être associé à Google : l'interface lui demande de suivre le lien de vérification. Il n'a donc aucun contenu à perdre. Il est supprimé s'il n'est pas vérifié sous 7 jours. Une inscription ou une connexion par Google avec un e-mail vérifié par Google, sur un compte local **non vérifié** de même adresse, **remplace** ce compte (supprimé avec ses sessions) au lieu de s'y rattacher : celui qui a inscrit l'adresse d'un autre n'en garde rien.
-- **AUTH-16** **Changement d'e-mail** (`PUT /auth/email`, après ré-authentification, AUTH-14) : effectif seulement après confirmation par un lien envoyé à la nouvelle adresse. La réponse est identique que la nouvelle adresse soit libre ou déjà prise ; si elle est prise, son titulaire reçoit un avertissement à la place du lien. L'ancienne adresse est prévenue, avec un lien d'annulation valable 7 jours qui rétablit l'ancienne adresse et révoque toutes les sessions : un proche qui connaît le mot de passe ne détourne pas le compte en silence.
+- **AUTH-15** **Compte non vérifié.** Tant que son e-mail n'est pas vérifié, un compte ne peut **rien créer** (ni profil supplémentaire, ni liste, ni fiche article, ni action sociale, AUTH-01), ni activer le TOTP, ni être associé à Google. Il **ne peut pas se connecter par mot de passe** : la connexion répond le même refus qu'un mot de passe faux, pour qu'une inscription suivie d'une connexion ne dise pas si l'adresse avait déjà un compte. Le lien de vérification **n'ouvre pas de session** : il prouve la boîte, pas l'inscription. On se connecte ensuite avec son mot de passe ; qui a reçu le lien d'une inscription faite par un autre ne le connaît pas et passe par la réinitialisation, qui évince l'auteur (AUTH-06). Il n'a donc aucun contenu à perdre. Il est supprimé s'il n'est pas vérifié sous 7 jours. Une inscription ou une connexion par Google avec un e-mail vérifié par Google, sur un compte local **non vérifié** de même adresse, **remplace** ce compte (supprimé avec ses sessions) au lieu de s'y rattacher : celui qui a inscrit l'adresse d'un autre n'en garde rien.
+- **AUTH-16** **Changement d'e-mail** (`PUT /auth/email`, après ré-authentification, AUTH-14) : effectif seulement après confirmation par un lien envoyé à la nouvelle adresse. La réponse est identique que la nouvelle adresse soit libre ou déjà prise ; si elle est prise, son titulaire reçoit un avertissement à la place du lien. L'ancienne adresse est prévenue, avec un lien d'annulation valable 7 jours qui rétablit l'ancienne adresse et révoque toutes les sessions : un proche qui connaît le mot de passe ne détourne pas le compte en silence. L'avertissement part **avant** le lien de confirmation ; s'il ne peut pas partir (quota d'envoi de l'ancienne adresse atteint), la demande s'arrête là. Une nouvelle demande ne désarme pas un lien d'annulation déjà reçu ; à l'inverse, une annulation désarme tous les liens d'annulation émis **après** le sien, ainsi que les liens de vérification, de confirmation et de réinitialisation encore ouverts. L'annulation est **tout ou rien** : si l'ancienne adresse n'est plus libre, rien n'est écrit et le lien reste utilisable. Quand elle aboutit, elle **efface le mot de passe** (celui qui a fait la demande le connaît) et envoie un lien de réinitialisation à l'adresse rétablie. Tant qu'un lien d'annulation ouvert peut la rétablir, l'ancienne adresse reste **réservée** au compte : une inscription ou un changement d'e-mail vers elle depuis un autre compte est traité comme pour une adresse prise. Après un changement de mot de passe, l'adresse du compte reçoit un avis.
 
 ## Double authentification
 
@@ -64,6 +64,30 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 | Langue | Celle du navigateur, sinon français |
 | Devise | EUR |
 
+**Durée des jetons envoyés par e-mail** (`account_token`, 12) :
+
+| Usage | Durée |
+|---|---|
+| Vérification de l'e-mail (`EMAIL_VERIFY`) | 7 jours (le compte non vérifié est supprimé au même terme, AUTH-15) |
+| Confirmation d'un changement d'e-mail (`EMAIL_CHANGE`) | 24 heures |
+| Annulation d'un changement d'e-mail (`EMAIL_CHANGE_CANCEL`) | 7 jours (AUTH-16) |
+| Réinitialisation du mot de passe (`PASSWORD_RESET`) | 30 minutes (AUTH-06) |
+
+**Limitation** (AUTH-07, ADR 0013). Au-delà du seuil, délai croissant (1 s, 2 s, 4 s… plafonné à 15 minutes), jamais de blocage définitif :
+
+| Portée | Clé | Compte | Seuil | Fenêtre | Remis à zéro par un succès |
+|---|---|---|---|---|---|
+| Connexion, couple | e-mail, IP | échecs | 5 | 24 h | oui |
+| Connexion, compte | e-mail | échecs | 20 (50 depuis un appareil de confiance) | 1 h | non |
+| Connexion, IP | IP | échecs | 50 | 1 h | non |
+| Second facteur | compte | échecs | 5 | 24 h | oui (succès du second facteur seulement) |
+| Ré-authentification | compte | échecs | 5 | 24 h | oui |
+| Inscription | IP | demandes | 10 | 1 h | non |
+| Réinitialisation | IP | demandes | 10 | 1 h | non |
+| Envoi d'e-mail | adresse destinataire, sorte d'e-mail | envois | 3 | 24 h | non |
+
+Le compteur des envois par destinataire ne produit jamais de `429` : au-delà, l'e-mail n'est simplement pas envoyé et la réponse reste la même, pour qu'elle ne dise rien de l'existence d'un compte. Il est tenu **par sorte d'e-mail** (vérification, réinitialisation, avertissement de changement d'e-mail…) : épuiser l'une ne bloque pas les autres. Au-delà du seuil, le délai croissant s'applique : un tiers qui multiplie les demandes de réinitialisation fait lui-même partir les liens vers la boîte du titulaire, il ne l'en prive pas. Les clés « e-mail » valent pour toute adresse, inscrite ou non.
+
 ## Critères d'acceptation
 
 - Un compte créé par Google puis doté d'un mot de passe se connecte par les deux moyens au même compte.
@@ -75,7 +99,8 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 - Après changement de mot de passe, les autres sessions sont invalides à la requête suivante.
 - Un code TOTP ne peut pas être utilisé deux fois.
 - Après 5 échecs du second facteur, recommencer la connexion par mot de passe, même depuis une autre adresse IP, ne donne pas d'essai supplémentaire sans attendre le délai.
-- Une inscription avec un e-mail déjà inscrit reçoit la même réponse, dans le même délai, qu'une inscription nouvelle ; aucun compte n'est créé.
+- Une inscription avec un e-mail déjà inscrit reçoit la même réponse, dans le même délai, qu'une inscription nouvelle ; aucun compte n'est créé. Une connexion qui suit ne le révèle pas non plus (AUTH-15).
+- Un proche qui a changé l'adresse du compte, puis enchaîné d'autres changements, ne garde pas le compte quand le titulaire suit son lien d'annulation (AUTH-16).
 - En mode `INVITE_ONLY`, une inscription sans jeton d'invitation valide est refusée.
 - Changer son PIN avec l'ancien PIN réussit sans ré-authentification ; le désactiver depuis le profil est impossible ; le désactiver depuis l'espace Compte exige une ré-authentification de moins de 2 minutes.
 

@@ -8,15 +8,18 @@ const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
 /**
- * Portées fixées par l'ADR 0013. Les autres (ré-authentification, réinitialisation, inscription,
- * PIN, envois d'e-mail par destinataire) s'ajoutent avec la tranche qui les utilise, seuils
- * écrits d'abord dans la spec.
+ * Portées de l'ADR 0013, seuils dans `01` (« Valeurs par défaut »). Le PIN s'ajoutera avec la
+ * tranche 5, seuil écrit d'abord dans la spec.
  */
 export const RATE_LIMIT_SCOPES = [
-  'login_pair', // couple (compte, IP)
-  'login_account', // compte seul
+  'login_pair', // couple (e-mail, IP)
+  'login_account', // e-mail seul
   'login_ip', // IP seule, tous comptes confondus
   'second_factor', // second facteur, par compte seul
+  'reauth', // ré-authentification, par compte
+  'register_ip', // demandes d'inscription, par IP
+  'reset_ip', // demandes de réinitialisation, par IP
+  'mail_recipient', // envois d'e-mail, par adresse destinataire (jamais de 429)
 ] as const;
 export type RateLimitScope = (typeof RATE_LIMIT_SCOPES)[number];
 
@@ -37,6 +40,11 @@ export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolic
   login_ip: { threshold: 50, windowMs: HOUR, resetOnSuccess: false },
   // Remis à zéro par un succès du second facteur seulement (ADR 0013, « Pré-authentification »).
   second_factor: { threshold: 5, windowMs: 24 * HOUR, resetOnSuccess: true },
+  reauth: { threshold: 5, windowMs: 24 * HOUR, resetOnSuccess: true },
+  // Demandes, pas échecs : chaque demande est comptée.
+  register_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
+  reset_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
+  mail_recipient: { threshold: 3, windowMs: 24 * HOUR, resetOnSuccess: false },
 };
 
 /** Seuil du compteur par compte depuis un appareil de confiance du compte (ADR 0013). */
