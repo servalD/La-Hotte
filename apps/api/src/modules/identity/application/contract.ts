@@ -7,7 +7,32 @@ export {
   PASSWORD_MIN_LENGTH,
 } from '../domain/account';
 export { CsrfTokens, SecretTokens, type SessionRef } from '../domain/ports';
-export { hasRecentReauth, REAUTH_MAX_AGE_MS, REAUTH_PIN_MAX_AGE_MS } from '../domain/session';
+export {
+  hasRecentReauth,
+  PIN_RELOCK_MODES,
+  type PinRelock,
+  REAUTH_MAX_AGE_MS,
+  REAUTH_PIN_MAX_AGE_MS,
+} from '../domain/session';
+export {
+  CURRENCY_PATTERN,
+  LOCALE_PATTERN,
+  PIN_MAX_LENGTH,
+  PIN_MIN_LENGTH,
+  type ProfileChanges,
+  type ProfileDetails,
+  type ProfileMetadata,
+  TIMEZONE_MAX_LENGTH,
+} from '../domain/profile';
+export {
+  CreateAccountProfile,
+  DeleteAccountProfile,
+  DisableProfilePin,
+  ListAccountProfiles,
+  ResetProfilePin,
+} from './manage-account-profiles.use-case';
+export { GetOwnProfile, SetOwnPin, UpdateOwnProfile } from './manage-own-profile.use-case';
+export { LockSession, type ProfileSelection, SelectProfile } from './select-profile.use-case';
 export {
   CsrfRejectedError,
   ReauthRequiredError,

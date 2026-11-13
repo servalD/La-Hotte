@@ -44,6 +44,7 @@ const policy = (overrides: Partial<ProfileLockPolicy> = {}): ProfileLockPolicy =
   accountId: 'a',
   hasPin: true,
   relock: 'IDLE_15',
+  pinStamp: 'empreinte-1',
   ...overrides,
 });
 
@@ -75,7 +76,26 @@ describe('Durées de session (AUTH-04, AUTH-05)', () => {
 });
 
 describe('Déverrouillage du profil (PIN-02, PIN-07)', () => {
-  const unlock = { profileId: 'p', at: at(-MINUTE), nonce: null };
+  const unlock = { profileId: 'p', at: at(-MINUTE), nonce: null, pinStamp: 'empreinte-1' };
+
+  it('PIN-05 : un déverrouillage donné par un autre PIN que le PIN courant ne vaut rien', () => {
+    expect(
+      isProfileUnlocked({
+        policy: policy({ pinStamp: 'empreinte-2' }),
+        unlock,
+        unlockCookie: null,
+        now,
+      }),
+    ).toBe(false);
+    expect(
+      isProfileUnlocked({
+        policy: policy(),
+        unlock: { ...unlock, pinStamp: null },
+        unlockCookie: null,
+        now,
+      }),
+    ).toBe(false);
+  });
 
   it('profil sans PIN : toujours déverrouillé', () => {
     expect(

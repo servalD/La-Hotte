@@ -29,3 +29,43 @@ export const getSessionResponse = zod.object({
       'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
     ),
 });
+
+/**
+ * @summary PRO-07, API-11 : choisit le profil actif, et le déverrouille avec son PIN s'il en a un. Le
+changement a lieu avant la vérification : un PIN faux (`422 PIN_INVALID`) laisse le nouveau
+profil actif et verrouillé. Pendant l'attente de PIN-03 : `429`.
+ */
+export const selectProfileBodyPinMin = 4;
+export const selectProfileBodyPinMax = 8;
+
+export const selectProfileBodyPinRegExp = new RegExp('^[0-9]{4,8}$');
+
+export const selectProfileBody = zod.object({
+  profileId: zod.uuid(),
+  pin: zod
+    .string()
+    .min(selectProfileBodyPinMin)
+    .max(selectProfileBodyPinMax)
+    .regex(selectProfileBodyPinRegExp)
+    .optional()
+    .describe(
+      'Exigé pour déverrouiller un profil à PIN ; sans lui, le profil devient actif, verrouillé.',
+    ),
+});
+
+export const selectProfileResponseFailedPinAttemptsMin = 0;
+
+export const selectProfileResponse = zod.object({
+  activeProfileId: zod.uuid(),
+  profileUnlocked: zod.boolean().describe("Faux : le profil a un PIN et aucun PIN n'a été envoyé."),
+  pinResetNoticeAt: zod.iso
+    .datetime({})
+    .nullable()
+    .describe(
+      "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte, rendu à chaque entrée tant que\nle profil ne s'est pas redonné un PIN. `null` si le profil reste verrouillé.",
+    ),
+  failedPinAttempts: zod
+    .number()
+    .min(selectProfileResponseFailedPinAttemptsMin)
+    .describe('PIN-03 : PIN faux saisis depuis la dernière entrée dans ce profil.'),
+});

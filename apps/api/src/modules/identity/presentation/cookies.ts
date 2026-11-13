@@ -107,6 +107,19 @@ export function clearDeviceCookie(response: Response): void {
   response.clearCookie(DEVICE_COOKIE, { ...HOST_COOKIE, httpOnly: true });
 }
 
+/**
+ * `EVERY_OPEN` (PIN-07, ADR 0013) : nonce de déverrouillage, **sans** `Max-Age` ni `Expires` :
+ * le navigateur l'oublie à sa fermeture. `SameSite=Strict` : seuls les appels de l'application,
+ * de la même origine, le portent.
+ */
+export function setUnlockCookie(response: Response, nonce: string): void {
+  response.cookie(UNLOCK_COOKIE, nonce, { ...HOST_COOKIE, sameSite: 'strict', httpOnly: true });
+}
+
+export function clearUnlockCookie(response: Response): void {
+  response.clearCookie(UNLOCK_COOKIE, { ...HOST_COOKIE, sameSite: 'strict', httpOnly: true });
+}
+
 export function clearSessionCookies(response: Response): void {
   response.clearCookie(SESSION_COOKIE, { ...HOST_COOKIE, httpOnly: true });
   response.clearCookie(UNLOCK_COOKIE, { ...HOST_COOKIE, httpOnly: true });

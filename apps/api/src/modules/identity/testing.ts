@@ -43,8 +43,12 @@ export {
   InMemorySecondFactorRepository,
   InMemoryTrustedDeviceRepository,
   InMemoryProfileLockPolicies,
+  InMemoryProfileRepository,
   InMemoryRateLimiter,
   InMemorySecurityLog,
   InMemorySessionStore,
   StaticIdentitySettings,
+  TEST_PIN,
+  TEST_PIN_STAMP,
 } from './infrastructure/in-memory';
+export { ProfileRepository } from './domain/profile.ports';

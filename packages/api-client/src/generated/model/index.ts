@@ -6,10 +6,15 @@
  * OpenAPI spec version: 1
  */
 
+export * from './accountProfileListView';
+export * from './accountProfileView';
 export * from './accountSessionListView';
 export * from './accountSessionView';
 export * from './accountView';
+export * from './birthdayDto';
+export * from './birthdayView';
 export * from './createExampleItemDto';
+export * from './createProfileDto';
 export * from './emailDto';
 export * from './emailTokenDto';
 export * from './exampleItemGiverView';
@@ -28,16 +33,26 @@ export * from './loginDto';
 export * from './newPasswordDto';
 export * from './passwordResetConfirmDto';
 export * from './problemDetailsDto';
+export * from './profileSelectionView';
+export * from './profileView';
+export * from './profileViewBirthday';
+export * from './profileViewPinRelock';
 export * from './reauthDto';
 export * from './recoveryCodesView';
 export * from './registerDto';
+export * from './resetProfilePinDto';
 export * from './secondFactorDto';
+export * from './selectProfileDto';
 export * from './sessionStatusView';
 export * from './sessionStatusViewSession';
 export * from './sessionSummaryView';
+export * from './setOwnPinDto';
 export * from './totpActivationView';
 export * from './totpActivationViewSession';
 export * from './totpCodeDto';
 export * from './totpEnrollmentView';
 export * from './trustedDeviceListView';
 export * from './trustedDeviceView';
+export * from './updateProfileDto';
+export * from './updateProfileDtoBirthday';
+export * from './updateProfileDtoPinRelock';

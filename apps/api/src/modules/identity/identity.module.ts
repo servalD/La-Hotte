@@ -96,6 +96,23 @@ import { IdentityGuardChain } from './presentation/guard-chain.guard';
 import { SessionController } from './presentation/session.controller';
 import { SessionsController } from './presentation/sessions.controller';
 import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.scheduler';
+import {
+  CreateAccountProfile,
+  DeleteAccountProfile,
+  DisableProfilePin,
+  ListAccountProfiles,
+  ResetProfilePin,
+} from './application/manage-account-profiles.use-case';
+import {
+  GetOwnProfile,
+  SetOwnPin,
+  UpdateOwnProfile,
+} from './application/manage-own-profile.use-case';
+import { PinVerifier } from './application/pin-verifier';
+import { LockSession, SelectProfile } from './application/select-profile.use-case';
+import { ProfileRepository } from './domain/profile.ports';
+import { PrismaProfileRepository } from './infrastructure/prisma-profile-repository';
+import { AccountProfilesController, ProfilesController } from './presentation/profiles.controller';
 
 /**
  * Module `identity` (ADR 0011, ADR 0013) : sessions, gardes, limitation, journal de sécurité,
@@ -110,6 +127,8 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
     GoogleController,
     AccountController,
     TrustedDevicesController,
+    ProfilesController,
+    AccountProfilesController,
   ],
   providers: [
     ResolveSession,
@@ -146,6 +165,18 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
     StartGoogleFlow,
     CompleteGoogleFlow,
     UnlinkGoogle,
+    PinVerifier,
+    SelectProfile,
+    LockSession,
+    GetOwnProfile,
+    UpdateOwnProfile,
+    SetOwnPin,
+    ListAccountProfiles,
+    CreateAccountProfile,
+    DeleteAccountProfile,
+    ResetProfilePin,
+    DisableProfilePin,
+    { provide: ProfileRepository, useClass: PrismaProfileRepository },
     { provide: SessionStore, useClass: RedisSessionStore },
     { provide: SecretTokens, useClass: CryptoSecretTokens },
     { provide: CsrfTokens, useClass: HmacCsrfTokens },

@@ -236,6 +236,13 @@ export const SECURITY_EVENTS = [
   'google.linked',
   'google.unlinked',
   'account.replaced',
+  // PIN-03 à PIN-05, PRO-08.
+  'pin.locked',
+  'pin.changed',
+  'pin.reset',
+  'pin.disabled',
+  'profile.created',
+  'profile.deleted',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 

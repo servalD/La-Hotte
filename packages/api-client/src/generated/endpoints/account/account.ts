@@ -21,7 +21,15 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { AccountView, ProblemDetailsDto, TrustedDeviceListView } from '../../model';
+import type {
+  AccountProfileListView,
+  AccountProfileView,
+  AccountView,
+  CreateProfileDto,
+  ProblemDetailsDto,
+  ResetProfilePinDto,
+  TrustedDeviceListView,
+} from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
 import type { ErrorType } from '../../../http/fetcher';
@@ -135,6 +143,438 @@ export function useGetAccount<
   return query;
 }
 
+export const getListAccountProfilesUrl = () => {
+  return `/api/v1/account/profiles`;
+};
+
+export const listAccountProfiles = async (
+  options?: RequestInit,
+): Promise<AccountProfileListView> => {
+  return apiFetch<AccountProfileListView>(getListAccountProfilesUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListAccountProfilesQueryKey = () => {
+  return [`/api/v1/account/profiles`] as const;
+};
+
+export const getListAccountProfilesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAccountProfiles>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAccountProfiles>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAccountProfilesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAccountProfiles>>> = ({ signal }) =>
+    listAccountProfiles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAccountProfiles>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAccountProfilesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAccountProfiles>>
+>;
+export type ListAccountProfilesQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListAccountProfiles<
+  TData = Awaited<ReturnType<typeof listAccountProfiles>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAccountProfiles>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAccountProfiles>>,
+          TError,
+          Awaited<ReturnType<typeof listAccountProfiles>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAccountProfiles<
+  TData = Awaited<ReturnType<typeof listAccountProfiles>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAccountProfiles>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAccountProfiles>>,
+          TError,
+          Awaited<ReturnType<typeof listAccountProfiles>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAccountProfiles<
+  TData = Awaited<ReturnType<typeof listAccountProfiles>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAccountProfiles>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListAccountProfiles<
+  TData = Awaited<ReturnType<typeof listAccountProfiles>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAccountProfiles>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListAccountProfilesQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getCreateAccountProfileUrl = () => {
+  return `/api/v1/account/profiles`;
+};
+
+export const createAccountProfile = async (
+  createProfileDto: CreateProfileDto,
+  options?: RequestInit,
+): Promise<AccountProfileView> => {
+  return apiFetch<AccountProfileView>(getCreateAccountProfileUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createProfileDto),
+  });
+};
+
+export const getCreateAccountProfileMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAccountProfile>>,
+    TError,
+    { data: CreateProfileDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAccountProfile>>,
+  TError,
+  { data: CreateProfileDto },
+  TContext
+> => {
+  const mutationKey = ['createAccountProfile'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAccountProfile>>,
+    { data: CreateProfileDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAccountProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAccountProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAccountProfile>>
+>;
+export type CreateAccountProfileMutationBody = CreateProfileDto;
+export type CreateAccountProfileMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useCreateAccountProfile = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createAccountProfile>>,
+      TError,
+      { data: CreateProfileDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createAccountProfile>>,
+  TError,
+  { data: CreateProfileDto },
+  TContext
+> => {
+  const mutationOptions = getCreateAccountProfileMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary `404` pour un profil inconnu comme pour celui d'un autre compte (SEC-04).
+ */
+export const getDeleteAccountProfileUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}`;
+};
+
+export const deleteAccountProfile = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getDeleteAccountProfileUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteAccountProfileMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAccountProfile>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAccountProfile>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAccountProfile'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAccountProfile>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteAccountProfile(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAccountProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAccountProfile>>
+>;
+
+export type DeleteAccountProfileMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary `404` pour un profil inconnu comme pour celui d'un autre compte (SEC-04).
+ */
+export const useDeleteAccountProfile = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAccountProfile>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAccountProfile>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getDeleteAccountProfileMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getDisableProfilePinUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}/pin`;
+};
+
+export const disableProfilePin = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getDisableProfilePinUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDisableProfilePinMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disableProfilePin>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disableProfilePin>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['disableProfilePin'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disableProfilePin>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return disableProfilePin(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisableProfilePinMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disableProfilePin>>
+>;
+
+export type DisableProfilePinMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useDisableProfilePin = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof disableProfilePin>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof disableProfilePin>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getDisableProfilePinMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getResetProfilePinUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}/pin/reset`;
+};
+
+export const resetProfilePin = async (
+  id: string,
+  resetProfilePinDto: ResetProfilePinDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getResetProfilePinUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resetProfilePinDto),
+  });
+};
+
+export const getResetProfilePinMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetProfilePin>>,
+    TError,
+    { id: string; data: ResetProfilePinDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetProfilePin>>,
+  TError,
+  { id: string; data: ResetProfilePinDto },
+  TContext
+> => {
+  const mutationKey = ['resetProfilePin'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetProfilePin>>,
+    { id: string; data: ResetProfilePinDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return resetProfilePin(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetProfilePinMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetProfilePin>>
+>;
+export type ResetProfilePinMutationBody = ResetProfilePinDto;
+export type ResetProfilePinMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useResetProfilePin = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof resetProfilePin>>,
+      TError,
+      { id: string; data: ResetProfilePinDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof resetProfilePin>>,
+  TError,
+  { id: string; data: ResetProfilePinDto },
+  TContext
+> => {
+  const mutationOptions = getResetProfilePinMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 export const getListTrustedDevicesUrl = () => {
   return `/api/v1/trusted-devices`;
 };

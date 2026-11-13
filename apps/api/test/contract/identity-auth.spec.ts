@@ -300,7 +300,14 @@ describe('POST /auth/login (AUTH-07, ADR 0013, ADR 0014)', () => {
       .send({ email: ` ${address.toUpperCase()} `, password: PASSWORD })
       .expect(200);
     expect(res.headers['cache-control']).toBe('no-store');
-    expect(res.body).toMatchObject({ authenticated: true, session: { activeProfileId: null } });
+    // PRO-04 : le profil unique, créé à l'inscription, est sélectionné d'office.
+    const [soleProfile] = [...identity.accounts.profiles.values()].filter(
+      (p) => p.accountId === accountId,
+    );
+    expect(res.body).toMatchObject({
+      authenticated: true,
+      session: { activeProfileId: soleProfile?.id, profileUnlocked: true },
+    });
     const sessionCookie = cookiesOf(res).find((c) => c.startsWith(`${SESSION_COOKIE}=`));
     expect(sessionCookie).toMatch(/HttpOnly/);
     expect(sessionCookie).toMatch(/Secure/);

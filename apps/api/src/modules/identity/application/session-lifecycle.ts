@@ -8,10 +8,15 @@ import {
   SessionStore,
 } from '../domain/ports';
 import { GoogleReauthProofs } from '../domain/google.ports';
+import { ProfileRepository } from '../domain/profile.ports';
 import { newSessionExpiry, type SessionRecord } from '../domain/session';
 import { SessionRequiredError } from '../domain/session.errors';
 
 const USER_AGENT_MAX = 512;
+
+function sessionRefOf(record: SessionRecord): SessionRef {
+  return { id: record.id, accountId: record.accountId, tokenHash: record.tokenHash };
+}
 
 export interface IssuedSession {
   /** Jeton à poser dans le cookie ; jamais stocké ni journalisé. */
@@ -31,6 +36,7 @@ export class SessionLifecycle {
     private readonly tokens: SecretTokens,
     private readonly events: IdentityEvents,
     private readonly googleProofs: GoogleReauthProofs,
+    private readonly profiles: ProfileRepository,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
@@ -66,6 +72,10 @@ export class SessionLifecycle {
       throw new SessionRequiredError();
     }
     if (input.previous) await this.revoke(input.previous);
+    // PRO-04 : un profil unique est sélectionné d'office, quel que soit le moyen de connexion. Il
+    // reste verrouillé s'il a un PIN (le déverrouillage ne vit que dans le cache, jamais ici).
+    const profileIds = await this.profiles.listIds(account.accountId);
+    const soleProfileId = profileIds.length === 1 ? (profileIds[0] ?? null) : null;
 
     const now = this.clock.now();
     const token = this.tokens.generate();
@@ -75,7 +85,7 @@ export class SessionLifecycle {
       role: account.role,
       tokenHash: this.tokens.hash(token),
       authEpoch: account.epoch,
-      activeProfileId: null,
+      activeProfileId: soleProfileId,
       reauthAt: null,
       trustedDeviceId: input.trustedDeviceId ?? null,
       userAgent: input.userAgent.slice(0, USER_AGENT_MAX),
@@ -164,5 +174,56 @@ export class SessionLifecycle {
     await this.googleProofs.consume(ref.id);
     await this.store.lock(ref);
     if (profileId) this.events.publish({ type: 'profile.locked', sessionId: ref.id, profileId });
+  }
+
+  /**
+   * PIN-02 : déverrouillage du profil, après un PIN juste (ou la création du PIN, PIN-04). Tenu
+   * dans le cache seulement (ADR 0013). `nonce` : `EVERY_OPEN`, comparé au cookie
+   * `__Host-lh_unlock`. Un changement de profil concurrent l'emporte : le déverrouillage porte le
+   * profil, et ne vaut que pour lui. `pinStamp` : empreinte du PIN qui l'a donné ; un PIN changé
+   * ou réinitialisé entre-temps le rend sans effet (PIN-05). Faux si la session a disparu du cache.
+   */
+  async unlock(
+    ref: SessionRef,
+    profileId: string,
+    nonce: string | null,
+    pinStamp: string,
+  ): Promise<boolean> {
+    return this.store.patchCache(ref.tokenHash, {
+      unlock: { profileId, at: this.clock.now(), nonce, pinStamp },
+    });
+  }
+
+  /**
+   * PIN-04, PIN-05 : verrouille le profil dans toutes les sessions du compte où il est actif
+   * (lignes de PostgreSQL), sauf `exceptSessionId`.
+   */
+  async lockProfileEverywhere(
+    accountId: string,
+    profileId: string,
+    exceptSessionId: string | null,
+  ): Promise<void> {
+    for (const record of await this.store.listForAccount(accountId)) {
+      if (record.activeProfileId !== profileId || record.id === exceptSessionId) continue;
+      await this.lock(sessionRefOf(record), profileId);
+    }
+  }
+
+  /**
+   * PRO-08, étape 1 : sessions où le profil est actif, lues **avant** sa suppression (la clé
+   * étrangère `SET NULL` les rendrait introuvables ensuite).
+   */
+  async sessionsWithProfile(accountId: string, profileId: string): Promise<SessionRef[]> {
+    return (await this.store.listForAccount(accountId))
+      .filter((record) => record.activeProfileId === profileId)
+      .map(sessionRefOf);
+  }
+
+  /**
+   * PRO-08, étape 2, après la suppression : ces sessions reviennent à la sélection (cache,
+   * déverrouillage et ré-authentification effacés, événement publié).
+   */
+  async deselect(refs: readonly SessionRef[]): Promise<void> {
+    for (const ref of refs) await this.selectProfile(ref, null);
   }
 }

@@ -1,25 +1,38 @@
-import { Controller, Get, Req, Res } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import {
   AuthorizeProfile,
   CsrfTokens,
+  LockSession,
   type ResolvedSession,
   SecretTokens,
+  SelectProfile,
+  sessionRef,
   VerifySecondFactor,
 } from '../application/contract';
 import {
   clearPendingCookie,
   clearSessionCookies,
+  clearUnlockCookie,
   PENDING_COOKIE,
   PRESESSION_COOKIE,
   readCookie,
   SESSION_COOKIE,
   setCsrfCookie,
   setPresessionCookies,
+  setUnlockCookie,
   UNLOCK_COOKIE,
 } from './cookies';
-import { CurrentSession, Public } from './decorators';
+import {
+  AccountScope,
+  ClientContext,
+  type ClientContextValue,
+  CurrentSession,
+  Public,
+} from './decorators';
+import { SelectProfileDto } from './dto/profile.dto';
+import { ProfileSelectionView } from './dto/profile.view';
 import { SessionStatusView } from './dto/session-status.view';
 
 @ApiTags('session')
@@ -30,6 +43,8 @@ export class SessionController {
     private readonly secondFactor: VerifySecondFactor,
     private readonly csrf: CsrfTokens,
     private readonly tokens: SecretTokens,
+    private readonly selectProfileUseCase: SelectProfile,
+    private readonly lockSessionUseCase: LockSession,
   ) {}
 
   /**
@@ -78,5 +93,53 @@ export class SessionController {
     const csrfToken = this.csrf.forPresession(presessionId);
     setPresessionCookies(response, { presessionId, csrfToken });
     return { authenticated: false, csrfToken, session: null, secondFactorPending };
+  }
+
+  /**
+   * PRO-07, API-11 : choisit le profil actif, et le déverrouille avec son PIN s'il en a un. Le
+   * changement a lieu avant la vérification : un PIN faux (`422 PIN_INVALID`) laisse le nouveau
+   * profil actif et verrouillé. Pendant l'attente de PIN-03 : `429`.
+   */
+  @Post('profile')
+  @AccountScope()
+  @HttpCode(200)
+  @ApiOkResponse({ type: ProfileSelectionView })
+  async selectProfile(
+    @Body() body: SelectProfileDto,
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ProfileSelectionView> {
+    // Toute sélection efface le déverrouillage précédent : son cookie avec lui.
+    clearUnlockCookie(response);
+    const selection = await this.selectProfileUseCase.execute({
+      session: sessionRef(current.record),
+      profileId: body.profileId,
+      pin: body.pin ?? null,
+      client,
+    });
+    if (selection.unlockNonce) setUnlockCookie(response, selection.unlockNonce);
+    return {
+      activeProfileId: selection.profileId,
+      profileUnlocked: selection.unlocked,
+      pinResetNoticeAt: selection.pinResetNoticeAt?.toISOString() ?? null,
+      failedPinAttempts: selection.failedPinAttempts,
+    };
+  }
+
+  /** PIN-07 : verrouille le profil actif sans le changer ; efface la ré-authentification. */
+  @Post('lock')
+  @AccountScope()
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async lockSession(
+    @CurrentSession() current: ResolvedSession,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.lockSessionUseCase.execute(
+      sessionRef(current.record),
+      current.record.activeProfileId,
+    );
+    clearUnlockCookie(response);
   }
 }

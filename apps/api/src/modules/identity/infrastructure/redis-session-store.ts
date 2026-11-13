@@ -16,6 +16,7 @@ import {
   type SessionRecord,
   type Unlock,
 } from '../domain/session';
+import { ProfileNotFoundError } from '../domain/profile.errors';
 import { IdentityUnavailableError } from '../domain/session.errors';
 
 // Clés Redis (ADR 0013). Ni e-mail, ni nom, ni adresse IP : identifiants, horodatages, drapeaux.
@@ -90,7 +91,7 @@ interface CacheJson {
   absoluteExpiresAt: number;
   createdAt: number;
   persistedAt: number;
-  unlock: { profileId: string; at: number; nonce: string | null } | null;
+  unlock: { profileId: string; at: number; nonce: string | null; pinStamp?: string | null } | null;
 }
 
 /**
@@ -104,6 +105,17 @@ async function checked(
   if (results === null || results.some(([error]) => error !== null)) {
     throw new Error('Transaction Redis refusée');
   }
+}
+
+/** Clé étrangère `active_profile_id` (P2003) ou déclencheur du même compte (`check_violation`). */
+function isMissingProfile(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: unknown }).code;
+  return (
+    code === 'P2003' ||
+    error.message.includes('session_active_profile_same_account') ||
+    error.message.includes('session_active_profile_id_fkey')
+  );
 }
 
 const ms = (date: Date): number => date.getTime();
@@ -124,7 +136,14 @@ function toJson(record: SessionRecord, unlock: Unlock | null, persistedAt: Date)
     absoluteExpiresAt: ms(record.absoluteExpiresAt),
     createdAt: ms(record.createdAt),
     persistedAt: ms(persistedAt),
-    unlock: unlock ? { profileId: unlock.profileId, at: ms(unlock.at), nonce: unlock.nonce } : null,
+    unlock: unlock
+      ? {
+          profileId: unlock.profileId,
+          at: ms(unlock.at),
+          nonce: unlock.nonce,
+          pinStamp: unlock.pinStamp,
+        }
+      : null,
   };
 }
 
@@ -147,7 +166,13 @@ function fromJson(tokenHash: string, raw: string): CachedSession {
       createdAt: new Date(json.createdAt),
     },
     unlock: json.unlock
-      ? { profileId: json.unlock.profileId, at: new Date(json.unlock.at), nonce: json.unlock.nonce }
+      ? {
+          profileId: json.unlock.profileId,
+          at: new Date(json.unlock.at),
+          nonce: json.unlock.nonce,
+          // Cache d'avant la tranche 5 : sans empreinte, donc verrouillé (PIN-05).
+          pinStamp: json.unlock.pinStamp ?? null,
+        }
       : null,
     persistedAt: new Date(json.persistedAt),
   };
@@ -162,7 +187,12 @@ function patchJson(patch: SessionCachePatch): Partial<CacheJson> {
   if (patch.reauthAt !== undefined) out.reauthAt = patch.reauthAt ? ms(patch.reauthAt) : null;
   if (patch.unlock !== undefined) {
     out.unlock = patch.unlock
-      ? { profileId: patch.unlock.profileId, at: ms(patch.unlock.at), nonce: patch.unlock.nonce }
+      ? {
+          profileId: patch.unlock.profileId,
+          at: ms(patch.unlock.at),
+          nonce: patch.unlock.nonce,
+          pinStamp: patch.unlock.pinStamp,
+        }
       : null;
   }
   return out;
@@ -461,10 +491,17 @@ export class RedisSessionStore extends SessionStore {
   async setActiveProfile(ref: SessionRef, profileId: string | null): Promise<void> {
     // Échec fermé : le déverrouillage disparaît avant tout autre changement.
     await this.patchCache(ref.tokenHash, { unlock: null });
-    await this.prisma.session.updateMany({
-      where: { id: ref.id, tokenHash: ref.tokenHash },
-      data: { activeProfileId: profileId, reauthAt: null },
-    });
+    try {
+      await this.prisma.session.updateMany({
+        where: { id: ref.id, tokenHash: ref.tokenHash },
+        data: { activeProfileId: profileId, reauthAt: null },
+      });
+    } catch (error) {
+      // Profil supprimé entre sa lecture et ce choix (clé étrangère, ou déclencheur
+      // `session_active_profile_same_account`) : introuvable, pas une erreur inattendue (PRO-08).
+      if (isMissingProfile(error)) throw new ProfileNotFoundError();
+      throw error;
+    }
     await this.patchCache(ref.tokenHash, {
       activeProfileId: profileId,
       reauthAt: null,

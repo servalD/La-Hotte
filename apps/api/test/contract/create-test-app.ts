@@ -27,6 +27,7 @@ import {
   InMemorySecondFactorRepository,
   InMemoryTrustedDeviceRepository,
   InMemoryProfileLockPolicies,
+  InMemoryProfileRepository,
   InMemoryRateLimiter,
   InMemorySecurityLog,
   InMemorySessionStore,
@@ -35,6 +36,7 @@ import {
   PasswordHasher,
   PendingSecondFactors,
   ProfileLockPolicies,
+  ProfileRepository,
   RateLimiter,
   SecondFactorRepository,
   SecurityLog,
@@ -48,6 +50,8 @@ import { type SignedIn, signIn } from '../support/sign-in';
 export interface TestIdentity {
   readonly sessions: InMemorySessionStore;
   readonly profiles: InMemoryProfileLockPolicies;
+  /** Même magasin que `profiles` et `accounts.profiles`. */
+  readonly profileRepository: InMemoryProfileRepository;
   readonly securityLog: InMemorySecurityLog;
   readonly mail: InMemoryMailSender;
   readonly accounts: InMemoryAccountRepository;
@@ -63,7 +67,10 @@ export interface TestIdentity {
   readonly oidcFlows: InMemoryOidcFlows;
   readonly googleReauthProofs: InMemoryGoogleReauthProofs;
   readonly googleIdentities: InMemoryGoogleIdentityRepository;
-  /** Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé). */
+  /**
+   * Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé), `TEST_PIN`
+   * sinon. `withProfile: false` : compte sans aucun profil.
+   */
   signIn(options?: { pin?: boolean; relock?: PinRelock; withProfile?: boolean }): Promise<SignedIn>;
 }
 
@@ -80,10 +87,11 @@ export async function createTestApp(
 
   const exampleItems = new InMemoryExampleItemRepository();
   const sessions = new InMemorySessionStore();
-  const profiles = new InMemoryProfileLockPolicies();
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
   const accounts = new InMemoryAccountRepository(sessions);
+  const profiles = new InMemoryProfileLockPolicies(accounts.profiles);
+  const profileRepository = new InMemoryProfileRepository(accounts.profiles, sessions);
   const hasher = new FakePasswordHasher();
   const breaches = new InMemoryBreachChecker();
   const background = new InMemoryBackgroundTasks();
@@ -106,6 +114,8 @@ export async function createTestApp(
     .useValue(sessions)
     .overrideProvider(ProfileLockPolicies)
     .useValue(profiles)
+    .overrideProvider(ProfileRepository)
+    .useValue(profileRepository)
     .overrideProvider(RateLimiter)
     .useValue(rateLimiter)
     .overrideProvider(EventThrottle)
@@ -148,6 +158,7 @@ export async function createTestApp(
   const identity: TestIdentity = {
     sessions,
     profiles,
+    profileRepository,
     securityLog,
     mail,
     accounts,
@@ -167,7 +178,7 @@ export async function createTestApp(
       const accountId = randomUUID();
       const profileId = randomUUID();
       sessions.addAccount(accountId);
-      profiles.set({ profileId, accountId, hasPin: pin, relock });
+      if (withProfile) profiles.set({ profileId, accountId, hasPin: pin, relock });
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };

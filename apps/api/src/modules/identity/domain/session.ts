@@ -61,6 +61,12 @@ export interface Unlock {
   readonly at: Date;
   /** `EVERY_OPEN` : nonce comparé au cookie `__Host-lh_unlock`. */
   readonly nonce: string | null;
+  /**
+   * PIN-05 : empreinte (SHA-256) du hash du PIN qui a donné ce déverrouillage. Un PIN changé ou
+   * réinitialisé change l'empreinte : un déverrouillage obtenu avec l'ancien ne vaut plus, même
+   * écrit après la réinitialisation.
+   */
+  readonly pinStamp: string | null;
 }
 
 /** Session telle que lue dans le cache. */
@@ -109,6 +115,8 @@ export interface ProfileLockPolicy {
   readonly accountId: string;
   readonly hasPin: boolean;
   readonly relock: PinRelock;
+  /** Empreinte du hash du PIN courant ; `null` sans PIN (voir `Unlock.pinStamp`). */
+  readonly pinStamp: string | null;
 }
 
 /** Comparaison en temps constant de deux chaînes (nonce de déverrouillage). */
@@ -133,6 +141,14 @@ export function isProfileUnlocked(input: {
   const { policy, unlock, unlockCookie, now } = input;
   if (!policy.hasPin) return true;
   if (!unlock || unlock.profileId !== policy.profileId) return false;
+  // PIN-05 : déverrouillage donné par un autre PIN que le PIN courant.
+  if (
+    unlock.pinStamp === null ||
+    policy.pinStamp === null ||
+    !sameSecret(unlock.pinStamp, policy.pinStamp)
+  ) {
+    return false;
+  }
   if (policy.relock !== 'NEVER' && now.getTime() - unlock.at.getTime() >= UNLOCK_IDLE_MS) {
     return false;
   }

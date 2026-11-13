@@ -3,7 +3,12 @@ import { InMemoryGoogleReauthProofs } from '../infrastructure/in-memory-google';
 import type { IdentityEvent } from '../domain/ports';
 import { InProcessIdentityEvents } from '../infrastructure/adapters';
 import { CryptoSecretTokens } from '../infrastructure/crypto-tokens';
-import { InMemoryProfileLockPolicies, InMemorySessionStore } from '../infrastructure/in-memory';
+import {
+  InMemoryProfileLockPolicies,
+  InMemoryProfileRepository,
+  InMemorySessionStore,
+  TEST_PIN_STAMP,
+} from '../infrastructure/in-memory';
 import { CheckSessionAccess } from './check-session-access.use-case';
 import { ResolveSession } from './resolve-session.use-case';
 import { SessionLifecycle } from './session-lifecycle';
@@ -42,6 +47,8 @@ function setup() {
     tokens,
     events,
     new InMemoryGoogleReauthProofs(),
+    // Magasin de profils distinct : ces tests choisissent le profil eux-mêmes (pas de PRO-04).
+    new InMemoryProfileRepository(),
     new SequentialIds(),
     clock,
   );
@@ -128,7 +135,7 @@ describe('ResolveSession (ADR 0013, « Stockage »)', () => {
     const ref = { id: record.id, accountId: 'acct', tokenHash: record.tokenHash };
     await lifecycle.selectProfile(ref, 'prof');
     await store.patchCache(record.tokenHash, {
-      unlock: { profileId: 'prof', at: clock.now(), nonce: null },
+      unlock: { profileId: 'prof', at: clock.now(), nonce: null, pinStamp: TEST_PIN_STAMP },
     });
     expect((await resolve.execute(token))?.unlock).not.toBeNull();
 
@@ -166,7 +173,7 @@ describe('SessionLifecycle (ADR 0013, « Rotation »)', () => {
     const ref = { id: issued.record.id, accountId: 'acct', tokenHash: issued.record.tokenHash };
     await lifecycle.selectProfile(ref, 'prof');
     await store.patchCache(ref.tokenHash, {
-      unlock: { profileId: 'prof', at: clock.now(), nonce: null },
+      unlock: { profileId: 'prof', at: clock.now(), nonce: null, pinStamp: TEST_PIN_STAMP },
     });
 
     const rotated = await lifecycle.rotate(ref);
@@ -198,7 +205,7 @@ describe('SessionLifecycle (ADR 0013, « Rotation »)', () => {
     const rotated = await lifecycle.rotate(ref);
     const current = { ...ref, tokenHash: rotated.record.tokenHash };
     await store.patchCache(current.tokenHash, {
-      unlock: { profileId: 'prof', at: clock.now(), nonce: null },
+      unlock: { profileId: 'prof', at: clock.now(), nonce: null, pinStamp: TEST_PIN_STAMP },
     });
 
     await lifecycle.selectProfile(current, 'prof');
@@ -261,7 +268,7 @@ describe('Déverrouillage concurrent (PIN-07, revue SEC-40)', () => {
     const issued = await open();
     const ref = { id: issued.record.id, accountId: 'acct', tokenHash: issued.record.tokenHash };
     await lifecycle.selectProfile(ref, 'prof');
-    const unlock = { profileId: 'prof', at: clock.now(), nonce: null };
+    const unlock = { profileId: 'prof', at: clock.now(), nonce: null, pinStamp: TEST_PIN_STAMP };
     await store.patchCache(ref.tokenHash, { unlock });
 
     // Requête lue déverrouillée, puis verrouillage, puis la requête veut prolonger.
@@ -292,7 +299,7 @@ describe('CheckSessionAccess (ADR 0013, passerelle temps réel)', () => {
     expect(await check.execute(ref.id, 'prof')).toBe(false);
 
     await store.patchCache(ref.tokenHash, {
-      unlock: { profileId: 'prof', at: clock.now(), nonce: null },
+      unlock: { profileId: 'prof', at: clock.now(), nonce: null, pinStamp: TEST_PIN_STAMP },
     });
     expect(await check.execute(ref.id, 'prof')).toBe(true);
     expect(await check.execute(ref.id, 'autre')).toBe(false);

@@ -199,27 +199,29 @@ model TrustedDevice {
 
 /// 10 profils au plus par compte : garanti par un déclencheur (migration), DAT-01.
 model Profile {
-  id               String    @id @db.Uuid
-  accountId        String    @map("account_id") @db.Uuid
-  displayName      String    @map("display_name") @db.VarChar(60)
+  id                    String    @id @db.Uuid
+  accountId             String    @map("account_id") @db.Uuid
+  displayName           String    @map("display_name") @db.VarChar(60)
   /// Clé de l'image d'avatar ; sans image, couleur d'accent et initiales.
-  avatar           String?   @db.VarChar(200)
-  accentColor      String    @map("accent_color") @db.Char(7)
-  birthdayDay      Int?      @map("birthday_day") @db.SmallInt
-  birthdayMonth    Int?      @map("birthday_month") @db.SmallInt
-  birthdayYear     Int?      @map("birthday_year") @db.SmallInt
-  locale           String    @db.VarChar(16)
-  currency         String    @db.Char(3)
-  timezone         String    @db.VarChar(64)
-  isChild          Boolean   @default(false) @map("is_child")
-  pinHash          String?   @map("pin_hash") @db.VarChar(255)
-  pinRelock        PinRelock @default(IDLE_15) @map("pin_relock")
-  pinFailedCount   Int       @default(0) @map("pin_failed_count")
-  pinLockedUntil   DateTime? @map("pin_locked_until") @db.Timestamptz(3)
-  pinResetNoticeAt DateTime? @map("pin_reset_notice_at") @db.Timestamptz(3)
-  version          Int       @default(1)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  avatar                String?   @db.VarChar(200)
+  accentColor           String    @map("accent_color") @db.Char(7)
+  birthdayDay           Int?      @map("birthday_day") @db.SmallInt
+  birthdayMonth         Int?      @map("birthday_month") @db.SmallInt
+  birthdayYear          Int?      @map("birthday_year") @db.SmallInt
+  locale                String    @db.VarChar(16)
+  currency              String    @db.Char(3)
+  timezone              String    @db.VarChar(64)
+  isChild               Boolean   @default(false) @map("is_child")
+  pinHash               String?   @map("pin_hash") @db.VarChar(255)
+  pinRelock             PinRelock @default(IDLE_15) @map("pin_relock")
+  pinFailedCount        Int       @default(0) @map("pin_failed_count")
+  /// PIN-03 : PIN faux depuis la dernière entrée dans le profil ; seule la sélection l'efface.
+  pinFailuresSinceEntry Int       @default(0) @map("pin_failures_since_entry")
+  pinLockedUntil        DateTime? @map("pin_locked_until") @db.Timestamptz(3)
+  pinResetNoticeAt      DateTime? @map("pin_reset_notice_at") @db.Timestamptz(3)
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   account  Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
   sessions Session[]

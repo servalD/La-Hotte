@@ -1,6 +1,6 @@
 // Premier import : télémétrie démarrée avant l'application, comme `instrument.ts` (OBS-12).
 import { leakTelemetryEnv } from './start-telemetry';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as Sentry from '@sentry/nestjs';
@@ -22,7 +22,8 @@ import {
   PasswordBreachChecker,
 } from '../../src/modules/identity/testing';
 import { type FakeOidcProvider, startFakeOidcProvider } from '../support/fake-oidc-provider';
-import { createAccountWithProfile, signIn } from '../support/sign-in';
+import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
+import { createAccountWithProfile, session as sessionHeaders, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
 import { LeakRoutesController } from './leak-routes.controller';
@@ -64,6 +65,14 @@ const secondFactorSecrets: Record<string, string> = {};
  * saisi à l'inscription, session ouverte par le retour.
  */
 const googleSecrets: Record<string, string> = {};
+/**
+ * Secrets des profils (PIN-01 à PIN-07) : PIN de 8 chiffres tirés au hasard (juste, faux, de
+ * réinitialisation), cherchés isolés comme un montant (un horodatage peut contenir 8 chiffres),
+ * hash argon2 du PIN, nonce de déverrouillage (`__Host-lh_unlock`), jeton de la session
+ * ré-authentifiée.
+ */
+const pinSecrets: Record<string, string> = {};
+const randomPin = (): string => String(randomInt(10_000_000, 99_999_999));
 /** Fournisseur OpenID Connect local, à la place de Google. */
 let provider: FakeOidcProvider | undefined;
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
@@ -257,6 +266,146 @@ async function playScenario(app: INestApplication): Promise<void> {
 
   await playAuthScenario(app, pre.body.csrfToken as string, presessionCookie?.split(';')[0] ?? '');
   await playGoogleScenario(app);
+  await playProfileScenario(app);
+}
+
+/**
+ * Profils et PIN (tranche 5) : PIN dans les corps (juste, faux, réinitialisé), hash en base,
+ * compteur de PIN-03 en SQL brut, nonce de déverrouillage en cookie, nom de profil porteur du
+ * marqueur. Rien ne doit en sortir.
+ */
+async function playProfileScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const { accountId, profileId } = await createAccountWithProfile(prisma);
+  let user = await signIn(app, { accountId, profileId });
+  const headers = () => ({
+    ...markedHeaders,
+    Cookie: `${user.cookie}; session=${MARKER}`,
+    'X-CSRF-Token': user.csrf,
+    Origin: 'http://localhost:3000',
+  });
+  pinSecrets.pin = randomPin();
+  pinSecrets.wrongPin = randomPin();
+  pinSecrets.resetPin = randomPin();
+
+  // Espace Compte : profil créé avec un nom porteur du marqueur, liste des métadonnées.
+  await http
+    .post('/api/v1/account/profiles')
+    .set(headers())
+    .send({ displayName: `Profil ${MARKER}` })
+    .expect(201);
+  await http.get('/api/v1/account/profiles').set(headers()).expect(200);
+
+  // PIN-04 : création du PIN, puis `EVERY_OPEN` (PATCH avec If-Match) et nom modifié.
+  await http
+    .put('/api/v1/profiles/me/pin')
+    .set(headers())
+    .send({ newPin: pinSecrets.pin })
+    .expect(204);
+  pinSecrets.pinHash =
+    (await prisma.profile.findUniqueOrThrow({ where: { id: profileId } })).pinHash ?? '';
+  // Revue SEC-40, C2-M3 : empreinte du PIN portée par le déverrouillage, écrite dans Redis.
+  pinSecrets.pinStamp = createHash('sha256').update(pinSecrets.pinHash, 'utf8').digest('hex');
+  await http
+    .patch('/api/v1/profiles/me')
+    .set(headers())
+    .set('If-Match', '"1"')
+    .send({ pinRelock: 'EVERY_OPEN', displayName: `Nom ${MARKER}` })
+    .expect(200);
+
+  // PRO-07 : PIN faux (compté en SQL brut), puis juste ; nonce de déverrouillage posé en cookie.
+  await http
+    .post('/api/v1/session/profile')
+    .set(headers())
+    .send({ profileId, pin: pinSecrets.wrongPin })
+    .expect(422);
+  const selected = await http
+    .post('/api/v1/session/profile')
+    .set(headers())
+    .send({ profileId, pin: pinSecrets.pin })
+    .expect(200);
+  const unlockCookie = ([] as string[])
+    .concat((selected.headers['set-cookie'] as unknown as string[] | undefined) ?? [])
+    .filter((cookie) => cookie.startsWith('__Host-lh_unlock='))
+    .at(-1);
+  pinSecrets.unlockNonce = decodeURIComponent(unlockCookie?.split(';')[0]?.split('=')[1] ?? '');
+  await http
+    .get('/api/v1/profiles/me')
+    .set({ ...headers(), Cookie: `${user.cookie}; __Host-lh_unlock=${pinSecrets.unlockNonce}` })
+    .expect(200);
+
+  // PIN-04 : changement par l'ancien PIN, faux (compté) ; revue SEC-40, M1 : affaiblissement
+  // du reverrouillage avec un PIN faux.
+  const unlocked = () => ({
+    ...headers(),
+    Cookie: `${user.cookie}; __Host-lh_unlock=${pinSecrets.unlockNonce}`,
+  });
+  await http
+    .put('/api/v1/profiles/me/pin')
+    .set(unlocked())
+    .send({ currentPin: pinSecrets.wrongPin, newPin: pinSecrets.resetPin })
+    .expect(422);
+  await http
+    .patch('/api/v1/profiles/me')
+    .set(unlocked())
+    .set('If-Match', '"2"')
+    .send({ pinRelock: 'NEVER', currentPin: pinSecrets.wrongPin })
+    .expect(422);
+
+  // PIN-03 (revue SEC-40, I4) : jusqu'au seuil, puis attente (429), ligne `pin.locked` et
+  // e-mail au compte en tâche de fond.
+  for (let i = 0; i < 3; i += 1) {
+    await http
+      .post('/api/v1/session/profile')
+      .set(headers())
+      .send({ profileId, pin: pinSecrets.wrongPin })
+      .expect(422);
+  }
+  await http
+    .post('/api/v1/session/profile')
+    .set(headers())
+    .send({ profileId, pin: pinSecrets.pin })
+    .expect(429);
+  await background.flush();
+  if (background.failures.length > 0) throw new Error('tâche de fond en échec');
+  if (!mail.sent.some((sent) => sent.subject.startsWith('Codes PIN'))) {
+    throw new Error('avertissement PIN-03 absent');
+  }
+
+  // PIN-05 : ré-authentification (rotation réelle), réinitialisation (remet le compteur à zéro),
+  // puis désactivation (nouvelle ré-authentification : la réinitialisation a verrouillé la
+  // session, ce qui l'efface), verrouillage.
+  const reauthenticate = async (): Promise<void> => {
+    const rotated = await app.get(SessionLifecycle).rotate({
+      id: user.sessionId,
+      accountId,
+      tokenHash: user.tokenHash,
+    });
+    user = sessionHeaders(
+      app,
+      rotated.token,
+      rotated.record.tokenHash,
+      user.sessionId,
+      accountId,
+      profileId,
+    );
+  };
+  await reauthenticate();
+  pinSecrets.reauthToken = user.token;
+  await http
+    .put(`/api/v1/account/profiles/${profileId}/pin/reset`)
+    .set(headers())
+    .send({ newPin: pinSecrets.resetPin })
+    .expect(204);
+  await http
+    .post('/api/v1/session/profile')
+    .set(headers())
+    .send({ profileId, pin: pinSecrets.resetPin })
+    .expect(200);
+  await reauthenticate();
+  await http.delete(`/api/v1/account/profiles/${profileId}/pin`).set(headers()).expect(204);
+  await http.post('/api/v1/session/lock').set(headers()).expect(204);
 }
 
 /**
@@ -732,6 +881,41 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       expect(secret.length).toBeGreaterThanOrEqual(16);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }
+  });
+
+  it('PIN-01 à PIN-07 : PIN, hash du PIN, nonce de déverrouillage absents de toute sortie', () => {
+    expect(Object.keys(pinSecrets).sort()).toEqual(
+      ['pin', 'pinHash', 'pinStamp', 'reauthToken', 'resetPin', 'unlockNonce', 'wrongPin'].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    // Les routes des profils ont bien été tracées (pas de faux vert).
+    for (const route of [
+      '/api/v1/session/profile',
+      '/api/v1/profiles/me/pin',
+      '/api/v1/account/profiles/:id/pin/reset',
+      '/api/v1/account/profiles/:id/pin',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const name of ['pin', 'wrongPin', 'resetPin']) {
+      const pin = pinSecrets[name] ?? '';
+      expect(pin).toMatch(/^[0-9]{8}$/);
+      const leaked = new RegExp(`(?<!\\d)${pin}(?!\\d)`).test(everything);
+      expect({ name, leaked }).toEqual({ name, leaked: false });
+    }
+    for (const name of ['pinHash', 'pinStamp', 'unlockNonce', 'reauthToken']) {
+      const secret = pinSecrets[name] ?? '';
+      expect(secret.length).toBeGreaterThan(20);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+    // OBS-02 : les refus d'autorisation (PIN faux, profil verrouillé) sont comptés.
+    expect(bodies('metrics')).toContain('wishlist.authorization_denied');
+    expect(bodies('metrics')).toContain('PIN_RATE_LIMITED');
   });
 
   it('ADR 0013, OBS-23 : commandes Redis tracées sans clé ni argument (sérialiseur de telemetry.ts, puis scrub)', () => {

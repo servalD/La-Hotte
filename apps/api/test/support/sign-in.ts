@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
-import { CsrfTokens, SessionStore } from '../../src/modules/identity/domain/ports';
+import {
+  CsrfTokens,
+  ProfileLockPolicies,
+  SessionStore,
+} from '../../src/modules/identity/domain/ports';
 import { CSRF_COOKIE, SESSION_COOKIE } from '../../src/modules/identity/presentation/cookies';
 import type { PrismaService } from '../../src/platform/prisma/prisma.service';
 
@@ -80,9 +84,11 @@ export async function unlockProfile(
   at: Date,
 ): Promise<void> {
   if (!signed.profileId) throw new Error('Aucun profil actif');
-  await app
-    .get(SessionStore)
-    .patchCache(signed.tokenHash, { unlock: { profileId: signed.profileId, at, nonce: null } });
+  // PIN-05 : le déverrouillage porte l'empreinte du PIN courant, lue comme la lit la garde.
+  const policy = await app.get(ProfileLockPolicies).find(signed.accountId, signed.profileId);
+  await app.get(SessionStore).patchCache(signed.tokenHash, {
+    unlock: { profileId: signed.profileId, at, nonce: null, pinStamp: policy?.pinStamp ?? null },
+  });
 }
 
 /** Compte et profil réels en base (tests d'intégration et de non-fuite). */

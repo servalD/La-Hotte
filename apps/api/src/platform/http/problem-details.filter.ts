@@ -18,6 +18,17 @@ import {
 import { RequestValidationException } from './validation';
 
 /**
+ * Natures d'un refus d'autorisation (401, 403, 423), le PIN faux de PIN-02 et l'attente de PIN-03
+ * (une force brute de PIN doit se voir).
+ */
+const DENIAL_KINDS: ReadonlySet<string> = new Set(['unauthenticated', 'forbidden', 'locked']);
+const DENIAL_CODES: ReadonlySet<string> = new Set(['PIN_INVALID', 'PIN_RATE_LIMITED']);
+
+function isAuthorizationDenial(error: DomainError): boolean {
+  return DENIAL_KINDS.has(error.kind) || DENIAL_CODES.has(error.code);
+}
+
+/**
  * Toute erreur sort en `application/problem+json` (RFC 9457, API-14).
  * Jamais de trace d'exécution ni de détail interne. OBS-25 : seules les erreurs inattendues (5xx)
  * sont journalisées et signalées à GlitchTip, avec l'identifiant de requête et le gabarit de
@@ -50,6 +61,13 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         code: exception.code,
         kind: exception.kind,
       });
+      // OBS-02, SEC-32 : un refus d'autorisation compte aussi à part, pour l'alerte sur son pic.
+      if (isAuthorizationDenial(exception)) {
+        this.metrics.increment('wishlist.authorization_denied', {
+          code: exception.code,
+          kind: exception.kind,
+        });
+      }
     } else if (body.status >= 500) {
       this.logger.error({ err: exception }, 'Erreur inattendue');
       this.errorReporter.report(exception, {

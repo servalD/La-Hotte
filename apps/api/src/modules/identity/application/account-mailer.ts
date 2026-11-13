@@ -26,7 +26,8 @@ type MailKind =
   | { readonly kind: 'recovery_code_used' }
   | { readonly kind: 'second_factor_attempts' }
   | { readonly kind: 'google_linked' }
-  | { readonly kind: 'google_unlinked' };
+  | { readonly kind: 'google_unlinked' }
+  | { readonly kind: 'pin_attempts' };
 
 const SIGNATURE = '\n\n— La Hotte';
 
@@ -194,6 +195,19 @@ export class AccountMailer {
             'autres appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
             'réinitialisez votre mot de passe sans attendre :\n' +
             `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'pin_attempts':
+        // PIN-03 : aucun nom de profil (aucun contenu d'utilisateur dans les e-mails du compte).
+        return {
+          to,
+          subject: 'Codes PIN erronés sur un profil',
+          text:
+            'Cinq codes PIN erronés de suite viennent d’être saisis sur un profil de votre compte ' +
+            'La Hotte. Ce profil attend désormais avant chaque nouvel essai.\n\nSi personne de ' +
+            'votre entourage n’a simplement oublié son code, quelqu’un essaie peut-être d’entrer ' +
+            'dans ce profil. Depuis votre espace Compte, vous pouvez réinitialiser le code PIN ' +
+            'du profil concerné.' +
             SIGNATURE,
         };
       case 'email_taken_notice':

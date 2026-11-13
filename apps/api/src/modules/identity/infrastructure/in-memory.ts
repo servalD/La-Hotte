@@ -50,9 +50,20 @@ import {
   SecondFactorRepository,
   TrustedDeviceRepository,
 } from '../domain/second-factor.ports';
+import {
+  MAX_PROFILES_PER_ACCOUNT,
+  type PinAttempt,
+  pinLockDelayMs,
+  type ProfileChanges,
+  type ProfileDetails,
+  type ProfileMetadata,
+} from '../domain/profile';
+import { ProfileRepository } from '../domain/profile.ports';
+import { pinStampOf } from './pin-stamp';
 import type {
   AccountRole,
   CachedSession,
+  PinRelock,
   ProfileLockPolicy,
   SessionRecord,
   Unlock,
@@ -272,16 +283,261 @@ export class InMemorySessionStore extends SessionStore {
   }
 }
 
-export class InMemoryProfileLockPolicies extends ProfileLockPolicies {
-  readonly policies = new Map<string, ProfileLockPolicy>();
+/** PIN des profils créés par `InMemoryProfileLockPolicies.set` avec `hasPin` (tests). */
+export const TEST_PIN = '1234';
 
-  set(policy: ProfileLockPolicy): void {
-    this.policies.set(policy.profileId, policy);
+/** Hash de `FakePasswordHasher`, calculé sans attendre. */
+function fakeHash(secret: string): string {
+  return `fake$${createHash('sha256').update(secret).digest('hex')}`;
+}
+
+/** Empreinte du PIN `TEST_PIN` (PIN-05), à porter par un déverrouillage posé à la main. */
+export const TEST_PIN_STAMP = pinStampOf(fakeHash(TEST_PIN)) ?? '';
+
+/**
+ * Profil en mémoire : les champs de l'inscription, le reste facultatif (valeurs par défaut de la
+ * base à la lecture), pour que les tests qui posent un profil à la main restent courts.
+ */
+export interface MemoryProfile extends NewProfile {
+  accountId: string;
+  avatar?: string | null;
+  birthdayDay?: number | null;
+  birthdayMonth?: number | null;
+  birthdayYear?: number | null;
+  isChild?: boolean;
+  pinHash?: string | null;
+  pinRelock?: PinRelock;
+  pinFailedCount?: number;
+  pinFailuresSinceEntry?: number;
+  pinLockedUntil?: Date | null;
+  pinResetNoticeAt?: Date | null;
+  version?: number;
+  createdAt?: Date;
+}
+
+/** Magasin commun aux doubles des comptes, des réglages de verrouillage et des profils. */
+export type MemoryProfiles = Map<string, MemoryProfile>;
+
+export class InMemoryProfileLockPolicies extends ProfileLockPolicies {
+  constructor(readonly profiles: MemoryProfiles = new Map()) {
+    super();
+  }
+
+  /** Profil prêt à l'emploi ; avec `hasPin`, son PIN est `TEST_PIN`. */
+  set(policy: Omit<ProfileLockPolicy, 'pinStamp'>): void {
+    const existing = this.profiles.get(policy.profileId);
+    this.profiles.set(policy.profileId, {
+      id: policy.profileId,
+      displayName: 'Profil de test',
+      accentColor: '#336699',
+      locale: 'fr',
+      currency: 'EUR',
+      timezone: 'Europe/Paris',
+      createdAt: new Date(),
+      ...existing,
+      accountId: policy.accountId,
+      pinHash: policy.hasPin ? fakeHash(TEST_PIN) : null,
+      pinRelock: policy.relock,
+    });
   }
 
   async find(accountId: string, profileId: string): Promise<ProfileLockPolicy | null> {
-    const policy = this.policies.get(profileId);
-    return policy?.accountId === accountId ? policy : null;
+    const profile = this.profiles.get(profileId);
+    if (profile?.accountId !== accountId) return null;
+    return {
+      profileId,
+      accountId,
+      hasPin: (profile.pinHash ?? null) !== null,
+      relock: profile.pinRelock ?? 'IDLE_15',
+      pinStamp: pinStampOf(profile.pinHash ?? null),
+    };
+  }
+}
+
+function details(profile: MemoryProfile): ProfileDetails {
+  return {
+    id: profile.id,
+    accountId: profile.accountId,
+    displayName: profile.displayName,
+    avatar: profile.avatar ?? null,
+    accentColor: profile.accentColor,
+    birthdayDay: profile.birthdayDay ?? null,
+    birthdayMonth: profile.birthdayMonth ?? null,
+    birthdayYear: profile.birthdayYear ?? null,
+    locale: profile.locale,
+    currency: profile.currency,
+    timezone: profile.timezone,
+    isChild: profile.isChild ?? false,
+    hasPin: (profile.pinHash ?? null) !== null,
+    pinRelock: profile.pinRelock ?? 'IDLE_15',
+    pinResetNoticeAt: profile.pinResetNoticeAt ?? null,
+    version: profile.version ?? 1,
+  };
+}
+
+/** Même sémantique que l'adaptateur Prisma : compte d'abord, essai compté avant d'être évalué. */
+export class InMemoryProfileRepository extends ProfileRepository {
+  /**
+   * `sessions` : lignes de session dont la clé étrangère `active_profile_id` passe à `NULL` à la
+   * suppression du profil (`ON DELETE SET NULL`), comme en base. Le cache n'est pas touché.
+   */
+  constructor(
+    readonly profiles: MemoryProfiles = new Map(),
+    private readonly sessions: InMemorySessionStore | null = null,
+  ) {
+    super();
+  }
+
+  private ofAccount(accountId: string): MemoryProfile[] {
+    return [...this.profiles.values()]
+      .filter((p) => p.accountId === accountId)
+      .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
+  }
+
+  private owned(accountId: string, profileId: string): MemoryProfile | null {
+    const profile = this.profiles.get(profileId);
+    return profile?.accountId === accountId ? profile : null;
+  }
+
+  async listIds(accountId: string): Promise<string[]> {
+    return this.ofAccount(accountId).map((p) => p.id);
+  }
+
+  async listMetadata(accountId: string): Promise<ProfileMetadata[]> {
+    return this.ofAccount(accountId).map((p) => {
+      const d = details(p);
+      return {
+        id: d.id,
+        displayName: d.displayName,
+        avatar: d.avatar,
+        accentColor: d.accentColor,
+        hasPin: d.hasPin,
+        isChild: d.isChild,
+      };
+    });
+  }
+
+  async findDetails(accountId: string, profileId: string): Promise<ProfileDetails | null> {
+    const profile = this.owned(accountId, profileId);
+    return profile ? details(profile) : null;
+  }
+
+  async create(
+    accountId: string,
+    profile: NewProfile & { readonly isChild: boolean },
+    now: Date,
+  ): Promise<'created' | 'limit'> {
+    if (this.ofAccount(accountId).length >= MAX_PROFILES_PER_ACCOUNT) return 'limit';
+    this.profiles.set(profile.id, { ...profile, accountId, createdAt: now, version: 1 });
+    return 'created';
+  }
+
+  async update(
+    accountId: string,
+    profileId: string,
+    expectedVersion: number,
+    changes: ProfileChanges,
+  ): Promise<
+    | { readonly status: 'updated'; readonly profile: ProfileDetails }
+    | { readonly status: 'stale' | 'missing' }
+  > {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return { status: 'missing' };
+    if ((profile.version ?? 1) !== expectedVersion) return { status: 'stale' };
+    const next: MemoryProfile = {
+      ...profile,
+      displayName: changes.displayName ?? profile.displayName,
+      locale: changes.locale ?? profile.locale,
+      currency: changes.currency ?? profile.currency,
+      timezone: changes.timezone ?? profile.timezone,
+      pinRelock: changes.pinRelock ?? profile.pinRelock,
+      version: expectedVersion + 1,
+    };
+    if (changes.birthday !== undefined) {
+      next.birthdayDay = changes.birthday?.day ?? null;
+      next.birthdayMonth = changes.birthday?.month ?? null;
+      next.birthdayYear = changes.birthday?.year ?? null;
+    }
+    this.profiles.set(profileId, next);
+    return { status: 'updated', profile: details(next) };
+  }
+
+  async delete(accountId: string, profileId: string): Promise<'deleted' | 'last' | 'missing'> {
+    if (!this.owned(accountId, profileId)) return 'missing';
+    if (this.ofAccount(accountId).length <= 1) return 'last';
+    this.profiles.delete(profileId);
+    for (const [id, row] of this.sessions?.rows ?? []) {
+      if (row.activeProfileId === profileId) {
+        this.sessions?.rows.set(id, { ...row, activeProfileId: null });
+      }
+    }
+    return 'deleted';
+  }
+
+  async countPinAttempt(
+    accountId: string,
+    profileId: string,
+    now: Date,
+  ): Promise<PinAttempt | null> {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return null;
+    if (!profile.pinHash) return { kind: 'no_pin' };
+    const lockedUntil = profile.pinLockedUntil ?? null;
+    if (lockedUntil && lockedUntil.getTime() > now.getTime()) {
+      return { kind: 'locked', retryAfterMs: lockedUntil.getTime() - now.getTime() };
+    }
+    const failures = (profile.pinFailedCount ?? 0) + 1;
+    const delay = pinLockDelayMs(failures);
+    profile.pinFailedCount = failures;
+    profile.pinFailuresSinceEntry = (profile.pinFailuresSinceEntry ?? 0) + 1;
+    profile.pinLockedUntil = delay > 0 ? new Date(now.getTime() + delay) : null;
+    return {
+      kind: 'counted',
+      pinHash: profile.pinHash,
+      pinStamp: pinStampOf(profile.pinHash) ?? '',
+      failures,
+    };
+  }
+
+  async recordPinSuccess(
+    accountId: string,
+    profileId: string,
+    verifiedHash: string,
+  ): Promise<boolean> {
+    const profile = this.owned(accountId, profileId);
+    if (profile?.pinHash !== verifiedHash) return false;
+    profile.pinFailedCount = 0;
+    profile.pinLockedUntil = null;
+    // L'essai juste a été compté d'avance comme une erreur.
+    profile.pinFailuresSinceEntry = Math.max(0, (profile.pinFailuresSinceEntry ?? 0) - 1);
+    return true;
+  }
+
+  async takeFailuresSinceEntry(accountId: string, profileId: string): Promise<number> {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return 0;
+    const failures = profile.pinFailuresSinceEntry ?? 0;
+    profile.pinFailuresSinceEntry = 0;
+    return failures;
+  }
+
+  async setPin(input: {
+    readonly accountId: string;
+    readonly profileId: string;
+    readonly pinHash: string | null;
+    readonly expectedHash?: string | null;
+    readonly resetNoticeAt: Date | null;
+  }): Promise<{ readonly pinStamp: string | null } | null> {
+    const profile = this.owned(input.accountId, input.profileId);
+    if (!profile) return null;
+    if (input.expectedHash !== undefined && (profile.pinHash ?? null) !== input.expectedHash) {
+      return null;
+    }
+    profile.pinHash = input.pinHash;
+    profile.pinFailedCount = 0;
+    profile.pinLockedUntil = null;
+    profile.pinResetNoticeAt = input.resetNoticeAt;
+    return { pinStamp: pinStampOf(input.pinHash) };
   }
 }
 
@@ -403,11 +659,13 @@ interface MemoryTokenRow extends NewAccountToken {
  */
 export class InMemoryAccountRepository extends AccountRepository {
   readonly rows = new Map<string, MemoryAccountRow>();
-  readonly profiles = new Map<string, NewProfile & { accountId: string }>();
   readonly tokens = new Map<string, MemoryTokenRow>();
   readonly trustedDevicesRevokedAt = new Map<string, Date>();
 
-  constructor(private readonly sessions: InMemorySessionStore) {
+  constructor(
+    private readonly sessions: InMemorySessionStore,
+    readonly profiles: MemoryProfiles = new Map(),
+  ) {
     super();
   }
 
@@ -458,7 +716,11 @@ export class InMemoryAccountRepository extends AccountRepository {
       createdAt: account.createdAt,
     });
     this.sessions.addAccount(account.id);
-    this.profiles.set(account.profile.id, { ...account.profile, accountId: account.id });
+    this.profiles.set(account.profile.id, {
+      ...account.profile,
+      accountId: account.id,
+      createdAt: account.createdAt,
+    });
     this.tokens.set(verifyToken.tokenHash, { ...verifyToken, usedAt: null });
     return 'created';
   }

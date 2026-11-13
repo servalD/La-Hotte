@@ -13,6 +13,7 @@ import {
   SecurityLog,
 } from '../domain/ports';
 import type { ProfileLockPolicy } from '../domain/session';
+import { pinStampOf } from './pin-stamp';
 
 const USER_AGENT_MAX = 512;
 
@@ -58,6 +59,7 @@ export class PrismaProfileLockPolicies extends ProfileLockPolicies {
           accountId: profile.accountId,
           hasPin: profile.pinHash !== null,
           relock: profile.pinRelock,
+          pinStamp: pinStampOf(profile.pinHash),
         }
       : null;
   }

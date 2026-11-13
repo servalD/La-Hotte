@@ -26,6 +26,71 @@ export const getAccountResponse = zod.object({
     .max(getAccountResponseRecoveryCodesRemainingMax),
 });
 
+export const listAccountProfilesResponseItemsItemDisplayNameMax = 60;
+
+export const listAccountProfilesResponseItemsItemAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
+
+export const listAccountProfilesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      displayName: zod.string().max(listAccountProfilesResponseItemsItemDisplayNameMax),
+      avatar: zod
+        .string()
+        .nullable()
+        .describe("Clé d'image ; `null` : couleur d'accent et initiales."),
+      accentColor: zod.string().regex(listAccountProfilesResponseItemsItemAccentColorRegExp),
+      hasPin: zod.boolean(),
+      isChild: zod.boolean(),
+    }),
+  ),
+});
+
+export const createAccountProfileBodyDisplayNameMax = 60;
+
+export const createAccountProfileBodyDisplayNameRegExp = new RegExp('\\S');
+export const createAccountProfileBodyIsChildDefault = false;
+
+export const createAccountProfileBody = zod.object({
+  displayName: zod
+    .string()
+    .min(1)
+    .max(createAccountProfileBodyDisplayNameMax)
+    .regex(createAccountProfileBodyDisplayNameRegExp),
+  isChild: zod
+    .boolean()
+    .optional()
+    .describe('Marqueur « profil enfant » (PRO-05), fixé ici seulement (PRO-03).'),
+});
+
+/**
+ * @summary `404` pour un profil inconnu comme pour celui d'un autre compte (SEC-04).
+ */
+export const deleteAccountProfileParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const disableProfilePinParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const resetProfilePinParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const resetProfilePinBodyNewPinMin = 4;
+export const resetProfilePinBodyNewPinMax = 8;
+
+export const resetProfilePinBodyNewPinRegExp = new RegExp('^[0-9]{4,8}$');
+
+export const resetProfilePinBody = zod.object({
+  newPin: zod
+    .string()
+    .min(resetProfilePinBodyNewPinMin)
+    .max(resetProfilePinBodyNewPinMax)
+    .regex(resetProfilePinBodyNewPinRegExp),
+});
+
 export const listTrustedDevicesResponseItemsItemUserAgentMax = 512;
 
 export const listTrustedDevicesResponse = zod.object({

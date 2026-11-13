@@ -32,6 +32,189 @@
         ]
       }
     },
+    "/api/v1/account/profiles": {
+      "get": {
+        "operationId": "listAccountProfiles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      },
+      "post": {
+        "operationId": "createAccountProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}": {
+      "delete": {
+        "operationId": "deleteAccountProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "`404` pour un profil inconnu comme pour celui d'un autre compte (SEC-04).",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}/pin": {
+      "delete": {
+        "operationId": "disableProfilePin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}/pin/reset": {
+      "put": {
+        "operationId": "resetProfilePin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetProfilePinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/auth/email": {
       "put": {
         "operationId": "requestEmailChange",
@@ -808,6 +991,122 @@
         ]
       }
     },
+    "/api/v1/profiles/me": {
+      "get": {
+        "operationId": "getOwnProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      },
+      "patch": {
+        "operationId": "updateOwnProfile",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Version lue (API-17).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-03 : sans marqueur enfant. Version dépassée : `412`, le client relit le profil.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/pin": {
+      "put": {
+        "operationId": "setOwnPin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetOwnPinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PIN-04 : créer son PIN, ou le changer avec l'ancien (compté par PIN-03), sans\nré-authentification. Jamais de désactivation ici.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
     "/api/v1/session": {
       "get": {
         "operationId": "getSession",
@@ -835,6 +1134,73 @@
           }
         },
         "summary": "État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la\npré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne\nprolonge jamais le déverrouillage du profil.",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/v1/session/lock": {
+      "post": {
+        "operationId": "lockSession",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PIN-07 : verrouille le profil actif sans le changer ; efface la ré-authentification.",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/v1/session/profile": {
+      "post": {
+        "operationId": "selectProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileSelectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-07, API-11 : choisit le profil actif, et le déverrouille avec son PIN s'il en a un. Le\nchangement a lieu avant la vérification : un PIN faux (`422 PIN_INVALID`) laisse le nouveau\nprofil actif et verrouillé. Pendant l'attente de PIN-03 : `429`.",
         "tags": [
           "session"
         ]
@@ -990,6 +1356,56 @@
       }
     },
     "schemas": {
+      "AccountProfileListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountProfileView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AccountProfileView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true,
+            "description": "Clé d'image ; `null` : couleur d'accent et initiales."
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "hasPin": {
+            "type": "boolean"
+          },
+          "isChild": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "hasPin",
+          "isChild"
+        ]
+      },
       "AccountSessionListView": {
         "type": "object",
         "properties": {
@@ -1074,6 +1490,55 @@
           "recoveryCodesRemaining"
         ]
       },
+      "BirthdayDto": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "month": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "year": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1900,
+            "maximum": 2200
+          }
+        },
+        "required": [
+          "day",
+          "month"
+        ]
+      },
+      "BirthdayView": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "month": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "year": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ]
+      },
       "CreateExampleItemDto": {
         "type": "object",
         "properties": {
@@ -1095,6 +1560,25 @@
         },
         "required": [
           "title"
+        ]
+      },
+      "CreateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "isChild": {
+            "type": "boolean",
+            "description": "Marqueur « profil enfant » (PRO-05), fixé ici seulement (PRO-03).",
+            "default": false
+          }
+        },
+        "required": [
+          "displayName"
         ]
       },
       "EmailDto": {
@@ -1400,6 +1884,118 @@
           "code"
         ]
       },
+      "ProfileSelectionView": {
+        "type": "object",
+        "properties": {
+          "activeProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileUnlocked": {
+            "type": "boolean",
+            "description": "Faux : le profil a un PIN et aucun PIN n'a été envoyé."
+          },
+          "pinResetNoticeAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte, rendu à chaque entrée tant que\nle profil ne s'est pas redonné un PIN. `null` si le profil reste verrouillé.",
+            "format": "date-time"
+          },
+          "failedPinAttempts": {
+            "type": "number",
+            "description": "PIN-03 : PIN faux saisis depuis la dernière entrée dans ce profil.",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "activeProfileId",
+          "profileUnlocked",
+          "pinResetNoticeAt",
+          "failedPinAttempts"
+        ]
+      },
+      "ProfileView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "birthday": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BirthdayView"
+              }
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "example": "fr"
+          },
+          "currency": {
+            "type": "string",
+            "example": "EUR"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Europe/Paris"
+          },
+          "isChild": {
+            "type": "boolean"
+          },
+          "hasPin": {
+            "type": "boolean"
+          },
+          "pinRelock": {
+            "enum": [
+              "NEVER",
+              "IDLE_15",
+              "EVERY_OPEN"
+            ],
+            "type": "string"
+          },
+          "pinResetNoticeAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte ; reste affiché tant que le\nprofil ne s'est pas redonné un PIN (`PUT /profiles/me/pin`).",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number",
+            "description": "À renvoyer dans `If-Match` pour modifier le profil (API-17).",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "birthday",
+          "locale",
+          "currency",
+          "timezone",
+          "isChild",
+          "hasPin",
+          "pinRelock",
+          "pinResetNoticeAt",
+          "version"
+        ]
+      },
       "ReauthDto": {
         "type": "object",
         "properties": {
@@ -1487,6 +2083,21 @@
           "ageAttested"
         ]
       },
+      "ResetProfilePinDto": {
+        "type": "object",
+        "properties": {
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "newPin"
+        ]
+      },
       "SecondFactorDto": {
         "type": "object",
         "properties": {
@@ -1504,6 +2115,26 @@
         },
         "required": [
           "code"
+        ]
+      },
+      "SelectProfileDto": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pin": {
+            "type": "string",
+            "description": "Exigé pour déverrouiller un profil à PIN ; sans lui, le profil devient actif, verrouillé.",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "profileId"
         ]
       },
       "SessionStatusView": {
@@ -1563,6 +2194,29 @@
           "activeProfileId",
           "profileUnlocked",
           "expiresAt"
+        ]
+      },
+      "SetOwnPinDto": {
+        "type": "object",
+        "properties": {
+          "currentPin": {
+            "type": "string",
+            "description": "Exigé si le profil a déjà un PIN.",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          },
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "newPin"
         ]
       },
       "TotpActivationView": {
@@ -1684,6 +2338,59 @@
           "expiresAt",
           "current"
         ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "birthday": {
+            "nullable": true,
+            "description": "`null` efface la date.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BirthdayDto"
+              }
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "example": "fr"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "example": "EUR"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "example": "Europe/Paris"
+          },
+          "pinRelock": {
+            "description": "PIN-07 : redemande du PIN.",
+            "enum": [
+              "NEVER",
+              "IDLE_15",
+              "EVERY_OPEN"
+            ],
+            "type": "string"
+          },
+          "currentPin": {
+            "type": "string",
+            "description": "PRO-03 : exigé pour affaiblir `pinRelock` d'un profil à PIN (compté par PIN-03).",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        }
       }
     }
   }

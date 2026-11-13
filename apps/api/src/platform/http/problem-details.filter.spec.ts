@@ -90,6 +90,35 @@ describe('ProblemDetailsFilter et télémétrie (OBS-25)', () => {
     ]);
   });
 
+  it('OBS-02, SEC-32 : un refus d’autorisation est aussi compté à part, par code', () => {
+    class ProfileLocked extends DomainError {
+      readonly kind = 'locked' as const;
+      readonly code = 'PROFILE_LOCKED';
+      constructor() {
+        super('Verrouillé');
+      }
+    }
+    class PinInvalid extends DomainError {
+      readonly kind = 'business_rule' as const;
+      readonly code = 'PIN_INVALID';
+      constructor() {
+        super('PIN faux');
+      }
+    }
+    filter.catch(new ProfileLocked(), hostFor().host);
+    filter.catch(new PinInvalid(), hostFor().host);
+    expect(metrics.increments.filter((i) => i.name === 'wishlist.authorization_denied')).toEqual([
+      {
+        name: 'wishlist.authorization_denied',
+        attributes: { code: 'PROFILE_LOCKED', kind: 'locked' },
+      },
+      {
+        name: 'wishlist.authorization_denied',
+        attributes: { code: 'PIN_INVALID', kind: 'business_rule' },
+      },
+    ]);
+  });
+
   it('ne signale pas une 4xx de Nest', () => {
     const { host } = hostFor();
     filter.catch(new NotFoundException(), host);

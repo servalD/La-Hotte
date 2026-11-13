@@ -5,20 +5,28 @@
  * Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.
  * OpenAPI spec version: 1
  */
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ProblemDetailsDto, SessionStatusView } from '../../model';
+import type {
+  ProblemDetailsDto,
+  ProfileSelectionView,
+  SelectProfileDto,
+  SessionStatusView,
+} from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
 import type { ErrorType } from '../../../http/fetcher';
@@ -141,3 +149,144 @@ export function useGetSession<
 
   return query;
 }
+
+/**
+ * @summary PIN-07 : verrouille le profil actif sans le changer ; efface la ré-authentification.
+ */
+export const getLockSessionUrl = () => {
+  return `/api/v1/session/lock`;
+};
+
+export const lockSession = async (options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getLockSessionUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getLockSessionMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof lockSession>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof lockSession>>, TError, void, TContext> => {
+  const mutationKey = ['lockSession'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof lockSession>>, void> = () => {
+    return lockSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LockSessionMutationResult = NonNullable<Awaited<ReturnType<typeof lockSession>>>;
+
+export type LockSessionMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PIN-07 : verrouille le profil actif sans le changer ; efface la ré-authentification.
+ */
+export const useLockSession = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof lockSession>>, TError, void, TContext>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof lockSession>>, TError, void, TContext> => {
+  const mutationOptions = getLockSessionMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary PRO-07, API-11 : choisit le profil actif, et le déverrouille avec son PIN s'il en a un. Le
+changement a lieu avant la vérification : un PIN faux (`422 PIN_INVALID`) laisse le nouveau
+profil actif et verrouillé. Pendant l'attente de PIN-03 : `429`.
+ */
+export const getSelectProfileUrl = () => {
+  return `/api/v1/session/profile`;
+};
+
+export const selectProfile = async (
+  selectProfileDto: SelectProfileDto,
+  options?: RequestInit,
+): Promise<ProfileSelectionView> => {
+  return apiFetch<ProfileSelectionView>(getSelectProfileUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(selectProfileDto),
+  });
+};
+
+export const getSelectProfileMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selectProfile>>,
+    TError,
+    { data: SelectProfileDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof selectProfile>>,
+  TError,
+  { data: SelectProfileDto },
+  TContext
+> => {
+  const mutationKey = ['selectProfile'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof selectProfile>>,
+    { data: SelectProfileDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return selectProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SelectProfileMutationResult = NonNullable<Awaited<ReturnType<typeof selectProfile>>>;
+export type SelectProfileMutationBody = SelectProfileDto;
+export type SelectProfileMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-07, API-11 : choisit le profil actif, et le déverrouille avec son PIN s'il en a un. Le
+changement a lieu avant la vérification : un PIN faux (`422 PIN_INVALID`) laisse le nouveau
+profil actif et verrouillé. Pendant l'attente de PIN-03 : `429`.
+ */
+export const useSelectProfile = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof selectProfile>>,
+      TError,
+      { data: SelectProfileDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof selectProfile>>,
+  TError,
+  { data: SelectProfileDto },
+  TContext
+> => {
+  const mutationOptions = getSelectProfileMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
