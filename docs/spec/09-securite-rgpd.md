@@ -76,7 +76,7 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 - **RGPD-01** Hébergement et sauvegardes dans l'Union européenne.
 - **RGPD-02** Minimisation : pas de date de naissance complète exigée, pas d'adresse postale, pas de numéro de téléphone, pas de coordonnées bancaires.
 - **RGPD-03** Registre des sous-traitants : hébergeur, envoi d'e-mails, Anthropic (extraction ; uniquement le contenu public de pages et les photos d'articles, sans donnée d'identification, EXT-33), Google (connexion). L'observabilité (GlitchTip, OpenObserve, collecteur) est auto-hébergée dans l'Union européenne : elle n'ajoute aucun sous-traitant.
-- **RGPD-04** Droit d'accès et de portabilité : export complet du compte en JSON, par profil, après ré-authentification. L'export respecte la règle de surprise (il ne contient pas ce que le profil ne peut pas voir).
+- **RGPD-04** Droit d'accès et de portabilité : export complet du compte en JSON, par profil, lancé depuis ce profil (PIN validé) après ré-authentification, jamais depuis l'espace Compte (PIN-08). L'export respecte la règle de surprise (il ne contient pas ce que le profil ne peut pas voir).
 - **RGPD-05** Droit à l'effacement : suppression du compte effective sous 30 jours, sauvegardes purgées sous 90 jours. Les écritures de compta impliquant des tiers sont conservées anonymisées (PRO-06).
 - **RGPD-06** Mineurs : un profil enfant est créé et géré par le titulaire du compte, qui déclare en avoir l'autorité. Un mineur de moins de 15 ans ne crée pas de compte autonome. Restrictions de PRO-05.
 - **RGPD-07** Les photos peuvent contenir des personnes ou des lieux : métadonnées supprimées (EXT-11), jamais publiées au catalogue global (REP-04).

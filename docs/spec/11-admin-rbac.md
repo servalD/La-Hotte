@@ -91,4 +91,4 @@ Une action est autorisée si les deux étages l'autorisent.
 ## Questions ouvertes
 
 1. Faut-il un rôle `SUPPORT` distinct (métadonnées de compte sans pouvoir de suspension) ? Inutile tant que l'équipe est petite.
-2. Inscriptions ouvertes à tous ou sur invitation au lancement ? Recommandé : sur invitation pendant la phase de rodage.
+2. Inscriptions ouvertes à tous ou sur invitation au lancement ? Recommandé : sur invitation pendant la phase de rodage. Le mécanisme est décidé (AUTH-09, interrupteur `REGISTRATION_MODE`) ; reste à choisir sa valeur au lancement, en phase 7.

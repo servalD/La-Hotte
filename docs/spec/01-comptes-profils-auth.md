@@ -9,10 +9,14 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 - **AUTH-01** Inscription par e-mail + mot de passe, ou par Google (OpenID Connect, flux code + PKCE). L'e-mail doit être vérifié avant toute action sociale (invitation, lien, publication).
 - **AUTH-02** Mot de passe : 12 caractères minimum, pas de règle de composition, refus des mots de passe présents dans les fuites connues (vérification k-anonyme), haché en argon2id.
 - **AUTH-03** Un compte peut avoir les deux méthodes. Associer Google à un compte existant exige d'être connecté à ce compte ; jamais de fusion automatique sur simple égalité d'e-mail non vérifié.
-- **AUTH-04** Session : identifiant opaque en cookie `HttpOnly`, `Secure`, `SameSite=Lax`, stocké côté serveur. Durée glissante de 30 jours, 12 heures pour un compte administrateur. Aucun jeton d'accès dans le stockage du navigateur.
-- **AUTH-05** L'utilisateur voit la liste de ses sessions (appareil, dernière activité) et peut les révoquer. Changer de mot de passe ou désactiver le TOTP révoque toutes les autres sessions.
-- **AUTH-06** Réinitialisation du mot de passe par lien à usage unique, valable 30 minutes. La réponse est identique que l'e-mail existe ou non.
-- **AUTH-07** Limitation des tentatives par compte et par adresse IP, avec délai croissant. Pas de blocage définitif (éviter le déni de service ciblé).
+- **AUTH-04** Session : identifiant opaque en cookie `HttpOnly`, `Secure`, `SameSite=Lax`, stocké côté serveur. Durée glissante de 30 jours, 12 heures pour un compte administrateur ou modérateur. Aucun jeton d'accès dans le stockage du navigateur. Forme du jeton, stockage, rotation, révocation et CSRF : ADR 0013.
+- **AUTH-05** L'utilisateur voit la liste de ses sessions (appareil, dernière activité) et peut les révoquer. Changer de mot de passe ou désactiver le TOTP révoque toutes les autres sessions. Un changement de rôle ou la suspension du compte révoque toutes ses sessions. Durée absolue d'une session : 90 jours, 24 heures pour un compte administrateur ou modérateur (ADR 0013).
+- **AUTH-06** Réinitialisation du mot de passe par lien à usage unique, valable 30 minutes. La réponse est identique que l'e-mail existe ou non. Une réinitialisation réussie révoque **toutes** les sessions, pré-authentifications et appareils de confiance du compte, et marque l'e-mail comme vérifié (le lien le prouve). Le jeton passe dans le fragment du lien puis dans le corps d'une requête, jamais dans une chaîne de requête (ADR 0013).
+- **AUTH-07** Limitation des tentatives par compte et par adresse IP, avec délai croissant. Pas de blocage définitif (éviter le déni de service ciblé). Les échecs du second facteur sont comptés par compte : recommencer le premier facteur ne remet pas le compteur à zéro (ADR 0013).
+- **AUTH-08** **Âge.** L'inscription exige de déclarer avoir 15 ans ou plus (case à cocher, non précochée). La déclaration est horodatée sur le compte (`age_attested_at`, 12). Aucune date de naissance n'est demandée au compte (RGPD-02). Une personne de moins de 15 ans a un profil enfant dans le compte d'un parent (RGPD-06).
+- **AUTH-09** **Mode d'inscription**, réglé par l'environnement : `OPEN` (inscription libre) ou `INVITE_ONLY` (inscription possible seulement avec un jeton d'invitation valide, LNK-01, y compris par Google ; l'invitation n'est consommée qu'à la vérification de l'e-mail, pour que son état ne révèle rien ; si elle est épuisée à ce moment, la vérification est refusée par un message neutre et le compte est supprimé). Dans les deux modes, la réponse à une inscription ne révèle pas si l'e-mail a déjà un compte : même réponse, même délai ; le titulaire existant reçoit un e-mail l'avertissant de la tentative. La valeur retenue au lancement reste à décider (`11`, Q2).
+- **AUTH-15** **Compte non vérifié.** Tant que son e-mail n'est pas vérifié, un compte ne peut **rien créer** (ni profil supplémentaire, ni liste, ni fiche article, ni action sociale, AUTH-01), ni activer le TOTP, ni être associé à Google : l'interface lui demande de suivre le lien de vérification. Il n'a donc aucun contenu à perdre. Il est supprimé s'il n'est pas vérifié sous 7 jours. Une inscription ou une connexion par Google avec un e-mail vérifié par Google, sur un compte local **non vérifié** de même adresse, **remplace** ce compte (supprimé avec ses sessions) au lieu de s'y rattacher : celui qui a inscrit l'adresse d'un autre n'en garde rien.
+- **AUTH-16** **Changement d'e-mail** (`PUT /auth/email`, après ré-authentification, AUTH-14) : effectif seulement après confirmation par un lien envoyé à la nouvelle adresse. La réponse est identique que la nouvelle adresse soit libre ou déjà prise ; si elle est prise, son titulaire reçoit un avertissement à la place du lien. L'ancienne adresse est prévenue, avec un lien d'annulation valable 7 jours qui rétablit l'ancienne adresse et révoque toutes les sessions : un proche qui connaît le mot de passe ne détourne pas le compte en silence.
 
 ## Double authentification
 
@@ -20,7 +24,7 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 - **AUTH-11** Le secret TOTP est chiffré au repos avec une clé hors base de données. Un code déjà utilisé est refusé (anti-rejeu).
 - **AUTH-12** Le TOTP est demandé à chaque connexion, y compris par Google. Option « faire confiance à cet appareil 30 jours » : l'appareil est enregistré (`trusted_device`, 12) et révocable depuis l'espace Compte.
 - **AUTH-13** Le TOTP est **obligatoire** pour les rôles `ADMIN` et `MODERATOR`, recommandé pour les autres (rappel à la création du deuxième profil).
-- **AUTH-14** Ré-authentification (mot de passe ou Google, plus TOTP s'il est actif) datant de moins de 10 minutes pour : changer e-mail ou mot de passe, activer ou désactiver le TOTP, réinitialiser ou désactiver le PIN d'un profil (PIN-05), supprimer un profil ou le compte, exporter les données.
+- **AUTH-14** Ré-authentification (mot de passe ou Google, plus TOTP s'il est actif) datant de moins de 10 minutes pour : changer e-mail ou mot de passe, activer ou désactiver le TOTP, réinitialiser ou désactiver le PIN d'un profil (PIN-05), supprimer un profil ou le compte, exporter les données. La ré-authentification est effacée au changement de profil et au verrouillage : elle ne profite pas à la personne qui reprend l'appareil (ADR 0013).
 
 ## Profils
 
@@ -37,10 +41,10 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 - **PIN-02** Vérifié côté serveur, haché en argon2id. Le serveur n'accepte aucune action au nom d'un profil protégé tant que la session n'a pas validé son PIN. Ce n'est pas un simple verrou d'interface.
 - **PIN-03** 5 erreurs consécutives : attente croissante (1, 5, 15 minutes…). Les autres profils du compte en sont notifiés : tant que le module de notifications n'existe pas (phase 4), la notification prend la forme d'une entrée au journal de sécurité et d'un e-mail au compte.
 - **PIN-04** **Créer ou changer son PIN, depuis son profil.** Un profil sans PIN peut s'en donner un depuis ses réglages. Un profil qui a un PIN peut le changer en saisissant **l'ancien PIN** puis le nouveau, sans ré-authentification du compte.
-- **PIN-05** **Réinitialiser ou désactiver un PIN, depuis l'espace Compte.** Ces deux actions ne se font pas depuis le profil : uniquement dans l'espace Compte (PIN-08), après ré-authentification (AUTH-14), pour n'importe quel profil du compte. Le profil concerné reçoit une notification visible à sa prochaine entrée (`pin_reset_notice_at`, 12).
+- **PIN-05** **Réinitialiser ou désactiver un PIN, depuis l'espace Compte.** Ces deux actions ne se font pas depuis le profil : uniquement dans l'espace Compte (PIN-08), après une ré-authentification de **moins de 2 minutes** (AUTH-14, ADR 0013), pour n'importe quel profil du compte. Le profil concerné reçoit une notification visible à sa prochaine entrée (`pin_reset_notice_at`, 12).
 - **PIN-06** **Limite assumée.** Quiconque connaît les identifiants du compte peut réinitialiser un PIN (PIN-05). Entre profils d'un même compte, le secret d'un souhait caché repose donc sur le PIN et sur la notification de réinitialisation. L'interface le dit clairement quand un profil sans PIN cache un élément à un autre profil du même compte, et propose d'en créer un.
-- **PIN-07** Le PIN est redemandé à chaque changement de profil et après 15 minutes d'inactivité sur un appareil partagé (réglable : jamais, 15 min, à chaque ouverture).
-- **PIN-08** **Espace Compte**, sur le modèle des services de streaming : accessible depuis l'écran de sélection des profils, hors de tout profil. Il regroupe e-mail, mot de passe, TOTP, Google, sessions, gestion des profils (créer, supprimer, réinitialiser ou désactiver un PIN) et export des données. Les actions sensibles y demandent la ré-authentification (AUTH-14). Il n'existe pas de profil « gestionnaire » : quiconque sait se connecter au compte y a accès.
+- **PIN-07** Le PIN est redemandé à chaque changement de profil et après 15 minutes d'inactivité sur un appareil partagé (réglable par le profil, `pin_relock` : jamais, 15 min, à chaque ouverture). Le déverrouillage n'est tenu que dans le cache de session ; s'il est perdu, le profil est reverrouillé (ADR 0013).
+- **PIN-08** **Espace Compte**, sur le modèle des services de streaming : accessible depuis l'écran de sélection des profils, hors de tout profil. Il regroupe e-mail, mot de passe, TOTP, Google, sessions, gestion des profils (créer, supprimer, réinitialiser ou désactiver un PIN). Les actions sensibles y demandent la ré-authentification (AUTH-14). Il n'existe pas de profil « gestionnaire » : quiconque sait se connecter au compte y a accès. **Comme il échappe au PIN, l'espace Compte ne montre que des métadonnées** : e-mail, moyens de connexion, sessions, appareils, et pour chaque profil son nom, son avatar, la présence d'un PIN et le marqueur enfant ; jamais une liste, un élément ni une donnée d'offreur. L'export des données (RGPD-04) se lance donc depuis chaque profil, PIN validé, et non depuis l'espace Compte (ADR 0013).
 
 ## Liens et cercle
 
@@ -63,12 +67,19 @@ Permettre à une famille de partager un seul compte tout en gardant un espace pa
 ## Critères d'acceptation
 
 - Un compte créé par Google puis doté d'un mot de passe se connecte par les deux moyens au même compte.
-- Une requête API portant l'identifiant d'un profil protégé, depuis une session qui n'a pas validé son PIN, reçoit `403`.
+- Une requête API faite au nom d'un profil protégé, depuis une session qui n'a pas validé son PIN, reçoit `423` (`PROFILE_LOCKED`). Une route de profil n'agit que sur le profil actif : un autre profil, même du même compte, ne s'atteint que par l'espace Compte.
+- Le déverrouillage d'un profil expire après 15 minutes sans action de l'utilisateur, même si l'application reste ouverte et reçoit des mises à jour.
+- Un jeton de session révoqué, ou remplacé par une ré-authentification, est refusé à la requête suivante, même si le serveur s'est arrêté au milieu de la révocation.
+- Une réinitialisation de mot de passe révoque toutes les sessions, y compris celle d'un tiers qui aurait inscrit l'adresse avant son titulaire.
+- Aucune réponse de l'espace Compte ne contient de donnée d'une liste ni d'offreur (test de forme).
 - Après changement de mot de passe, les autres sessions sont invalides à la requête suivante.
 - Un code TOTP ne peut pas être utilisé deux fois.
-- Changer son PIN avec l'ancien PIN réussit sans ré-authentification ; le désactiver depuis le profil est impossible ; le désactiver depuis l'espace Compte exige une ré-authentification de moins de 10 minutes.
+- Après 5 échecs du second facteur, recommencer la connexion par mot de passe, même depuis une autre adresse IP, ne donne pas d'essai supplémentaire sans attendre le délai.
+- Une inscription avec un e-mail déjà inscrit reçoit la même réponse, dans le même délai, qu'une inscription nouvelle ; aucun compte n'est créé.
+- En mode `INVITE_ONLY`, une inscription sans jeton d'invitation valide est refusée.
+- Changer son PIN avec l'ancien PIN réussit sans ré-authentification ; le désactiver depuis le profil est impossible ; le désactiver depuis l'espace Compte exige une ré-authentification de moins de 2 minutes.
 
 ## Questions ouvertes
 
 1. Passkeys (WebAuthn) en plus du TOTP : voir `15-suggestions.md`.
-2. Âge minimal pour un compte autonome et consentement parental : à caler avec `09-securite-rgpd.md`.
+2. ~~Âge minimal pour un compte autonome et consentement parental~~ : décidé le 2026-11-13, AUTH-08.

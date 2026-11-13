@@ -76,12 +76,17 @@ Chaque exigence de la demande initiale, et l'endroit où elle est spécifiée. �
 | Bibliothèque d'authentification | Essai de Better Auth fait ; voie maison retenue (rejeu TOTP, jeton de session en clair, codes de secours chiffrés, appareils de confiance non révocables) | ADR 0011 ; AUTH-04, AUTH-11, AUTH-12 |
 | Notification d'un PIN erroné avant la phase 4 | Journal de sécurité + e-mail au compte ; notification dans l'application en phase 4 | PIN-03 |
 | Lien demandé par un profil enfant | Statut `AWAITING_GUARDIAN` jusqu'à validation par un profil non-enfant du compte | PRO-05 |
+| Âge minimal d'un compte (2026-11-13) | Déclaration « 15 ans ou plus » obligatoire et horodatée ; aucune date de naissance ; en dessous, profil enfant | AUTH-08 ; RGPD-06 |
+| Inscription ouverte ou sur invitation (2026-11-13) | Les deux modes existent, choisis par l'environnement ; réponse identique que l'e-mail soit connu ou non ; valeur au lancement à décider | AUTH-09 ; `11` Q2 |
+| Modèle de session (2026-11-13) | Jeton haché, PostgreSQL source de vérité et Redis en cache, marque de révocation, déverrouillage du PIN en cache seulement et prolongé par les seules actions de l'utilisateur, CSRF lié au jeton courant, échecs du second facteur comptés par compte. Relu par `security-reviewer` | ADR 0013 ; AUTH-04 à AUTH-07, AUTH-14, PIN-07, API-21 |
+| Compte non vérifié et changement d'e-mail (2026-11-13) | Un compte non vérifié ne crée rien, n'active ni TOTP ni Google, expire à 7 jours, et est remplacé par une inscription Google vérifiée ; changement d'e-mail confirmé par la nouvelle adresse sans révéler si elle est prise, annulable depuis l'ancienne | AUTH-15, AUTH-16 |
+| Espace Compte et PIN (2026-11-13) | L'espace Compte, hors PIN, ne montre que des métadonnées ; l'export se lance depuis le profil ; les routes de profil n'agissent que sur le profil actif | PIN-08, RGPD-04 ; ADR 0013 |
 | Écart de prix à l'achat | Réparti sur les parts en Tout ou Pourcentage ; sinon reporté sur le dernier participant, qui peut refuser une hausse ; reste à couvrir avec notification sélective | CPT-16 à CPT-19 |
 
 ## Décisions restant à prendre
 
 1. Profil à PIN hors ligne (`08` Q1) : réseau requis pour rouvrir après verrouillage ?
 2. Catalogue global dès la v1 ou après rodage (`04` Q2) ?
-3. Inscriptions ouvertes ou sur invitation au lancement (`11` Q2) ?
+3. Valeur de `REGISTRATION_MODE` au lancement (`11` Q2, AUTH-09) : ouverte ou sur invitation ?
 4. Suggestions à retenir (`15`).
 5. Identité visuelle : nom, logo, palette (`10` Q1).

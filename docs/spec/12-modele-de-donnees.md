@@ -42,12 +42,13 @@ erDiagram
 
 | Table | Champs principaux | Contraintes |
 |---|---|---|
-| `account` | `email`, `email_verified_at`, `password_hash?`, `role` (`USER`/`MODERATOR`/`ADMIN`), `status` (`ACTIVE`/`SUSPENDED`), `totp_secret_enc?`, `totp_enabled_at?` | `email` unique, insensible à la casse |
+| `account` | `email`, `email_verified_at`, `password_hash?`, `role` (`USER`/`MODERATOR`/`ADMIN`), `status` (`ACTIVE`/`SUSPENDED`), `totp_secret_enc?`, `totp_enabled_at?`, `age_attested_at`, `auth_epoch` | `email` unique, insensible à la casse ; `age_attested_at` : déclaration « 15 ans ou plus » (AUTH-08) ; `auth_epoch` : génération d'authentification, augmentée par tout événement qui révoque toutes les sessions (ADR 0013) |
 | `auth_identity` | `account_id`, `provider` (`GOOGLE`), `subject` | (`provider`, `subject`) unique |
 | `recovery_code` | `account_id`, `code_hash`, `used_at?` | |
-| `session` | `account_id`, `token_hash`, `active_profile_id?`, `unlocked_profile_ids`, `reauth_at?`, `trusted_device`, `user_agent`, `last_seen_at`, `expires_at` | `token_hash` unique |
+| `account_token` | `account_id`, `purpose` (`EMAIL_VERIFY`/`EMAIL_CHANGE`/`EMAIL_CHANGE_CANCEL`/`PASSWORD_RESET`), `token_hash`, `new_email?`, `expires_at`, `used_at?` | `token_hash` unique (SHA-256, jeton de 256 bits) ; usage unique ; `PASSWORD_RESET` valable 30 minutes (AUTH-06) ; émettre un jeton invalide les jetons non utilisés du même compte et du même usage |
+| `session` | `account_id`, `token_hash`, `auth_epoch`, `active_profile_id?`, `reauth_at?`, `trusted_device_id?`, `user_agent`, `last_seen_at`, `expires_at`, `absolute_expires_at` | `token_hash` unique (SHA-256 du jeton) ; `account_id` en `ON DELETE RESTRICT` : une session ne disparaît que par la procédure de révocation ; `auth_epoch` égal à celui du compte, sinon la session est refusée ; `id` seul identifiant exposé par l'API. Le déverrouillage du PIN n'est **pas** en base : il vit dans Redis seulement, et une session relue depuis la base a son profil actif verrouillé (ADR 0013). `last_seen_at` et `expires_at` recopiés depuis Redis au plus toutes les 5 minutes |
 | `trusted_device` | `account_id`, `token_hash`, `user_agent`, `created_at`, `expires_at`, `revoked_at?` | `token_hash` unique ; valable 30 jours (AUTH-12), révocable depuis l'espace Compte |
-| `profile` | `account_id`, `display_name`, `avatar`, `accent_color`, `birthday_day?`, `birthday_month?`, `birthday_year?`, `locale`, `currency`, `timezone`, `is_child`, `pin_hash?`, `pin_failed_count`, `pin_locked_until?`, `pin_reset_notice_at?` | 10 profils au plus par compte |
+| `profile` | `account_id`, `display_name`, `avatar`, `accent_color`, `birthday_day?`, `birthday_month?`, `birthday_year?`, `locale`, `currency`, `timezone`, `is_child`, `pin_hash?`, `pin_relock` (`NEVER`/`IDLE_15`/`EVERY_OPEN`, défaut `IDLE_15`, PIN-07), `pin_failed_count`, `pin_locked_until?`, `pin_reset_notice_at?` | 10 profils au plus par compte |
 | `profile_link` | `profile_a_id`, `profile_b_id`, `status` (`PENDING`/`AWAITING_GUARDIAN`/`ACCEPTED`), `requested_by` | paire unique, `a < b` |
 | `profile_block` | `blocker_id`, `blocked_id` | paire unique |
 | `invitation` | `kind` (`LINK`/`LIST`/`EVENT`), `target_id`, `token_hash`, `created_by`, `max_uses`, `used_count`, `expires_at`, `revoked_at?` | `token_hash` unique |
