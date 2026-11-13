@@ -24,7 +24,9 @@ type MailKind =
   | { readonly kind: 'totp_enabled' }
   | { readonly kind: 'totp_disabled' }
   | { readonly kind: 'recovery_code_used' }
-  | { readonly kind: 'second_factor_attempts' };
+  | { readonly kind: 'second_factor_attempts' }
+  | { readonly kind: 'google_linked' }
+  | { readonly kind: 'google_unlinked' };
 
 const SIGNATURE = '\n\n— La Hotte';
 
@@ -170,6 +172,28 @@ export class AccountMailer {
             'compte La Hotte, après votre mot de passe : quelqu’un d’autre le connaît sans doute.' +
             '\n\nChangez-le sans attendre ; la réinitialisation déconnecte aussi tous les ' +
             `appareils :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'google_linked':
+        return {
+          to,
+          subject: 'Compte Google associé',
+          text:
+            'Un compte Google vient d’être associé à votre compte La Hotte : il permet désormais ' +
+            'de s’y connecter.\n\nSi vous n’en êtes pas à l’origine, réinitialisez votre mot de ' +
+            'passe, puis dissociez Google depuis votre espace Compte, ce qui déconnecte tous les ' +
+            `appareils :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'google_unlinked':
+        return {
+          to,
+          subject: 'Compte Google dissocié',
+          text:
+            'Le compte Google associé à votre compte La Hotte vient d’en être dissocié, et les ' +
+            'autres appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
+            'réinitialisez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
             SIGNATURE,
         };
       case 'email_taken_notice':

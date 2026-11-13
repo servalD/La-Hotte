@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { InvalidCredentialsError } from '../domain/account.errors';
 import { AccountRepository, PasswordHasher } from '../domain/account.ports';
+import { GoogleReauthProofs } from '../domain/google.ports';
 import { RateLimiter, SecurityLog, type SessionRef } from '../domain/ports';
 import type { RateLimitSubject } from '../domain/rate-limit';
 import { parseSecondFactorCode } from '../domain/second-factor';
@@ -18,16 +19,20 @@ import { type IssuedSession, SessionLifecycle } from './session-lifecycle';
  * Ré-authentification (AUTH-14, ADR 0013) : mot de passe, plus un code TOTP ou de secours si le
  * TOTP est actif. Même session, nouveau jeton, `reauth_at` posé, ancien jeton révoqué.
  *
+ * Par Google : sans TOTP, le retour de Google suffit (`CompleteGoogleFlow`) ; avec le TOTP, il
+ * laisse une preuve liée au jeton courant, et cette route reçoit le code **sans mot de passe**.
+ * La preuve n'est consommée qu'au succès : un code mal tapé ne fait pas repasser par Google.
+ *
  * Compteur par compte (`01`, « Limitation ») ; avec le TOTP, un code faux compte **aussi** sur le
  * compteur du second facteur (un mot de passe faux, non) : la ré-authentification n'offre pas un
- * second chemin pour essayer des codes. Google s'y ajoutera (tranche 4) ; d'ici là, un
- * compte sans mot de passe ne peut pas se ré-authentifier.
+ * second chemin pour essayer des codes.
  */
 @Injectable()
 export class Reauthenticate {
   constructor(
     private readonly accounts: AccountRepository,
     private readonly hasher: PasswordHasher,
+    private readonly googleProofs: GoogleReauthProofs,
     private readonly verifier: SecondFactorVerifier,
     private readonly limiter: RateLimiter,
     private readonly lifecycle: SessionLifecycle,
@@ -37,7 +42,8 @@ export class Reauthenticate {
 
   async execute(input: {
     readonly session: SessionRef;
-    readonly password: string;
+    /** `null` : ré-authentification par Google, dont le retour a laissé une preuve. */
+    readonly password: string | null;
     readonly code: string | null;
     readonly client: ClientInfo;
   }): Promise<IssuedSession> {
@@ -52,7 +58,10 @@ export class Reauthenticate {
     const check = await this.limiter.check(reauth, this.clock.now());
     if (!check.allowed || !check.reservation) throw new RateLimitedError(check.retryAfterMs);
 
-    const valid = await this.hasher.verify(account?.passwordHash ?? null, input.password);
+    const valid =
+      input.password === null
+        ? await this.hasGoogleProof(input.session)
+        : await this.hasher.verify(account?.passwordHash ?? null, input.password);
     if (!account || !valid) {
       await this.limiter.recordFailure(reauth, this.clock.now(), check.reservation);
       await this.log(accountId, 'reauth.failed', input.client);
@@ -85,9 +94,24 @@ export class Reauthenticate {
     }
 
     await this.limiter.recordSuccess(reauth, check.reservation);
+    // Une seule ré-authentification par preuve Google, même en concurrence.
+    if (input.password === null && !(await this.googleProofs.consume(input.session.id))) {
+      throw new InvalidCredentialsError();
+    }
     const issued = await this.lifecycle.rotate(input.session);
     await this.log(accountId, 'reauth.succeeded', input.client);
     return issued;
+  }
+
+  /**
+   * Preuve laissée par le retour de Google pour **ce** jeton (une rotation l'invalide) et à
+   * l'époque courante du compte (un changement de mot de passe, une dissociation l'invalident).
+   */
+  private async hasGoogleProof(session: SessionRef): Promise<boolean> {
+    const proof = await this.googleProofs.find(session.id);
+    if (!proof || proof.tokenHash !== session.tokenHash) return false;
+    const state = await this.lifecycle.observe(session.accountId);
+    return state?.active === true && state.epoch === proof.epoch;
   }
 
   private async log(

@@ -45,6 +45,7 @@
     "ioredis": "^5.8.2",
     "nestjs-pino": "^4.4.1",
     "nodemailer": "10.2.1",
+    "openid-client": "6.8.8",
     "otplib": "13.5.0",
     "pino": "^10.1.0",
     "pino-http": "^11.0.0",

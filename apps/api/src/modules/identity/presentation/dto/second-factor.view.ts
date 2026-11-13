@@ -39,6 +39,10 @@ export class AccountView {
   @ApiProperty()
   hasPassword!: boolean;
 
+  /** AUTH-03 : un compte Google est associé ; la ré-authentification peut passer par lui. */
+  @ApiProperty()
+  googleLinked!: boolean;
+
   /** La ré-authentification demande alors un code (AUTH-14). */
   @ApiProperty()
   totpEnabled!: boolean;

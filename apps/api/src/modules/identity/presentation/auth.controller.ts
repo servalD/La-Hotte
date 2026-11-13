@@ -284,7 +284,7 @@ export class AuthController {
   ): Promise<SessionStatusView> {
     const issued = await this.reauth.execute({
       session: sessionRef(current.record),
-      password: body.password,
+      password: body.password ?? null,
       code: body.code ?? null,
       client,
     });

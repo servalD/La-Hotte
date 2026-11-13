@@ -61,6 +61,18 @@ export function setPresessionCookies(
   response.cookie(CSRF_COOKIE, input.csrfToken, { ...HOST_COOKIE, httpOnly: false });
 }
 
+/**
+ * Pré-session seule, sans toucher au jeton CSRF : départ vers Google depuis un navigateur qui a
+ * une session mais pas de pré-session (le jeton CSRF reste celui de la session).
+ */
+export function setPresessionCookie(response: Response, presessionId: string): void {
+  response.cookie(PRESESSION_COOKIE, presessionId, {
+    ...HOST_COOKIE,
+    httpOnly: true,
+    maxAge: PRESESSION_MAX_AGE_MS,
+  });
+}
+
 export function setCsrfCookie(response: Response, csrfToken: string): void {
   response.cookie(CSRF_COOKIE, csrfToken, { ...HOST_COOKIE, httpOnly: false });
 }

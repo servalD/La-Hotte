@@ -232,6 +232,10 @@ export const SECURITY_EVENTS = [
   'recovery.codes_regenerated',
   'device.trusted',
   'device.revoked',
+  'google.rejected',
+  'google.linked',
+  'google.unlinked',
+  'account.replaced',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 

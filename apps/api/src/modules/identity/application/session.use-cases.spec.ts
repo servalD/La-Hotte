@@ -1,4 +1,5 @@
 import { Clock, IdGenerator } from '../../../shared/domain';
+import { InMemoryGoogleReauthProofs } from '../infrastructure/in-memory-google';
 import type { IdentityEvent } from '../domain/ports';
 import { InProcessIdentityEvents } from '../infrastructure/adapters';
 import { CryptoSecretTokens } from '../infrastructure/crypto-tokens';
@@ -36,7 +37,14 @@ function setup() {
   const published: IdentityEvent[] = [];
   events.subscribe((event) => published.push(event));
   const policies = new InMemoryProfileLockPolicies();
-  const lifecycle = new SessionLifecycle(store, tokens, events, new SequentialIds(), clock);
+  const lifecycle = new SessionLifecycle(
+    store,
+    tokens,
+    events,
+    new InMemoryGoogleReauthProofs(),
+    new SequentialIds(),
+    clock,
+  );
   const resolve = new ResolveSession(store, tokens, lifecycle, clock);
   const check = new CheckSessionAccess(store, policies, clock);
   store.addAccount('acct');

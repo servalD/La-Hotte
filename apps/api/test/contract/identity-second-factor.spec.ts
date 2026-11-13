@@ -230,6 +230,7 @@ describe('Activation du TOTP (AUTH-10, AUTH-11, AUTH-14, SEC-22)', () => {
       email,
       emailVerified: true,
       hasPassword: true,
+      googleLinked: false,
       totpEnabled: true,
       recoveryCodesRemaining: 10,
     });
@@ -717,6 +718,7 @@ describe('GET /account (PIN-08)', () => {
     expect(Object.keys(res.body as object).sort()).toEqual([
       'email',
       'emailVerified',
+      'googleLinked',
       'hasPassword',
       'recoveryCodesRemaining',
       'totpEnabled',

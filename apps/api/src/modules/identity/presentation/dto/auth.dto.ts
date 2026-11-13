@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   Equals,
   IsBoolean,
@@ -9,6 +10,7 @@ import {
   Length,
   Matches,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
 import {
   DISPLAY_NAME_MAX_LENGTH,
@@ -85,10 +87,20 @@ export class LoginDto {
 const SECOND_FACTOR_CODE = /^[0-9A-Za-z -]{6,32}$/;
 
 export class ReauthDto {
+  /**
+   * Absent seulement après un retour de Google qui attend le code TOTP
+   * (`reauth_second_factor`, AUTH-14).
+   */
+  @IsOptional()
   @IsString()
   @Length(1, PASSWORD_MAX_LENGTH)
-  @ApiProperty({ minLength: 1, maxLength: PASSWORD_MAX_LENGTH, format: 'password' })
-  password!: string;
+  @ApiProperty({
+    required: false,
+    minLength: 1,
+    maxLength: PASSWORD_MAX_LENGTH,
+    format: 'password',
+  })
+  password?: string;
 
   /** AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours). */
   @IsOptional()
@@ -151,4 +163,39 @@ export class PasswordResetConfirmDto extends NewPasswordDto {
   @Matches(TOKEN_PATTERN)
   @ApiProperty({ pattern: TOKEN_PATTERN.source, minLength: 43, maxLength: 43 })
   token!: string;
+}
+
+/** AUTH-03, AUTH-08 : inscription par Google, saisie avant le départ vers Google. */
+export class GoogleRegistrationDto {
+  /** Nom affiché du premier profil (PRO-01, PRO-02). */
+  @IsString()
+  @Length(1, DISPLAY_NAME_MAX_LENGTH)
+  @Matches(/\S/)
+  @ApiProperty({ minLength: 1, maxLength: DISPLAY_NAME_MAX_LENGTH })
+  displayName!: string;
+
+  /** AUTH-08 : case « J'ai 15 ans ou plus », non précochée. Seule la valeur `true` est acceptée. */
+  @Equals(true)
+  @ApiProperty({ type: Boolean, enum: [true] })
+  ageAttested!: true;
+
+  @IsOptional()
+  @Matches(/^[a-z]{2}(-[A-Z]{2})?$/)
+  @ApiProperty({ required: false, pattern: '^[a-z]{2}(-[A-Z]{2})?$', example: 'fr' })
+  locale?: string;
+
+  @IsOptional()
+  @IsTimeZone()
+  @MaxLength(64)
+  @ApiProperty({ required: false, maxLength: 64, example: 'Europe/Paris' })
+  timezone?: string;
+}
+
+/** Départ vers Google pour se connecter, ou s'inscrire si `registration` est fourni (AUTH-03). */
+export class GoogleStartDto {
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GoogleRegistrationDto)
+  @ApiProperty({ required: false, type: GoogleRegistrationDto })
+  registration?: GoogleRegistrationDto;
 }

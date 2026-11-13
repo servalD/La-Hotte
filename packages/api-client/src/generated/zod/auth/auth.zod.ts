@@ -50,6 +50,76 @@ export const verifyEmailBody = zod.object({
 });
 
 /**
+ * @summary AUTH-03, AUTH-05, AUTH-14 : dissociation, seulement avec un mot de passe. Toutes les autres
+sessions tombent ; celle-ci est remplacée.
+ */
+export const unlinkGoogleResponse = zod.object({
+  authenticated: zod.boolean(),
+  csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
+  session: zod
+    .object({
+      id: zod.uuid(),
+      activeProfileId: zod.uuid().nullable(),
+      profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
+      expiresAt: zod.iso.datetime({}),
+    })
+    .nullable(),
+  secondFactorPending: zod
+    .boolean()
+    .describe(
+      'Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST \/auth\/totp\/verify`). Expire en 5 minutes.',
+    ),
+});
+
+/**
+ * @summary AUTH-03, AUTH-14, AUTH-15 : association, après ré-authentification, compte vérifié.
+ */
+export const startGoogleLinkResponse = zod.object({
+  authorizationUrl: zod.url(),
+});
+
+/**
+ * @summary AUTH-14 : ré-authentification par le compte Google associé, authentification fraîche.
+ */
+export const startGoogleReauthResponse = zod.object({
+  authorizationUrl: zod.url(),
+});
+
+/**
+ * @summary Connexion, ou inscription si `registration` est fourni (AUTH-03, AUTH-08). Avant session :
+jeton CSRF de pré-session ; le parcours est lié à cette pré-session.
+ */
+export const startGoogleSignInBodyRegistrationDisplayNameMax = 60;
+
+export const startGoogleSignInBodyRegistrationDisplayNameRegExp = new RegExp('\\S');
+export const startGoogleSignInBodyRegistrationLocaleRegExp = new RegExp('^[a-z]{2}(-[A-Z]{2})?$');
+export const startGoogleSignInBodyRegistrationTimezoneMax = 64;
+
+export const startGoogleSignInBody = zod.object({
+  registration: zod
+    .object({
+      displayName: zod
+        .string()
+        .min(1)
+        .max(startGoogleSignInBodyRegistrationDisplayNameMax)
+        .regex(startGoogleSignInBodyRegistrationDisplayNameRegExp)
+        .describe('Nom affiché du premier profil (PRO-01, PRO-02).'),
+      ageAttested: zod
+        .literal(true)
+        .describe(
+          "AUTH-08 : case « J'ai 15 ans ou plus », non précochée. Seule la valeur `true` est acceptée.",
+        ),
+      locale: zod.string().regex(startGoogleSignInBodyRegistrationLocaleRegExp).optional(),
+      timezone: zod.string().max(startGoogleSignInBodyRegistrationTimezoneMax).optional(),
+    })
+    .optional(),
+});
+
+export const startGoogleSignInResponse = zod.object({
+  authorizationUrl: zod.url(),
+});
+
+/**
  * @summary Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si
 le TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le
 client poste le code à `POST /auth/totp/verify`.
@@ -157,7 +227,14 @@ export const reauthenticateBodyCodeMax = 32;
 export const reauthenticateBodyCodeRegExp = new RegExp('^[0-9A-Za-z -]{6,32}$');
 
 export const reauthenticateBody = zod.object({
-  password: zod.string().min(1).max(reauthenticateBodyPasswordMax),
+  password: zod
+    .string()
+    .min(1)
+    .max(reauthenticateBodyPasswordMax)
+    .optional()
+    .describe(
+      'Absent seulement après un retour de Google qui attend le code TOTP\n(`reauth_second_factor`, AUTH-14).',
+    ),
   code: zod
     .string()
     .min(reauthenticateBodyCodeMin)

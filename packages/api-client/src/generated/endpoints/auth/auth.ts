@@ -16,6 +16,8 @@ import type {
 import type {
   EmailDto,
   EmailTokenDto,
+  GoogleRedirectView,
+  GoogleStartDto,
   LoginDto,
   NewPasswordDto,
   PasswordResetConfirmDto,
@@ -287,6 +289,278 @@ export const useVerifyEmail = <TError = ErrorType<ProblemDetailsDto>, TContext =
   TContext
 > => {
   const mutationOptions = getVerifyEmailMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-03, AUTH-05, AUTH-14 : dissociation, seulement avec un mot de passe. Toutes les autres
+sessions tombent ; celle-ci est remplacée.
+ */
+export const getUnlinkGoogleUrl = () => {
+  return `/api/v1/auth/google`;
+};
+
+export const unlinkGoogle = async (options?: RequestInit): Promise<SessionStatusView> => {
+  return apiFetch<SessionStatusView>(getUnlinkGoogleUrl(), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getUnlinkGoogleMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof unlinkGoogle>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof unlinkGoogle>>, TError, void, TContext> => {
+  const mutationKey = ['unlinkGoogle'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkGoogle>>, void> = () => {
+    return unlinkGoogle(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnlinkGoogleMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkGoogle>>>;
+
+export type UnlinkGoogleMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-03, AUTH-05, AUTH-14 : dissociation, seulement avec un mot de passe. Toutes les autres
+sessions tombent ; celle-ci est remplacée.
+ */
+export const useUnlinkGoogle = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof unlinkGoogle>>, TError, void, TContext>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof unlinkGoogle>>, TError, void, TContext> => {
+  const mutationOptions = getUnlinkGoogleMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-03, AUTH-14, AUTH-15 : association, après ré-authentification, compte vérifié.
+ */
+export const getStartGoogleLinkUrl = () => {
+  return `/api/v1/auth/google/link`;
+};
+
+export const startGoogleLink = async (options?: RequestInit): Promise<GoogleRedirectView> => {
+  return apiFetch<GoogleRedirectView>(getStartGoogleLinkUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getStartGoogleLinkMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startGoogleLink>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof startGoogleLink>>, TError, void, TContext> => {
+  const mutationKey = ['startGoogleLink'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof startGoogleLink>>, void> = () => {
+    return startGoogleLink(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartGoogleLinkMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startGoogleLink>>
+>;
+
+export type StartGoogleLinkMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-03, AUTH-14, AUTH-15 : association, après ré-authentification, compte vérifié.
+ */
+export const useStartGoogleLink = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof startGoogleLink>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof startGoogleLink>>, TError, void, TContext> => {
+  const mutationOptions = getStartGoogleLinkMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary AUTH-14 : ré-authentification par le compte Google associé, authentification fraîche.
+ */
+export const getStartGoogleReauthUrl = () => {
+  return `/api/v1/auth/google/reauth`;
+};
+
+export const startGoogleReauth = async (options?: RequestInit): Promise<GoogleRedirectView> => {
+  return apiFetch<GoogleRedirectView>(getStartGoogleReauthUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getStartGoogleReauthMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startGoogleReauth>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof startGoogleReauth>>, TError, void, TContext> => {
+  const mutationKey = ['startGoogleReauth'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof startGoogleReauth>>, void> = () => {
+    return startGoogleReauth(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartGoogleReauthMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startGoogleReauth>>
+>;
+
+export type StartGoogleReauthMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary AUTH-14 : ré-authentification par le compte Google associé, authentification fraîche.
+ */
+export const useStartGoogleReauth = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof startGoogleReauth>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof startGoogleReauth>>, TError, void, TContext> => {
+  const mutationOptions = getStartGoogleReauthMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Connexion, ou inscription si `registration` est fourni (AUTH-03, AUTH-08). Avant session :
+jeton CSRF de pré-session ; le parcours est lié à cette pré-session.
+ */
+export const getStartGoogleSignInUrl = () => {
+  return `/api/v1/auth/google/start`;
+};
+
+export const startGoogleSignIn = async (
+  googleStartDto: GoogleStartDto,
+  options?: RequestInit,
+): Promise<GoogleRedirectView> => {
+  return apiFetch<GoogleRedirectView>(getStartGoogleSignInUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(googleStartDto),
+  });
+};
+
+export const getStartGoogleSignInMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startGoogleSignIn>>,
+    TError,
+    { data: GoogleStartDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startGoogleSignIn>>,
+  TError,
+  { data: GoogleStartDto },
+  TContext
+> => {
+  const mutationKey = ['startGoogleSignIn'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startGoogleSignIn>>,
+    { data: GoogleStartDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return startGoogleSignIn(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartGoogleSignInMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startGoogleSignIn>>
+>;
+export type StartGoogleSignInMutationBody = GoogleStartDto;
+export type StartGoogleSignInMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary Connexion, ou inscription si `registration` est fourni (AUTH-03, AUTH-08). Avant session :
+jeton CSRF de pré-session ; le parcours est lié à cette pré-session.
+ */
+export const useStartGoogleSignIn = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof startGoogleSignIn>>,
+      TError,
+      { data: GoogleStartDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof startGoogleSignIn>>,
+  TError,
+  { data: GoogleStartDto },
+  TContext
+> => {
+  const mutationOptions = getStartGoogleSignInMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

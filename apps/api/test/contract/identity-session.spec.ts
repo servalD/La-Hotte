@@ -46,6 +46,10 @@ const PUBLIC_ROUTES = [
   'POST /api/v1/auth/email/cancel',
   'POST /api/v1/auth/password/reset',
   'POST /api/v1/auth/password/reset/confirm',
+  // Google (AUTH-03, ADR 0013 « Retour OIDC ») : départ lié à la pré-session, retour lié au
+  // parcours démarré par ce navigateur.
+  'POST /api/v1/auth/google/start',
+  'GET /api/v1/auth/google/callback',
 ];
 /** Seul `GET` autorisé à modifier l'état (API-21). */
 const OIDC_CALLBACK_ROUTES = ['GET /api/v1/auth/google/callback'];

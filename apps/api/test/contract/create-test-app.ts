@@ -8,7 +8,15 @@ import {
   AccountRepository,
   BackgroundTasks,
   EventThrottle,
+  FakeGoogleOidc,
   FakePasswordHasher,
+  GoogleIdentityRepository,
+  GoogleOidc,
+  GoogleReauthProofs,
+  InMemoryGoogleIdentityRepository,
+  InMemoryGoogleReauthProofs,
+  InMemoryOidcFlows,
+  OidcFlows,
   IdentitySettings,
   InMemoryAccountRepository,
   InMemoryBackgroundTasks,
@@ -51,6 +59,10 @@ export interface TestIdentity {
   readonly secondFactors: InMemorySecondFactorRepository;
   readonly trustedDevices: InMemoryTrustedDeviceRepository;
   readonly pendingSecondFactors: InMemoryPendingSecondFactors;
+  readonly google: FakeGoogleOidc;
+  readonly oidcFlows: InMemoryOidcFlows;
+  readonly googleReauthProofs: InMemoryGoogleReauthProofs;
+  readonly googleIdentities: InMemoryGoogleIdentityRepository;
   /** Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé). */
   signIn(options?: { pin?: boolean; relock?: PinRelock; withProfile?: boolean }): Promise<SignedIn>;
 }
@@ -80,6 +92,10 @@ export async function createTestApp(
   const secondFactors = new InMemorySecondFactorRepository(accounts, sessions);
   const trustedDevices = new InMemoryTrustedDeviceRepository(accounts);
   const pendingSecondFactors = new InMemoryPendingSecondFactors();
+  const google = new FakeGoogleOidc();
+  const oidcFlows = new InMemoryOidcFlows();
+  const googleReauthProofs = new InMemoryGoogleReauthProofs();
+  const googleIdentities = new InMemoryGoogleIdentityRepository(accounts, sessions);
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -114,6 +130,14 @@ export async function createTestApp(
     .useValue(trustedDevices)
     .overrideProvider(PendingSecondFactors)
     .useValue(pendingSecondFactors)
+    .overrideProvider(GoogleOidc)
+    .useValue(google)
+    .overrideProvider(OidcFlows)
+    .useValue(oidcFlows)
+    .overrideProvider(GoogleReauthProofs)
+    .useValue(googleReauthProofs)
+    .overrideProvider(GoogleIdentityRepository)
+    .useValue(googleIdentities)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
@@ -135,6 +159,10 @@ export async function createTestApp(
     secondFactors,
     trustedDevices,
     pendingSecondFactors,
+    google,
+    oidcFlows,
+    googleReauthProofs,
+    googleIdentities,
     async signIn({ pin = false, relock = 'IDLE_15', withProfile = true } = {}) {
       const accountId = randomUUID();
       const profileId = randomUUID();

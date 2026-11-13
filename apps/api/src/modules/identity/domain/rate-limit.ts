@@ -19,6 +19,7 @@ export const RATE_LIMIT_SCOPES = [
   'reauth', // ré-authentification, par compte
   'register_ip', // demandes d'inscription, par IP
   'reset_ip', // demandes de réinitialisation, par IP
+  'oidc_ip', // démarrages d'un parcours Google, par IP (AUTH-03)
   'mail_recipient', // envois d'e-mail, par adresse destinataire (jamais de 429)
 ] as const;
 export type RateLimitScope = (typeof RATE_LIMIT_SCOPES)[number];
@@ -49,6 +50,9 @@ export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolic
   // Demandes, pas échecs : chaque demande est comptée.
   register_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
   reset_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
+  // Chaque démarrage garde un état 10 minutes dans Redis (`noeviction`) : sans borne, une boucle
+  // de démarrages remplirait la mémoire et fermerait toute l'authentification.
+  oidc_ip: { threshold: 30, windowMs: HOUR, resetOnSuccess: false },
   mail_recipient: { threshold: 3, windowMs: 24 * HOUR, resetOnSuccess: false },
 };
 

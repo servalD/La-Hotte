@@ -16,6 +16,18 @@ export {
   SessionStore,
 } from './domain/ports';
 export {
+  GoogleIdentityRepository,
+  GoogleOidc,
+  GoogleReauthProofs,
+  OidcFlows,
+} from './domain/google.ports';
+export {
+  FakeGoogleOidc,
+  InMemoryGoogleIdentityRepository,
+  InMemoryGoogleReauthProofs,
+  InMemoryOidcFlows,
+} from './infrastructure/in-memory-google';
+export {
   PendingSecondFactors,
   SecondFactorRepository,
   TrustedDeviceRepository,

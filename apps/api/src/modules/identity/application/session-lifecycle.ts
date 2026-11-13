@@ -7,6 +7,7 @@ import {
   type SessionRef,
   SessionStore,
 } from '../domain/ports';
+import { GoogleReauthProofs } from '../domain/google.ports';
 import { newSessionExpiry, type SessionRecord } from '../domain/session';
 import { SessionRequiredError } from '../domain/session.errors';
 
@@ -29,6 +30,7 @@ export class SessionLifecycle {
     private readonly store: SessionStore,
     private readonly tokens: SecretTokens,
     private readonly events: IdentityEvents,
+    private readonly googleProofs: GoogleReauthProofs,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
@@ -146,13 +148,20 @@ export class SessionLifecycle {
     return epoch;
   }
 
-  /** PIN-07 : changer de profil reverrouille et efface la ré-authentification. */
+  /**
+   * PIN-07 : changer de profil reverrouille et efface la ré-authentification, y compris un
+   * passage par Google qui attendait son code (AUTH-14).
+   */
   async selectProfile(ref: SessionRef, profileId: string | null): Promise<void> {
+    // Preuve effacée d'abord : une panne fait échouer l'action avant toute écriture, jamais
+    // après le changement sans son événement (salons temps réel, VIS-20).
+    await this.googleProofs.consume(ref.id);
     await this.store.setActiveProfile(ref, profileId);
     this.events.publish({ type: 'session.profile_changed', sessionId: ref.id, profileId });
   }
 
   async lock(ref: SessionRef, profileId: string | null): Promise<void> {
+    await this.googleProofs.consume(ref.id);
     await this.store.lock(ref);
     if (profileId) this.events.publish({ type: 'profile.locked', sessionId: ref.id, profileId });
   }

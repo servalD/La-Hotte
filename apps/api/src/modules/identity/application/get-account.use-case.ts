@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AccountRepository } from '../domain/account.ports';
+import { GoogleIdentityRepository } from '../domain/google.ports';
 import { SecondFactorRepository } from '../domain/second-factor.ports';
 import { SessionRequiredError } from '../domain/session.errors';
 
@@ -8,6 +9,7 @@ export interface AccountSummary {
   readonly email: string;
   readonly emailVerified: boolean;
   readonly hasPassword: boolean;
+  readonly googleLinked: boolean;
   readonly totpEnabled: boolean;
   readonly recoveryCodesRemaining: number;
 }
@@ -18,6 +20,7 @@ export class GetAccount {
   constructor(
     private readonly accounts: AccountRepository,
     private readonly secondFactors: SecondFactorRepository,
+    private readonly identities: GoogleIdentityRepository,
   ) {}
 
   async execute(accountId: string): Promise<AccountSummary> {
@@ -27,6 +30,7 @@ export class GetAccount {
       email: account.email,
       emailVerified: account.emailVerified,
       hasPassword: account.passwordHash !== null,
+      googleLinked: (await this.identities.findSubject(accountId)) !== null,
       totpEnabled: account.totpEnabled,
       recoveryCodesRemaining: account.totpEnabled
         ? await this.secondFactors.countUnusedRecoveryCodes(accountId)

@@ -28,6 +28,20 @@ import {
 import { RegenerateRecoveryCodes } from './application/regenerate-recovery-codes.use-case';
 import { SecondFactorVerifier } from './application/second-factor-verifier';
 import { VerifySecondFactor } from './application/verify-second-factor.use-case';
+import { CompleteGoogleFlow } from './application/complete-google-flow.use-case';
+import { SignInCompletion } from './application/sign-in-completion';
+import { StartGoogleFlow } from './application/start-google-flow.use-case';
+import { UnlinkGoogle } from './application/unlink-google.use-case';
+import {
+  GoogleIdentityRepository,
+  GoogleOidc,
+  GoogleReauthProofs,
+  OidcFlows,
+} from './domain/google.ports';
+import { OpenIdGoogleOidc } from './infrastructure/openid-google-oidc';
+import { PrismaGoogleIdentityRepository } from './infrastructure/prisma-google-identity-repository';
+import { RedisGoogleReauthProofs, RedisOidcFlows } from './infrastructure/redis-oidc-flows';
+import { GoogleController } from './presentation/google.controller';
 import {
   PendingSecondFactors,
   SecondFactorRepository,
@@ -85,13 +99,15 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
 
 /**
  * Module `identity` (ADR 0011, ADR 0013) : sessions, gardes, limitation, journal de sécurité,
- * comptes par mot de passe, second facteur (TOTP, codes de secours, appareils de confiance).
+ * comptes par mot de passe, second facteur (TOTP, codes de secours, appareils de confiance),
+ * connexion avec Google (OpenID Connect).
  */
 @Module({
   controllers: [
     SessionController,
     SessionsController,
     AuthController,
+    GoogleController,
     AccountController,
     TrustedDevicesController,
   ],
@@ -126,6 +142,10 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
     ListTrustedDevices,
     RevokeTrustedDevice,
     GetAccount,
+    SignInCompletion,
+    StartGoogleFlow,
+    CompleteGoogleFlow,
+    UnlinkGoogle,
     { provide: SessionStore, useClass: RedisSessionStore },
     { provide: SecretTokens, useClass: CryptoSecretTokens },
     { provide: CsrfTokens, useClass: HmacCsrfTokens },
@@ -145,6 +165,10 @@ import { UnverifiedPurgeScheduler } from './presentation/unverified-purge.schedu
     { provide: PendingSecondFactors, useClass: RedisPendingSecondFactors },
     { provide: SecretCipher, useClass: AesGcmSecretCipher },
     { provide: TotpEngine, useClass: OtplibTotpEngine },
+    { provide: GoogleOidc, useClass: OpenIdGoogleOidc },
+    { provide: OidcFlows, useClass: RedisOidcFlows },
+    { provide: GoogleReauthProofs, useClass: RedisGoogleReauthProofs },
+    { provide: GoogleIdentityRepository, useClass: PrismaGoogleIdentityRepository },
     // Refus par défaut sur toutes les routes de l'application (SEC-01).
     { provide: APP_GUARD, useClass: IdentityGuardChain },
   ],

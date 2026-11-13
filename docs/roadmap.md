@@ -212,6 +212,53 @@ Suites :
 - Revue `security-reviewer` du 2026-11-13 (cycle 1) : **visa SEC-40 accordé**. I1 et I2 corrigés (ci-dessus). M1 corrigé (un mot de passe faux à la ré-authentification ne compte plus sur `second_factor`). M4 en partie : tests ajoutés pour l'appareil de confiance après réinitialisation (contrat et intégration) et pour la pré-authentification invalidée par la désactivation ; le seuil de 50 refusé avec l'appareil d'un autre compte n'est pas testé (le compteur du couple, à 5, se déclenche avant dans les tests de contrat), à couvrir en tranche 8. Acceptés : M2 (deux bons codes envoyés en même temps, le second est consommé pour rien), M3 (un seul cookie d'appareil par navigateur ; deux comptes sur le même navigateur se l'écrasent, à dire en tranche 7), M5 (une à deux lectures en base avant la limitation quand un cookie d'appareil est présenté). Pour la tranche 7 : M6 (agent utilisateur des appareils affiché en texte, jamais en HTML).
 - Revue `security-reviewer` du 2026-11-13 (cycle 2, dernier) : **visa SEC-40 maintenu**, aucun point bloquant ni important. N1 corrigé (double envoi de l'activation : refus `409` avant le changement d'époque si le TOTP est déjà actif). N3 corrigé (la réinitialisation confirmée vide le compteur `second_factor`, nouvelle méthode `RateLimiter.clear`). N4 corrigé en partie : tests Redis du plafond par portée, des compteurs renvoyés par `FAIL` et de `clear` ; avertissement depuis la ré-authentification. N5 corrigé (spec : avertissement une fois par fenêtre de 24 h, pas pour l'activation). Acceptés : N2 (pendant le délai du second facteur, la ré-authentification répond `429` à un mot de passe juste et `401` à un faux ; ne sert qu'à qui tient déjà la session, pendant qu'un tiers fait échouer des codes ; la réservation `reauth` expire alors seule en 10 s), N6 (l'avertissement n'est pas renouvelé dans les 24 h même après un succès du titulaire) ; la course de l'activation remplacée pendant la transaction reste couverte par lecture seulement.
 
+**Tranche 4 faite le 2026-11-13** (opus). Routes `POST /auth/google/start` (publique), `GET /auth/google/callback` (publique, `@OidcCallback()`, hors du contrat OpenAPI), `POST /auth/google/link`, `POST /auth/google/reauth`, `DELETE /auth/google` ; `POST /auth/reauth` accepte un code sans mot de passe après un retour de Google ; `GET /account` dit `googleLinked` ; migration `20261113220000_google_identity` (une identité Google par compte, forme du `sub`) ; `openid-client` 6.8.8 (ESM chargé par `require`, Node 22) ; ports `GoogleOidc`, `OidcFlows` et `GoogleReauthProofs` (Redis), `GoogleIdentityRepository` ; `SignInCompletion`, fin de connexion commune au mot de passe et à Google (TOTP, appareil de confiance, AUTH-13) ; variables `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (facultatives, ensemble), `GOOGLE_OIDC_ISSUER` (`https:` exigé en production) ; règles précisées dans AUTH-03, AUTH-05, AUTH-09, AUTH-14, `01` « Limitation », `12`, `13` ; tests de l'adaptateur contre un fournisseur OIDC local (`test/support/fake-oidc-provider.ts`), contrat, intégration, non-fuite (OBS-26 étendu à `code`, `state`, `nonce`, PKCE, secret du client, `sub`, adresse Google). Choix faits dans les silences, à relire :
+
+- **jamais de fusion, même sur adresse vérifiée des deux côtés** (`GOOGLE_LINK_REQUIRED`) : l'association se fait seulement depuis l'espace Compte ; seul un compte non vérifié est remplacé (AUTH-15) ;
+- **association et dissociation après ré-authentification** (ajoutées à AUTH-14) : sinon un proche devant une session ouverte associerait son propre Google et garderait un accès durable. Avis par e-mail aux deux ;
+- **dissociation** seulement avec un mot de passe ; elle change l'époque (toutes les sessions tombent, y compris celles ouvertes par Google), session neuve pour l'appelant ; conditions vérifiées avant le changement d'époque, puis dans la transaction ;
+- **une réinitialisation du mot de passe ne dissocie pas Google** : un compte créé par Google se donne un mot de passe par elle, et la perdre à chaque fois serait absurde. Un proche qui aurait associé son Google s'évince par : réinitialisation, connexion, ré-authentification, dissociation (l'avis d'association le dit) ;
+- **inscription par Google** : déclaration d'âge et nom du premier profil saisis avant le départ et gardés dans l'état du parcours (Redis, 10 minutes) ; sans eux, `GOOGLE_REGISTRATION_REQUIRED` et rien n'est créé. Portées `openid email` seules : ni nom ni photo demandés à Google ;
+- **ré-authentification par Google** : `max_age=0` et `auth_time` de moins de 5 minutes exigés, même `sub` que l'identité associée. Avec le TOTP, une preuve liée au jeton courant et à l'époque attend le code 5 minutes ; lue sans être consommée (un code mal tapé ne fait pas repasser par Google), consommée au succès ;
+- parcours de connexion lié au **hash de la pré-session** ; un départ depuis une session sans pré-session en tire une (cookie seul, le jeton CSRF reste celui de la session). Association et ré-authentification liées à `session.id`, au compte et à l'époque ;
+- `state` consommé (`GETDEL`) **avant** la vérification du lien au navigateur : un retour présenté par un autre navigateur brûle le parcours ;
+- connexion par Google : identité lue, puis époque, puis identité relue (ADR 0014) : une dissociation concurrente ne laisse pas ouvrir de session ;
+- retour : redirection `303` vers `/auth/google/return?status=…` ou `?error=<code>` du web (page de la tranche 7), `no-store`, `Referrer-Policy: no-referrer` ; une erreur métier devient un code dans l'adresse, toute autre erreur suit le chemin ordinaire (500, rapport nettoyé) ;
+- démarrages limités à **30 par heure et par IP** (`oidc_ip`) : chaque démarrage occupe Redis, en `noeviction` ;
+- le jeton d'identité vient du point de terminaison de Google par TLS : sa signature n'est pas vérifiée par `openid-client` 6 (OIDC Core 3.1.3.7 le permet) ; aucun jeton Google n'est conservé ;
+- association en une seule instruction (`INSERT … SELECT` sur un compte actif et vérifié), les deux index d'unicité tranchent les concurrences ;
+- `AUTH-09` : en `INVITE_ONLY`, l'inscription par Google est refusée (`INVITATION_REQUIRED`) jusqu'aux invitations de la tranche 6 ; un compte associé se connecte toujours.
+
+Suites :
+
+- **À vérifier contre le vrai Google avant la mise en production** : que `max_age=0` force bien une nouvelle authentification et renvoie `auth_time` (sinon la ré-authentification par Google échoue toujours, en échec fermé), et que `iss` vaut `https://accounts.google.com` et non `accounts.google.com` (sinon tout retour est refusé ; revue M9).
+- Revue `security-reviewer` du 2026-11-13 (cycle 1) : **visa SEC-40 accordé**, aucun point bloquant. Corrigés :
+  - I1 : un `state` inconnu n'écrit plus au journal de sécurité, et les retours refusés y vont une fois par minute et par (adresse, compte), par `EventThrottle` ;
+  - I2 : l'association exige encore la ré-authentification au retour de Google (verrouillage ou changement de profil entre les deux : `REAUTH_REQUIRED`, rien d'associé) ;
+  - I3, en partie : `prompt=select_account` sur tous les parcours ;
+  - M1 : fraîcheur mesurée au départ du parcours (`auth_time` remonté de l'adaptateur) ;
+  - M2 : AUTH-03 précisé, l'adresse Google ne sert qu'à créer un compte ;
+  - M3 : émetteur `https://accounts.google.com` imposé en production ;
+  - M4 : forme de l'adresse Google contrôlée ;
+  - M6 : preuve de ré-authentification Google effacée au verrouillage et au changement de profil.
+  
+  Restent :
+  - I3, autre partie : adresse Google masquée dans l'avis d'association. Elle est écartée pour l'instant : les e-mails du compte ne portent aucune adresse, et cet indice serait à conserver pour l'espace Compte. À arbitrer avec RGPD-02 ;
+  - M5 (accepté) : une dissociation qui voit le mot de passe disparaître en concurrence déconnecte l'appelant, en échec fermé, conformément à l'ADR 0014 ;
+  - M7 : un 500 forcé sur le retour Google n'est pas encore couvert par la non-fuite (le filtre `url.query` s'applique déjà à toutes les routes), à ajouter en tranche 8 ;
+  - M8 (disponibilité seulement) : une erreur réseau emballée sans réponse serait classée `GOOGLE_REJECTED` plutôt qu'indisponible.
+- Revue `security-reviewer` du 2026-11-13 (cycle 2, dernier) : **visa SEC-40 maintenu**, aucun point bloquant ni important pour la tranche. Restes du cycle 1 jugés acceptables, M9 à condition que la vérification contre le vrai Google bloque la mise en production.
+  - Corrigés :
+    - I-C2-1 (latent avant la tranche 5) : la preuve Google est effacée **avant** le verrouillage ou le changement de profil, pour qu'une panne de Redis n'écrive jamais le changement sans publier son événement (salons temps réel, VIS-20) ;
+    - C2-M1 : test de contrat d'une authentification Google antérieure au départ du parcours.
+  - Restent :
+    - C2-M2 : la limitation des lignes `google.rejected` n'est pas testée (le double `InMemoryEventThrottle` laisse tout passer ; à couvrir en tranche 8 avec un double qui compte) ;
+    - C2-M3 (accepté) : un verrouillage qui tombe entre la lecture de l'époque et la création de la preuve la laisse survivre, quelques millisecondes, le code TOTP restant exigé ;
+    - tranche 7 : dire sur la page de retour qu'une association qui dépasse la ré-authentification de 10 minutes demande de recommencer.
+- Tranche 6 : jeton d'invitation porté par l'état du parcours Google et consommé à la création du compte (AUTH-09).
+- Tranche 7 : page `/auth/google/return` (issue, code d'erreur, suite : second facteur, code de ré-authentification, inscription proposée sur `GOOGLE_REGISTRATION_REQUIRED`, connexion par mot de passe sur `GOOGLE_LINK_REQUIRED`) ; case d'âge et nom avant « S'inscrire avec Google » ; Google dans l'espace Compte.
+- Déploiement : client OAuth « Application Web » chez Google, URI de redirection `<WEB_ORIGIN>/api/v1/auth/google/callback` ; Google au registre des sous-traitants (RGPD-03, déjà écrit).
+
 Sortie : critères d'acceptation de `01` ; revue `security-reviewer` sans point bloquant.
 
 ## Phase 2 — Articles, listes, visibilité

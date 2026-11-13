@@ -8,10 +8,12 @@
 
 export interface ReauthDto {
   /**
+   * Absent seulement après un retour de Google qui attend le code TOTP
+(`reauth_second_factor`, AUTH-14).
    * @minLength 1
    * @maxLength 256
    */
-  password: string;
+  password?: string;
   /**
    * AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours).
    * @minLength 6

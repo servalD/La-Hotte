@@ -3,22 +3,16 @@ import { Clock } from '../../../shared/domain';
 import { normalizeEmail } from '../domain/account';
 import { AccountSuspendedError, InvalidCredentialsError } from '../domain/account.errors';
 import { AccountRepository, PasswordHasher } from '../domain/account.ports';
-import { RateLimiter, SecretTokens, SecurityLog, type SessionRef } from '../domain/ports';
+import { RateLimiter, SecurityLog, type SessionRef } from '../domain/ports';
 import { type RateLimitSubject, TRUSTED_DEVICE_ACCOUNT_THRESHOLD } from '../domain/rate-limit';
-import { PENDING_SECOND_FACTOR_TTL_MS, requiresSecondFactor } from '../domain/second-factor';
-import { SecondFactorEnrollmentRequiredError } from '../domain/second-factor.errors';
-import { PendingSecondFactors, TrustedDeviceRepository } from '../domain/second-factor.ports';
 import { RateLimitedError } from '../domain/session.errors';
 import type { ClientInfo } from './client-info';
-import { type IssuedSession, SessionLifecycle } from './session-lifecycle';
+import { SessionLifecycle } from './session-lifecycle';
+import { SignInCompletion, type SignInResult } from './sign-in-completion';
 
 const NO_ACCOUNT_ID = '00000000-0000-0000-0000-000000000000';
 
-/** Issue d'une connexion : session ouverte, ou second facteur attendu (AUTH-12). */
-export type SignInResult =
-  | { readonly kind: 'session'; readonly issued: IssuedSession }
-  /** Jeton de pré-authentification, à poser dans `__Host-lh_pending` ; jamais stocké en clair. */
-  | { readonly kind: 'second_factor'; readonly pendingToken: string };
+export type { SignInResult } from './sign-in-completion';
 
 /**
  * Connexion par mot de passe (AUTH-01, AUTH-07, AUTH-12, AUTH-13, ADR 0013, ADR 0014).
@@ -28,10 +22,8 @@ export type SignInResult =
  *   de confiance du compte, seuil par compte relevé à 50 (ADR 0013).
  * - Époque du compte lue **avant** la vérification du mot de passe (ADR 0014).
  * - Compte absent ou sans mot de passe : vérification argon2 factice de même coût, même refus.
- * - TOTP actif : aucune session, une pré-authentification de 5 minutes (Redis seul), sauf depuis
- *   un appareil de confiance du compte (jamais pour un administrateur ou un modérateur).
- * - Navigateur qui avait déjà une session : elle est révoquée côté serveur à l'ouverture de la
- *   nouvelle (rotation).
+ * - Suite commune avec Google (TOTP, appareil de confiance, AUTH-13, rotation) :
+ *   `SignInCompletion`.
  */
 @Injectable()
 export class SignInWithPassword {
@@ -40,9 +32,7 @@ export class SignInWithPassword {
     private readonly hasher: PasswordHasher,
     private readonly limiter: RateLimiter,
     private readonly lifecycle: SessionLifecycle,
-    private readonly devices: TrustedDeviceRepository,
-    private readonly pending: PendingSecondFactors,
-    private readonly tokens: SecretTokens,
+    private readonly completion: SignInCompletion,
     private readonly securityLog: SecurityLog,
     private readonly clock: Clock,
   ) {}
@@ -95,33 +85,13 @@ export class SignInWithPassword {
     // facteur, lui, ne l'est jamais par un mot de passe juste (ADR 0013).
     await this.limiter.recordSuccess(subjects, reservation);
 
-    const privileged = requiresSecondFactor(state.role);
-    // AUTH-13 : administrateur ou modérateur sans TOTP, refus en échec fermé.
-    if (privileged && !account.totpEnabled) {
-      await this.log(account.accountId, 'login.failed', input.client);
-      throw new SecondFactorEnrollmentRequiredError();
-    }
-    const dispensed = device?.accountId === account.accountId && !privileged;
-    if (account.totpEnabled && !dispensed) {
-      const pendingToken = this.tokens.generate();
-      await this.pending.create(
-        this.tokens.hash(pendingToken),
-        { accountId: account.accountId, epoch: state.epoch, createdAt: this.clock.now() },
-        PENDING_SECOND_FACTOR_TTL_MS,
-      );
-      await this.log(account.accountId, 'login.second_factor_required', input.client);
-      return { kind: 'second_factor', pendingToken };
-    }
-
-    const issued = await this.lifecycle.create({
-      accountId: account.accountId,
-      observedEpoch: state.epoch,
-      userAgent: input.client.userAgent,
-      trustedDeviceId: dispensed ? device.id : null,
+    return this.completion.complete({
+      state,
+      totpEnabled: account.totpEnabled,
+      deviceId: device?.accountId === account.accountId ? device.id : null,
+      client: input.client,
       previous: input.previous,
     });
-    await this.log(account.accountId, 'login.succeeded', input.client);
-    return { kind: 'session', issued };
   }
 
   /**
@@ -132,8 +102,7 @@ export class SignInWithPassword {
     email: string,
     deviceToken: string | null,
   ): Promise<{ id: string; accountId: string } | null> {
-    if (!deviceToken || !this.tokens.isWellFormed(deviceToken)) return null;
-    const device = await this.devices.findActive(this.tokens.hash(deviceToken), this.clock.now());
+    const device = await this.completion.trustedDevice(deviceToken);
     if (!device) return null;
     const owner = await this.accounts.findById(device.accountId);
     return owner?.email === email ? device : null;
@@ -141,7 +110,7 @@ export class SignInWithPassword {
 
   private async log(
     accountId: string | null,
-    event: 'login.failed' | 'login.succeeded' | 'login.second_factor_required',
+    event: 'login.failed',
     client: ClientInfo,
   ): Promise<void> {
     await this.securityLog.record({

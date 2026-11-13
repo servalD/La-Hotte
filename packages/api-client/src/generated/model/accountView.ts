@@ -10,6 +10,8 @@ export interface AccountView {
   email: string;
   emailVerified: boolean;
   hasPassword: boolean;
+  /** AUTH-03 : un compte Google est associé ; la ré-authentification peut passer par lui. */
+  googleLinked: boolean;
   /** La ré-authentification demande alors un code (AUTH-14). */
   totpEnabled: boolean;
   /**

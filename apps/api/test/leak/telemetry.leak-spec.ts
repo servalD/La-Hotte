@@ -21,6 +21,7 @@ import {
   MailSender,
   PasswordBreachChecker,
 } from '../../src/modules/identity/testing';
+import { type FakeOidcProvider, startFakeOidcProvider } from '../support/fake-oidc-provider';
 import { createAccountWithProfile, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
@@ -57,6 +58,14 @@ const authSecrets: Record<string, string> = {};
  * codes TOTP (6 chiffres) ne se cherchent pas : un horodatage peut les contenir par hasard.
  */
 const secondFactorSecrets: Record<string, string> = {};
+/**
+ * Secrets du parcours Google (AUTH-03, ADR 0013 « Retour OIDC ») : `state`, `nonce`, défi et
+ * vérificateur PKCE, code d'autorisation, secret du client, identifiant et adresse Google, nom
+ * saisi à l'inscription, session ouverte par le retour.
+ */
+const googleSecrets: Record<string, string> = {};
+/** Fournisseur OpenID Connect local, à la place de Google. */
+let provider: FakeOidcProvider | undefined;
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
 const mail = new InMemoryMailSender();
 const background = new InMemoryBackgroundTasks();
@@ -120,6 +129,12 @@ beforeAll(async () => {
 
   let app: INestApplication | undefined;
   try {
+    provider = await startFakeOidcProvider();
+    Object.assign(process.env, {
+      GOOGLE_CLIENT_ID: provider.clientId,
+      GOOGLE_CLIENT_SECRET: provider.clientSecret,
+      GOOGLE_OIDC_ISSUER: provider.issuer,
+    });
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [LeakRoutesController],
@@ -142,6 +157,7 @@ beforeAll(async () => {
     // retiennent le processus et le job de CI attend son délai au lieu d'échouer.
     // `close` appelle `shutdownTelemetry` (TelemetryShutdown) : spans, métriques et Sentry vidés.
     await app?.close();
+    await provider?.close();
     await shutdownTelemetry();
     output.restore();
   }
@@ -240,6 +256,93 @@ async function playScenario(app: INestApplication): Promise<void> {
   await http.post('/api/v1/_leak/outbound').set(authenticated).expect(204);
 
   await playAuthScenario(app, pre.body.csrfToken as string, presessionCookie?.split(';')[0] ?? '');
+  await playGoogleScenario(app);
+}
+
+/**
+ * Google (tranche 4) : `code` et `state` dans la chaîne de requête d'un `GET`, affirmations de
+ * Google en base, état du parcours dans Redis, ré-authentification. Rien ne doit en sortir.
+ */
+async function playGoogleScenario(app: INestApplication): Promise<void> {
+  if (!provider) throw new Error('Fournisseur absent');
+  const http = request(app.getHttpServer());
+  const setCookies = (res: request.Response): string[] =>
+    ([] as string[]).concat((res.headers['set-cookie'] as unknown as string[] | undefined) ?? []);
+  const cookieOf = (res: request.Response, name: string): string =>
+    setCookies(res)
+      .find((cookie) => cookie.startsWith(`${name}=`))
+      ?.split(';')[0] ?? '';
+
+  const pre = await http.get('/api/v1/session').set(markedHeaders).expect(200);
+  const presession = cookieOf(pre, '__Host-lh_presession');
+  const before = {
+    ...markedHeaders,
+    Cookie: `${presession}; session=${MARKER}`,
+    'X-CSRF-Token': pre.body.csrfToken as string,
+    Origin: 'http://localhost:3000',
+  };
+  googleSecrets.displayName = `Prénom ${MARKER} Google`;
+  const started = await http
+    .post('/api/v1/auth/google/start')
+    .set(before)
+    .send({ registration: { displayName: googleSecrets.displayName, ageAttested: true } })
+    .expect(200);
+  const url = new URL(started.body.authorizationUrl as string);
+  googleSecrets.state = url.searchParams.get('state') ?? '';
+  googleSecrets.nonce = url.searchParams.get('nonce') ?? '';
+  googleSecrets.codeChallenge = url.searchParams.get('code_challenge') ?? '';
+  googleSecrets.subject = `sub${randomBytes(12).toString('hex')}`;
+  const email = `google_${MARKER}@gmail.test`;
+  googleSecrets.googleEmail = email.toLowerCase();
+  googleSecrets.clientSecret = provider.clientSecret;
+  googleSecrets.code = provider.issueCode(url.href, { sub: googleSecrets.subject, email });
+
+  // Retour forgé, porteur du marqueur partout : refusé, sans rien en dire.
+  await http
+    .get(
+      `/api/v1/auth/google/callback?state=${MARKER}&code=${MARKER}&error=${MARKER}&error_description=${MARKER}`,
+    )
+    .set(before)
+    .expect(303);
+  // Retour légitime, avec des paramètres que Google ajoute.
+  const signedIn = await http
+    .get(
+      `/api/v1/auth/google/callback?state=${googleSecrets.state}&code=${googleSecrets.code}&scope=openid%20email&authuser=0&prompt=none`,
+    )
+    .set(before)
+    .expect(303);
+  expect(new URL(signedIn.headers.location as string).searchParams.get('status')).toBe('signed_in');
+  googleSecrets.codeVerifier = provider.tokenRequests.at(-1)?.code_verifier ?? '';
+  const sessionCookie = cookieOf(signedIn, '__Host-lh_session');
+  googleSecrets.googleSession = decodeURIComponent(sessionCookie.split('=')[1] ?? '');
+
+  // Ré-authentification par Google, puis association refusée (déjà associé).
+  const status = await http.get('/api/v1/session').set({ Cookie: sessionCookie }).expect(200);
+  const session = {
+    ...markedHeaders,
+    Cookie: `${sessionCookie}; session=${MARKER}`,
+    'X-CSRF-Token': status.body.csrfToken as string,
+    Origin: 'http://localhost:3000',
+  };
+  const reauth = await http.post('/api/v1/auth/google/reauth').set(session).expect(200);
+  const reauthUrl = new URL(reauth.body.authorizationUrl as string);
+  googleSecrets.reauthState = reauthUrl.searchParams.get('state') ?? '';
+  const reauthCode = provider.issueCode(reauthUrl.href, {
+    sub: googleSecrets.subject,
+    email,
+    auth_time: Math.floor(Date.now() / 1000),
+  });
+  const reauthed = await http
+    .get(`/api/v1/auth/google/callback?state=${googleSecrets.reauthState}&code=${reauthCode}`)
+    .set(session)
+    .expect(303);
+  expect(new URL(reauthed.headers.location as string).searchParams.get('status')).toBe(
+    'reauthenticated',
+  );
+  await http
+    .get('/api/v1/account')
+    .set({ Cookie: cookieOf(reauthed, '__Host-lh_session') })
+    .expect(200);
 }
 
 /**
@@ -590,6 +693,42 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       expect(bodies('traces')).toContain(route);
     }
     for (const [name, secret] of Object.entries(secondFactorSecrets)) {
+      expect(secret.length).toBeGreaterThanOrEqual(16);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('AUTH-03, ADR 0013 : code, state, nonce, PKCE, secret du client et affirmations de Google absents de toute sortie', () => {
+    expect(Object.keys(googleSecrets).sort()).toEqual(
+      [
+        'clientSecret',
+        'code',
+        'codeChallenge',
+        'codeVerifier',
+        'displayName',
+        'googleEmail',
+        'googleSession',
+        'nonce',
+        'reauthState',
+        'state',
+        'subject',
+      ].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    // Les routes Google ont bien été tracées (pas de faux vert).
+    for (const route of [
+      '/api/v1/auth/google/start',
+      '/api/v1/auth/google/callback',
+      '/api/v1/auth/google/reauth',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(googleSecrets)) {
       expect(secret.length).toBeGreaterThanOrEqual(16);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }

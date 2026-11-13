@@ -39,6 +39,12 @@ const envSchema = z.object({
   // Envoi d'e-mails (Mailpit en local : smtp://localhost:1025).
   SMTP_URL: z.url().refine((url) => /^smtps?:\/\//.test(url), 'smtp:// ou smtps://'),
   MAIL_FROM: z.email(),
+  // AUTH-01, AUTH-03 : connexion avec Google. Facultative : sans identifiant de client, les
+  // routes Google répondent `503 GOOGLE_UNAVAILABLE`. L'émetteur ne change qu'en test (fournisseur
+  // local) ; la production exige `https:`.
+  GOOGLE_CLIENT_ID: z.string().min(1).max(255).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).max(255).optional(),
+  GOOGLE_OIDC_ISSUER: z.url().default('https://accounts.google.com'),
   ...telemetryEnvShape,
 });
 
@@ -77,6 +83,13 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
   if (result.data.CSRF_SECRET === result.data.KEY_HMAC_SECRET) {
     throw new Error('Configuration invalide : CSRF_SECRET, KEY_HMAC_SECRET');
   }
+  // Google : l'identifiant et le secret vont ensemble.
+  if (
+    (result.data.GOOGLE_CLIENT_ID === undefined) !==
+    (result.data.GOOGLE_CLIENT_SECRET === undefined)
+  ) {
+    throw new Error('Configuration invalide : GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET');
+  }
   if (result.data.NODE_ENV === 'production') {
     const invalid = productionProblems(source, result.data);
     if (invalid.length > 0) throw new Error(`Configuration invalide : ${invalid.join(', ')}`);
@@ -105,6 +118,10 @@ function productionProblems(source: NodeJS.ProcessEnv, env: Env): string[] {
     )
   ) {
     problems.push('SECRET_ENCRYPTION_KEYS');
+  }
+  // `email_verified` n'engage que Google : en production, l'émetteur est Google, et nul autre.
+  if (env.GOOGLE_OIDC_ISSUER !== 'https://accounts.google.com') {
+    problems.push('GOOGLE_OIDC_ISSUER');
   }
   const smtp = new URL(env.SMTP_URL);
   if (smtp.protocol !== 'smtps:' && smtp.searchParams.get('requireTLS') !== 'true') {

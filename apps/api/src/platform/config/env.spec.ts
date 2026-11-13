@@ -69,6 +69,26 @@ describe('parseEnv', () => {
     ).toContain('requireTLS');
   });
 
+  it('AUTH-03 : Google facultatif, identifiant et secret ensemble ; émetteur Google seul en production', () => {
+    expect(parseEnv(valid).GOOGLE_CLIENT_ID).toBeUndefined();
+    expect(() => parseEnv({ ...valid, GOOGLE_CLIENT_ID: 'id' })).toThrowError(/GOOGLE_CLIENT_ID/);
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      TRUSTED_PROXY_HOPS: '1',
+      CSRF_SECRET: 'p'.repeat(40),
+      KEY_HMAC_SECRET: 'q'.repeat(40),
+      SMTP_URL: 'smtps://smtp.example:465',
+      SECRET_ENCRYPTION_KEYS: `1:${Buffer.alloc(32, 9).toString('base64')}`,
+    };
+    expect(parseEnv(production).GOOGLE_OIDC_ISSUER).toBe('https://accounts.google.com');
+    for (const issuer of ['http://127.0.0.1:9000', 'https://accounts.example.test']) {
+      expect(() => parseEnv({ ...production, GOOGLE_OIDC_ISSUER: issuer })).toThrowError(
+        /GOOGLE_OIDC_ISSUER/,
+      );
+    }
+  });
+
   it('SEC-22 : trousseau bien formé ; identifiant 0 et clés factices refusés en production', () => {
     const key = (fill: number): string => Buffer.alloc(32, fill).toString('base64');
     const keys = parseEnv({

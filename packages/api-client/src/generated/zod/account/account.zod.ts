@@ -14,6 +14,11 @@ export const getAccountResponse = zod.object({
   email: zod.email(),
   emailVerified: zod.boolean(),
   hasPassword: zod.boolean(),
+  googleLinked: zod
+    .boolean()
+    .describe(
+      'AUTH-03 : un compte Google est associé ; la ré-authentification peut passer par lui.',
+    ),
   totpEnabled: zod.boolean().describe('La ré-authentification demande alors un code (AUTH-14).'),
   recoveryCodesRemaining: zod
     .number()

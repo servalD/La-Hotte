@@ -115,6 +115,8 @@ model AuthIdentity {
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@unique([provider, subject])
+  /// AUTH-03 : une seule identité Google par compte.
+  @@unique([accountId, provider])
   @@index([accountId])
   @@map("auth_identity")
 }

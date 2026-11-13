@@ -29,6 +29,9 @@ export {
   type SessionSummary,
   SignOut,
 } from './manage-sessions.use-case';
+export { CompleteGoogleFlow, type GoogleOutcome } from './complete-google-flow.use-case';
+export { StartGoogleFlow } from './start-google-flow.use-case';
+export { UnlinkGoogle } from './unlink-google.use-case';
 export { PurgeUnverifiedAccounts } from './purge-unverified-accounts.use-case';
 export { Reauthenticate } from './reauthenticate.use-case';
 export { RegisterAccount } from './register-account.use-case';
