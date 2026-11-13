@@ -37,7 +37,7 @@ src/styles/         jetons (couleurs, espacements, durées, courbes)
 - **Textes** : aucun texte en dur, tout passe par next-intl. Vocabulaire du glossaire ; jamais « whitelist », « blacklist », « synchronisation ».
 - **Toujours dire qui voit** : tout écran de saisie ou de réglage affiche qui lira (UX-04).
 - **Contenu utilisateur** : jamais de `dangerouslySetInnerHTML`. Liens externes avec `rel="noopener noreferrer"`.
-- **Erreurs et télémétrie** : `@sentry/nextjs` en erreurs seulement (pas de traces ni de replay navigateur), envoyées par le relais `/monitoring` de notre origine (OBS-33), sans contexte utilisateur ni corps de requête (OBS-20, OBS-21). Aucune source map servie au navigateur (OBS-30).
+- **Erreurs et télémétrie** : `@sentry/nextjs` en erreurs seulement (pas de traces ni de replay navigateur), envoyées par le relais `/monitoring` de notre origine (OBS-33), sans contexte utilisateur ni corps de requête (OBS-20, OBS-21). Aucune source map servie au navigateur (OBS-30) : elles ne naissent qu'avec `BROWSER_SOURCEMAPS=true`, au déploiement (`.github/workflows/deploy.yml`), qui les envoie à GlitchTip puis les retire (`ops/observability/bundle-sourcemaps.mjs`). La CI vérifie qu'un build ordinaire n'en contient aucune.
 
 ## Hors ligne
 
