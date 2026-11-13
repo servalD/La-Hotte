@@ -203,8 +203,17 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
   it('métriques (OBS-20) : compteurs présents, étiquettes interdites retirées', () => {
     const metrics = bodies('metrics');
     expect(metrics).toContain('wishlist.domain_errors');
-    expect(metrics).toContain('wishlist.leak_test');
     expect(metrics).toContain('LEAK_TEST');
+    expect(metrics).toContain('"conflict"');
+    // La liste blanche laisse passer les étiquettes de l'instrumentation HTTP (gabarit de route).
+    expect(metrics).toContain('http.server.request.duration');
+    expect(metrics).toContain('/api/v1/example-items/:id');
+    // Ni clé libre, ni nom hors liste, ni hôte d'un appel sortant (`server.address`, posé par la
+    // métrique client de l'instrumentation HTTP).
+    expect(metrics).not.toContain('"liste"');
+    expect(metrics).not.toContain('wishlist.part');
+    expect(metrics).not.toContain('wishlist.liste_');
+    expect(metrics).not.toContain('server.address');
 
     expect(findMarker(metrics)).toBeUndefined();
   });

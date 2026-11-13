@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import type { Attributes, SpanContext } from '@opentelemetry/api';
 import type { ReadableSpan, TimedEvent } from '@opentelemetry/sdk-trace';
 import type { ErrorEvent, Exception, StackFrame } from '@sentry/nestjs';
+import { DOMAIN_ERROR_KINDS } from '../../shared/domain';
 
 /**
  * Nettoyage de tout ce qui part vers un outil d'observation (OBS-20, OBS-22).
@@ -11,8 +12,9 @@ import type { ErrorEvent, Exception, StackFrame } from '@sentry/nestjs';
  * s'y applique.
  *
  * Principe : pour les événements d'erreur, liste blanche (on reconstruit l'événement champ par
- * champ) ; pour les attributs OpenTelemetry, liste noire (OBS-29), doublée par le processeur du
- * collecteur (`ops/observability/otel-collector.yaml`). Les deux listes doivent rester alignées.
+ * champ) ; pour les étiquettes de métriques, liste blanche (`METRIC_ATTRIBUTE_ALLOW_LIST`) ; pour
+ * les attributs de spans, liste noire (OBS-29), doublée par le processeur du collecteur
+ * (`ops/observability/otel-collector.yaml`). Les deux listes noires doivent rester alignées.
  */
 
 /** OBS-29 : attributs interdits, posés par défaut par les instrumentations automatiques. */
@@ -80,6 +82,58 @@ export function isForbiddenAttribute(key: string): boolean {
     FORBIDDEN_ATTRIBUTE_KEYS.has(key) ||
     FORBIDDEN_ATTRIBUTE_PREFIXES.some((prefix) => key.startsWith(prefix))
   );
+}
+
+/**
+ * OBS-20 : étiquettes de métriques, **liste blanche** (et non liste noire comme les spans) : une
+ * étiquette inconnue est retirée, quelle que soit sa valeur. Deux familles :
+ * - celles du port `Metrics` (`MetricAttributes`), dont la valeur est aussi contrôlée par
+ *   l'adaptateur (`portMetricAttributes`) : des chaînes de forme fermée, jamais un nombre (un
+ *   montant en unités mineures aurait la forme d'un statut ou d'un compte) ;
+ * - celles que pose l'instrumentation HTTP (instrumentation-http 0.301) : sur
+ *   `http.server.request.duration`, méthode normalisée, gabarit de route, statut, schéma, version
+ *   du protocole, type d'erreur ; sur `http.client.request.duration` (appels sortants), les mêmes
+ *   plus `server.address` et `server.port`, l'hôte appelé, qui n'y sont pas : en phase 2, ce
+ *   serait le domaine d'une boutique interrogée par le fetcher, qui suggère le cadeau (OBS-24).
+ * Ajouter une clé passe par cette liste et par `MetricAttributes`, en revue, avec son contrôle.
+ */
+const PORT_METRIC_ATTRIBUTE_SHAPES: Readonly<Record<string, (value: unknown) => value is string>> =
+  {
+    // Code stable d'une erreur métier (`LIST_NOT_VISIBLE`, API-14) : jamais un texte libre.
+    code: (value): value is string =>
+      typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(value),
+    // Nature d'une erreur métier : liste fermée.
+    kind: (value): value is string =>
+      typeof value === 'string' && (DOMAIN_ERROR_KINDS as readonly string[]).includes(value),
+  };
+
+export const METRIC_ATTRIBUTE_ALLOW_LIST: readonly string[] = [
+  ...Object.keys(PORT_METRIC_ATTRIBUTE_SHAPES),
+  'http.request.method',
+  'http.response.status_code',
+  'http.route',
+  'url.scheme',
+  'network.protocol.version',
+  'error.type',
+];
+
+/**
+ * Étiquettes passées au port `Metrics` : clé de la liste blanche **et** valeur de la forme
+ * attendue, sinon l'étiquette est retirée (jamais l'appel refusé : compter reste plus utile que
+ * lever dans un chemin d'erreur). Le type `Attributes` d'OpenTelemetry accepte n'importe quelle
+ * valeur : le type de retour, lui, n'admet que des chaînes.
+ */
+export function portMetricAttributes(
+  attributes: Readonly<Record<string, unknown>>,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(attributes)) {
+    const shape = Object.hasOwn(PORT_METRIC_ATTRIBUTE_SHAPES, key)
+      ? PORT_METRIC_ATTRIBUTE_SHAPES[key]
+      : undefined;
+    if (shape?.(value)) result[key] = value;
+  }
+  return result;
 }
 
 /** Copie des attributs sans les clés interdites. */

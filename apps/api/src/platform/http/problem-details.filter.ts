@@ -52,7 +52,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     } else if (exception instanceof DomainError) {
       this.metrics.increment('wishlist.domain_errors', {
         code: exception.code,
-        status: body.status,
+        kind: exception.kind,
       });
     }
 

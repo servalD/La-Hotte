@@ -3,7 +3,8 @@ import { createRequire } from 'node:module';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { context, TraceFlags, trace } from '@opentelemetry/api';
 import { TraceState } from '@opentelemetry/core';
-import { Metrics } from '../../src/shared/domain';
+import { type CounterName, type MetricAttributes, Metrics } from '../../src/shared/domain';
+import { AMOUNT_MARKER } from './markers';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
 
 /**
@@ -101,17 +102,31 @@ export class LeakRoutesController {
   }
 
   /**
-   * Étiquettes interdites passées au port `Metrics` (OBS-20). Seulement des clés de la liste
-   * noire : la liste blanche des étiquettes est une suite de revue encore ouverte.
+   * Port `Metrics` (OBS-02, OBS-20), en contournant son typage comme le ferait une erreur de
+   * programmation : clés de la liste noire des spans, clé libre et montants que seule une liste
+   * blanche arrête, texte libre sous les clés permises, nom de métrique construit à partir d'un
+   * contenu, montant mesuré sous un nom hors liste. Le compteur valide doit, lui, sortir avec son
+   * `code` et son `kind`.
    */
   @Post('metric')
   @HttpCode(204)
   metric(@Body() body: LeakBody): void {
-    this.metrics.increment('wishlist.leak_test', {
+    this.metrics.increment('wishlist.domain_errors', {
       code: 'LEAK_TEST',
+      kind: 'conflict',
+      status: AMOUNT_MARKER,
+      montant: AMOUNT_MARKER,
       'url.full': `https://boutique.example/${body.marker}`,
       'http.request.header.cookie': body.marker,
       'db.query.text': `SELECT ${body.marker}`,
-    });
+      liste: body.marker,
+      'wishlist.titre': `Vélo ${body.marker}`,
+    } as MetricAttributes);
+    this.metrics.increment('wishlist.domain_errors', {
+      code: `Vélo ${body.marker}`,
+      kind: body.marker,
+    } as unknown as MetricAttributes);
+    this.metrics.increment(`wishlist.liste_${body.marker}` as CounterName);
+    this.metrics.record('wishlist.part' as never, AMOUNT_MARKER);
   }
 }
