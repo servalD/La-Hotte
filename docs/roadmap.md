@@ -115,7 +115,7 @@ Spec : `01`, `09`, `12` (identité), `13` (API-21). ADR 0003, ADR 0011 (essai de
 
 **Découpage fait le 2026-11-13** (opus) : ADR 0013, AUTH-08 (âge), AUTH-09 (mode d'inscription), AUTH-15 (compte non vérifié), AUTH-16 (changement d'e-mail), API-21 (CSRF, activité de l'utilisateur), table `account_token` et réglage `pin_relock` dans `12`, routes de profil limitées au profil actif, espace Compte limité aux métadonnées, export depuis le profil. Relu par `security-reviewer` le même jour.
 
-Une tranche par session. Dépendances : 1 → 2 → 3, 4, 5 (dans n'importe quel ordre) → 6 ; les écrans (7) suivent chaque contrat d'API généré ; 8 clôt la phase. `security-reviewer` obligatoire après les tranches 1 à 5 et 8 (SEC-40). Les tests de non-fuite de la télémétrie de chaque tranche sont écrits avant son code (QA-10).
+Branche `feat/phase-1`, PR #9 en brouillon. Une tranche par session. Dépendances : 1 → 2 → 3, 4, 5 (dans n'importe quel ordre) → 6 ; les écrans (7) suivent chaque contrat d'API généré ; 8 clôt la phase. `security-reviewer` obligatoire après les tranches 1 à 5 et 8 (SEC-40). Les tests de non-fuite de la télémétrie de chaque tranche sont écrits avant son code (QA-10).
 
 | # | Tranche | Modèle | Contenu | Sortie et tests attendus |
 |---|---|---|---|---|
@@ -232,3 +232,5 @@ Dans l'ordre proposé, sous réserve de vos choix dans `15-suggestions.md` : gro
 2. **Sonnet** : implémenter tâche par tâche, tests compris.
 3. **Opus** : `/security-review` et agent `security-reviewer` sur ce qui est sensible, `/code-review` sur le reste.
 4. Mettre à jour la spec si une décision a changé, avant de fusionner.
+
+**Git** (décidé le 2026-11-13, à partir de la phase 1) : une branche par phase (`feat/phase-N`) partie d'un `main` à jour, et une PR en brouillon ouverte dès le début pour que la CI tourne à chaque envoi. Les commits d'une tranche sont poussés ensemble à la fin de la tranche, pour qu'un échec de la CI ne concerne que la dernière ; une tranche sensible est relue par `security-reviewer` sur le diff `origin/feat/phase-N..HEAD` avant cet envoi. La tranche est cochée dans la description de la PR, qui passe « prête » à la fin de la phase.

@@ -92,7 +92,7 @@ Pour économiser les crédits :
 | Agent               | Modèle | Usage                                                                                                                                                 |
 | ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `architect`         | Opus   | Conception d'un module, ADR, modèle de données                                                                                                        |
-| `security-reviewer` | Opus   | **Obligatoire** avant fusion pour tout changement sensible (SEC-40). En fin de tâche sensible, lance-le toi-même ; **2 cycles scan → corrections au plus**, puis liste à l'utilisateur ce qui reste |
+| `security-reviewer` | Opus   | **Obligatoire** avant fusion pour tout changement sensible (SEC-40). En fin de tâche sensible, lance-le toi-même sur le diff `origin/<branche>..HEAD`, avant l'envoi groupé des commits de la tranche ; **2 cycles scan → corrections au plus**, puis liste à l'utilisateur ce qui reste |
 | `spec-writer`       | Opus   | Faire évoluer la spec, détecter les incohérences                                                                                                      |
 | `backend-dev`       | Sonnet | Implémenter un cas d'usage spécifié dans `apps/api`                                                                                                   |
 | `frontend-dev`      | Sonnet | Écrans, composants, animations, hors ligne dans `apps/web`                                                                                            |
