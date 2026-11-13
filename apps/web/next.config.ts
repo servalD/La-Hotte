@@ -32,6 +32,10 @@ const config: NextConfig = {
   // Le lint tourne à part (pnpm lint), avec la configuration partagée.
   eslint: { ignoreDuringBuilds: true },
   transpilePackages: ['@wishlist/api-client'],
+  // OBS-30, OBS-31 : cartes du navigateur seulement pour le build de déploiement, qui les envoie à
+  // GlitchTip puis les retire (ops/observability/bundle-sourcemaps.mjs) avant que quoi que ce soit
+  // ne soit servi. Partout ailleurs (développement, CI des demandes de fusion), aucune carte.
+  productionBrowserSourceMaps: process.env.BROWSER_SOURCEMAPS === 'true',
   headers() {
     return Promise.resolve([{ source: '/:path*', headers: securityHeaders }]);
   },

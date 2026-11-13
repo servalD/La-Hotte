@@ -43,10 +43,16 @@ jobs:
         run: pnpm typecheck
       - name: Tests unitaires, contrat et non-fuite
         run: pnpm test
+      - name: Tests des scripts d'exploitation (OBS-31, OBS-34)
+        run: pnpm test:ops
       - name: Contrat généré à jour (API-02)
         run: pnpm generate:check
       - name: Build
         run: pnpm build
+      # OBS-30 : le build ordinaire ne doit produire aucune carte servie au navigateur. Les cartes
+      # ne naissent qu'au déploiement (deploy.yml), qui les envoie à GlitchTip puis les retire.
+      - name: Aucune carte dans ce qui serait servi (OBS-30)
+        run: node ops/observability/bundle-sourcemaps.mjs check apps/web/.next/static
 
   integration:
     name: Intégration (PostgreSQL, Redis)

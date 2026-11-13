@@ -1,0 +1,140 @@
+# Déploiement (DEP-04). Pour l'instant : le build du web et ses cartes de source (OBS-30, OBS-31,
+# OBS-34, OBS-35). L'image, la migration, la vérification de santé et la bascule viendront avec le
+# premier serveur ; elles partiront du `.next` produit par le job `web`, tel quel, sans rebuild : les
+# cartes envoyées à GlitchTip ne valent que pour ces fichiers-là (identifiants de débogage injectés).
+# Toute étape qui publiera devra dépendre du succès de `check` (jamais `if: always()`).
+#
+# Jamais sur une demande de fusion (OBS-31) : lancé à la main, depuis `main` seulement (garde
+# ci-dessous, et branches de déploiement des environnements GitHub limitées à `main`).
+#
+# Deux jobs (revue de sécurité de la tâche 6) : le jeton n'est jamais dans le job qui exécute du
+# code tiers (scripts d'installation, `next build`, compilation des crates), qui pourrait sinon
+# s'injecter dans l'étape d'envoi par `$GITHUB_ENV` ou `$GITHUB_PATH`. Le job `sourcemaps` ne lance
+# que notre script, sans dépendance, sur l'artefact du job `web` traité comme donnée.
+#
+# Configuration :
+#   variables du dépôt : NEXT_PUBLIC_SENTRY_DSN_PREVIEW, NEXT_PUBLIC_SENTRY_DSN_PRODUCTION (DSN du
+#                        projet GlitchTip du navigateur ; donnée publique, inscrite dans le bundle)
+#   environnements `preview` et `production` :
+#     variables : GLITCHTIP_URL (URL réelle, OBS-35), GLITCHTIP_ORG, GLITCHTIP_PROJECT
+#     secret    : GLITCHTIP_AUTH_TOKEN (utilisateur de service, droit `project:releases`, un jeton
+#                 par environnement)
+# Sans DSN pour l'environnement, le SDK du navigateur est éteint (OBS-14) : pas d'envoi, mais les
+# cartes ne sont pas produites et le contrôle OBS-30 s'applique.
+#
+# CI-07 : actions épinglées par commit complet, vérifié le 2026-11-13 (signé, tag de version exact,
+# dans l'historique amont). Pour monter de version : refaire cette vérification.
+name: Déploiement
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement
+        type: choice
+        options: [preview, production]
+        default: preview
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  NEXT_TELEMETRY_DISABLED: 1
+  # OBS-35 : version fixée ; une montée de version passe par une demande de fusion dédiée.
+  GLITCHTIP_CLI_VERSION: 1.0.0
+
+jobs:
+  web:
+    name: Web, build et cartes de source
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Pas d'environnement ici : ce job n'a accès à aucun secret.
+    env:
+      NEXT_PUBLIC_SENTRY_DSN: ${{ vars[format('NEXT_PUBLIC_SENTRY_DSN_{0}', inputs.environment)] }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      # Pas de cache de dépendances pour un build qui part en production.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Installation verrouillée
+        run: pnpm install --frozen-lockfile
+
+      # OBS-35 : pas de binaire signé ni de somme de contrôle publiée ; compilée depuis crates.io,
+      # dépendances figées par son Cargo.lock (`--locked`), hors du dépôt.
+      - name: glitchtip-cli, compilée depuis crates.io
+        if: env.NEXT_PUBLIC_SENTRY_DSN != ''
+        run: >-
+          cargo install glitchtip-cli --locked --version "$GLITCHTIP_CLI_VERSION"
+          --root "$RUNNER_TEMP/glitchtip-cli"
+
+      - name: Build du web (release = SHA, OBS-13 ; cartes seulement si le SDK est actif)
+        env:
+          BROWSER_SOURCEMAPS: ${{ env.NEXT_PUBLIC_SENTRY_DSN != '' }}
+          NEXT_PUBLIC_DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+          NEXT_PUBLIC_RELEASE: ${{ github.sha }}
+        run: pnpm --filter @wishlist/web build
+
+      - name: Identifiants de débogage (glitchtip-cli sourcemaps inject)
+        if: env.NEXT_PUBLIC_SENTRY_DSN != ''
+        run: '"$RUNNER_TEMP/glitchtip-cli/bin/glitchtip-cli" sourcemaps inject apps/web/.next/static'
+
+      # Transmis au job `sourcemaps` avant le retrait. Contient le code du navigateur et ses
+      # sources, déjà dans le dépôt ; aucune donnée d'utilisateur, aucun secret.
+      - name: Scripts et cartes pour l'envoi
+        if: env.NEXT_PUBLIC_SENTRY_DSN != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-static-sourcemaps
+          path: apps/web/.next/static
+          retention-days: 1
+          if-no-files-found: error
+
+      # OBS-30 : retirées de ce qui sera servi. Si une étape précédente échoue, le job s'arrête et
+      # rien n'est publié.
+      - name: Retrait des cartes
+        run: node ops/observability/bundle-sourcemaps.mjs strip apps/web/.next/static
+      - name: Aucune carte dans ce qui sera servi (OBS-30)
+        run: node ops/observability/bundle-sourcemaps.mjs check apps/web/.next/static
+
+  sourcemaps:
+    name: Envoi des cartes à GlitchTip et vérification côté serveur
+    needs: [web]
+    if: github.ref == 'refs/heads/main' && vars[format('NEXT_PUBLIC_SENTRY_DSN_{0}', inputs.environment)] != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .nvmrc
+            ops/observability
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-static-sourcemaps
+          path: ${{ runner.temp }}/web-static
+      # OBS-31, OBS-34 : bundle, envoi par morceaux, assemblage, puis vérification côté serveur ;
+      # l'étape échoue si GlitchTip n'a pas stocké chaque script avec sa carte.
+      - name: Envoi et vérification
+        env:
+          GLITCHTIP_URL: ${{ vars.GLITCHTIP_URL }}
+          GLITCHTIP_ORG: ${{ vars.GLITCHTIP_ORG }}
+          GLITCHTIP_PROJECT: ${{ vars.GLITCHTIP_PROJECT }}
+          GLITCHTIP_AUTH_TOKEN: ${{ secrets.GLITCHTIP_AUTH_TOKEN }}
+          RELEASE: ${{ github.sha }}
+        run: node ops/observability/bundle-sourcemaps.mjs upload "$RUNNER_TEMP/web-static"
