@@ -8,22 +8,18 @@ import { IORedisInstrumentation } from '@opentelemetry/instrumentation-ioredis';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
+  createAllowListAttributesProcessor,
   type IAttributesProcessor,
   PeriodicExportingMetricReader,
 } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import {
-  BatchSpanProcessor,
-  ParentBasedSampler,
-  type ReadableSpan,
-  type SpanExporter,
-  TraceIdRatioBasedSampler,
-} from '@opentelemetry/sdk-trace';
+import { BatchSpanProcessor, type ReadableSpan, type SpanExporter } from '@opentelemetry/sdk-trace';
 import { PrismaInstrumentation } from '@prisma/instrumentation';
 import * as Sentry from '@sentry/nestjs';
 import { installFatalHandlers } from './fatal';
 import { TraceParentOnlyPropagator } from './propagation';
-import { scrubAttributes, scrubSpan } from './scrub';
+import { publicEntrySampler } from './sampling';
+import { METRIC_ATTRIBUTE_ALLOW_LIST, scrubAttributes, scrubSpan } from './scrub';
 import { buildSentryOptions, SERVICE_NAME } from './sentry-options';
 import { type TelemetryEnv, tracesSampleRatio } from './telemetry-env';
 
@@ -44,7 +40,7 @@ class ScrubbingSpanExporter implements SpanExporter {
   }
 }
 
-/** OBS-20 : étiquettes de métriques nettoyées comme les attributs de spans. */
+/** OBS-20 : seconde barrière derrière la liste blanche, mêmes clés interdites que les spans. */
 const scrubbingAttributesProcessor: IAttributesProcessor = {
   process: (incoming: Attributes) => scrubAttributes(incoming),
 };
@@ -101,7 +97,7 @@ export function startTelemetry(env: TelemetryEnv): void {
     }),
     // `traceparent` seulement : ni `tracestate` ni `baggage` du client (voir `propagation.ts`).
     textMapPropagator: new TraceParentOnlyPropagator(),
-    sampler: new ParentBasedSampler({ root: new TraceIdRatioBasedSampler(tracesSampleRatio(env)) }),
+    sampler: publicEntrySampler(tracesSampleRatio(env)),
     spanProcessors: [
       new BatchSpanProcessor({
         exporter: new ScrubbingSpanExporter(
@@ -122,7 +118,17 @@ export function startTelemetry(env: TelemetryEnv): void {
         exportTimeoutMillis: EXPORT_TIMEOUT_MS,
       }),
     ],
-    views: [{ instrumentName: '*', attributesProcessors: [scrubbingAttributesProcessor] }],
+    // OBS-20 : liste blanche des étiquettes pour tout instrument, ceux des instrumentations
+    // automatiques compris (voir `METRIC_ATTRIBUTE_ALLOW_LIST`).
+    views: [
+      {
+        instrumentName: '*',
+        attributesProcessors: [
+          createAllowListAttributesProcessor([...METRIC_ATTRIBUTE_ALLOW_LIST]),
+          scrubbingAttributesProcessor,
+        ],
+      },
+    ],
     // Les journaux sortent par pino sur la sortie standard, pas par OTLP.
     logRecordProcessors: [],
     instrumentations: [

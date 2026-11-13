@@ -63,6 +63,17 @@ processors:
       # Next nomme ses spans d'après l'URL résolue : pas de chaîne de requête ni de fragment.
       - 'replace_pattern(span.name, "[?#].*$", "")'
 
+  # OBS-22, OBS-29 : mêmes clés interdites sur les attributs des événements de span, que
+  # `attributes/scrub` ne voit pas (il ne traite que les attributs du span). `propagate` : en cas
+  # d'erreur d'exécution, le lot est abandonné plutôt que transmis sans nettoyage. Garder le motif
+  # aligné sur `attributes/scrub` ci-dessus.
+  transform/spanevent-scrub:
+    error_mode: propagate
+    trace_statements:
+      - >-
+        delete_matching_keys(spanevent.attributes,
+        "^(url[.](full|query|path|fragment)|http[.](url|target|client_ip|user_agent)|db[.]query[.]text|db[.]statement|db[.]query[.]parameter[.].*|exception[.].*|client[.](address|port)|network[.]peer[.](address|port)|net[.]peer[.]ip|user_agent[.]original|enduser[.].*|user[.](id|name|full_name|email)|next[.]span_name|http[.](request|response)[.](header[.].*|body.*)|rpc[.](request|response)[.]metadata[.].*|messaging[.]message[.]body.*|gen_ai[.](prompt|completion|input|output).*)$")
+
 exporters:
   otlphttp/openobserve:
     endpoint: http://openobserve:5080/api/default
@@ -81,6 +92,7 @@ service:
           attributes/scrub,
           filter/exception-events,
           transform/status-message,
+          transform/spanevent-scrub,
           batch,
         ]
       exporters: [otlphttp/openobserve]

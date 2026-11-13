@@ -73,6 +73,37 @@ describe('attributs de spans (OBS-29)', () => {
     expect(collector).toContain('next\\.span_name');
     expect(collector).toContain('replace_pattern(span.name');
   });
+
+  it('les motifs du collecteur couvrent chaque clé interdite, sur les spans et leurs événements', () => {
+    const collector = readFileSync(
+      fileURLToPath(
+        new URL('../../../../../ops/observability/otel-collector.yaml', import.meta.url),
+      ),
+      'utf8',
+    );
+    const spanPatterns = [...collector.matchAll(/pattern: '([^']+)'/g)].map(
+      (m) => new RegExp(m[1] ?? ''),
+    );
+    const eventPattern = new RegExp(
+      /delete_matching_keys\(spanevent\.attributes,\s*"([^"]+)"\)/.exec(collector)?.[1] ?? '^$',
+    );
+    // Les attributs de la ressource sont traités à part (`resource/scrub`).
+    const keys = [
+      ...[...FORBIDDEN_ATTRIBUTE_KEYS].filter((key) => !/^(process|host)\./.test(key)),
+      ...FORBIDDEN_ATTRIBUTE_PREFIXES.map((prefix) => `${prefix}x`),
+    ];
+    expect(keys.length).toBeGreaterThan(20);
+    for (const key of keys) {
+      expect(
+        spanPatterns.some((pattern) => pattern.test(key)),
+        `span : ${key}`,
+      ).toBe(true);
+      expect(eventPattern.test(key), `événement : ${key}`).toBe(true);
+    }
+    for (const key of ['http.route', 'http.request.method', 'next.route', 'urlxfull']) {
+      expect(eventPattern.test(key), `gardé : ${key}`).toBe(false);
+    }
+  });
 });
 
 describe('spans nettoyés à l’export (OBS-29, OBS-21)', () => {

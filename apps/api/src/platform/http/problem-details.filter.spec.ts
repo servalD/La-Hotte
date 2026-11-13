@@ -1,5 +1,5 @@
 import { type ArgumentsHost, Logger, NotFoundException } from '@nestjs/common';
-import { DomainError, type MetricAttributes, Metrics } from '../../shared/domain';
+import { type CounterName, DomainError, type MetricAttributes, Metrics } from '../../shared/domain';
 import { type ErrorContext, ErrorReporter } from '../telemetry/error-reporter';
 import { ProblemDetailsFilter } from './problem-details.filter';
 
@@ -12,7 +12,7 @@ class RecordingReporter extends ErrorReporter {
 
 class RecordingMetrics extends Metrics {
   readonly increments: { name: string; attributes?: MetricAttributes }[] = [];
-  increment(name: string, attributes?: MetricAttributes): void {
+  increment(name: CounterName, attributes?: MetricAttributes): void {
     this.increments.push({ name, ...(attributes ? { attributes } : {}) });
   }
   record(): void {}
@@ -86,7 +86,7 @@ describe('ProblemDetailsFilter et télémétrie (OBS-25)', () => {
     expect(status()).toBe(404);
     expect(reporter.reports).toEqual([]);
     expect(metrics.increments).toEqual([
-      { name: 'wishlist.domain_errors', attributes: { code: 'ITEM_NOT_FOUND', status: 404 } },
+      { name: 'wishlist.domain_errors', attributes: { code: 'ITEM_NOT_FOUND', kind: 'not_found' } },
     ]);
   });
 

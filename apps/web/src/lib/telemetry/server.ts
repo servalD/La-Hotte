@@ -5,15 +5,14 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
   BatchSpanProcessor,
-  ParentBasedSampler,
   type ReadableSpan,
   type SpanExporter,
-  TraceIdRatioBasedSampler,
   TracerProvider,
 } from '@opentelemetry/sdk-trace';
 import * as Sentry from '@sentry/nextjs';
 import { type ServerTelemetryEnv, tracesSampleRatio } from './env';
 import { TraceParentOnlyPropagator } from './propagation';
+import { publicEntrySampler } from './sampling';
 import { scrubSpan } from './scrub';
 import { SERVICE_NAME } from './sentry-client-options';
 import { buildServerSentryOptions } from './sentry-server-options';
@@ -96,7 +95,7 @@ export function startServerTelemetry(env: ServerTelemetryEnv): void {
       'service.version': env.RELEASE ?? 'dev',
       'deployment.environment.name': env.DEPLOY_ENVIRONMENT,
     }),
-    sampler: new ParentBasedSampler({ root: new TraceIdRatioBasedSampler(tracesSampleRatio(env)) }),
+    sampler: publicEntrySampler(tracesSampleRatio(env)),
     spanProcessors: [
       new BatchSpanProcessor({
         exporter: new ScrubbingSpanExporter(
