@@ -28,13 +28,31 @@
         "SHADOW_DATABASE_URL",
         "REDIS_URL",
         "WEB_ORIGIN",
-        "LOG_LEVEL"
+        "LOG_LEVEL",
+        "CSRF_SECRET",
+        "KEY_HMAC_SECRET",
+        "TRUSTED_PROXY_HOPS",
+        "REGISTRATION_MODE",
+        "SMTP_URL",
+        "MAIL_FROM"
       ]
     },
     "test:leak": {
       "dependsOn": ["^build"],
       "cache": false,
-      "passThroughEnv": ["NODE_ENV", "DATABASE_URL", "REDIS_URL", "WEB_ORIGIN", "LOG_LEVEL"]
+      "passThroughEnv": [
+        "NODE_ENV",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "WEB_ORIGIN",
+        "LOG_LEVEL",
+        "CSRF_SECRET",
+        "KEY_HMAC_SECRET",
+        "TRUSTED_PROXY_HOPS",
+        "REGISTRATION_MODE",
+        "SMTP_URL",
+        "MAIL_FROM"
+      ]
     },
     "test:e2e": {
       "dependsOn": ["^build"],

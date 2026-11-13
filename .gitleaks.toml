@@ -11,4 +11,7 @@ regexes = [
   '''wishlist_app''',
   '''wishlist:wishlist@''',
   '''POSTGRES_PASSWORD:\s*wishlist''',
+  # Secrets factices de session (ADR 0013) en test, en CI et dans `.env.example` : la
+  # configuration de production les refuse au démarrage (`NON_PRODUCTION_SECRET`, env.ts).
+  '''(test|ci-only|dev-only)-(csrf|key-hmac)-secret-0123456789abcdef''',
 ]
