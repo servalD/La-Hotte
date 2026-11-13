@@ -85,14 +85,14 @@ Pour économiser les crédits :
 - Planifie en Opus, exécute en Sonnet. Une tâche Sonnet doit se faire avec une règle de spec et un fichier voisin comme modèle ; si elle demande un arbitrage, remonte-la.
 - Une tâche par session ; `/clear` entre deux tâches sans rapport.
 - Donne le chemin exact du fichier de spec plutôt que de laisser explorer.
-- **Ne lance jamais de sous-agent ni de fork de toi-même sans demande explicite de l'utilisateur.** Il travaille par sessions courtes enchaînées avec `/clear` ; les agents de `.claude/agents/` ne servent que quand il les appelle par leur nom.
+- **Ne lance jamais de sous-agent ni de fork de toi-même sans demande explicite de l'utilisateur.** Il travaille par sessions courtes enchaînées avec `/clear` ; les agents de `.claude/agents/` ne servent que quand il les appelle par leur nom. **Seule exception : `security-reviewer`**, voir ci-dessous.
 
 ## Sous-agents
 
 | Agent               | Modèle | Usage                                                                                                                                                 |
 | ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `architect`         | Opus   | Conception d'un module, ADR, modèle de données                                                                                                        |
-| `security-reviewer` | Opus   | **Obligatoire** avant fusion pour tout changement sensible (SEC-40). En fin de tâche sensible, rappelle-le à l'utilisateur ; ne le lance pas toi-même |
+| `security-reviewer` | Opus   | **Obligatoire** avant fusion pour tout changement sensible (SEC-40). En fin de tâche sensible, lance-le toi-même ; **2 cycles scan → corrections au plus**, puis liste à l'utilisateur ce qui reste |
 | `spec-writer`       | Opus   | Faire évoluer la spec, détecter les incohérences                                                                                                      |
 | `backend-dev`       | Sonnet | Implémenter un cas d'usage spécifié dans `apps/api`                                                                                                   |
 | `frontend-dev`      | Sonnet | Écrans, composants, animations, hors ligne dans `apps/web`                                                                                            |
