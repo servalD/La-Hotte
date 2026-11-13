@@ -17,4 +17,7 @@ regexes = [
   # Clés factices du trousseau de chiffrement (SEC-22) : `dev-only-`, `test-only-` et
   # `ci-only-secret-encryption-key…` en base64, refusées en production (env.ts).
   '''ZGV2LW9ubHktc2VjcmV0LWVuY3J5cHRpb24ta2V5LTA=|dGVzdC1vbmx5LXNlY3JldC1lbmNyeXB0aW9uLWtleTA=|Y2ktb25seS1zZWNyZXQtZW5jcnlwdGlvbi1rZXktMDA=''',
+  # Vecteur de test public de la RFC 6238 (annexe B) : « 12345678901234567890 » en base32,
+  # utilisé par le test du moteur TOTP (second-factor-adapters.spec.ts).
+  '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
 ]
