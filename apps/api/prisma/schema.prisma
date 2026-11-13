@@ -36,3 +36,202 @@ model ExampleItem {
 
   @@map("example_item")
 }
+
+// --- Identité (docs/spec/12, « Identité » ; ADR 0013) ---
+
+enum AccountRole {
+  USER
+  MODERATOR
+  ADMIN
+
+  @@map("account_role")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@map("account_status")
+}
+
+enum AuthProvider {
+  GOOGLE
+
+  @@map("auth_provider")
+}
+
+enum AccountTokenPurpose {
+  EMAIL_VERIFY
+  EMAIL_CHANGE
+  EMAIL_CHANGE_CANCEL
+  PASSWORD_RESET
+
+  @@map("account_token_purpose")
+}
+
+enum PinRelock {
+  NEVER
+  IDLE_15
+  EVERY_OPEN
+
+  @@map("pin_relock")
+}
+
+/// E-mail stocké normalisé (minuscules, CHECK en base) : l'unicité est donc insensible à la casse.
+model Account {
+  id              String        @id @db.Uuid
+  email           String        @unique @db.VarChar(254)
+  emailVerifiedAt DateTime?     @map("email_verified_at") @db.Timestamptz(3)
+  passwordHash    String?       @map("password_hash") @db.VarChar(255)
+  role            AccountRole   @default(USER)
+  status          AccountStatus @default(ACTIVE)
+  totpSecretEnc   Bytes?        @map("totp_secret_enc")
+  totpEnabledAt   DateTime?     @map("totp_enabled_at") @db.Timestamptz(3)
+  ageAttestedAt   DateTime      @map("age_attested_at") @db.Timestamptz(3)
+  authEpoch       Int           @default(0) @map("auth_epoch")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  identities     AuthIdentity[]
+  recoveryCodes  RecoveryCode[]
+  tokens         AccountToken[]
+  sessions       Session[]
+  trustedDevices TrustedDevice[]
+  profiles       Profile[]
+
+  @@map("account")
+}
+
+model AuthIdentity {
+  id        String       @id @db.Uuid
+  accountId String       @map("account_id") @db.Uuid
+  provider  AuthProvider
+  subject   String       @db.VarChar(255)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([accountId])
+  @@map("auth_identity")
+}
+
+model RecoveryCode {
+  id        String    @id @db.Uuid
+  accountId String    @map("account_id") @db.Uuid
+  codeHash  String    @map("code_hash") @db.VarChar(255)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("recovery_code")
+}
+
+model AccountToken {
+  id        String              @id @db.Uuid
+  accountId String              @map("account_id") @db.Uuid
+  purpose   AccountTokenPurpose
+  /// SHA-256 du jeton, en hexadécimal (64 caractères).
+  tokenHash String              @unique @map("token_hash") @db.Char(64)
+  newEmail  String?             @map("new_email") @db.VarChar(254)
+  expiresAt DateTime            @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime?           @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, purpose])
+  @@map("account_token")
+}
+
+/// Une ligne ne disparaît que par la procédure de révocation (ADR 0013) : `account_id` en RESTRICT.
+model Session {
+  id                String    @id @db.Uuid
+  accountId         String    @map("account_id") @db.Uuid
+  /// SHA-256 du jeton, en hexadécimal. Ni le jeton ni ce hash ne sortent du serveur.
+  tokenHash         String    @unique @map("token_hash") @db.Char(64)
+  authEpoch         Int       @map("auth_epoch")
+  activeProfileId   String?   @map("active_profile_id") @db.Uuid
+  reauthAt          DateTime? @map("reauth_at") @db.Timestamptz(3)
+  trustedDeviceId   String?   @map("trusted_device_id") @db.Uuid
+  userAgent         String    @map("user_agent") @db.VarChar(512)
+  lastSeenAt        DateTime  @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(3)
+  absoluteExpiresAt DateTime  @map("absolute_expires_at") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account       Account        @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  activeProfile Profile?       @relation(fields: [activeProfileId], references: [id], onDelete: SetNull)
+  trustedDevice TrustedDevice? @relation(fields: [trustedDeviceId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@map("session")
+}
+
+model TrustedDevice {
+  id        String    @id @db.Uuid
+  accountId String    @map("account_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  userAgent String    @map("user_agent") @db.VarChar(512)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@index([accountId])
+  @@map("trusted_device")
+}
+
+/// 10 profils au plus par compte : garanti par un déclencheur (migration), DAT-01.
+model Profile {
+  id               String    @id @db.Uuid
+  accountId        String    @map("account_id") @db.Uuid
+  displayName      String    @map("display_name") @db.VarChar(60)
+  /// Clé de l'image d'avatar ; sans image, couleur d'accent et initiales.
+  avatar           String?   @db.VarChar(200)
+  accentColor      String    @map("accent_color") @db.Char(7)
+  birthdayDay      Int?      @map("birthday_day") @db.SmallInt
+  birthdayMonth    Int?      @map("birthday_month") @db.SmallInt
+  birthdayYear     Int?      @map("birthday_year") @db.SmallInt
+  locale           String    @db.VarChar(16)
+  currency         String    @db.Char(3)
+  timezone         String    @db.VarChar(64)
+  isChild          Boolean   @default(false) @map("is_child")
+  pinHash          String?   @map("pin_hash") @db.VarChar(255)
+  pinRelock        PinRelock @default(IDLE_15) @map("pin_relock")
+  pinFailedCount   Int       @default(0) @map("pin_failed_count")
+  pinLockedUntil   DateTime? @map("pin_locked_until") @db.Timestamptz(3)
+  pinResetNoticeAt DateTime? @map("pin_reset_notice_at") @db.Timestamptz(3)
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  sessions Session[]
+
+  @@index([accountId])
+  @@map("profile")
+}
+
+/// Ajout seul (DAT-02) : le rôle applicatif n'a ni UPDATE ni DELETE. Sans clé étrangère : le journal
+/// survit à la suppression du compte, pour sa durée de conservation (SEC-33).
+model SecurityLog {
+  id        String   @id @db.Uuid
+  accountId String?  @map("account_id") @db.Uuid
+  event     String   @db.VarChar(64)
+  ip        String   @db.Inet
+  userAgent String   @map("user_agent") @db.VarChar(512)
+  at        DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([accountId, at])
+  @@map("security_log")
+}

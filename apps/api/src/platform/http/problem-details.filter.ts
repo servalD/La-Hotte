@@ -42,20 +42,32 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       typeof rawId === 'string' || typeof rawId === 'number' ? String(rawId) : undefined;
 
     const body = this.toProblem(exception, requestId);
-    if (body.status >= 500) {
+    // Une erreur métier, y compris un refus en échec fermé (503 `unavailable`, Redis absent), est
+    // attendue : comptée par code, jamais envoyée à GlitchTip (OBS-25). La panne elle-même se voit
+    // dans /health/ready.
+    if (exception instanceof DomainError) {
+      this.metrics.increment('wishlist.domain_errors', {
+        code: exception.code,
+        kind: exception.kind,
+      });
+    } else if (body.status >= 500) {
       this.logger.error({ err: exception }, 'Erreur inattendue');
       this.errorReporter.report(exception, {
         ...(requestId ? { requestId } : {}),
         ...routeOf(request),
         method: request.method,
       });
-    } else if (exception instanceof DomainError) {
-      this.metrics.increment('wishlist.domain_errors', {
-        code: exception.code,
-        kind: exception.kind,
-      });
     }
 
+    if (exception instanceof DomainError && exception.retryAfterSeconds !== undefined) {
+      // API-18 : délai annoncé ; RateLimit-Reset suit le même délai (en-têtes RateLimit-*).
+      const seconds = String(Math.max(1, Math.ceil(exception.retryAfterSeconds)));
+      response.setHeader('Retry-After', seconds);
+      if (exception.kind === 'rate_limited') {
+        response.setHeader('RateLimit-Remaining', '0');
+        response.setHeader('RateLimit-Reset', seconds);
+      }
+    }
     response.status(body.status).type(PROBLEM_CONTENT_TYPE).send(JSON.stringify(body));
   }
 

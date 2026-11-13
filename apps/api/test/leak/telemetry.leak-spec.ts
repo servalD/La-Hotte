@@ -9,7 +9,10 @@ import { inject } from 'vitest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
 import { LogDestination } from '../../src/platform/logging/logging.module';
+import { RedisService } from '../../src/platform/redis/redis.service';
+import { PrismaService } from '../../src/platform/prisma/prisma.service';
 import { shutdownTelemetry } from '../../src/platform/telemetry/telemetry';
+import { createAccountWithProfile, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
 import { LeakRoutesController } from './leak-routes.controller';
@@ -28,6 +31,11 @@ const logLines: string[] = [];
 const handedToSdk: string[] = [];
 let records: ReceivedRecord[] = [];
 let output: OutputCapture = { text: () => '', restore: () => undefined };
+/**
+ * Secrets de session (ADR 0013, « Télémétrie ») : jeton, hash, jeton CSRF de session et de
+ * pré-session, identifiant de pré-session. Aucun ne doit sortir par un canal d'observation.
+ */
+const sessionSecrets: Record<string, string> = {};
 
 const capturingDestination: LogDestination = {
   write: (line: string) => {
@@ -114,10 +122,44 @@ async function playScenario(app: INestApplication): Promise<void> {
   const http = request(app.getHttpServer());
   const marker = { marker: MARKER };
 
+  // Session réelle (PostgreSQL et Redis) : chaque requête porte jeton, cookie et jeton CSRF.
+  const user = await signIn(app, await createAccountWithProfile(app.get(PrismaService)));
+  sessionSecrets.token = user.token;
+  sessionSecrets.tokenHash = user.tokenHash;
+  sessionSecrets.csrf = user.csrf;
+  const authenticated = {
+    ...markedHeaders,
+    Cookie: `${user.cookie}; session=${MARKER}`,
+    'X-CSRF-Token': user.csrf,
+    Origin: 'http://localhost:3000',
+  };
+
+  // Pré-session (GET /session public) : identifiant et jeton CSRF de pré-session.
+  const pre = await http.get('/api/v1/session').set(markedHeaders).expect(200);
+  sessionSecrets.presessionCsrf = pre.body.csrfToken as string;
+  const presessionCookie = ([] as string[])
+    .concat((pre.headers['set-cookie'] as unknown as string[] | undefined) ?? [])
+    .find((cookie) => cookie.startsWith('__Host-lh_presession='));
+  sessionSecrets.presessionId = decodeURIComponent(
+    presessionCookie?.split(';')[0]?.split('=')[1] ?? '',
+  );
+
+  // Session lue, puis cache perdu : réhydratation par script Lua (arguments jamais exportés).
+  await http.get('/api/v1/session').set(authenticated).expect(200);
+  await app.get(RedisService).client.del(`sess:${user.tokenHash}`);
+  await http.get('/api/v1/session').set(authenticated).expect(200);
+
+  // CSRF refusé (jeton forgé porteur du marqueur) : écrit au journal de sécurité (SQL paramétré).
+  await http
+    .post('/api/v1/_leak/query-ok')
+    .set({ ...authenticated, 'X-CSRF-Token': MARKER })
+    .send(marker)
+    .expect(403);
+
   // Contenu métier : titre, commentaire, URL d'article, montant (champs inconnus refusés, 400).
   await http
     .post(`/api/v1/example-items?url=${MARKER}`)
-    .set(markedHeaders)
+    .set(authenticated)
     .send({
       title: `Vélo ${MARKER}`,
       comment: `Pour ${MARKER}`,
@@ -129,40 +171,43 @@ async function playScenario(app: INestApplication): Promise<void> {
   // Création réussie : le titre passe par Prisma (paramètre SQL), puis relecture.
   const created = await http
     .post('/api/v1/example-items')
-    .set(markedHeaders)
+    .set(authenticated)
     .send({ title: `Vélo ${MARKER}` })
     .expect(201);
   await http
     .get(`/api/v1/example-items/${created.body.id as string}`)
-    .set(markedHeaders)
+    .set(authenticated)
     .expect(200);
 
   // Chemin résolu porteur de marqueur, route trouvée (OBS-21) puis route inconnue.
-  await http.get(`/api/v1/example-items/${MARKER}?url=${MARKER}`).set(markedHeaders).expect(400);
-  await http.get(`/api/v1/${MARKER}/${AMOUNT_MARKER}`).set(markedHeaders).expect(404);
+  await http.get(`/api/v1/example-items/${MARKER}?url=${MARKER}`).set(authenticated).expect(400);
+  await http.get(`/api/v1/${MARKER}/${AMOUNT_MARKER}`).set(authenticated).expect(404);
 
   // Erreur métier, comptée par code (OBS-25).
-  await http.get(`/api/v1/example-items/${randomUUID()}`).set(markedHeaders).expect(404);
+  await http.get(`/api/v1/example-items/${randomUUID()}`).set(authenticated).expect(404);
 
   // JSON invalide : le message de l'analyseur cite le corps reçu.
   await http
     .post('/api/v1/example-items')
-    .set(markedHeaders)
+    .set(authenticated)
     .set('Content-Type', 'application/json')
     .send(`{"title": "${MARKER}`)
     .expect(400);
 
   // Erreurs inattendues (OBS-25, OBS-45), SQL (OBS-23), métrique (OBS-20).
-  await http.post('/api/v1/_leak/boom').set(markedHeaders).send(marker).expect(500);
-  await http.post('/api/v1/_leak/query').set(markedHeaders).send(marker).expect(500);
-  await http.post('/api/v1/_leak/query-ok').set(markedHeaders).send(marker).expect(200);
-  await http.post('/api/v1/_leak/metric').set(markedHeaders).send(marker).expect(204);
+  await http.post('/api/v1/_leak/boom').set(authenticated).send(marker).expect(500);
+  await http.post('/api/v1/_leak/query').set(authenticated).send(marker).expect(500);
+  await http.post('/api/v1/_leak/query-ok').set(authenticated).send(marker).expect(200);
+  await http.post('/api/v1/_leak/metric').set(authenticated).send(marker).expect(204);
 
   // `traceState` posé hors extraction, sur le parent et un lien (seconde barrière).
-  await http.post('/api/v1/_leak/span-context').set(markedHeaders).send(marker).expect(204);
+  await http.post('/api/v1/_leak/span-context').set(authenticated).send(marker).expect(204);
+
+  // Commandes Redis porteuses du marqueur (clés, arguments de script).
+  await http.post('/api/v1/_leak/redis').set(authenticated).send(marker).expect(204);
 
   // Appel sortant vers un tiers, dans le contexte de trace venu du client.
-  await http.post('/api/v1/_leak/outbound').set(markedHeaders).expect(204);
+  await http.post('/api/v1/_leak/outbound').set(authenticated).expect(204);
 }
 
 describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
@@ -257,6 +302,32 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     expect(headers).not.toHaveProperty('baggage');
     expect(headers).not.toHaveProperty('sentry-trace');
     expect(findMarker(outbound[0]?.body ?? '')).toBeUndefined();
+  });
+
+  it('ADR 0013 : jeton, hash, cookies, X-CSRF-Token et pré-session absents de toute sortie', () => {
+    expect(Object.keys(sessionSecrets).sort()).toEqual(
+      ['csrf', 'presessionCsrf', 'presessionId', 'token', 'tokenHash'].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    for (const [name, secret] of Object.entries(sessionSecrets)) {
+      expect(secret.length).toBeGreaterThan(20);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('ADR 0013, OBS-23 : commandes Redis tracées sans clé ni argument (sérialiseur de telemetry.ts, puis scrub)', () => {
+    const traces = bodies('traces');
+    // Spans `mget`, `eval` et `set` présents : l'instrumentation s'applique (pas de faux vert).
+    for (const command of ['mget', 'eval', 'set']) {
+      expect(traces).toContain(`"stringValue":"${command}"`);
+    }
+    expect(traces).not.toContain('sess:');
+    expect(traces).not.toContain('sess-revoked:');
   });
 
   it('aucun autre canal, et aucun marqueur nulle part', () => {

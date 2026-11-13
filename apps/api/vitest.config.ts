@@ -13,6 +13,11 @@ export default defineConfig({
       REDIS_URL: 'redis://127.0.0.1:1',
       WEB_ORIGIN: 'http://localhost:3000',
       LOG_LEVEL: 'silent',
+      CSRF_SECRET: 'test-csrf-secret-0123456789abcdef',
+      KEY_HMAC_SECRET: 'test-key-hmac-secret-0123456789abcdef',
+      REGISTRATION_MODE: 'OPEN',
+      SMTP_URL: 'smtp://127.0.0.1:1',
+      MAIL_FROM: 'noreply@lahotte.test',
     },
     coverage: {
       provider: 'v8',

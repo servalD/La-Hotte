@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { context, TraceFlags, trace } from '@opentelemetry/api';
 import { TraceState } from '@opentelemetry/core';
+import { AccountScope } from '../../src/modules/identity';
 import { type CounterName, type MetricAttributes, Metrics } from '../../src/shared/domain';
 import { AMOUNT_MARKER } from './markers';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
@@ -13,6 +14,8 @@ import { PrismaService } from '../../src/platform/prisma/prisma.service';
  * la fonction d'origine, non instrumentée, et le test ne verrait aucune propagation.
  */
 const http = createRequire(__filename)('node:http') as typeof import('node:http');
+/** Même raison : `ioredis` chargé par `require`, comme dans l'API compilée, donc instrumenté. */
+const { Redis } = createRequire(__filename)('ioredis') as typeof import('ioredis');
 
 /** Corps libre : ces routes n'existent qu'en test et reçoivent les marqueurs tels quels. */
 type LeakBody = { marker: string };
@@ -22,12 +25,34 @@ type LeakBody = { marker: string };
  * marqueur par les chemins que le code métier empruntera : erreur inattendue (5xx), requête SQL
  * paramétrée qui échoue en citant sa valeur, requête qui réussit, métrique.
  */
+@AccountScope()
 @Controller('_leak')
 export class LeakRoutesController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly metrics: Metrics,
   ) {}
+
+  /**
+   * Commandes Redis porteuses du marqueur dans leurs clés et arguments, comme celles des sessions
+   * (`MGET sess:{hash}`, scripts Lua avec la session en JSON) : seul le nom de la commande doit
+   * sortir (`dbStatementSerializer`, telemetry.ts ; ADR 0013 « Télémétrie »).
+   */
+  @Post('redis')
+  @HttpCode(204)
+  async redis(@Body() body: LeakBody): Promise<void> {
+    const client = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+      lazyConnect: true,
+    });
+    try {
+      await client.connect();
+      await client.mget(`sess:${body.marker}`, `sess-revoked:${body.marker}`);
+      await client.eval('return ARGV[1]', 1, `sess:${body.marker}`, `{"id":"${body.marker}"}`);
+      await client.set(`sess-revoked:${body.marker}`, '1', 'PX', 1000);
+    } finally {
+      client.disconnect();
+    }
+  }
 
   /** Erreur inattendue : message multiligne avec un faux cadre, propriétés et cause (OBS-45). */
   @Post('boom')

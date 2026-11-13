@@ -1,6 +1,6 @@
 # ADR 0013 — Modèle de session : jeton, stockage, pré-authentification, CSRF, limitation
 
-**Statut :** accepté · 2026-11-13
+**Statut :** accepté · 2026-11-13 · point « Ordre » précisé par l'ADR 0014
 
 Précise l'ADR 0003 (sessions opaques côté serveur) et l'ADR 0011 (voie maison) sans les remplacer.
 

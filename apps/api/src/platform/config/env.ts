@@ -16,6 +16,17 @@ const envSchema = z.object({
   WEB_ORIGIN: z.url(),
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
+  // ADR 0013. Secrets de 32 caractères au moins ; des clés distinctes, jamais réutilisées.
+  CSRF_SECRET: z.string().min(32),
+  KEY_HMAC_SECRET: z.string().min(32),
+  // Nombre de mandataires de confiance devant l'API (`trust proxy` d'Express) : 1 en production
+  // (Caddy), 0 en développement. Seule source de l'adresse du client (SEC-30).
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  // AUTH-09 : sans valeur par défaut, le choix doit être explicite.
+  REGISTRATION_MODE: z.enum(['OPEN', 'INVITE_ONLY']),
+  // Envoi d'e-mails (Mailpit en local : smtp://localhost:1025).
+  SMTP_URL: z.url().refine((url) => /^smtps?:\/\//.test(url), 'smtp:// ou smtps://'),
+  MAIL_FROM: z.email(),
   ...telemetryEnvShape,
 });
 
@@ -28,7 +39,37 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
     const names = result.error.issues.map((issue) => issue.path.join('.')).join(', ');
     throw new Error(`Configuration invalide : ${names}`);
   }
+  // Une clé par usage (ADR 0013) : la même valeur pour les deux secrets est refusée.
+  if (result.data.CSRF_SECRET === result.data.KEY_HMAC_SECRET) {
+    throw new Error('Configuration invalide : CSRF_SECRET, KEY_HMAC_SECRET');
+  }
+  if (result.data.NODE_ENV === 'production') {
+    const invalid = productionProblems(source, result.data);
+    if (invalid.length > 0) throw new Error(`Configuration invalide : ${invalid.join(', ')}`);
+  }
   return result.data;
+}
+
+/** Valeurs de développement, de test ou de CI : jamais en production. */
+const NON_PRODUCTION_SECRET = /^(dev|test|ci)-only-|^test-/;
+
+/**
+ * Production : `TRUSTED_PROXY_HOPS` explicite (sinon l'adresse de Caddy serait celle de tous les
+ * clients, et le compteur par IP deviendrait global) ; secrets qui ne sont pas ceux des fichiers
+ * d'exemple ; SMTP chiffré (`smtps://`, ou `smtp://` avec `requireTLS=true`).
+ */
+function productionProblems(source: NodeJS.ProcessEnv, env: Env): string[] {
+  const problems: string[] = [];
+  if (source.TRUSTED_PROXY_HOPS === undefined || source.TRUSTED_PROXY_HOPS === '') {
+    problems.push('TRUSTED_PROXY_HOPS');
+  }
+  if (NON_PRODUCTION_SECRET.test(env.CSRF_SECRET)) problems.push('CSRF_SECRET');
+  if (NON_PRODUCTION_SECRET.test(env.KEY_HMAC_SECRET)) problems.push('KEY_HMAC_SECRET');
+  const smtp = new URL(env.SMTP_URL);
+  if (smtp.protocol !== 'smtps:' && smtp.searchParams.get('requireTLS') !== 'true') {
+    problems.push('SMTP_URL');
+  }
+  return problems;
 }
 
 /** Jeton d'injection de la configuration. */

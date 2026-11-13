@@ -17,3 +17,6 @@ export * from './exampleReservationView';
 export * from './fieldErrorDto';
 export * from './getExampleItem200';
 export * from './problemDetailsDto';
+export * from './sessionStatusView';
+export * from './sessionStatusViewSession';
+export * from './sessionSummaryView';

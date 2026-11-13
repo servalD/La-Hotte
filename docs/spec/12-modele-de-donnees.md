@@ -42,7 +42,7 @@ erDiagram
 
 | Table | Champs principaux | Contraintes |
 |---|---|---|
-| `account` | `email`, `email_verified_at`, `password_hash?`, `role` (`USER`/`MODERATOR`/`ADMIN`), `status` (`ACTIVE`/`SUSPENDED`), `totp_secret_enc?`, `totp_enabled_at?`, `age_attested_at`, `auth_epoch` | `email` unique, insensible à la casse ; `age_attested_at` : déclaration « 15 ans ou plus » (AUTH-08) ; `auth_epoch` : génération d'authentification, augmentée par tout événement qui révoque toutes les sessions (ADR 0013) |
+| `account` | `email`, `email_verified_at`, `password_hash?`, `role` (`USER`/`MODERATOR`/`ADMIN`), `status` (`ACTIVE`/`SUSPENDED`), `totp_secret_enc?`, `totp_enabled_at?`, `age_attested_at`, `auth_epoch` | `email` unique, insensible à la casse ; `age_attested_at` : déclaration « 15 ans ou plus » (AUTH-08) ; `auth_epoch` : génération d'authentification, augmentée par tout événement qui révoque toutes les sessions (ADR 0013, double incrément de l'ADR 0014) |
 | `auth_identity` | `account_id`, `provider` (`GOOGLE`), `subject` | (`provider`, `subject`) unique |
 | `recovery_code` | `account_id`, `code_hash`, `used_at?` | |
 | `account_token` | `account_id`, `purpose` (`EMAIL_VERIFY`/`EMAIL_CHANGE`/`EMAIL_CHANGE_CANCEL`/`PASSWORD_RESET`), `token_hash`, `new_email?`, `expires_at`, `used_at?` | `token_hash` unique (SHA-256, jeton de 256 bits) ; usage unique ; `PASSWORD_RESET` valable 30 minutes (AUTH-06) ; émettre un jeton invalide les jetons non utilisés du même compte et du même usage |

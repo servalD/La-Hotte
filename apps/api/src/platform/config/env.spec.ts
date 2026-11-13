@@ -5,6 +5,11 @@ const valid = {
   WEB_ORIGIN: 'http://localhost:3000',
   DATABASE_URL: 'postgresql://u:secret-value@localhost:5432/db',
   REDIS_URL: 'redis://localhost:6379',
+  CSRF_SECRET: 'c'.repeat(32),
+  KEY_HMAC_SECRET: 'k'.repeat(32),
+  REGISTRATION_MODE: 'OPEN',
+  SMTP_URL: 'smtp://localhost:1025',
+  MAIL_FROM: 'noreply@lahotte.test',
 };
 
 describe('parseEnv', () => {
@@ -22,6 +27,44 @@ describe('parseEnv', () => {
   it('la documentation de l’API reste fermée sans réglage explicite', () => {
     expect(parseEnv({ ...valid, NODE_ENV: 'development' }).ENABLE_API_DOCS).toBe(false);
     expect(parseEnv({ ...valid, ENABLE_API_DOCS: 'true' }).ENABLE_API_DOCS).toBe(true);
+  });
+
+  it('ADR 0013 : secrets de session obligatoires, longs et distincts', () => {
+    const { CSRF_SECRET: _omitted, ...withoutCsrf } = valid;
+    expect(() => parseEnv(withoutCsrf)).toThrowError(/CSRF_SECRET/);
+    expect(() => parseEnv({ ...valid, KEY_HMAC_SECRET: 'court' })).toThrowError(/KEY_HMAC_SECRET/);
+    expect(() => parseEnv({ ...valid, KEY_HMAC_SECRET: valid.CSRF_SECRET })).toThrowError(
+      /KEY_HMAC_SECRET/,
+    );
+  });
+
+  it('AUTH-09 : mode d’inscription explicite ; TRUSTED_PROXY_HOPS à 0 par défaut', () => {
+    const { REGISTRATION_MODE: _omitted, ...withoutMode } = valid;
+    expect(() => parseEnv(withoutMode)).toThrowError(/REGISTRATION_MODE/);
+    expect(parseEnv(valid).TRUSTED_PROXY_HOPS).toBe(0);
+  });
+
+  it('ADR 0013 : en production, proxy explicite, secrets réels, SMTP chiffré', () => {
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      TRUSTED_PROXY_HOPS: '1',
+      CSRF_SECRET: 'p'.repeat(40),
+      KEY_HMAC_SECRET: 'q'.repeat(40),
+      SMTP_URL: 'smtps://smtp.example:465',
+    };
+    expect(parseEnv(production).TRUSTED_PROXY_HOPS).toBe(1);
+    const { TRUSTED_PROXY_HOPS: _omitted, ...withoutHops } = production;
+    expect(() => parseEnv(withoutHops)).toThrowError(/TRUSTED_PROXY_HOPS/);
+    expect(() =>
+      parseEnv({ ...production, CSRF_SECRET: 'dev-only-csrf-secret-0123456789abcdef' }),
+    ).toThrowError(/CSRF_SECRET/);
+    expect(() => parseEnv({ ...production, SMTP_URL: 'smtp://smtp.example:25' })).toThrowError(
+      /SMTP_URL/,
+    );
+    expect(
+      parseEnv({ ...production, SMTP_URL: 'smtp://smtp.example:587?requireTLS=true' }).SMTP_URL,
+    ).toContain('requireTLS');
   });
 
   it('nomme la variable fautive sans jamais afficher de valeur (SEC-21)', () => {

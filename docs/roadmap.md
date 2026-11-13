@@ -128,6 +128,35 @@ Branche `feat/phase-1`, PR #9 en brouillon. Une tranche par session. Dépendance
 | 7 | Écrans | sonnet | Inscription, connexion, second facteur, réinitialisation, sélecteur de profil, saisie du PIN, espace Compte (e-mail, mot de passe, TOTP, Google, sessions, appareils, profils), réglages du profil, cercle et invitations ; langue du profil dans next-intl ; `X-CSRF-Token` dans `fetcher.ts` ; `POST /session/lock` au lancement ; retrait du module `example` (API et web, en deux déploiements, DAT-07) | Parcours Playwright bureau et mobile avec axe ; textes relus avec `design:ux-copy` |
 | 8 | Tests de sécurité transverses | opus | Énumération (connexion, inscription, réinitialisation) ; CSRF (origine étrangère, jeton absent, d'une autre session, d'avant rotation, CSRF de connexion) ; fixation ; force brute du second facteur par pré-authentifications successives ; routes sans session ; IDOR sur les profils et sessions d'un autre compte ; rejeu des jetons à usage unique | Critères d'acceptation de `01` ; `security-reviewer` sans point bloquant |
 
+**Tranche 1 faite le 2026-11-13** (opus). Module `identity` à quatre couches ; migration `20261113103012_identity` ; `GET /session` ; chaîne de gardes en une seule garde globale (`IdentityGuardChain`, ordre fixe) ; Mailpit dans `docker-compose.yml` ; test OBS-26 étendu aux secrets de session et aux commandes Redis. Choix faits dans les silences de l'ADR 0013, à relire :
+
+- le déverrouillage du profil n'est **pas** conservé à la rotation : un verrouillage concurrent ne peut pas être annulé, le profil se redéverrouille par son PIN ;
+- le rafraîchissement du déverrouillage (`X-User-Activity`) est un compare-and-set : il ne touche que le déverrouillage lu par la requête, jamais un verrouillage arrivé entre-temps ;
+- révocation par `id`, quel que soit le hash courant : une rotation concurrente ne la contourne pas ;
+- toutes les 5 minutes, le cache est confronté à PostgreSQL (ligne, époque, compte actif) : un instantané ancien de Redis ne ressuscite une session que 5 minutes au plus ;
+- toute réponse faite à une session porte `no-store`, posé par la garde (le cookie est commun aux profils d'un compte) ;
+- les refus CSRF vont au journal de sécurité une fois par minute et par adresse (/64 en IPv6), pour qu'un anonyme ne remplisse pas une table en ajout seul ;
+- sans profil actif, une route `@RequiresProfile()` répond aussi `423 PROFILE_LOCKED` ; le client lit `GET /session` pour savoir s'il faut l'écran de sélection ou le PIN ;
+- `checkSessionAccess` traite `EVERY_OPEN` comme `IDLE_15` (une socket ne porte pas le cookie `__Host-lh_unlock`) ;
+- époque du compte = max(Redis, PostgreSQL), double incrément et époque lue avant les identifiants (ADR 0014) ; si la transaction a échoué, la base est rattrapée vers l'avant à la lecture suivante, ce qui laisse se reconnecter ;
+- le limiteur réserve chaque essai autorisé (10 s au plus) : sous le seuil, échecs et essais en cours ne dépassent jamais le seuil ensemble ; au-delà, un seul essai à la fois. Une rafale parallèle n'est donc pas évaluée avant d'être comptée ;
+- fenêtre de 24 h pour le couple (compte, IP) et le second facteur (l'ADR ne fixe que leur remise à zéro) ;
+- un refus en échec fermé (`503`, Redis absent) est compté comme erreur métier, pas envoyé à GlitchTip : la panne se voit dans `/health/ready` ;
+- `security_log.account_id` sans clé étrangère : le journal survit à la suppression du compte pendant sa conservation (SEC-33) ;
+- 10 profils au plus garantis par un déclencheur (`profile_limit_per_account`).
+
+Suites :
+
+- Seuils de limitation de la ré-authentification, de la réinitialisation, de l'inscription, du PIN et des envois d'e-mail par destinataire : à écrire dans la spec avec la tranche qui les utilise (seules les portées de l'ADR existent dans `rate-limit.ts`).
+- Sous Vitest, le client `ioredis` de l'application est chargé en ESM et n'est pas instrumenté ; le test OBS-26 passe par un client chargé par `require`, comme l'API compilée. La barrière est double (sérialiseur de `telemetry.ts` et filtre `db.*` de `scrub.ts`) : retirer l'une seule laisse le test vert, retirer les deux le fait échouer.
+- Revue `security-reviewer` du 2026-11-13 (cycle 1) : B1 à B3 et I1 à I5 corrigés, M1, M2, M4 à M8 aussi. Restent : M3 (`REVOKE` de la migration sauté sans bruit si le rôle applicatif porte un autre nom : à vérifier dans la procédure de déploiement, le test d'intégration DAT-02 le couvre en CI), M9 (pré-session bornée par le seul `Max-Age` du cookie, accepté), M10 (voir le point Vitest ci-dessus).
+- Revue `security-reviewer` du 2026-11-13 (cycle 2) : visa SEC-40 donné. Ses huit points mineurs ont été corrigés à la demande de l'utilisateur : marque posée avant toute lecture en base à la révocation ; révocation limitée au compte de la référence ; refus à la recopie limité au jeton lu (`revokeToken`) ; `GREATEST` et étape 3 perdue écrits dans l'ADR 0014 ; refus CSRF regroupés par (adresse, compte) et règle écrite dans SEC-30 ; déclencheur `profile_account_matches_sessions` ; test des `GET` avec `X-User-Activity` et dépôts des autres modules. Cycle 3 : visa maintenu, aucun point bloquant ni important. Trois points mineurs, à traiter en tranche 2 :
+  1. La révocation marque le `tokenHash` reçu avant de vérifier le compte : une route `DELETE /sessions/{id}` qui construirait elle-même un `SessionRef` permettrait de déconnecter la session d'un autre compte. Offrir un seul point d'entrée `revokeOwned(accountId, sessionId)` qui lit le hash par `id` et `account_id`.
+  2. Les déclencheurs `session_active_profile_same_account` et `profile_account_matches_sessions` ne se verrouillent pas mutuellement (théorique : aucun parcours ne déplace un profil). Ajouter `SELECT … FOR SHARE` sur le profil dans le déclencheur de session.
+  3. `mark` et `dropCache` ne contrôlent pas le résultat de `exec()` : une commande refusée dans un `MULTI` passe sans erreur. Contrôler `[[err, res]]` et lever `IdentityUnavailableError`.
+- Purge du journal de sécurité après 12 mois (SEC-33) : rôle de purge à définir avec le premier serveur (le rôle applicatif n'a pas `DELETE`).
+- Le compteur `acct-sess:{account_id}` n'expire qu'avec la plus longue durée absolue ; une session expirée y laisse son hash jusqu'à la révocation suivante (nettoyage seulement).
+
 Sortie : critères d'acceptation de `01` ; revue `security-reviewer` sans point bloquant.
 
 ## Phase 2 — Articles, listes, visibilité

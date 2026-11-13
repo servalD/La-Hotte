@@ -59,7 +59,7 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 
 ### Journalisation et détection
 
-- **SEC-30** Journal de sécurité : connexions, échecs, changements de moyens d'authentification, réinitialisations de PIN, refus d'autorisation, actions d'administration, tentatives d'abonnement refusées (RT-03).
+- **SEC-30** Journal de sécurité : connexions, échecs, changements de moyens d'authentification, réinitialisations de PIN, refus d'autorisation, actions d'administration, tentatives d'abonnement refusées (RT-03). Les refus CSRF y sont écrits une fois par minute au plus pour chaque couple (adresse, compte visé ou anonyme), pour qu'un anonyme ne remplisse pas une table en ajout seul ; Redis indisponible, ils ne sont pas écrits (le refus, lui, est maintenu).
 - **SEC-31** Les journaux ne contiennent ni mot de passe, ni code, ni jeton, ni contenu de liste ou de commentaire. La règle vaut pour toute la télémétrie : traces, métriques, rapports d'erreur (`14`, OBS-20 à OBS-27).
 - **SEC-32** Alertes : pic de refus d'autorisation pour un compte, échecs de connexion répétés, pic d'erreurs d'extraction. Mises en œuvre dans OpenObserve et GlitchTip (OBS-05, OBS-43).
 - **SEC-33** Conservation : 12 mois pour le journal de sécurité, 30 jours pour les journaux techniques.

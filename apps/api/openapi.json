@@ -97,6 +97,38 @@
           "example-items"
         ]
       }
+    },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "getSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la\npré-session (CSRF de connexion). Ne prolonge jamais le déverrouillage du profil.",
+        "tags": [
+          "session"
+        ]
+      }
     }
   },
   "info": {
@@ -305,6 +337,60 @@
           "title",
           "status",
           "code"
+        ]
+      },
+      "SessionStatusView": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation."
+          },
+          "session": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionSummaryView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "authenticated",
+          "csrfToken",
+          "session"
+        ]
+      },
+      "SessionSummaryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "activeProfileId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "profileUnlocked": {
+            "type": "boolean",
+            "description": "Profil actif présent et déverrouillé (PIN-02)."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "activeProfileId",
+          "profileUnlocked",
+          "expiresAt"
         ]
       }
     }
