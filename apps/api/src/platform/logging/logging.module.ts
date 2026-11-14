@@ -41,7 +41,7 @@ export function serializeLoggedRequest(value: { id?: unknown; method?: unknown }
 }
 
 /**
- * OBS-21 : gabarit de la route atteinte (`/api/v1/example-items/:id`), posé par Express une fois
+ * OBS-21 : gabarit de la route atteinte (`/api/v1/links/:id`), posé par Express une fois
  * la route trouvée. pino-http sérialise `req` au début de la requête, avant le routage ; ses
  * `customProps` sont réévaluées à la fin : la ligne de fin de requête porte donc `route`. Sans
  * route trouvée (404), aucun chemin n'est écrit.

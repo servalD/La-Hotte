@@ -7,7 +7,6 @@ import {
   PRESESSION_COOKIE,
   SESSION_COOKIE,
 } from '../../src/modules/identity/presentation/cookies';
-import type { InMemoryExampleItemRepository } from '../../src/modules/example';
 import { createTestApp, type TestIdentity } from './create-test-app';
 import { IdentityTestRoutesController } from './identity-test-routes.controller';
 import { listRoutes } from './routes';
@@ -17,10 +16,9 @@ import { session, unlockProfile, WEB_ORIGIN } from '../support/sign-in';
 
 let app: INestApplication;
 let identity: TestIdentity;
-let exampleItems: InMemoryExampleItemRepository;
 
 beforeAll(async () => {
-  ({ app, identity, exampleItems } = await createTestApp({
+  ({ app, identity } = await createTestApp({
     controllers: [IdentityTestRoutesController],
   }));
 });
@@ -111,8 +109,6 @@ describe('Marques de route (ADR 0013)', () => {
         epochs: [...sessions.cachedEpochs],
         log: securityLog.entries.length,
         mail: mail.sent.length,
-        // Autres modules : leurs dépôts en mémoire (aujourd'hui, le module type).
-        exampleItems: exampleItems.size,
       });
     const uuid = '0190f3c2-0000-7000-8000-000000000001';
     // Santé exclue : sans base en test de contrat, et sans lien avec l'état de session.

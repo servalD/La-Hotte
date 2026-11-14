@@ -34,13 +34,13 @@ src/instrument.ts      Sentry et OpenTelemetry, chargé par `node --import` avan
 
 `domain` et `application` n'importent jamais `platform` : ils passent par un port. La règle `architecture/layers` (`packages/config/eslint/rules/architecture.mjs`) vérifie tout cela ; les fichiers de test en sont exemptés.
 
-### Module type : `src/modules/example`
+### Module type
 
-Modèle à copier pour un nouveau module (phase 0, à retirer quand un vrai module l'aura remplacé) :
+Forme d'un module, à suivre pour un nouveau (le module `identity` en est l'exemple réel ; le module d'essai de la phase 0 est retiré) :
 
 | Fichier                                 | Rôle                                                                                                                 |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `domain/example-item.ts`                | Entité pure : `create` (règles) et `restore` (relecture)                                                             |
+| `domain/<entité>.ts`                    | Entité pure : `create` (règles) et `restore` (relecture)                                                             |
 | `domain/*.errors.ts`                    | `DomainError` avec `kind` (→ statut HTTP) et `code` stable                                                           |
 | `domain/*.repository.ts`                | Port en classe abstraite (sert de jeton d'injection)                                                                 |
 | `domain/*-projection.ts`                | Vues destinataire / offreur construites champ par champ. **Dans un vrai module, ce choix appartient à `visibility`** |
@@ -49,7 +49,7 @@ Modèle à copier pour un nouveau module (phase 0, à retirer quand un vrai modu
 | `presentation/`                         | Contrôleur mince, DTO `*.dto.ts`, vues `*.view.ts` (suffixes lus par le plugin Swagger)                              |
 | `index.ts`                              | Surface publique                                                                                                     |
 
-Réponse polymorphe : `@ApiExtraModels` + `oneOf` avec `discriminator` sur `view` (voir `getExampleItem`). L'`operationId` est le nom de la méthode du contrôleur et devient le nom du hook (`useGetExampleItem`) : le choisir unique et parlant (un doublon fait échouer l'émission).
+Réponse polymorphe : `@ApiExtraModels` + `oneOf` avec `discriminator` sur `view`. L'`operationId` est le nom de la méthode du contrôleur et devient le nom du hook (par exemple `useGetOwnProfile`) : le choisir unique et parlant (un doublon fait échouer l'émission).
 
 Le contrôleur reçoit le profil actif par `@ActiveProfile()` ; faute de propriétaire, le lecteur y reste traité en destinataire.
 
@@ -95,7 +95,7 @@ Base : la CLI Prisma utilise `DATABASE_MIGRATION_URL` (propriétaire) ; l'applic
 
 - Domaine et cas d'usage : Vitest, ports en mémoire, sans base.
 - Dépôts et transactions : PostgreSQL et Redis réels en conteneurs.
-- Chaque route : nominal, non connecté, interdit, validation. Modèle : `test/contract/example-items.spec.ts` et `createTestApp()`.
+- Chaque route : nominal, non connecté, interdit, validation. Modèle : `test/contract/identity-profiles.spec.ts` et `createTestApp()`.
 - `test/contract/openapi-schema.spec.ts` refuse tout champ d'offreur dans un schéma `*RecipientView` d'`openapi.json`.
 - `test/leak/` (OBS-26) : toute nouvelle sortie de télémétrie (span, métrique, journal, rapport d'erreur) y ajoute un scénario avec marqueur ; une nouvelle barrière de `scrub` se vérifie en la retirant et en constatant que le test échoue.
 - Chaque test cite l'identifiant de la règle qu'il vérifie.

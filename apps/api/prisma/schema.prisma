@@ -14,8 +14,8 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-// Module type de la phase 0 (apps/api/src/modules/example). À retirer quand les modules réels
-// l'auront remplacé comme modèle, en deux déploiements (DAT-07).
+// Module type de la phase 0, dont le code (API et web) est retiré. DAT-07 : la table reste jusqu'au
+// déploiement suivant ; une migration à part la supprimera, avec ces deux déclarations.
 enum ExamplePriority {
   LOW
   NORMAL

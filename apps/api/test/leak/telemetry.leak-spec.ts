@@ -227,7 +227,7 @@ async function playScenario(app: INestApplication): Promise<void> {
 
   // Contenu métier : titre, commentaire, URL d'article, montant (champs inconnus refusés, 400).
   await http
-    .post(`/api/v1/example-items?url=${MARKER}`)
+    .post(`/api/v1/blocks?url=${MARKER}`)
     .set(authenticated)
     .send({
       title: `Vélo ${MARKER}`,
@@ -237,27 +237,26 @@ async function playScenario(app: INestApplication): Promise<void> {
     })
     .expect(400);
 
-  // Création réussie : le titre passe par Prisma (paramètre SQL), puis relecture.
-  const created = await http
-    .post('/api/v1/example-items')
-    .set(authenticated)
-    .send({ title: `Vélo ${MARKER}` })
-    .expect(201);
+  // Écriture réussie : le nom passe par Prisma (paramètre SQL), puis relecture.
+  const own = await http.get('/api/v1/profiles/me').set(authenticated).expect(200);
   await http
-    .get(`/api/v1/example-items/${created.body.id as string}`)
+    .patch('/api/v1/profiles/me')
     .set(authenticated)
+    .set('If-Match', `"${own.body.version as number}"`)
+    .send({ displayName: `Vélo ${MARKER}` })
     .expect(200);
+  await http.get('/api/v1/profiles/me').set(authenticated).expect(200);
 
   // Chemin résolu porteur de marqueur, route trouvée (OBS-21) puis route inconnue.
-  await http.get(`/api/v1/example-items/${MARKER}?url=${MARKER}`).set(authenticated).expect(400);
+  await http.delete(`/api/v1/links/${MARKER}?url=${MARKER}`).set(authenticated).expect(400);
   await http.get(`/api/v1/${MARKER}/${AMOUNT_MARKER}`).set(authenticated).expect(404);
 
   // Erreur métier, comptée par code (OBS-25).
-  await http.get(`/api/v1/example-items/${randomUUID()}`).set(authenticated).expect(404);
+  await http.delete(`/api/v1/links/${randomUUID()}`).set(authenticated).expect(404);
 
   // JSON invalide : le message de l'analyseur cite le corps reçu.
   await http
-    .post('/api/v1/example-items')
+    .post('/api/v1/blocks')
     .set(authenticated)
     .set('Content-Type', 'application/json')
     .send(`{"title": "${MARKER}`)
@@ -1137,7 +1136,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
   it('journaux (OBS-01, OBS-21, OBS-45) : gabarit de route, erreur sans message', () => {
     const lines = logLines.map((line) => JSON.parse(line) as Record<string, unknown>);
     const routes = lines.map((line) => line.route);
-    expect(routes).toContain('/api/v1/example-items/:id');
+    expect(routes).toContain('/api/v1/links/:id');
     expect(routes).toContain('/api/v1/_leak/boom');
     const errTypes = lines.map((line) => (line.err as { type?: string } | undefined)?.type);
     expect(errTypes).toContain('TypeError');
@@ -1157,7 +1156,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
   it('spans (OBS-22, OBS-23, OBS-29) : requêtes HTTP et Prisma tracées, sans contenu', () => {
     const traces = bodies('traces');
     expect(traces).toContain('/api/v1/_leak/boom');
-    expect(traces).toContain('/api/v1/example-items/:id');
+    expect(traces).toContain('/api/v1/links/:id');
     expect(traces).toMatch(/prisma:engine:db_query/);
     expect(traces).toContain('leak-span-context');
 
@@ -1171,7 +1170,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     expect(metrics).toContain('"conflict"');
     // La liste blanche laisse passer les étiquettes de l'instrumentation HTTP (gabarit de route).
     expect(metrics).toContain('http.server.request.duration');
-    expect(metrics).toContain('/api/v1/example-items/:id');
+    expect(metrics).toContain('/api/v1/links/:id');
     // Ni clé libre, ni nom hors liste, ni hôte d'un appel sortant (`server.address`, posé par la
     // métrique client de l'instrumentation HTTP).
     expect(metrics).not.toContain('"liste"');

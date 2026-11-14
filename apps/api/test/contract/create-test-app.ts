@@ -3,7 +3,6 @@ import type { INestApplication, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
-import { ExampleItemRepository, InMemoryExampleItemRepository } from '../../src/modules/example';
 import {
   AccountRepository,
   BackgroundTasks,
@@ -98,13 +97,11 @@ export async function createTestApp(
   options: { controllers?: Type[]; env?: Record<string, string> } = {},
 ): Promise<{
   app: INestApplication;
-  exampleItems: InMemoryExampleItemRepository;
   identity: TestIdentity;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
 
-  const exampleItems = new InMemoryExampleItemRepository();
   const sessions = new InMemorySessionStore();
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
@@ -132,8 +129,6 @@ export async function createTestApp(
     imports: [AppModule],
     controllers: options.controllers ?? [],
   })
-    .overrideProvider(ExampleItemRepository)
-    .useValue(exampleItems)
     .overrideProvider(SessionStore)
     .useValue(sessions)
     .overrideProvider(ProfileLockPolicies)
@@ -229,5 +224,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, exampleItems, identity };
+  return { app, identity };
 }

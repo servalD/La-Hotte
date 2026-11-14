@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { findRecipientViewLeaks, type Schema } from './recipient-view-guard';
+import {
+  findRecipientViewLeaks,
+  type RecipientViewRule,
+  type Schema,
+} from './recipient-view-guard';
 
 // VIS-20, API-12, critère d'acceptation de 13 : aucune vue destinataire ne contient de champ
 // d'offreur. Liste blanche par vue (voir recipient-view-guard.ts), vérifiée sur openapi.json.
@@ -10,14 +14,32 @@ const doc = JSON.parse(readFileSync(resolve(__dirname, '../../openapi.json'), 'u
 };
 const schemas = doc.components.schemas;
 
-describe('openapi.json — vues destinataire (VIS-20, API-12)', () => {
-  it('au moins une vue destinataire est vérifiée', () => {
-    expect(Object.keys(schemas).filter((n) => n.endsWith('RecipientView')).length).toBeGreaterThan(
-      0,
-    );
-  });
+// Contrat d'essai : le module de la phase 0 qui portait la seule vue destinataire est retiré, le
+// garde reste testé sur ce contrat fictif de même forme (liste blanche, vue offreur, énumération).
+const FIXTURE_ALLOWLIST: Record<string, RecipientViewRule> = {
+  ExampleItemRecipientView: {
+    fields: ['view', 'id', 'title', 'priority'],
+    schemas: ['ExampleItemRecipientViewView', 'ExamplePriority'],
+  },
+};
+const FIXTURE: Record<string, Schema> = {
+  ExampleItemRecipientView: {
+    type: 'object',
+    properties: {
+      view: { $ref: '#/components/schemas/ExampleItemRecipientViewView' },
+      id: { type: 'string' },
+      title: { type: 'string' },
+      priority: { $ref: '#/components/schemas/ExamplePriority' },
+    },
+  },
+  ExampleItemRecipientViewView: { type: 'string', enum: ['recipient'] },
+  ExamplePriority: { type: 'string', enum: ['low', 'normal', 'high'] },
+  ExampleItemGiverView: { type: 'object', properties: { id: { type: 'string' } } },
+  ExampleReservationView: { type: 'object', properties: { id: { type: 'string' } } },
+};
 
-  it('le contrat versionné respecte la liste blanche', () => {
+describe('openapi.json — vues destinataire (VIS-20, API-12)', () => {
+  it('le contrat versionné respecte la liste blanche (aucune vue non déclarée)', () => {
     expect(findRecipientViewLeaks(schemas)).toEqual([]);
   });
 });
@@ -25,10 +47,14 @@ describe('openapi.json — vues destinataire (VIS-20, API-12)', () => {
 // Le garde doit échouer quand la protection est retirée (QA-10, revue de sécurité de la phase 0) :
 // chaque mutation ci-dessous est une fuite réaliste, elle doit être détectée.
 describe('garde de non-fuite — il détecte les fuites (VIS-20)', () => {
+  it('le contrat d’essai non muté est conforme', () => {
+    expect(findRecipientViewLeaks(FIXTURE, FIXTURE_ALLOWLIST)).toEqual([]);
+  });
+
   const mutate = (fn: (copy: Record<string, Schema>) => void): string[] => {
-    const copy = structuredClone(schemas);
+    const copy = structuredClone(FIXTURE);
     fn(copy);
-    return findRecipientViewLeaks(copy);
+    return findRecipientViewLeaks(copy, FIXTURE_ALLOWLIST);
   };
   const view = (copy: Record<string, Schema>): Schema => copy.ExampleItemRecipientView!;
 
