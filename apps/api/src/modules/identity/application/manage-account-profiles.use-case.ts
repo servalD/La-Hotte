@@ -7,7 +7,8 @@ import {
   DEFAULT_TIMEZONE,
   DISPLAY_NAME_MAX_LENGTH,
 } from '../domain/account';
-import { AccountRepository, PasswordHasher } from '../domain/account.ports';
+import { AccountRepository, BackgroundTasks, PasswordHasher } from '../domain/account.ports';
+import { AccountMailer } from './account-mailer';
 import { LinkRepository } from '../domain/link.ports';
 import { IdentityEvents, type SecurityEvent, SecurityLog, type SessionRef } from '../domain/ports';
 import { isPinWellFormed, normalizeDisplayName, type ProfileMetadata } from '../domain/profile';
@@ -239,6 +240,8 @@ async function log(
 export class SetProfileChildMarker {
   constructor(
     private readonly profiles: ProfileRepository,
+    private readonly mailer: AccountMailer,
+    private readonly background: BackgroundTasks,
     private readonly events: IdentityEvents,
     private readonly securityLog: SecurityLog,
     private readonly clock: Clock,
@@ -252,10 +255,20 @@ export class SetProfileChildMarker {
   }): Promise<void> {
     const accountId = input.session.accountId;
     const now = this.clock.now();
+    // PRO-10 (revue SEC-40, I2) : l'adresse effacée par le marquage reçoit d'abord un avis.
+    const before = input.isChild
+      ? await this.profiles.findDetails(accountId, input.profileId)
+      : null;
     const result = await this.profiles.setChild(accountId, input.profileId, input.isChild, now);
     if (result === 'missing') throw new ProfileNotFoundError();
     if (result === 'ward') throw new WardChildOnlyError();
     if (result === 'guardian_required') throw new GuardianRequiredError();
+    const notified = before?.isChild === false ? before.email : null;
+    if (notified) {
+      this.background.run('profile.child_marked_mail', async () => {
+        await this.mailer.send(notified, { kind: 'child_marked' });
+      });
+    }
     await log(this.securityLog, accountId, 'profile.child_changed', input.client, now);
     // LNK-09 : le nom de l'enfant et la tutelle changent pour ses contreparties.
     this.events.publish({ type: 'circle.changed', profileIds: [input.profileId] });

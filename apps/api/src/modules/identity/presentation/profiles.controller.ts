@@ -40,6 +40,7 @@ import {
   SetOwnEmail,
   ClearOwnEmail,
   VerifyProfileEmail,
+  ReadChildNotice,
 } from '../application/contract';
 import { clearUnlockCookie, setUnlockCookie } from './cookies';
 import {
@@ -80,6 +81,7 @@ function toView(profile: ProfileDetails): ProfileView {
     pinRelock: profile.pinRelock,
     pinResetNoticeAt: profile.pinResetNoticeAt?.toISOString() ?? null,
     email: profile.email,
+    childNoticeAt: profile.childNoticeAt?.toISOString() ?? null,
     version: profile.version,
   };
 }
@@ -106,6 +108,7 @@ export class ProfilesController {
     private readonly setPinUseCase: SetOwnPin,
     private readonly setEmailUseCase: SetOwnEmail,
     private readonly clearEmailUseCase: ClearOwnEmail,
+    private readonly childNoticeUseCase: ReadChildNotice,
   ) {}
 
   @Get()
@@ -203,6 +206,14 @@ export class ProfilesController {
   async clearOwnEmail(@ActiveProfile() profile: ActiveProfileValue): Promise<void> {
     await this.clearEmailUseCase.execute(profile);
   }
+
+  /** PRO-09 : le profil a lu la notice du changement de son marqueur enfant. */
+  @Delete('child-notice')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async readChildNotice(@ActiveProfile() profile: ActiveProfileValue): Promise<void> {
+    await this.childNoticeUseCase.execute(profile);
+  }
 }
 
 /** PRO-10 : vérification de l'adresse d'un profil par son lien (publique, jeton dans le corps). */
@@ -215,8 +226,11 @@ export class ProfileEmailVerificationController {
   @Public()
   @HttpCode(204)
   @ApiNoContentResponse()
-  async verifyProfileEmail(@Body() body: EmailTokenDto): Promise<void> {
-    await this.verifyUseCase.execute({ token: body.token });
+  async verifyProfileEmail(
+    @Body() body: EmailTokenDto,
+    @ClientContext() client: ClientContextValue,
+  ): Promise<void> {
+    await this.verifyUseCase.execute({ token: body.token, client });
   }
 }
 

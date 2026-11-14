@@ -27,6 +27,7 @@ import {
 } from '../domain/transfer';
 import {
   DetachChildForbiddenError,
+  DetachEmailRequiredError,
   HasWardsError,
   TransferConsentUnsafeError,
   TransferInvalidError,
@@ -230,6 +231,7 @@ export class RequestTransfer {
     if (refusal === 'UNDECLARED_REGROUP') throw new UndeclaredRegroupError();
     if (refusal === 'LAST_PROFILE') throw new LastProfileError();
     if (refusal === 'GUARDIAN_REQUIRED') throw new GuardianRequiredError();
+    if (input.regroup && input.kind !== 'MOVE') throw new UndeclaredRegroupError();
     if (input.regroup && (await this.wards.hasWards(input.accountId))) throw new HasWardsError();
 
     const now = this.clock.now();
@@ -247,8 +249,10 @@ export class RequestTransfer {
     const token = this.tokens.generateInvitation();
     const transferId = this.ids.next();
     const expiresAt = new Date(now.getTime() + TRANSFER_TTL_MS);
-    const newEmail = input.kind === 'DETACH' && input.email ? normalizeEmail(input.email) : null;
-    if (input.kind === 'DETACH' && !newEmail) throw new TransferPinChoiceError();
+    // PRO-13 : l'adresse du profil par défaut, ou une autre saisie à la demande.
+    const newEmail =
+      input.kind === 'DETACH' ? (input.email ? normalizeEmail(input.email) : subject.email) : null;
+    if (input.kind === 'DETACH' && !newEmail) throw new DetachEmailRequiredError();
     const created = await this.transfers.create({
       id: transferId,
       kind: input.kind,
@@ -272,6 +276,16 @@ export class RequestTransfer {
       profileId: input.profileId,
       transferId,
     });
+    if (newEmail) {
+      // PRO-13 : adresse déjà inscrite, titulaire averti ; la réponse reste la même.
+      const to = newEmail;
+      this.background.run('transfer.detach_taken_check', async () => {
+        const existing = await this.accounts.findByEmail(to);
+        if (existing?.emailVerified || (await this.accounts.isEmailReserved(to, null, now))) {
+          await this.mailer.send(to, { kind: 'email_taken_notice' });
+        }
+      });
+    }
     const state = await this.transfers.findOpenByProfile(input.profileId, now);
     if (state && consentRequired) {
       const deps = {
@@ -362,6 +376,7 @@ export class ProfileConsent {
     readonly transfers: TransferRepository,
     readonly tokens: SecretTokens,
     readonly hasher: PasswordHasher,
+    readonly limiter: RateLimiter,
     readonly mailer: AccountMailer,
     readonly background: BackgroundTasks,
     readonly securityLog: SecurityLog,
@@ -488,7 +503,11 @@ export class ConsentTransferByEmail {
     readonly newPin?: string;
     readonly client: ClientInfo;
   }): Promise<void> {
-    const { transfers, tokens, clock } = this.consent;
+    const { transfers, tokens, clock, limiter } = this.consent;
+    const limited = [{ scope: 'profile_link_ip' as const, parts: [input.client.ip] }];
+    const limit = await limiter.check(limited, clock.now());
+    if (!limit.allowed || !limit.reservation) throw new RateLimitedError(limit.retryAfterMs);
+    await limiter.recordFailure(limited, clock.now(), limit.reservation);
     if (!tokens.isWellFormed(input.token)) throw new TransferInvalidError();
     const tokenHash = tokens.hash(input.token);
     const found = await transfers.findMailToken(tokenHash, 'TRANSFER_CONSENT', clock.now());
@@ -511,11 +530,16 @@ export class CancelTransferByEmail {
   constructor(
     private readonly transfers: TransferRepository,
     private readonly tokens: SecretTokens,
+    private readonly limiter: RateLimiter,
     private readonly securityLog: SecurityLog,
     private readonly clock: Clock,
   ) {}
 
   async execute(input: { readonly token: string; readonly client: ClientInfo }): Promise<void> {
+    const limited = [{ scope: 'profile_link_ip' as const, parts: [input.client.ip] }];
+    const limit = await this.limiter.check(limited, this.clock.now());
+    if (!limit.allowed || !limit.reservation) throw new RateLimitedError(limit.retryAfterMs);
+    await this.limiter.recordFailure(limited, this.clock.now(), limit.reservation);
     if (!this.tokens.isWellFormed(input.token)) throw new TransferInvalidError();
     const now = this.clock.now();
     const tokenHash = this.tokens.hash(input.token);
@@ -691,24 +715,41 @@ export class RunDueTransfers {
 
   async execute(): Promise<number> {
     let done = 0;
+    let firstError: Error | null = null;
+    // Revue SEC-40 (I1) : un élément en échec n'arrête pas le lot ; la première erreur remonte
+    // ensuite (rapport d'erreur du planificateur).
     for (const due of await this.transfers.due(this.clock.now())) {
-      if (due.kind === 'MOVE') {
-        const result = await this.transfers.execute({
-          transferId: due.id,
-          now: this.clock.now(),
-          linkIds: () => this.ids.next(),
-        });
-        if (result.status === 'completed') {
-          await this.effects.apply(result, due.id, SCHEDULER_CLIENT);
-          done += 1;
-        }
-        continue;
+      try {
+        if (await this.runOne(due)) done += 1;
+      } catch (error) {
+        firstError ??= error instanceof Error ? error : new Error('Changement de compte en échec');
       }
-      if (await this.transfers.setupSent(due.id)) continue;
-      await this.sendSetup(due.id);
-      done += 1;
     }
+    if (firstError !== null) throw firstError;
     return done;
+  }
+
+  private async runOne(due: {
+    readonly id: string;
+    readonly kind: 'MOVE' | 'DETACH';
+  }): Promise<boolean> {
+    if (due.kind === 'MOVE') {
+      const result = await this.transfers.execute({
+        transferId: due.id,
+        now: this.clock.now(),
+        linkIds: () => this.ids.next(),
+      });
+      if (result.status !== 'completed') return false;
+      await this.effects.apply(result, due.id, SCHEDULER_CLIENT);
+      return true;
+    }
+    // `due` ne rend un détachement au lien déjà parti que si ce lien a expiré : il est clos.
+    if (await this.transfers.setupSent(due.id)) {
+      await this.transfers.cancel(due.id, this.clock.now());
+      return true;
+    }
+    await this.sendSetup(due.id);
+    return true;
   }
 
   private async sendSetup(transferId: string): Promise<void> {

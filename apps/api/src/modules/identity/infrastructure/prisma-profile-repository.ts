@@ -31,14 +31,16 @@ const DETAILS = {
   pinRelock: true,
   pinResetNoticeAt: true,
   email: true,
+  emailVerifiedAt: true,
+  childNoticeAt: true,
   version: true,
 } as const satisfies Prisma.ProfileSelect;
 
 type DetailsRow = Prisma.ProfileGetPayload<{ select: typeof DETAILS }>;
 
 function toDetails(row: DetailsRow): ProfileDetails {
-  const { pinHash, ...rest } = row;
-  return { ...rest, hasPin: pinHash !== null };
+  const { pinHash, emailVerifiedAt, email, ...rest } = row;
+  return { ...rest, email: emailVerifiedAt ? email : null, hasPin: pinHash !== null };
 }
 
 /** Déclencheur `profile_limit_per_account` (PRO-01) : dernier recours si le compte a changé. */
@@ -205,6 +207,14 @@ export class PrismaProfileRepository extends ProfileRepository {
     });
   }
 
+  async clearChildNotice(accountId: string, profileId: string): Promise<boolean> {
+    const { count } = await this.prisma.profile.updateMany({
+      where: { id: profileId, accountId },
+      data: { childNoticeAt: null },
+    });
+    return count > 0;
+  }
+
   async clearEmail(accountId: string, profileId: string, now: Date): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.profile.updateMany({
@@ -310,6 +320,12 @@ export class PrismaProfileRepository extends ProfileRepository {
     now: Date,
   ): Promise<'updated' | 'missing' | 'ward' | 'guardian_required'> {
     return guardedTransaction(this.prisma, async (tx) => {
+      // Revue SEC-40 (M7) : demande ouverte d'abord, puis compte, comme l'exécution d'un passage.
+      await tx.$queryRaw`
+        SELECT "id" FROM "profile_transfer"
+        WHERE "profile_id" = ${profileId}::uuid AND "completed_at" IS NULL
+          AND "cancelled_at" IS NULL
+        FOR UPDATE`;
       const [account] = await tx.$queryRaw<{ guardian_account_id: string | null }[]>`
         SELECT "guardian_account_id" FROM "account" WHERE "id" = ${accountId}::uuid FOR UPDATE`;
       if (!account) return 'missing' as const;

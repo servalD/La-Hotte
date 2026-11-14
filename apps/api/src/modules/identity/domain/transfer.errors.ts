@@ -85,3 +85,13 @@ export class AgeAttestationRequiredError extends DomainError {
     super('Déclarez avoir 15 ans ou plus pour activer ce compte.');
   }
 }
+
+/** PRO-13 : le profil n'a pas d'adresse vérifiée et aucune n'est saisie pour le nouveau compte. */
+export class DetachEmailRequiredError extends DomainError {
+  readonly kind = 'business_rule';
+  readonly code = 'DETACH_EMAIL_REQUIRED';
+
+  constructor() {
+    super('Indiquez l’adresse du nouveau compte.');
+  }
+}

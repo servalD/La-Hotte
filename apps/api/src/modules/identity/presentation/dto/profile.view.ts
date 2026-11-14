@@ -88,6 +88,10 @@ export class ProfileView {
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   pinResetNoticeAt!: string | null;
 
+  /** PRO-09 : marqueur enfant changé depuis l'espace Compte ; affiché tant que le profil ne l'a pas lu. */
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  childNoticeAt!: string | null;
+
   /** PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse. */
   @ApiProperty({ type: String, format: 'email', nullable: true })
   email!: string | null;

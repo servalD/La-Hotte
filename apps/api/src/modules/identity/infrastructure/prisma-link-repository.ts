@@ -673,7 +673,11 @@ export class PrismaLinkRepository extends LinkRepository {
       SELECT i."id", p."display_name", i."profile_is_child", i."expires_at"
       FROM "invitation" i JOIN "profile" p ON p."id" = i."created_by"
       WHERE i."kind" = 'PROFILE' AND i."target_id" = ${accountId}::uuid
-        AND p."account_id" <> ${accountId}::uuid
+        AND p."account_id" <> ${accountId}::uuid AND NOT p."is_child"
+        AND NOT EXISTS (
+          SELECT 1 FROM "profile_block" b JOIN "profile" t ON t."account_id" = ${accountId}::uuid
+          WHERE (b."blocker_id" = t."id" AND b."blocked_id" = p."id")
+             OR (b."blocker_id" = p."id" AND b."blocked_id" = t."id"))
         AND i."target_accepted_at" IS NULL AND i."target_refused_at" IS NULL
         AND i."revoked_at" IS NULL AND i."expires_at" > ${now} AND i."used_count" < i."max_uses"
       ORDER BY i."created_at" DESC`;
@@ -795,6 +799,12 @@ export class PrismaLinkRepository extends LinkRepository {
       if (!target || target.guardian_account_id !== null) return { status: 'invalid' as const };
       const otherAccount = inviter.accountId !== invitation.target_id;
       if (otherAccount && !(await inviterLinkedTo(tx, inviter.id, invitation.target_id))) {
+        // Revue SEC-40 (M5) : révoquée, vue comme un refus par l'invitant (LNK-05).
+        await tx.invitation.update({
+          where: { id: invitation.id },
+          // Une décision à la fois (`invitation_target_decided_once`) : l'acceptation tombe.
+          data: { revokedAt: input.now, targetAcceptedAt: null, targetRefusedAt: input.now },
+        });
         return { status: 'invalid' as const };
       }
       const count = await tx.profile.count({ where: { accountId: invitation.target_id } });

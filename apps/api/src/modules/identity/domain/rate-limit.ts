@@ -26,6 +26,7 @@ export const RATE_LIMIT_SCOPES = [
   'account_setup_ip', // installations d'un compte détaché ou sous tutelle, par IP (PRO-13, PRO-15)
   'profile_invitation_ip', // ouvertures d'une invitation à créer un profil, par IP (PRO-11)
   'transfer_token', // jetons de passage ouverts sans succès, par compte d'arrivée (PRO-12)
+  'profile_link_ip', // liens publics du profil (vérification d'adresse, accord, annulation), par IP
 ] as const;
 export type RateLimitScope = (typeof RATE_LIMIT_SCOPES)[number];
 
@@ -66,6 +67,7 @@ export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolic
   account_setup_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
   profile_invitation_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
   transfer_token: { threshold: 10, windowMs: 24 * HOUR, resetOnSuccess: false },
+  profile_link_ip: { threshold: 30, windowMs: HOUR, resetOnSuccess: false },
 };
 
 /** Seuil du compteur par compte depuis un appareil de confiance du compte (ADR 0013). */

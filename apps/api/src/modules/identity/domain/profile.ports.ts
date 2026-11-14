@@ -124,6 +124,9 @@ export abstract class ProfileRepository {
     now: Date,
   ): Promise<{ readonly accountId: string; readonly profileId: string } | null>;
 
+  /** PRO-09 : le profil a lu la notice du changement de son marqueur enfant. */
+  abstract clearChildNotice(accountId: string, profileId: string): Promise<boolean>;
+
   /** PRO-10 : adresse effacée ; jetons de vérification, d'accord et d'annulation désarmés. */
   abstract clearEmail(accountId: string, profileId: string, now: Date): Promise<boolean>;
 

@@ -330,6 +330,7 @@ describe('/profiles/me (PRO-02, PRO-03)', () => {
       hasPin: true,
       pinRelock: 'IDLE_15',
       pinResetNoticeAt: null,
+      childNoticeAt: null,
       email: null,
       version: 1,
     });

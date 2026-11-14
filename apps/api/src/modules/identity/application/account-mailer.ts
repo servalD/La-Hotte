@@ -64,6 +64,7 @@ type MailKind =
   | { readonly kind: 'transfer_cancel'; readonly token: string; readonly executesAt: Date }
   | { readonly kind: 'detach_setup'; readonly token: string }
   | { readonly kind: 'transfer_completed' }
+  | { readonly kind: 'child_marked' }
   | { readonly kind: 'ward_password_reset'; readonly token: string }
   | { readonly kind: 'guardian_action'; readonly action: GuardianAction }
   | { readonly kind: 'ward_account_changed'; readonly change: WardChange };
@@ -320,6 +321,19 @@ export class AccountMailer {
             'déclarer votre âge, choisir votre mot de passe et l’activer, ouvrez ce lien (valable ' +
             `24 heures) :\n${this.link(EMAIL_LINK_PATHS.accountSetup, mail.token)}\n\n` +
             'Si vous ne vous attendiez pas à ce message, ignorez-le : rien ne sera créé.' +
+            SIGNATURE,
+        };
+      case 'child_marked':
+        // PRO-09, PRO-10 : l'adresse va être effacée ; ni nom de profil ni de compte.
+        return {
+          to,
+          subject: 'Votre profil est désormais un profil enfant',
+          text:
+            'Depuis l’espace Compte, votre profil La Hotte vient d’être marqué comme profil ' +
+            'enfant. Cette adresse ne lui est donc plus associée, et ce message est le dernier ' +
+            'qu’elle recevra pour lui.\n\nSi vous n’êtes pas un enfant et n’êtes pas à ' +
+            'l’origine de ce changement, parlez-en au titulaire du compte : pendant 30 jours, ' +
+            'aucun changement de compte ne peut se faire sans votre accord.' +
             SIGNATURE,
         };
       case 'transfer_completed':

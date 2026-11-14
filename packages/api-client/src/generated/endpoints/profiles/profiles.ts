@@ -311,6 +311,71 @@ export const useUpdateOwnProfile = <TError = ErrorType<ProblemDetailsDto>, TCont
   return useMutation(mutationOptions, queryClient);
 };
 /**
+ * @summary PRO-09 : le profil a lu la notice du changement de son marqueur enfant.
+ */
+export const getReadChildNoticeUrl = () => {
+  return `/api/v1/profiles/me/child-notice`;
+};
+
+export const readChildNotice = async (options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getReadChildNoticeUrl(), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getReadChildNoticeMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof readChildNotice>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof readChildNotice>>, TError, void, TContext> => {
+  const mutationKey = ['readChildNotice'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof readChildNotice>>, void> = () => {
+    return readChildNotice(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReadChildNoticeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof readChildNotice>>
+>;
+
+export type ReadChildNoticeMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-09 : le profil a lu la notice du changement de son marqueur enfant.
+ */
+export const useReadChildNotice = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof readChildNotice>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof readChildNotice>>, TError, void, TContext> => {
+  const mutationOptions = getReadChildNoticeMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à
 un profil enfant. Jamais un identifiant de connexion.
  */

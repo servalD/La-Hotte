@@ -191,6 +191,7 @@ import {
 } from './presentation/profile-invitations.controller';
 import {
   ClearOwnEmail,
+  ReadChildNotice,
   SetOwnEmail,
   VerifyProfileEmail,
 } from './application/profile-email.use-case';
@@ -305,6 +306,7 @@ import {
     SetOwnEmail,
     ClearOwnEmail,
     VerifyProfileEmail,
+    ReadChildNotice,
     ListProfileProposals,
     DecideProfileProposal,
     InspectProfileInvitation,

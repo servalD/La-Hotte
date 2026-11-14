@@ -61,6 +61,8 @@ export interface ProfileDetails {
   readonly pinResetNoticeAt: Date | null;
   /** PRO-10 : adresse vérifiée du profil, rendue au seul profil ; `null` sans adresse. */
   readonly email: string | null;
+  /** PRO-09 : marqueur enfant changé depuis l'espace Compte, tant que le profil ne l'a pas lu. */
+  readonly childNoticeAt: Date | null;
   readonly version: number;
 }
 

@@ -51,6 +51,12 @@ export const getOwnProfileResponse = zod.object({
     .describe(
       "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte ; reste affiché tant que le\nprofil ne s'est pas redonné un PIN (`PUT \/profiles\/me\/pin`).",
     ),
+  childNoticeAt: zod.iso
+    .datetime({})
+    .nullable()
+    .describe(
+      "PRO-09 : marqueur enfant changé depuis l'espace Compte ; affiché tant que le profil ne l'a pas lu.",
+    ),
   email: zod
     .email()
     .nullable()
@@ -152,6 +158,12 @@ export const updateOwnProfileResponse = zod.object({
     .nullable()
     .describe(
       "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte ; reste affiché tant que le\nprofil ne s'est pas redonné un PIN (`PUT \/profiles\/me\/pin`).",
+    ),
+  childNoticeAt: zod.iso
+    .datetime({})
+    .nullable()
+    .describe(
+      "PRO-09 : marqueur enfant changé depuis l'espace Compte ; affiché tant que le profil ne l'a pas lu.",
     ),
   email: zod
     .email()

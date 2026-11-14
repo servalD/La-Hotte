@@ -387,6 +387,14 @@ Restes de la tranche 6 bis :
 - **attendent leur phase** : purge du cache hors ligne et des abonnements push sur les appareils de l'ancien compte (phase 4) ; avertissement de GFT-08 aux créateurs de giftlists (phase 2) ;
 - suppression d'un compte sous tutelle (avec la suppression de compte, RGPD-05).
 
+Revue `security-reviewer` du code de la tranche 6 bis (cycle 1, 2026-11-14) : **aucun point bloquant**. Corrigés :
+
+- I1 : un détachement au lien d'installation expiré est clos par la tâche planifiée ; `due()` trié par échéance, sans les détachements au lien encore valable (test d'intégration à 101 lignes) ; un détachement qui échoue à l'installation est clos ; chaque élément du lot est isolé, la première erreur remonte au rapport ;
+- I2 : marquer un adulte comme enfant envoie d'abord un avis à son adresse vérifiée (`child_marked`), et la notice (`childNoticeAt`) est rendue par `GET /profiles/me` jusqu'à `DELETE /profiles/me/child-notice` ;
+- M1 : `regroup` refusé pour un détachement (`LAST_PROFILE`, plus de `500`) ; M3 : adresse du détachement par défaut celle du profil (`DETACH_EMAIL_REQUIRED` sinon), avertissement du titulaire d'une adresse prise dès la demande, texte de PRO-14 sur l'empreinte aligné sur le code ; M4 : propositions d'un invitant devenu enfant ou bloqué non montrées ; M5 : invitation révoquée, vue refusée, quand le lien manque à la consommation ; M7 : `setChild` verrouille la demande ouverte avant le compte, comme l'exécution ; M8 : liens publics du profil limités par IP (30 par heure, ligne ajoutée à « Limitation »).
+
+Acceptés, à revoir avec leur phase : M2 (compte tuteur sans tuteur pour un enfant sous tutelle vérifié seulement à l'exécution ; l'échec clôt désormais la demande), M6 (effets d'après exécution en chaîne : un compte vidé par un regroupement dont la suppression échoue reste actif sans profil ; à rejouer par la tâche planifiée), M9 (délai de `TRANSFER_INVALID` inégal, borné par la limitation), M10 (la levée de tutelle ne révoque pas les sessions du compte), M11 (le quota par destinataire peut retenir un lien d'annulation après plusieurs demandes).
+
 Constat d'environnement : en local, ouvrir une connexion PostgreSQL prend près de 2 s (`localhost` essayé en IPv6 sous Windows, avant IPv4). Deux transactions simultanées sur des connexions neuves dépassent alors l'attente de Prisma (`maxWait`, 2 s). Le test de concurrence de l'installation ouvre deux connexions d'avance. Mettre `127.0.0.1` dans `DATABASE_URL` de `apps/api/.env` devrait supprimer le délai (à vérifier).
 - Tranche 7 : pages `/invitations/open` (jeton dans le fragment, `Referrer-Policy: no-referrer`), cercle, liens à valider (`awaitingMyApproval`), blocages, marqueur enfant dans l'espace Compte (ré-authentification), champ `invitationToken` à l'inscription et avant « S'inscrire avec Google ».
 

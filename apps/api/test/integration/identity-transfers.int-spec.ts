@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
@@ -318,5 +319,40 @@ describe('canReceive (PRO-12)', () => {
     expect(await transfers.canReceive(mover, origin.accountId)).toBe(false);
     const stranger = await createAccountWithProfile(prisma);
     expect(await transfers.canReceive(mover, stranger.accountId)).toBe(false);
+  });
+});
+
+describe('due (revue SEC-40, I1)', () => {
+  it('plus de 100 détachements au lien encore valable ne masquent pas un passage échu', async () => {
+    const origin = await createAccountWithProfile(prisma);
+    const past = new Date(Date.now() - 2 * DAY);
+    const rows: Prisma.ProfileTransferCreateManyInput[] = [];
+    for (let i = 0; i < 101; i += 1) {
+      const profileId = await addProfile((await createAccountWithProfile(prisma)).accountId);
+      rows.push({
+        id: randomUUID(),
+        kind: 'DETACH' as const,
+        profileId,
+        fromAccountId: origin.accountId,
+        newEmail: `n-${randomUUID()}@lahotte.test`,
+        tokenHash: hashOf(randomUUID()),
+        tokenExpiresAt: new Date(Date.now() + DAY),
+        profileConsentRequired: true,
+        fromAcceptedAt: past,
+        toAcceptedAt: past,
+        profileAcceptedAt: past,
+        pinChoice: 'NONE' as const,
+        executesAt: past,
+        expiresAt: new Date(Date.now() + 7 * DAY),
+      });
+    }
+    await prisma.profileTransfer.createMany({ data: rows });
+    const mover = await addProfile(origin.accountId);
+    const host = await createAccountWithProfile(prisma);
+    await link(mover, host.profileId);
+    const moveId = await dueMove({ profileId: mover, from: origin.accountId, to: host.accountId });
+    const due = await transfers.due(new Date());
+    expect(due.map((d) => d.id)).toContain(moveId);
+    expect(due.some((d) => rows.some((r) => r.id === d.id))).toBe(false);
   });
 });

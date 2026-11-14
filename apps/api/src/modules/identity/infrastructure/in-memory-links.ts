@@ -535,6 +535,10 @@ export class InMemoryLinkRepository extends LinkRepository {
           i.kind === 'PROFILE' &&
           i.targetAccountId === accountId &&
           this.profile(i.createdBy)?.accountId !== accountId &&
+          !(this.profile(i.createdBy)?.isChild ?? false) &&
+          ![...this.accounts.profiles.values()].some(
+            (t) => t.accountId === accountId && this.blockedEitherWay(t.id, i.createdBy),
+          ) &&
           !i.targetAcceptedAt &&
           !i.targetRefusedAt &&
           this.isOpen(i, now),
@@ -626,6 +630,9 @@ export class InMemoryLinkRepository extends LinkRepository {
     if (!target || target.guardianAccountId) return { status: 'invalid' };
     const otherAccount = inviter.accountId !== found.targetAccountId;
     if (otherAccount && !this.inviterLinkedTo(inviter.id, found.targetAccountId)) {
+      invitation.revokedAt = input.now;
+      invitation.targetAcceptedAt = null;
+      invitation.targetRefusedAt = input.now;
       return { status: 'invalid' };
     }
     const count = [...this.accounts.profiles.values()].filter(

@@ -2,7 +2,8 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
 import { PRESESSION_COOKIE } from '../../src/modules/identity/presentation/cookies';
-import { session, type SignedIn, WEB_ORIGIN } from '../support/sign-in';
+import { randomUUID } from 'node:crypto';
+import { session, signIn, type SignedIn, WEB_ORIGIN } from '../support/sign-in';
 import { createTestApp, type TestIdentity } from './create-test-app';
 
 // Adresse d'un profil et invitation à créer un profil (PRO-10, PRO-11, LNK-01, LNK-05, LNK-07).
@@ -344,5 +345,61 @@ describe('invitation à créer un profil dans le compte d’un profil du cercle 
       .expect(404);
     const listed = await http().get('/api/v1/invitations').set({ Cookie: a.cookie }).expect(200);
     expect(listed.body.items[0]).toMatchObject({ proposal: 'REFUSED' });
+  });
+});
+
+describe('revue SEC-40 du code (cycle 1)', () => {
+  it('I2 : marquer un adulte comme enfant avertit son adresse, puis la notice se lit à l’entrée', async () => {
+    const owner = await person();
+    const adultProfileId = randomUUID();
+    identity.profiles.set({
+      profileId: adultProfileId,
+      accountId: owner.accountId,
+      hasPin: false,
+      relock: 'IDLE_15',
+    });
+    const adult = identity.accounts.profiles.get(adultProfileId);
+    const email = `adulte-${owner.accountId}@lahotte.test`;
+    if (adult) {
+      identity.accounts.profiles.set(adultProfileId, {
+        ...adult,
+        email,
+        emailVerifiedAt: new Date(),
+      });
+    }
+    const fresh = await reauthenticated(owner);
+    await http()
+      .put(`/api/v1/account/profiles/${adultProfileId}/child`)
+      .set(fresh.mutation)
+      .send({ isChild: true })
+      .expect(204);
+    await identity.background.flush();
+    expect(identity.mail.sent.filter((m) => m.to === email).at(-1)?.subject).toBe(
+      'Votre profil est désormais un profil enfant',
+    );
+    expect(identity.accounts.profiles.get(adultProfileId)?.email ?? null).toBeNull();
+
+    const marked = await signIn(app, { accountId: owner.accountId, profileId: adultProfileId });
+    const me = await http().get('/api/v1/profiles/me').set({ Cookie: marked.cookie }).expect(200);
+    expect(me.body.childNoticeAt).toEqual(expect.any(String));
+    await http().delete('/api/v1/profiles/me/child-notice').set(marked.mutation).expect(204);
+    const read = await http().get('/api/v1/profiles/me').set({ Cookie: marked.cookie }).expect(200);
+    expect(read.body.childNoticeAt).toBeNull();
+  });
+
+  it('M4 : une proposition d’un invitant devenu enfant n’est plus montrée', async () => {
+    const { a, b } = await linkedPair();
+    await http()
+      .post('/api/v1/invitations')
+      .set(a.mutation)
+      .send({ kind: 'PROFILE', targetProfileId: b.profileId })
+      .expect(201);
+    const inviter = identity.accounts.profiles.get(a.profileId ?? '');
+    if (inviter) identity.accounts.profiles.set(inviter.id, { ...inviter, isChild: true });
+    const proposals = await http()
+      .get('/api/v1/account/profile-proposals')
+      .set({ Cookie: b.cookie })
+      .expect(200);
+    expect(proposals.body.items).toEqual([]);
   });
 });

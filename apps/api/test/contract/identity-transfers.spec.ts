@@ -504,3 +504,58 @@ describe('accord et annulation par e-mail (PRO-12)', () => {
     expect(after.body.transfer).toBeNull();
   });
 });
+
+describe('revue SEC-40 du code (cycle 1)', () => {
+  it('I1 : un détachement au lien expiré est clos, le profil peut redemander', async () => {
+    const stayer = await account('Parent');
+    const mover = await addProfile(stayer, { displayName: 'Majeur' });
+    const origin = await reauthenticated(stayer);
+    await http()
+      .post(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+      .set(origin.mutation)
+      .send({ kind: 'DETACH', email: `x-${randomUUID()}@lahotte.test` })
+      .expect(201);
+    await http()
+      .post('/api/v1/profiles/me/transfer/consent')
+      .set(mover.mutation)
+      .send({ pinChoice: 'NONE' })
+      .expect(204);
+    await runDue(mover.profileId ?? '');
+    // Le lien d'installation expire sans être servi.
+    for (const t of identity.transfers.transfers.values()) {
+      if (t.profileId === mover.profileId) t.tokenExpiresAt = new Date(Date.now() - 1);
+    }
+    await app.get(RunDueTransfers).execute();
+    const own = await http().get('/api/v1/profiles/me/transfer').set({ Cookie: mover.cookie });
+    expect(own.body.transfer).toBeNull();
+    await http()
+      .post(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+      .set(origin.mutation)
+      .send({ kind: 'DETACH', email: `y-${randomUUID()}@lahotte.test` })
+      .expect(201);
+  });
+
+  it('M1 : un regroupement ne se déclare pas pour un détachement', async () => {
+    const stayer = await account('Parent');
+    const mover = await addProfile(stayer, { displayName: 'Majeur' });
+    const origin = await reauthenticated(stayer);
+    const res = await http()
+      .post(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+      .set(origin.mutation)
+      .send({ kind: 'DETACH', regroup: true, email: 'z@lahotte.test' })
+      .expect(422);
+    expect(res.body.code).toBe('LAST_PROFILE');
+  });
+
+  it('M3 : sans adresse saisie ni adresse du profil, le détachement est refusé', async () => {
+    const stayer = await account('Parent');
+    const mover = await addProfile(stayer, { displayName: 'Majeur' });
+    const origin = await reauthenticated(stayer);
+    const res = await http()
+      .post(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+      .set(origin.mutation)
+      .send({ kind: 'DETACH' })
+      .expect(422);
+    expect(res.body.code).toBe('DETACH_EMAIL_REQUIRED');
+  });
+});

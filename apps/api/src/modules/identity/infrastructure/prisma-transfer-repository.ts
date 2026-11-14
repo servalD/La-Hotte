@@ -335,19 +335,17 @@ export class PrismaTransferRepository extends TransferRepository {
   }
 
   async due(now: Date): Promise<{ readonly id: string; readonly kind: 'MOVE' | 'DETACH' }[]> {
-    const rows = await this.prisma.profileTransfer.findMany({
-      where: {
-        kind: { in: ['MOVE', 'DETACH'] },
-        completedAt: null,
-        cancelledAt: null,
-        executesAt: { lte: now },
-      },
-      select: { id: true, kind: true },
-      take: 100,
-    });
-    return rows.flatMap((row) =>
-      row.kind === 'MOVE' || row.kind === 'DETACH' ? [{ id: row.id, kind: row.kind }] : [],
-    );
+    // Revue SEC-40 (I1) : un détachement dont le lien d'installation est parti et vaut encore
+    // n'a rien à faire ; il n'occupe pas le lot. Les plus anciennes échéances d'abord.
+    const rows = await this.prisma.$queryRaw<{ id: string; kind: 'MOVE' | 'DETACH' }[]>`
+      SELECT "id", "kind"::text AS kind FROM "profile_transfer"
+      WHERE "kind" IN ('MOVE', 'DETACH') AND "completed_at" IS NULL AND "cancelled_at" IS NULL
+        AND "executes_at" <= ${now}
+        AND NOT ("kind" = 'DETACH' AND "token_expires_at" > "executes_at"
+                 AND "token_expires_at" > ${now})
+      ORDER BY "executes_at", "id"
+      LIMIT 100`;
+    return rows;
   }
 
   async issueSetupToken(input: {
@@ -403,6 +401,12 @@ export class PrismaTransferRepository extends TransferRepository {
       await this.prisma.profileTransfer.updateMany({
         where: { id: input.transferId, kind: 'MOVE', completedAt: null, cancelledAt: null },
         data: { toAccountId: null, toAcceptedAt: null, executesAt: null },
+      });
+      // Revue SEC-40 (I1) : un détachement qui échoue à l'installation est clos (il bloquerait
+      // le profil, `TRANSFER_PENDING`, et la tâche planifiée).
+      await this.prisma.profileTransfer.updateMany({
+        where: { id: input.transferId, kind: 'DETACH', completedAt: null, cancelledAt: null },
+        data: { cancelledAt: input.now, newPinHash: null },
       });
       return { status: 'failed' };
     }

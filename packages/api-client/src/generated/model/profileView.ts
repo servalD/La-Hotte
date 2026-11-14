@@ -31,6 +31,11 @@ profil ne s'est pas redonné un PIN (`PUT /profiles/me/pin`).
    */
   pinResetNoticeAt: string | null;
   /**
+   * PRO-09 : marqueur enfant changé depuis l'espace Compte ; affiché tant que le profil ne l'a pas lu.
+   * @nullable
+   */
+  childNoticeAt: string | null;
+  /**
    * PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse.
    * @nullable
    */

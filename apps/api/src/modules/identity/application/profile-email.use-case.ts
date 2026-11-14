@@ -4,14 +4,15 @@ import { normalizeEmail } from '../domain/account';
 import { AccountTokenInvalidError } from '../domain/account.errors';
 import { AccountRepository, BackgroundTasks } from '../domain/account.ports';
 import { ChildEmailForbiddenError } from '../domain/link.errors';
-import { SecretTokens } from '../domain/ports';
+import { RateLimiter, SecretTokens } from '../domain/ports';
 import { ProfileNotFoundError } from '../domain/profile.errors';
 import { ProfileRepository } from '../domain/profile.ports';
 import { EmailNotVerifiedError } from '../domain/second-factor.errors';
-import { SessionRequiredError } from '../domain/session.errors';
+import { RateLimitedError, SessionRequiredError } from '../domain/session.errors';
 import { PROFILE_EMAIL_VERIFY_TTL_MS } from '../domain/transfer';
 import { AccountMailer } from './account-mailer';
 import type { ActiveProfile } from './authorize-profile.use-case';
+import type { ClientInfo } from './client-info';
 
 /**
  * PRO-10 : adresse du profil actif, fixée depuis le profil (PIN validé par la garde), jamais depuis
@@ -55,6 +56,18 @@ export class SetOwnEmail {
   }
 }
 
+/** PRO-09 : le profil actif a lu la notice du changement de son marqueur enfant. */
+@Injectable()
+export class ReadChildNotice {
+  constructor(private readonly profiles: ProfileRepository) {}
+
+  async execute(profile: ActiveProfile): Promise<void> {
+    if (!(await this.profiles.clearChildNotice(profile.accountId, profile.id))) {
+      throw new ProfileNotFoundError();
+    }
+  }
+}
+
 /** PRO-10 : le profil actif efface son adresse ; les liens encore ouverts ne servent plus. */
 @Injectable()
 export class ClearOwnEmail {
@@ -79,10 +92,15 @@ export class VerifyProfileEmail {
   constructor(
     private readonly profiles: ProfileRepository,
     private readonly tokens: SecretTokens,
+    private readonly limiter: RateLimiter,
     private readonly clock: Clock,
   ) {}
 
-  async execute(input: { readonly token: string }): Promise<void> {
+  async execute(input: { readonly token: string; readonly client: ClientInfo }): Promise<void> {
+    const limited = [{ scope: 'profile_link_ip' as const, parts: [input.client.ip] }];
+    const limit = await this.limiter.check(limited, this.clock.now());
+    if (!limit.allowed || !limit.reservation) throw new RateLimitedError(limit.retryAfterMs);
+    await this.limiter.recordFailure(limited, this.clock.now(), limit.reservation);
     if (!this.tokens.isWellFormed(input.token)) throw new AccountTokenInvalidError();
     const confirmed = await this.profiles.confirmEmail(
       this.tokens.hash(input.token),

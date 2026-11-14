@@ -390,6 +390,7 @@ function details(profile: MemoryProfile): ProfileDetails {
     pinRelock: profile.pinRelock ?? 'IDLE_15',
     pinResetNoticeAt: profile.pinResetNoticeAt ?? null,
     email: profile.emailVerifiedAt ? (profile.email ?? null) : null,
+    childNoticeAt: profile.childNoticeAt ?? null,
     version: profile.version ?? 1,
   };
 }
@@ -480,6 +481,13 @@ export class InMemoryProfileRepository extends ProfileRepository {
     profile.email = token.email;
     profile.emailVerifiedAt = now;
     return { accountId: token.accountId, profileId: token.profileId };
+  }
+
+  async clearChildNotice(accountId: string, profileId: string): Promise<boolean> {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return false;
+    profile.childNoticeAt = null;
+    return true;
   }
 
   async clearEmail(accountId: string, profileId: string, now: Date): Promise<boolean> {

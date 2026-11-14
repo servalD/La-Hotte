@@ -303,7 +303,16 @@ export class InMemoryTransferRepository extends TransferRepository {
 
   async due(now: Date): Promise<{ readonly id: string; readonly kind: 'MOVE' | 'DETACH' }[]> {
     return [...this.transfers.values()]
-      .filter((t) => !t.completedAt && !t.cancelledAt && t.executesAt && t.executesAt <= now)
+      .filter(
+        (t) =>
+          !t.completedAt &&
+          !t.cancelledAt &&
+          t.executesAt &&
+          t.executesAt <= now &&
+          !(t.kind === 'DETACH' && t.tokenExpiresAt > t.executesAt && t.tokenExpiresAt > now),
+      )
+      .sort((x, y) => (x.executesAt?.getTime() ?? 0) - (y.executesAt?.getTime() ?? 0))
+      .slice(0, 100)
       .map((t) => ({ id: t.id, kind: t.kind }));
   }
 
@@ -346,6 +355,8 @@ export class InMemoryTransferRepository extends TransferRepository {
         t.toAccountId = null;
         t.toAcceptedAt = null;
         t.executesAt = null;
+      } else {
+        t.cancelledAt = input.now;
       }
       return { status: 'failed' };
     };
