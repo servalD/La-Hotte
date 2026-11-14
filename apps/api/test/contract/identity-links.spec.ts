@@ -437,6 +437,18 @@ describe('PUT /account/profiles/{id}/child (PRO-09)', () => {
     );
   }
 
+  it('PRO-12 (I2 du cycle 2) : le seul adulte d’un compte ne devient pas enfant (GUARDIAN_REQUIRED)', async () => {
+    const a = await person();
+    const fresh = await reauthenticated(a);
+    const res = await http()
+      .put(`/api/v1/account/profiles/${a.profileId}/child`)
+      .set(fresh.mutation)
+      .send({ isChild: true })
+      .expect(422);
+    expect(res.body.code).toBe('GUARDIAN_REQUIRED');
+    expect(identity.accounts.profiles.get(a.profileId ?? '')?.isChild).not.toBe(true);
+  });
+
   it('exige une ré-authentification récente', async () => {
     const a = await person();
     const res = await http()
@@ -449,6 +461,8 @@ describe('PUT /account/profiles/{id}/child (PRO-09)', () => {
 
   it('change le marqueur dans les deux sens, journalisé ; profil d’un autre compte : 404', async () => {
     const a = await person();
+    // PRO-12 : le compte garde un adulte, sinon le marquage est refusé (test suivant).
+    await guardianOf(a);
     const fresh = await reauthenticated(a);
     await http()
       .put(`/api/v1/account/profiles/${a.profileId}/child`)

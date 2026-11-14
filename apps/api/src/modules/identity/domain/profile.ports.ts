@@ -40,15 +40,26 @@ export abstract class ProfileRepository {
 
   /**
    * PRO-08 : suppression sous verrou du compte. `last` si c'est le dernier profil du compte,
-   * `missing` s'il n'existe pas.
+   * `missing` s'il n'existe pas, `guardian_required` si elle laisserait un compte (hors tutelle)
+   * avec des enfants seuls, ou un enfant d'un compte sous tutelle sans tuteur (PRO-12, PRO-15).
    */
-  abstract delete(accountId: string, profileId: string): Promise<'deleted' | 'last' | 'missing'>;
+  abstract delete(
+    accountId: string,
+    profileId: string,
+  ): Promise<'deleted' | 'last' | 'missing' | 'guardian_required'>;
 
   /**
-   * PRO-09 : marqueur « profil enfant », changé depuis l'espace Compte seulement ; la version
-   * augmente. Faux si le profil n'existe pas ou n'est pas du compte.
+   * PRO-09, sous verrou du compte : marqueur « profil enfant », changé depuis l'espace Compte
+   * seulement ; la version augmente, `child_changed_at` et la notice sont posés, les demandes de
+   * passage ouvertes du profil annulées ; vers « enfant », l'adresse du profil est effacée
+   * (PRO-10). `ward` dans un compte sous tutelle (PRO-15), `guardian_required` comme `delete`.
    */
-  abstract setChild(accountId: string, profileId: string, isChild: boolean): Promise<boolean>;
+  abstract setChild(
+    accountId: string,
+    profileId: string,
+    isChild: boolean,
+    now: Date,
+  ): Promise<'updated' | 'missing' | 'ward' | 'guardian_required'>;
 
   /**
    * PIN-03 : essai compté **avant** d'être évalué, en une seule écriture conditionnelle. Hors

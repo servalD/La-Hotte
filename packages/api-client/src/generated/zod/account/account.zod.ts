@@ -26,6 +26,10 @@ export const getAccountResponse = zod.object({
     .max(getAccountResponseRecoveryCodesRemainingMax),
 });
 
+export const attestAgeBody = zod.object({
+  ageAttested: zod.literal(true),
+});
+
 export const listAccountProfilesResponseItemsItemDisplayNameMax = 60;
 
 export const listAccountProfilesResponseItemsItemAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
@@ -101,6 +105,133 @@ export const resetProfilePinBody = zod.object({
     .min(resetProfilePinBodyNewPinMin)
     .max(resetProfilePinBodyNewPinMax)
     .regex(resetProfilePinBodyNewPinRegExp),
+});
+
+/**
+ * @summary PRO-15 : la réponse est la même que l'adresse ait déjà un compte ou non (AUTH-09).
+ */
+export const createWardBodyEmailMax = 254;
+
+export const createWardBodyProfileNameMax = 60;
+
+export const createWardBodyProfileNameRegExp = new RegExp('\\S');
+
+export const createWardBody = zod.object({
+  email: zod.email().max(createWardBodyEmailMax),
+  profileName: zod
+    .string()
+    .min(1)
+    .max(createWardBodyProfileNameMax)
+    .regex(createWardBodyProfileNameRegExp)
+    .describe('Nom affiché du profil enfant (PRO-02).'),
+  guardianAttested: zod
+    .literal(true)
+    .describe(
+      "RGPD-06 : case « J'ai l'autorité parentale », non précochée. Seule `true` est acceptée.",
+    ),
+});
+
+export const listWardsResponseItemsItemProfilesItemDisplayNameMax = 60;
+
+export const listWardsResponseItemsItemProfilesItemAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
+
+export const listWardsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      email: zod.email(),
+      createdAt: zod.iso.datetime({}),
+      releaseRequested: zod
+        .boolean()
+        .describe("Levée demandée, en attente de la déclaration d'âge du compte."),
+      profiles: zod.array(
+        zod.object({
+          id: zod.uuid(),
+          displayName: zod.string().max(listWardsResponseItemsItemProfilesItemDisplayNameMax),
+          avatar: zod
+            .string()
+            .nullable()
+            .describe("Clé d'image ; `null` : couleur d'accent et initiales."),
+          accentColor: zod.string().regex(listWardsResponseItemsItemProfilesItemAccentColorRegExp),
+          hasPin: zod.boolean(),
+          isChild: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+});
+
+export const getWardParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const getWardResponseProfilesItemDisplayNameMax = 60;
+
+export const getWardResponseProfilesItemAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
+export const getWardResponseSessionsItemUserAgentMax = 512;
+
+export const getWardResponse = zod.object({
+  id: zod.uuid(),
+  email: zod.email(),
+  createdAt: zod.iso.datetime({}),
+  releaseRequested: zod
+    .boolean()
+    .describe("Levée demandée, en attente de la déclaration d'âge du compte."),
+  profiles: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      displayName: zod.string().max(getWardResponseProfilesItemDisplayNameMax),
+      avatar: zod
+        .string()
+        .nullable()
+        .describe("Clé d'image ; `null` : couleur d'accent et initiales."),
+      accentColor: zod.string().regex(getWardResponseProfilesItemAccentColorRegExp),
+      hasPin: zod.boolean(),
+      isChild: zod.boolean(),
+    }),
+  ),
+  sessions: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      userAgent: zod.string().max(getWardResponseSessionsItemUserAgentMax),
+      createdAt: zod.iso.datetime({}),
+      lastSeenAt: zod.iso.datetime({}),
+    }),
+  ),
+});
+
+/**
+ * @summary PRO-16 : le lien de réinitialisation part à l'adresse du tuteur.
+ */
+export const resetWardPasswordParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const createWardProfileParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const createWardProfileBodyDisplayNameMax = 60;
+
+export const createWardProfileBodyDisplayNameRegExp = new RegExp('\\S');
+
+export const createWardProfileBody = zod.object({
+  displayName: zod
+    .string()
+    .min(1)
+    .max(createWardProfileBodyDisplayNameMax)
+    .regex(createWardProfileBodyDisplayNameRegExp),
+});
+
+/**
+ * @summary PRO-16 : levée demandée ; elle prend effet à la déclaration d'âge du compte.
+ */
+export const requestWardReleaseParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const revokeWardSessionsParams = zod.object({
+  id: zod.uuid(),
 });
 
 export const listTrustedDevicesResponseItemsItemUserAgentMax = 512;

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { GuardianNotices } from './guardian-notices';
 import { Clock } from '../../../shared/domain';
 import { AccountRepository, BackgroundTasks } from '../domain/account.ports';
 import { AccountMailer } from './account-mailer';
@@ -22,6 +23,7 @@ export class ChangePassword {
     private readonly securityLog: SecurityLog,
     private readonly mailer: AccountMailer,
     private readonly background: BackgroundTasks,
+    private readonly guardianNotices: GuardianNotices,
     private readonly clock: Clock,
   ) {}
 
@@ -53,6 +55,7 @@ export class ChangePassword {
       const account = await this.accounts.findById(accountId);
       if (account) await this.mailer.send(account.email, { kind: 'password_changed' });
     });
+    this.guardianNotices.notify(accountId, 'password');
     // L'ancienne session est déjà révoquée par `changeEpoch` ; pas de `previous`.
     return this.lifecycle.create({
       accountId,

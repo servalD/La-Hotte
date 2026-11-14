@@ -104,8 +104,11 @@ export abstract class LinkRepository extends CircleReader {
     readonly now: Date;
   }): Promise<LinkRecord | null>;
 
-  /** LNK-02 : supprime le lien, sous verrou de sa paire. `null` s'il n'existe plus. */
-  abstract deleteLink(linkId: string): Promise<LinkRecord | null>;
+  /**
+   * LNK-02 : supprime le lien, sous verrou de sa paire. `null` s'il n'existe plus ;
+   * `guardian_required` pour le dernier lien de tutelle d'un enfant (PRO-15).
+   */
+  abstract deleteLink(linkId: string): Promise<LinkRecord | null | 'guardian_required'>;
 
   /**
    * LNK-05 : bloque `blockedId` parmi les contreparties d'un lien de `blockerId` et supprime ce

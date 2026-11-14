@@ -253,6 +253,14 @@ export const SECURITY_EVENTS = [
   'link.deleted',
   'block.created',
   'block.removed',
+  // PRO-15, PRO-16 : écrits au journal des deux comptes, tuteur et sous tutelle.
+  'ward.setup_requested',
+  'ward.created',
+  'ward.sessions_revoked',
+  'ward.password_reset',
+  'ward.profile_created',
+  'ward.release_requested',
+  'ward.released',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 
@@ -260,6 +268,9 @@ export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 export abstract class SecurityLog {
   abstract record(entry: {
     readonly accountId: string | null;
+    /** PRO-14, PRO-16 : profil et demande concernés, sans clé étrangère. */
+    readonly profileId?: string | null;
+    readonly transferId?: string | null;
     readonly event: SecurityEvent;
     readonly ip: string;
     readonly userAgent: string;

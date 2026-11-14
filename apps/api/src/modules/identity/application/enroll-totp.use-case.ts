@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { GuardianNotices } from './guardian-notices';
 import { Clock } from '../../../shared/domain';
 import { AccountRepository, BackgroundTasks } from '../domain/account.ports';
 import { RateLimiter, SecurityLog } from '../domain/ports';
@@ -75,6 +76,7 @@ export class ActivateTotp {
     private readonly mailer: AccountMailer,
     private readonly background: BackgroundTasks,
     private readonly lifecycle: SessionLifecycle,
+    private readonly guardianNotices: GuardianNotices,
     private readonly clock: Clock,
   ) {}
 
@@ -143,6 +145,7 @@ export class ActivateTotp {
       const account = await this.accounts.findById(accountId);
       if (account) await this.mailer.send(account.email, { kind: 'totp_enabled' });
     });
+    this.guardianNotices.notify(accountId, 'totp');
     const issued = await this.lifecycle.create({
       accountId,
       observedEpoch: epoch,

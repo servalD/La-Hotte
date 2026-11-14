@@ -106,3 +106,15 @@ export type {
   OpenInvitation,
 } from '../domain/link';
 export { RemoveUnverifiedAccount } from './remove-unverified-account';
+export {
+  AttestAgeForRelease,
+  CreateWard,
+  CreateWardProfile,
+  GetWard,
+  ListWards,
+  RequestWardRelease,
+  ResetWardPassword,
+  RevokeWardSessions,
+  SetupWardAccount,
+} from './manage-wards.use-case';
+export type { WardSummary } from '../domain/ward';

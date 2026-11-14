@@ -12,7 +12,30 @@ export const EMAIL_LINK_PATHS = {
   resetPassword: '/auth/reset-password',
   cancelEmailChange: '/auth/cancel-email-change',
   invitation: '/invitations/open',
+  accountSetup: '/accounts/setup',
 } as const;
+
+/** PRO-16 : actions du tuteur dont le compte sous tutelle est averti. */
+export type GuardianAction =
+  'sessions_revoked' | 'password_reset' | 'profile_created' | 'release_requested';
+
+/** PRO-16 : changements du compte sous tutelle dont le tuteur est averti. */
+export type WardChange = 'email' | 'password' | 'totp';
+
+const GUARDIAN_ACTION_TEXT: Readonly<Record<GuardianAction, string>> = {
+  sessions_revoked: 'a déconnecté tous les appareils de votre compte',
+  password_reset: 'a demandé la réinitialisation du mot de passe de votre compte',
+  profile_created: 'a ajouté un profil à votre compte',
+  release_requested:
+    'a demandé la levée de la tutelle : elle prendra effet quand vous déclarerez votre âge ' +
+    'depuis votre espace Compte',
+};
+
+const WARD_CHANGE_TEXT: Readonly<Record<WardChange, string>> = {
+  email: 'L’adresse e-mail',
+  password: 'Le mot de passe',
+  totp: 'La double authentification',
+};
 
 type MailKind =
   | { readonly kind: 'verify_email'; readonly token: string }
@@ -29,7 +52,11 @@ type MailKind =
   | { readonly kind: 'google_linked' }
   | { readonly kind: 'google_unlinked' }
   | { readonly kind: 'pin_attempts' }
-  | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string };
+  | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string }
+  | { readonly kind: 'ward_setup'; readonly token: string }
+  | { readonly kind: 'ward_password_reset'; readonly token: string }
+  | { readonly kind: 'guardian_action'; readonly action: GuardianAction }
+  | { readonly kind: 'ward_account_changed'; readonly change: WardChange };
 
 /** M4 (SEC-40) : le nom est choisi par l'expéditeur ; aucun saut de ligne ni caractère de contrôle. */
 function cleanName(name: string): string {
@@ -57,7 +84,15 @@ export class AccountMailer {
   async send(to: string, mail: MailKind): Promise<boolean> {
     // Quota par (destinataire, sorte) : épuiser les réinitialisations ne coupe pas l'avertissement
     // d'un changement d'e-mail, ni l'inverse (`01`, « Limitation »).
-    const subjects = [{ scope: 'mail_recipient' as const, parts: [to, mail.kind] }];
+    // Les avis de tutelle comptent par action : trois réinitialisations n'étouffent pas l'avis
+    // d'un changement d'adresse.
+    const variant =
+      mail.kind === 'guardian_action'
+        ? [mail.action]
+        : mail.kind === 'ward_account_changed'
+          ? [mail.change]
+          : [];
+    const subjects = [{ scope: 'mail_recipient' as const, parts: [to, mail.kind, ...variant] }];
     const now = this.clock.now();
     const check = await this.limiter.check(subjects, now);
     if (!check.allowed || !check.reservation) return false;
@@ -228,6 +263,48 @@ export class AccountMailer {
             `Pour accepter, ouvrez ce lien (valable 7 jours) :\n` +
             `${this.link(EMAIL_LINK_PATHS.invitation, mail.token)}\n\n` +
             'Si vous ne connaissez pas cette personne, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'ward_setup':
+        // PRO-15 : ni nom ni adresse du tuteur dans le corps.
+        return {
+          to,
+          subject: 'Votre compte La Hotte est prêt',
+          text:
+            'Un parent vous a préparé un compte La Hotte, rattaché au sien.\n\nPour choisir votre ' +
+            'mot de passe et l’activer, ouvrez ce lien (valable 24 heures) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.accountSetup, mail.token)}\n\n` +
+            'Si vous ne vous attendiez pas à ce message, ignorez-le : rien ne sera créé.' +
+            SIGNATURE,
+        };
+      case 'ward_password_reset':
+        return {
+          to,
+          subject: 'Réinitialisation du mot de passe d’un compte sous votre tutelle',
+          text:
+            'Vous avez demandé à réinitialiser le mot de passe d’un compte sous votre tutelle. ' +
+            'Pour choisir le nouveau mot de passe, ouvrez ce lien (valable 30 minutes) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.resetPassword, mail.token)}\n\n` +
+            'La réinitialisation déconnecte tous les appareils de ce compte, qui en est averti.' +
+            SIGNATURE,
+        };
+      case 'guardian_action':
+        return {
+          to,
+          subject: 'Action de votre tuteur sur votre compte',
+          text:
+            `Le compte qui a la tutelle du vôtre ${GUARDIAN_ACTION_TEXT[mail.action]}.\n\n` +
+            'Il ne voit ni vos listes ni vos souhaits.' +
+            SIGNATURE,
+        };
+      case 'ward_account_changed':
+        return {
+          to,
+          subject: 'Changement sur un compte sous votre tutelle',
+          text:
+            `${WARD_CHANGE_TEXT[mail.change]} d’un compte sous votre tutelle vient de changer.\n\n` +
+            'Depuis votre espace Compte, vous pouvez en déconnecter les appareils ou en ' +
+            'réinitialiser le mot de passe.' +
             SIGNATURE,
         };
       case 'email_taken_notice':

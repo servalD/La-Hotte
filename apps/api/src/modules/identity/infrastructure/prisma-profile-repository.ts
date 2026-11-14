@@ -48,6 +48,51 @@ function isProfileLimitViolation(error: unknown): boolean {
   );
 }
 
+type Tx = Prisma.TransactionClient;
+
+/** Annule la transaction : le changement laisserait un enfant sans adulte responsable. */
+class GuardianGap extends Error {}
+
+/** Transaction dont un `GuardianGap` levé à l'intérieur devient `guardian_required`. */
+async function guardedTransaction<T>(
+  prisma: PrismaService,
+  work: (tx: Tx) => Promise<T>,
+): Promise<T | 'guardian_required'> {
+  try {
+    return await prisma.$transaction(work);
+  } catch (error) {
+    if (error instanceof GuardianGap) return 'guardian_required';
+    throw error;
+  }
+}
+
+/**
+ * PRO-12, PRO-15 : le compte manque d'adulte responsable : hors tutelle, il a des profils, tous
+ * enfants ; ou l'un de ses comptes sous tutelle a un enfant sans lien de tutelle vers un adulte de
+ * ce compte. Comparé avant et après un changement : seul un manque **créé** est refusé.
+ */
+export async function guardianGap(tx: Tx, accountId: string): Promise<boolean> {
+  const [row] = await tx.$queryRaw<[{ gap: boolean }]>`
+    SELECT (
+      EXISTS (
+        SELECT 1 FROM "account" a
+        WHERE a."id" = ${accountId}::uuid AND a."guardian_account_id" IS NULL
+          AND EXISTS (SELECT 1 FROM "profile" p WHERE p."account_id" = a."id")
+          AND NOT EXISTS (SELECT 1 FROM "profile" p WHERE p."account_id" = a."id" AND NOT p."is_child"))
+      OR EXISTS (
+        SELECT 1 FROM "account" w JOIN "profile" c ON c."account_id" = w."id"
+        WHERE w."guardian_account_id" = ${accountId}::uuid
+          AND NOT EXISTS (
+            SELECT 1 FROM "profile_link" l
+            JOIN "profile" g ON g."id" = CASE WHEN l."profile_a_id" = c."id"
+              THEN l."profile_b_id" ELSE l."profile_a_id" END
+            WHERE l."origin" = 'GUARDIANSHIP'
+              AND (l."profile_a_id" = c."id" OR l."profile_b_id" = c."id")
+              AND g."account_id" = w."guardian_account_id" AND NOT g."is_child"))
+    ) AS gap`;
+  return row.gap;
+}
+
 /**
  * Profils en PostgreSQL (PRO-01 à PRO-08, PIN-03 à PIN-05). Chaque requête est limitée au compte
  * de la session (SEC-03). Créer et supprimer prennent le verrou de la ligne du compte : le nombre
@@ -146,25 +191,57 @@ export class PrismaProfileRepository extends ProfileRepository {
     });
   }
 
-  async delete(accountId: string, profileId: string): Promise<'deleted' | 'last' | 'missing'> {
-    return this.prisma.$transaction(async (tx) => {
+  async delete(
+    accountId: string,
+    profileId: string,
+  ): Promise<'deleted' | 'last' | 'missing' | 'guardian_required'> {
+    return guardedTransaction(this.prisma, async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "account" WHERE "id" = ${accountId}::uuid FOR UPDATE`;
       const ids = await tx.profile.findMany({ where: { accountId }, select: { id: true } });
       if (!ids.some((row) => row.id === profileId)) return 'missing' as const;
       if (ids.length <= 1) return 'last' as const;
+      const gapBefore = await guardianGap(tx, accountId);
       // `session.active_profile_id` passe à NULL (clé étrangère `SET NULL`).
       await tx.profile.deleteMany({ where: { id: profileId, accountId } });
+      if (!gapBefore && (await guardianGap(tx, accountId))) throw new GuardianGap();
       return 'deleted' as const;
     });
   }
 
-  async setChild(accountId: string, profileId: string, isChild: boolean): Promise<boolean> {
-    return this.prisma.$transaction(async (tx) => {
+  async setChild(
+    accountId: string,
+    profileId: string,
+    isChild: boolean,
+    now: Date,
+  ): Promise<'updated' | 'missing' | 'ward' | 'guardian_required'> {
+    return guardedTransaction(this.prisma, async (tx) => {
+      const [account] = await tx.$queryRaw<{ guardian_account_id: string | null }[]>`
+        SELECT "guardian_account_id" FROM "account" WHERE "id" = ${accountId}::uuid FOR UPDATE`;
+      if (!account) return 'missing' as const;
+      // PRO-15 : dans un compte sous tutelle, le marqueur ne change pas, dans aucun sens.
+      if (account.guardian_account_id !== null) {
+        const owned = await tx.profile.count({ where: { id: profileId, accountId } });
+        return owned === 0 ? ('missing' as const) : ('ward' as const);
+      }
+      const gapBefore = await guardianGap(tx, accountId);
       const { count } = await tx.profile.updateMany({
         where: { id: profileId, accountId },
-        data: { isChild, version: { increment: 1 } },
+        data: {
+          isChild,
+          version: { increment: 1 },
+          // PRO-09, PRO-12 : daté (accord du profil gardé 30 jours), notice à l'entrée.
+          childChangedAt: now,
+          childNoticeAt: now,
+          // PRO-10 : un profil enfant n'a pas d'adresse.
+          ...(isChild ? { email: null, emailVerifiedAt: null } : {}),
+        },
       });
-      if (count === 0) return false;
+      if (count === 0) return 'missing' as const;
+      // PRO-12 (B3) : tout changement du marqueur annule les demandes ouvertes du profil.
+      await tx.profileTransfer.updateMany({
+        where: { profileId, completedAt: null, cancelledAt: null },
+        data: { cancelledAt: now },
+      });
       // PRO-09 : un profil qui cesse d'être enfant n'a plus de tuteur ; ses liens encore en attente
       // de validation ne pourraient plus être approuvés. Ils sont supprimés (il faut réinviter).
       if (!isChild) {
@@ -178,7 +255,8 @@ export class PrismaProfileRepository extends ProfileRepository {
           },
         });
       }
-      return true;
+      if (!gapBefore && (await guardianGap(tx, accountId))) throw new GuardianGap();
+      return 'updated' as const;
     });
   }
 
@@ -280,6 +358,9 @@ export class PrismaProfileRepository extends ProfileRepository {
         pinFailedCount: 0,
         pinLockedUntil: null,
         pinResetNoticeAt: input.resetNoticeAt,
+        // PIN-05, PRO-12 (B4 bis) : une réinitialisation ou désactivation est datée, et PIN-04 ne
+        // l'efface pas (la notice, si).
+        ...(input.resetNoticeAt ? { pinResetAt: input.resetNoticeAt } : {}),
       },
     });
     return count === 1 ? { pinStamp: pinStampOf(input.pinHash) } : null;

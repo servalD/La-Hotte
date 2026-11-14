@@ -232,6 +232,7 @@ describe('demande de changement de compte (PRO-12)', () => {
         profileConsentRequired: true,
         fromAcceptedAt: new Date(),
         pinChoice: 'KEEP',
+        tokenExpiresAt: new Date(Date.now() + 7 * DAY),
         expiresAt: new Date(Date.now() + 7 * DAY),
       },
     });

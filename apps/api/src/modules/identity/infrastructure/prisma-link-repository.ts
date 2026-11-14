@@ -536,11 +536,25 @@ export class PrismaLinkRepository extends LinkRepository {
     return changed === 1 ? this.findLink(input.linkId) : null;
   }
 
-  async deleteLink(linkId: string): Promise<LinkRecord | null> {
+  async deleteLink(linkId: string): Promise<LinkRecord | null | 'guardian_required'> {
     const link = await this.findLink(linkId);
     if (!link) return null;
     return this.prisma.$transaction(async (tx) => {
       await lockPair(tx, link.a.id, link.b.id);
+      if (link.origin === 'GUARDIANSHIP') {
+        // PRO-15 : jamais le dernier lien de tutelle d'un enfant. Le compte de l'enfant est
+        // verrouillé : deux ruptures concurrentes de ses liens de tutelle se sérialisent.
+        const child = link.a.isChild ? link.a : link.b;
+        await tx.$queryRaw`SELECT "id" FROM "account" WHERE "id" = ${child.accountId}::uuid FOR UPDATE`;
+        const others = await tx.profileLink.count({
+          where: {
+            origin: 'GUARDIANSHIP',
+            id: { not: linkId },
+            OR: [{ profileAId: child.id }, { profileBId: child.id }],
+          },
+        });
+        if (others === 0) return 'guardian_required' as const;
+      }
       const { count } = await tx.profileLink.deleteMany({ where: { id: linkId } });
       return count > 0 ? link : null;
     });

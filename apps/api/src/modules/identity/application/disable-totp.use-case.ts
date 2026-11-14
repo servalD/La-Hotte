@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { GuardianNotices } from './guardian-notices';
 import { Clock } from '../../../shared/domain';
 import { AccountRepository, BackgroundTasks } from '../domain/account.ports';
 import { SecurityLog, type SessionRef } from '../domain/ports';
@@ -25,6 +26,7 @@ export class DisableTotp {
     private readonly securityLog: SecurityLog,
     private readonly mailer: AccountMailer,
     private readonly background: BackgroundTasks,
+    private readonly guardianNotices: GuardianNotices,
     private readonly clock: Clock,
   ) {}
 
@@ -53,6 +55,7 @@ export class DisableTotp {
       const current = await this.accounts.findById(accountId);
       if (current) await this.mailer.send(current.email, { kind: 'totp_disabled' });
     });
+    this.guardianNotices.notify(accountId, 'totp');
     // L'ancienne session est déjà révoquée par `changeEpoch` ; pas de `previous`.
     return this.lifecycle.create({
       accountId,

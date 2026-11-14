@@ -50,6 +50,8 @@ const PUBLIC_ROUTES = [
   // parcours démarré par ce navigateur.
   'POST /api/v1/auth/google/start',
   'GET /api/v1/auth/google/callback',
+  // PRO-15 : installation d'un compte sous tutelle par son lien (jeton dans le corps).
+  'POST /api/v1/accounts/setup',
 ];
 /** Seul `GET` autorisé à modifier l'état (API-21). */
 const OIDC_CALLBACK_ROUTES = ['GET /api/v1/auth/google/callback'];

@@ -311,8 +311,23 @@ export interface MemoryProfile extends NewProfile {
   pinFailuresSinceEntry?: number;
   pinLockedUntil?: Date | null;
   pinResetNoticeAt?: Date | null;
+  /** PIN-05, PRO-12 : dernière réinitialisation ou désactivation. */
+  pinResetAt?: Date | null;
+  /** PRO-09 : dernier changement du marqueur, et sa notice. */
+  childChangedAt?: Date | null;
+  childNoticeAt?: Date | null;
   version?: number;
   createdAt?: Date;
+}
+
+/**
+ * PRO-12, PRO-15 : règles de tutelle que le double des profils consulte, branchées par les tests
+ * (elles lisent comptes et liens, que ce double ne connaît pas). Sans elles, aucun refus.
+ */
+export interface MemoryGuardianRules {
+  isWard(accountId: string): boolean;
+  /** Comme `guardianGap` du dépôt Prisma : le compte manque d'adulte responsable. */
+  gap(accountId: string): boolean;
 }
 
 /** Magasin commun aux doubles des comptes, des réglages de verrouillage et des profils. */
@@ -462,17 +477,47 @@ export class InMemoryProfileRepository extends ProfileRepository {
     return { status: 'updated', profile: details(next) };
   }
 
-  async setChild(accountId: string, profileId: string, isChild: boolean): Promise<boolean> {
+  /** Règles de tutelle, branchées par les tests de contrat (`create-test-app.ts`). */
+  guardianRules: MemoryGuardianRules | null = null;
+
+  async setChild(
+    accountId: string,
+    profileId: string,
+    isChild: boolean,
+    now: Date,
+  ): Promise<'updated' | 'missing' | 'ward' | 'guardian_required'> {
     const profile = this.owned(accountId, profileId);
-    if (!profile) return false;
-    this.profiles.set(profileId, { ...profile, isChild, version: (profile.version ?? 1) + 1 });
-    return true;
+    if (!profile) return 'missing';
+    if (this.guardianRules?.isWard(accountId)) return 'ward';
+    const gapBefore = this.guardianRules?.gap(accountId) ?? false;
+    const changed: MemoryProfile = {
+      ...profile,
+      isChild,
+      version: (profile.version ?? 1) + 1,
+      childChangedAt: now,
+      childNoticeAt: now,
+    };
+    this.profiles.set(profileId, changed);
+    if (!gapBefore && this.guardianRules?.gap(accountId)) {
+      this.profiles.set(profileId, profile);
+      return 'guardian_required';
+    }
+    return 'updated';
   }
 
-  async delete(accountId: string, profileId: string): Promise<'deleted' | 'last' | 'missing'> {
-    if (!this.owned(accountId, profileId)) return 'missing';
+  async delete(
+    accountId: string,
+    profileId: string,
+  ): Promise<'deleted' | 'last' | 'missing' | 'guardian_required'> {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return 'missing';
     if (this.ofAccount(accountId).length <= 1) return 'last';
+    const gapBefore = this.guardianRules?.gap(accountId) ?? false;
     this.profiles.delete(profileId);
+    if (!gapBefore && this.guardianRules?.gap(accountId)) {
+      this.profiles.set(profileId, profile);
+      return 'guardian_required';
+    }
     for (const [id, row] of this.sessions?.rows ?? []) {
       if (row.activeProfileId === profileId) {
         this.sessions?.rows.set(id, { ...row, activeProfileId: null });
@@ -544,6 +589,7 @@ export class InMemoryProfileRepository extends ProfileRepository {
     profile.pinFailedCount = 0;
     profile.pinLockedUntil = null;
     profile.pinResetNoticeAt = input.resetNoticeAt;
+    if (input.resetNoticeAt) profile.pinResetAt = input.resetNoticeAt;
     return { pinStamp: pinStampOf(input.pinHash) };
   }
 }

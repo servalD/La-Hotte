@@ -32,6 +32,8 @@ export class PrismaSecurityLog extends SecurityLog {
       data: {
         id: this.ids.next(),
         accountId: entry.accountId,
+        profileId: entry.profileId ?? null,
+        transferId: entry.transferId ?? null,
         event: entry.event,
         ip: entry.ip,
         userAgent: entry.userAgent.slice(0, USER_AGENT_MAX),

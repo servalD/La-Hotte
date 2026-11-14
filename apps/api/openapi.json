@@ -32,6 +32,40 @@
         ]
       }
     },
+    "/api/v1/account/age-attestation": {
+      "post": {
+        "operationId": "attestAge",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgeAttestationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/account/profiles": {
       "get": {
         "operationId": "listAccountProfiles",
@@ -257,6 +291,300 @@
         },
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards": {
+      "post": {
+        "operationId": "createWard",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-15 : la réponse est la même que l'adresse ait déjà un compte ou non (AUTH-09).",
+        "tags": [
+          "account"
+        ]
+      },
+      "get": {
+        "operationId": "listWards",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WardListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}": {
+      "get": {
+        "operationId": "getWard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WardDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/password-reset": {
+      "post": {
+        "operationId": "resetWardPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-16 : le lien de réinitialisation part à l'adresse du tuteur.",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/profiles": {
+      "post": {
+        "operationId": "createWardProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWardProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedWardProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/release": {
+      "post": {
+        "operationId": "requestWardRelease",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-16 : levée demandée ; elle prend effet à la déclaration d'âge du compte.",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/sessions": {
+      "delete": {
+        "operationId": "revokeWardSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/accounts/setup": {
+      "post": {
+        "operationId": "setupAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountSetupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -1917,6 +2245,28 @@
           "current"
         ]
       },
+      "AccountSetupDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          },
+          "password": {
+            "type": "string",
+            "description": "AUTH-02 : 12 caractères au moins, sans règle de composition.",
+            "minLength": 12,
+            "maxLength": 256,
+            "format": "password"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ]
+      },
       "AccountView": {
         "type": "object",
         "properties": {
@@ -1951,6 +2301,20 @@
           "googleLinked",
           "totpEnabled",
           "recoveryCodesRemaining"
+        ]
+      },
+      "AgeAttestationDto": {
+        "type": "object",
+        "properties": {
+          "ageAttested": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ageAttested"
         ]
       },
       "BirthdayDto": {
@@ -2121,6 +2485,18 @@
           "expiresAt"
         ]
       },
+      "CreatedWardProfileView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      },
       "CreateExampleItemDto": {
         "type": "object",
         "properties": {
@@ -2167,6 +2543,49 @@
             "type": "boolean",
             "description": "Marqueur « profil enfant » (PRO-05), fixé ici seulement (PRO-03).",
             "default": false
+          }
+        },
+        "required": [
+          "displayName"
+        ]
+      },
+      "CreateWardDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "profileName": {
+            "type": "string",
+            "description": "Nom affiché du profil enfant (PRO-02).",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "guardianAttested": {
+            "type": "boolean",
+            "description": "RGPD-06 : case « J'ai l'autorité parentale », non précochée. Seule `true` est acceptée.",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "profileName",
+          "guardianAttested"
+        ]
+      },
+      "CreateWardProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
           }
         },
         "required": [
@@ -3203,6 +3622,122 @@
             "format": "password"
           }
         }
+      },
+      "WardDetailView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releaseRequested": {
+            "type": "boolean",
+            "description": "Levée demandée, en attente de la déclaration d'âge du compte."
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountProfileView"
+            }
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WardSessionView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "releaseRequested",
+          "profiles",
+          "sessions"
+        ]
+      },
+      "WardListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WardView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "WardSessionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "createdAt",
+          "lastSeenAt"
+        ]
+      },
+      "WardView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releaseRequested": {
+            "type": "boolean",
+            "description": "Levée demandée, en attente de la déclaration d'âge du compte."
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountProfileView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "releaseRequested",
+          "profiles"
+        ]
       }
     }
   }

@@ -119,6 +119,55 @@ export class InMemoryLinkRepository extends LinkRepository {
     };
   }
 
+  /** LNK-11, PRO-15 : lien né accepté d'un passage ou de la tutelle (double des dépôts). */
+  addAcceptedLink(input: {
+    readonly id: string;
+    readonly profileIds: readonly [string, string];
+    readonly origin: Exclude<LinkOrigin, 'INVITATION'>;
+    readonly requestedBy: string;
+    readonly now: Date;
+  }): void {
+    const [x, y] = input.profileIds;
+    const [aId, bId] = x < y ? [x, y] : [y, x];
+    this.links.set(input.id, {
+      id: input.id,
+      aId,
+      bId,
+      status: 'ACCEPTED',
+      origin: input.origin,
+      requestedBy: input.requestedBy,
+      aGuardianRequired: this.profile(aId)?.isChild ?? false,
+      bGuardianRequired: this.profile(bId)?.isChild ?? false,
+      aGuardianApprovedBy: null,
+      bGuardianApprovedBy: null,
+      createdAt: input.now,
+    });
+  }
+
+  /** Liens d'un profil (double des requêtes des dépôts). */
+  linksOf(
+    profileId: string,
+  ): { id: string; otherId: string; origin: LinkOrigin; status: LinkStatus }[] {
+    return [...this.links.values()].flatMap((l) =>
+      l.aId === profileId || l.bId === profileId
+        ? [
+            {
+              id: l.id,
+              otherId: l.aId === profileId ? l.bId : l.aId,
+              origin: l.origin,
+              status: l.status,
+            },
+          ]
+        : [],
+    );
+  }
+
+  /** Change l'origine d'un lien (levée de tutelle, double). */
+  setOrigin(linkId: string, origin: LinkOrigin): void {
+    const link = this.links.get(linkId);
+    if (link) link.origin = origin;
+  }
+
   private linkBetween(x: string, y: string): MemoryLink | undefined {
     const [a, b] = x < y ? [x, y] : [y, x];
     return [...this.links.values()].find((l) => l.aId === a && l.bId === b);
@@ -358,10 +407,20 @@ export class InMemoryLinkRepository extends LinkRepository {
     return this.record(link);
   }
 
-  async deleteLink(linkId: string): Promise<LinkRecord | null> {
+  async deleteLink(linkId: string): Promise<LinkRecord | null | 'guardian_required'> {
     const link = this.links.get(linkId);
     if (!link) return null;
     const record = this.record(link);
+    if (link.origin === 'GUARDIANSHIP') {
+      const child = record.a.isChild ? record.a : record.b;
+      const others = [...this.links.values()].filter(
+        (l) =>
+          l.origin === 'GUARDIANSHIP' &&
+          l.id !== linkId &&
+          (l.aId === child.id || l.bId === child.id),
+      );
+      if (others.length === 0) return 'guardian_required';
+    }
     this.links.delete(linkId);
     return record;
   }

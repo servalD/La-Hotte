@@ -45,6 +45,8 @@ import {
   SessionStore,
   StaticIdentitySettings,
   TrustedDeviceRepository,
+  InMemoryWardRepository,
+  WardRepository,
 } from '../../src/modules/identity/testing';
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
@@ -71,6 +73,8 @@ export interface TestIdentity {
   readonly googleIdentities: InMemoryGoogleIdentityRepository;
   /** Liens, blocages et invitations (LNK-01 à LNK-10) ; profils partagés avec `accounts`. */
   readonly links: InMemoryLinkRepository;
+  /** Comptes sous tutelle (PRO-15, PRO-16) ; comptes, profils et liens partagés. */
+  readonly wards: InMemoryWardRepository;
   /**
    * Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé), `TEST_PIN`
    * sinon. `withProfile: false` : compte sans aucun profil.
@@ -116,6 +120,9 @@ export async function createTestApp(
   const googleReauthProofs = new InMemoryGoogleReauthProofs();
   const googleIdentities = new InMemoryGoogleIdentityRepository(accounts, sessions);
   const links = new InMemoryLinkRepository(accounts);
+  const wards = new InMemoryWardRepository(accounts, links);
+  // PRO-12, PRO-15 : le double des profils consulte les règles de tutelle des comptes et des liens.
+  profileRepository.guardianRules = wards;
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -162,6 +169,8 @@ export async function createTestApp(
     .useValue(googleIdentities)
     .overrideProvider(LinkRepository)
     .useValue(links)
+    .overrideProvider(WardRepository)
+    .useValue(wards)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
@@ -189,6 +198,7 @@ export async function createTestApp(
     googleReauthProofs,
     googleIdentities,
     links,
+    wards,
     async signIn({
       pin = false,
       relock = 'IDLE_15',

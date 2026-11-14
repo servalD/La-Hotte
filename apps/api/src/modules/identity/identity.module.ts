@@ -137,6 +137,25 @@ import {
   InvitationsController,
   LinksController,
 } from './presentation/links.controller';
+import {
+  AttestAgeForRelease,
+  CreateWard,
+  CreateWardProfile,
+  GetWard,
+  ListWards,
+  RequestWardRelease,
+  ResetWardPassword,
+  RevokeWardSessions,
+  SetupWardAccount,
+} from './application/manage-wards.use-case';
+import { GuardianNotices } from './application/guardian-notices';
+import { WardRepository } from './domain/ward.ports';
+import { PrismaWardRepository } from './infrastructure/prisma-ward-repository';
+import {
+  AccountSetupController,
+  AgeAttestationController,
+  WardsController,
+} from './presentation/wards.controller';
 
 /**
  * Module `identity` (ADR 0011, ADR 0013) : sessions, gardes, limitation, journal de sécurité,
@@ -157,6 +176,9 @@ import {
     LinksController,
     InvitationsController,
     BlocksController,
+    WardsController,
+    AgeAttestationController,
+    AccountSetupController,
   ],
   providers: [
     ResolveSession,
@@ -218,6 +240,17 @@ import {
     BlockProfile,
     UnblockProfile,
     ListBlocks,
+    CreateWard,
+    SetupWardAccount,
+    ListWards,
+    GetWard,
+    RevokeWardSessions,
+    ResetWardPassword,
+    CreateWardProfile,
+    RequestWardRelease,
+    AttestAgeForRelease,
+    GuardianNotices,
+    { provide: WardRepository, useClass: PrismaWardRepository },
     { provide: LinkRepository, useClass: PrismaLinkRepository },
     { provide: CircleReader, useExisting: LinkRepository },
     { provide: ProfileRepository, useClass: PrismaProfileRepository },

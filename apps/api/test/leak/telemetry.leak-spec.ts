@@ -23,6 +23,7 @@ import {
 } from '../../src/modules/identity/testing';
 import { type FakeOidcProvider, startFakeOidcProvider } from '../support/fake-oidc-provider';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
+import { PRESESSION_COOKIE } from '../../src/modules/identity/presentation/cookies';
 import { createAccountWithProfile, session as sessionHeaders, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
@@ -79,6 +80,8 @@ const randomPin = (): string => String(randomInt(10_000_000, 99_999_999));
  * cherchés par `findMarker`.
  */
 const linkSecrets: Record<string, string> = {};
+/** Secrets de la tutelle (PRO-15, PRO-16) : adresse et nom du profil, lien d'installation, mot de passe. */
+const wardSecrets: Record<string, string> = {};
 /** Fournisseur OpenID Connect local, à la place de Google. */
 let provider: FakeOidcProvider | undefined;
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
@@ -274,6 +277,99 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playGoogleScenario(app);
   await playProfileScenario(app);
   await playLinkScenario(app);
+  await playWardScenario(app);
+}
+
+/**
+ * Compte sous tutelle (tranche 6 bis, lot d) : adresse et nom du profil enfant porteurs du
+ * marqueur, lien d'installation dans l'e-mail puis dans le corps, mot de passe choisi, jeton
+ * forgé (refus commun), réinitialisation par le tuteur, levée. Rien ne doit en sortir.
+ */
+async function playWardScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const lifecycle = app.get(SessionLifecycle);
+
+  const tutor = await createAccountWithProfile(prisma);
+  const signed = await signIn(app, tutor);
+  const rotated = await lifecycle.rotate({
+    id: signed.sessionId,
+    accountId: tutor.accountId,
+    tokenHash: signed.tokenHash,
+  });
+  const tutorSession = sessionHeaders(
+    app,
+    rotated.token,
+    rotated.record.tokenHash,
+    signed.sessionId,
+    tutor.accountId,
+    tutor.profileId,
+  );
+  const as = (session: { cookie: string; csrf: string }) => ({
+    ...markedHeaders,
+    Cookie: `${session.cookie}; session=${MARKER}`,
+    'X-CSRF-Token': session.csrf,
+    Origin: 'http://localhost:3000',
+  });
+
+  wardSecrets.wardEmail = `pupille_${MARKER}@example.test`.toLowerCase();
+  wardSecrets.profileName = `Pupille ${MARKER}`;
+  await http
+    .post('/api/v1/account/wards')
+    .set(as(tutorSession))
+    .send({
+      email: wardSecrets.wardEmail,
+      profileName: wardSecrets.profileName,
+      guardianAttested: true,
+    })
+    .expect(204);
+  await background.flush();
+  wardSecrets.setupToken = mail.lastToken(wardSecrets.wardEmail) ?? '';
+  wardSecrets.setupTokenHash = createHash('sha256')
+    .update(wardSecrets.setupToken, 'utf8')
+    .digest('hex');
+  wardSecrets.password = `mot de passe ${MARKER}`;
+
+  const pre = await http.get('/api/v1/session').set(markedHeaders).expect(200);
+  const presession =
+    (pre.headers['set-cookie'] as unknown as string[] | undefined)
+      ?.find((c) => c.startsWith(`${PRESESSION_COOKIE}=`))
+      ?.split(';')[0] ?? '';
+  const anonymous = {
+    ...markedHeaders,
+    Cookie: presession,
+    'X-CSRF-Token': pre.body.csrfToken as string,
+    Origin: 'http://localhost:3000',
+  };
+  // Jeton forgé, puis installation légitime, puis rejeu : refus commun.
+  await http
+    .post('/api/v1/accounts/setup')
+    .set(anonymous)
+    .send({ token: randomBytes(32).toString('base64url'), password: wardSecrets.password })
+    .expect(404);
+  await http
+    .post('/api/v1/accounts/setup')
+    .set(anonymous)
+    .send({ token: wardSecrets.setupToken, password: wardSecrets.password })
+    .expect(204);
+  await http
+    .post('/api/v1/accounts/setup')
+    .set(anonymous)
+    .send({ token: wardSecrets.setupToken, password: wardSecrets.password })
+    .expect(404);
+
+  const ward = await prisma.account.findUniqueOrThrow({
+    where: { email: wardSecrets.wardEmail },
+    select: { id: true },
+  });
+  await http.get('/api/v1/account/wards').set(as(tutorSession)).expect(200);
+  await http.get(`/api/v1/account/wards/${ward.id}`).set(as(tutorSession)).expect(200);
+  await http
+    .post(`/api/v1/account/wards/${ward.id}/password-reset`)
+    .set(as(tutorSession))
+    .expect(204);
+  await http.post(`/api/v1/account/wards/${ward.id}/release`).set(as(tutorSession)).expect(204);
+  await background.flush();
 }
 
 /**
@@ -378,6 +474,12 @@ async function playLinkScenario(app: INestApplication): Promise<void> {
     inviter.accountId,
     inviter.profileId,
   );
+  // PRO-12 : le compte garde un adulte, sinon le marquage serait refusé (`GUARDIAN_REQUIRED`).
+  const guardian = await http
+    .post('/api/v1/account/profiles')
+    .set(as(inviterSession))
+    .send({ displayName: `Parent ${MARKER}` })
+    .expect(201);
   await http
     .put(`/api/v1/account/profiles/${inviter.profileId}/child`)
     .set(as(inviterSession))
@@ -401,11 +503,6 @@ async function playLinkScenario(app: INestApplication): Promise<void> {
     .post('/api/v1/invitations/redeem')
     .set(as(kidSession))
     .send({ token: linkSecrets.childToken })
-    .expect(201);
-  const guardian = await http
-    .post('/api/v1/account/profiles')
-    .set(as(inviterSession))
-    .send({ displayName: `Parent ${MARKER}` })
     .expect(201);
   await http
     .post('/api/v1/session/profile')
@@ -1094,6 +1191,31 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       expect(bodies('traces')).toContain(route);
     }
     for (const [name, secret] of Object.entries(linkSecrets)) {
+      expect(secret.length).toBeGreaterThanOrEqual(16);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('PRO-15, PRO-16 : adresse, nom, lien d’installation, mot de passe absents de toute sortie', () => {
+    expect(Object.keys(wardSecrets).sort()).toEqual(
+      ['password', 'profileName', 'setupToken', 'setupTokenHash', 'wardEmail'].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    // Les routes de la tutelle ont bien été tracées (pas de faux vert).
+    for (const route of [
+      '/api/v1/account/wards',
+      '/api/v1/accounts/setup',
+      '/api/v1/account/wards/:id/password-reset',
+      '/api/v1/account/wards/:id/release',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(wardSecrets)) {
       expect(secret.length).toBeGreaterThanOrEqual(16);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }

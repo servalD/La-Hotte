@@ -25,11 +25,17 @@ import type {
   AccountProfileListView,
   AccountProfileView,
   AccountView,
+  AgeAttestationDto,
   CreateProfileDto,
+  CreateWardDto,
+  CreateWardProfileDto,
+  CreatedWardProfileView,
   ProblemDetailsDto,
   ResetProfilePinDto,
   SetChildMarkerDto,
   TrustedDeviceListView,
+  WardDetailView,
+  WardListView,
 } from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
@@ -144,6 +150,83 @@ export function useGetAccount<
   return query;
 }
 
+export const getAttestAgeUrl = () => {
+  return `/api/v1/account/age-attestation`;
+};
+
+export const attestAge = async (
+  ageAttestationDto: AgeAttestationDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getAttestAgeUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(ageAttestationDto),
+  });
+};
+
+export const getAttestAgeMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof attestAge>>,
+    TError,
+    { data: AgeAttestationDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof attestAge>>,
+  TError,
+  { data: AgeAttestationDto },
+  TContext
+> => {
+  const mutationKey = ['attestAge'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof attestAge>>,
+    { data: AgeAttestationDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return attestAge(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AttestAgeMutationResult = NonNullable<Awaited<ReturnType<typeof attestAge>>>;
+export type AttestAgeMutationBody = AgeAttestationDto;
+export type AttestAgeMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useAttestAge = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof attestAge>>,
+      TError,
+      { data: AgeAttestationDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof attestAge>>,
+  TError,
+  { data: AgeAttestationDto },
+  TContext
+> => {
+  const mutationOptions = getAttestAgeMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 export const getListAccountProfilesUrl = () => {
   return `/api/v1/account/profiles`;
 };
@@ -659,6 +742,624 @@ export const useResetProfilePin = <TError = ErrorType<ProblemDetailsDto>, TConte
   TContext
 > => {
   const mutationOptions = getResetProfilePinMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary PRO-15 : la réponse est la même que l'adresse ait déjà un compte ou non (AUTH-09).
+ */
+export const getCreateWardUrl = () => {
+  return `/api/v1/account/wards`;
+};
+
+export const createWard = async (
+  createWardDto: CreateWardDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getCreateWardUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createWardDto),
+  });
+};
+
+export const getCreateWardMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWard>>,
+    TError,
+    { data: CreateWardDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWard>>,
+  TError,
+  { data: CreateWardDto },
+  TContext
+> => {
+  const mutationKey = ['createWard'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWard>>,
+    { data: CreateWardDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWard(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWardMutationResult = NonNullable<Awaited<ReturnType<typeof createWard>>>;
+export type CreateWardMutationBody = CreateWardDto;
+export type CreateWardMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-15 : la réponse est la même que l'adresse ait déjà un compte ou non (AUTH-09).
+ */
+export const useCreateWard = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createWard>>,
+      TError,
+      { data: CreateWardDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createWard>>,
+  TError,
+  { data: CreateWardDto },
+  TContext
+> => {
+  const mutationOptions = getCreateWardMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getListWardsUrl = () => {
+  return `/api/v1/account/wards`;
+};
+
+export const listWards = async (options?: RequestInit): Promise<WardListView> => {
+  return apiFetch<WardListView>(getListWardsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListWardsQueryKey = () => {
+  return [`/api/v1/account/wards`] as const;
+};
+
+export const getListWardsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWards>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listWards>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWardsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listWards>>> = ({ signal }) =>
+    listWards({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWards>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListWardsQueryResult = NonNullable<Awaited<ReturnType<typeof listWards>>>;
+export type ListWardsQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListWards<
+  TData = Awaited<ReturnType<typeof listWards>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listWards>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listWards>>,
+          TError,
+          Awaited<ReturnType<typeof listWards>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListWards<
+  TData = Awaited<ReturnType<typeof listWards>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listWards>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listWards>>,
+          TError,
+          Awaited<ReturnType<typeof listWards>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListWards<
+  TData = Awaited<ReturnType<typeof listWards>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listWards>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListWards<
+  TData = Awaited<ReturnType<typeof listWards>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listWards>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListWardsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getGetWardUrl = (id: string) => {
+  return `/api/v1/account/wards/${id}`;
+};
+
+export const getWard = async (id: string, options?: RequestInit): Promise<WardDetailView> => {
+  return apiFetch<WardDetailView>(getGetWardUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetWardQueryKey = (id?: string) => {
+  return [`/api/v1/account/wards/${id}`] as const;
+};
+
+export const getGetWardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWard>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getWard>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetWardQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getWard>>> = ({ signal }) =>
+    getWard(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWard>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetWardQueryResult = NonNullable<Awaited<ReturnType<typeof getWard>>>;
+export type GetWardQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetWard<
+  TData = Awaited<ReturnType<typeof getWard>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getWard>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getWard>>,
+          TError,
+          Awaited<ReturnType<typeof getWard>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetWard<
+  TData = Awaited<ReturnType<typeof getWard>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getWard>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getWard>>,
+          TError,
+          Awaited<ReturnType<typeof getWard>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetWard<
+  TData = Awaited<ReturnType<typeof getWard>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getWard>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetWard<
+  TData = Awaited<ReturnType<typeof getWard>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getWard>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetWardQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary PRO-16 : le lien de réinitialisation part à l'adresse du tuteur.
+ */
+export const getResetWardPasswordUrl = (id: string) => {
+  return `/api/v1/account/wards/${id}/password-reset`;
+};
+
+export const resetWardPassword = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getResetWardPasswordUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getResetWardPasswordMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetWardPassword>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetWardPassword>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['resetWardPassword'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetWardPassword>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return resetWardPassword(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetWardPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetWardPassword>>
+>;
+
+export type ResetWardPasswordMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-16 : le lien de réinitialisation part à l'adresse du tuteur.
+ */
+export const useResetWardPassword = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof resetWardPassword>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof resetWardPassword>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getResetWardPasswordMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getCreateWardProfileUrl = (id: string) => {
+  return `/api/v1/account/wards/${id}/profiles`;
+};
+
+export const createWardProfile = async (
+  id: string,
+  createWardProfileDto: CreateWardProfileDto,
+  options?: RequestInit,
+): Promise<CreatedWardProfileView> => {
+  return apiFetch<CreatedWardProfileView>(getCreateWardProfileUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createWardProfileDto),
+  });
+};
+
+export const getCreateWardProfileMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWardProfile>>,
+    TError,
+    { id: string; data: CreateWardProfileDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWardProfile>>,
+  TError,
+  { id: string; data: CreateWardProfileDto },
+  TContext
+> => {
+  const mutationKey = ['createWardProfile'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWardProfile>>,
+    { id: string; data: CreateWardProfileDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createWardProfile(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWardProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWardProfile>>
+>;
+export type CreateWardProfileMutationBody = CreateWardProfileDto;
+export type CreateWardProfileMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useCreateWardProfile = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createWardProfile>>,
+      TError,
+      { id: string; data: CreateWardProfileDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createWardProfile>>,
+  TError,
+  { id: string; data: CreateWardProfileDto },
+  TContext
+> => {
+  const mutationOptions = getCreateWardProfileMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary PRO-16 : levée demandée ; elle prend effet à la déclaration d'âge du compte.
+ */
+export const getRequestWardReleaseUrl = (id: string) => {
+  return `/api/v1/account/wards/${id}/release`;
+};
+
+export const requestWardRelease = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getRequestWardReleaseUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getRequestWardReleaseMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestWardRelease>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestWardRelease>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['requestWardRelease'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestWardRelease>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return requestWardRelease(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestWardReleaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestWardRelease>>
+>;
+
+export type RequestWardReleaseMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-16 : levée demandée ; elle prend effet à la déclaration d'âge du compte.
+ */
+export const useRequestWardRelease = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof requestWardRelease>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof requestWardRelease>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getRequestWardReleaseMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getRevokeWardSessionsUrl = (id: string) => {
+  return `/api/v1/account/wards/${id}/sessions`;
+};
+
+export const revokeWardSessions = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getRevokeWardSessionsUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getRevokeWardSessionsMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeWardSessions>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeWardSessions>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['revokeWardSessions'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeWardSessions>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return revokeWardSessions(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeWardSessionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeWardSessions>>
+>;
+
+export type RevokeWardSessionsMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRevokeWardSessions = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof revokeWardSessions>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof revokeWardSessions>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getRevokeWardSessionsMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

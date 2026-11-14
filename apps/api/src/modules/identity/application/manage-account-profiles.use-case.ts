@@ -21,6 +21,8 @@ import {
 import { ProfileRepository } from '../domain/profile.ports';
 import { EmailNotVerifiedError } from '../domain/second-factor.errors';
 import { SessionRequiredError } from '../domain/session.errors';
+import { GuardianRequiredError, WardChildOnlyError } from '../domain/ward.errors';
+import { WardRepository } from '../domain/ward.ports';
 import type { ClientInfo } from './client-info';
 import { SessionLifecycle } from './session-lifecycle';
 
@@ -37,12 +39,16 @@ export class ListAccountProfiles {
   }
 }
 
-/** PRO-08 : création, sans ré-authentification, 10 au plus, compte vérifié (AUTH-15). */
+/**
+ * PRO-08 : création, sans ré-authentification, 10 au plus, compte vérifié (AUTH-15). Dans un
+ * compte sous tutelle (PRO-15) : profil enfant seulement, lié d'office au tuteur.
+ */
 @Injectable()
 export class CreateAccountProfile {
   constructor(
     private readonly accounts: AccountRepository,
     private readonly profiles: ProfileRepository,
+    private readonly wards: WardRepository,
     private readonly securityLog: SecurityLog,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
@@ -64,19 +70,32 @@ export class CreateAccountProfile {
 
     const id = this.ids.next();
     const now = this.clock.now();
-    const created = await this.profiles.create(
-      input.accountId,
-      {
-        id,
-        displayName,
-        accentColor: accentColorFor(id),
-        locale: DEFAULT_LOCALE,
-        currency: DEFAULT_CURRENCY,
-        timezone: DEFAULT_TIMEZONE,
-        isChild: input.isChild,
-      },
-      now,
-    );
+    const profile = {
+      id,
+      displayName,
+      accentColor: accentColorFor(id),
+      locale: DEFAULT_LOCALE,
+      currency: DEFAULT_CURRENCY,
+      timezone: DEFAULT_TIMEZONE,
+    };
+    const ward = await this.wards.guardianshipOf(input.accountId);
+    let created: 'created' | 'limit' | 'missing';
+    if (ward) {
+      if (!input.isChild) throw new WardChildOnlyError();
+      created = await this.wards.createWardProfile({
+        wardAccountId: input.accountId,
+        profile,
+        linkIds: () => this.ids.next(),
+        now,
+      });
+    } else {
+      created = await this.profiles.create(
+        input.accountId,
+        { ...profile, isChild: input.isChild },
+        now,
+      );
+    }
+    if (created === 'missing') throw new SessionRequiredError();
     if (created === 'limit') throw new ProfileLimitReachedError();
     await log(this.securityLog, input.accountId, 'profile.created', input.client, now);
     return {
@@ -117,6 +136,7 @@ export class DeleteAccountProfile {
     const result = await this.profiles.delete(accountId, input.profileId);
     if (result === 'missing') throw new ProfileNotFoundError();
     if (result === 'last') throw new LastProfileError();
+    if (result === 'guardian_required') throw new GuardianRequiredError();
     // Après la suppression : les événements de changement de profil suivent l'écriture (salons
     // temps réel). Une session qui l'aurait choisi entre les deux n'y trouve plus qu'un profil
     // absent, donc verrouillé (423).
@@ -230,10 +250,12 @@ export class SetProfileChildMarker {
     readonly client: ClientInfo;
   }): Promise<void> {
     const accountId = input.session.accountId;
-    if (!(await this.profiles.setChild(accountId, input.profileId, input.isChild))) {
-      throw new ProfileNotFoundError();
-    }
-    await log(this.securityLog, accountId, 'profile.child_changed', input.client, this.clock.now());
+    const now = this.clock.now();
+    const result = await this.profiles.setChild(accountId, input.profileId, input.isChild, now);
+    if (result === 'missing') throw new ProfileNotFoundError();
+    if (result === 'ward') throw new WardChildOnlyError();
+    if (result === 'guardian_required') throw new GuardianRequiredError();
+    await log(this.securityLog, accountId, 'profile.child_changed', input.client, now);
     // LNK-09 : le nom de l'enfant et la tutelle changent pour ses contreparties.
     this.events.publish({ type: 'circle.changed', profileIds: [input.profileId] });
   }

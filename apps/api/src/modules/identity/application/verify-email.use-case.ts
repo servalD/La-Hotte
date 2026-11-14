@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { GuardianNotices } from './guardian-notices';
 import { Clock, IdGenerator } from '../../../shared/domain';
 import { AccountTokenInvalidError } from '../domain/account.errors';
 import { AccountRepository, IdentitySettings } from '../domain/account.ports';
@@ -30,6 +31,7 @@ export class VerifyEmail {
     private readonly settings: IdentitySettings,
     private readonly securityLog: SecurityLog,
     private readonly ids: IdGenerator,
+    private readonly guardianNotices: GuardianNotices,
     private readonly clock: Clock,
   ) {}
 
@@ -49,6 +51,7 @@ export class VerifyEmail {
         throw new AccountTokenInvalidError();
       }
       await this.log(consumed.accountId, 'email.changed', input.client);
+      this.guardianNotices.notify(consumed.accountId, 'email');
       return;
     }
 

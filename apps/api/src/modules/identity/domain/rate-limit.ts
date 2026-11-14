@@ -22,6 +22,8 @@ export const RATE_LIMIT_SCOPES = [
   'oidc_ip', // démarrages d'un parcours Google, par IP (AUTH-03)
   'mail_recipient', // envois d'e-mail, par adresse destinataire (jamais de 429)
   'invitation_profile', // créations d'invitation, par profil (LNK-01)
+  'transfer_request', // demandes de passage, détachement, tutelle, par compte d'origine (PRO-12)
+  'account_setup_ip', // installations d'un compte détaché ou sous tutelle, par IP (PRO-13, PRO-15)
 ] as const;
 export type RateLimitScope = (typeof RATE_LIMIT_SCOPES)[number];
 
@@ -57,6 +59,9 @@ export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolic
   mail_recipient: { threshold: 3, windowMs: 24 * HOUR, resetOnSuccess: false },
   // Demandes, pas échecs : chaque création compte (LNK-01).
   invitation_profile: { threshold: 20, windowMs: 24 * HOUR, resetOnSuccess: false },
+  // Demandes : chaque demande compte (`01`, « Limitation »).
+  transfer_request: { threshold: 10, windowMs: 24 * HOUR, resetOnSuccess: false },
+  account_setup_ip: { threshold: 10, windowMs: HOUR, resetOnSuccess: false },
 };
 
 /** Seuil du compteur par compte depuis un appareil de confiance du compte (ADR 0013). */

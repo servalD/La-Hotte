@@ -34,6 +34,7 @@ import {
 } from '../domain/ports';
 import { EmailNotVerifiedError } from '../domain/second-factor.errors';
 import { RateLimitedError, SessionRequiredError } from '../domain/session.errors';
+import { GuardianRequiredError } from '../domain/ward.errors';
 import { AccountMailer } from './account-mailer';
 import type { ActiveProfile } from './authorize-profile.use-case';
 import type { ClientInfo } from './client-info';
@@ -334,6 +335,7 @@ export class BreakLink {
     if (!link || !canBreakLink(link, actor)) throw new LinkNotFoundError();
     const deleted = await this.links.deleteLink(link.id);
     if (!deleted) throw new LinkNotFoundError();
+    if (deleted === 'guardian_required') throw new GuardianRequiredError();
     await log(
       this.securityLog,
       input.active.accountId,

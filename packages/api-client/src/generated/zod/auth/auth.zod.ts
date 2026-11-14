@@ -7,6 +7,26 @@
  */
 import * as zod from 'zod';
 
+export const setupAccountBodyTokenMin = 43;
+export const setupAccountBodyTokenMax = 43;
+
+export const setupAccountBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+export const setupAccountBodyPasswordMin = 12;
+export const setupAccountBodyPasswordMax = 256;
+
+export const setupAccountBody = zod.object({
+  token: zod
+    .string()
+    .min(setupAccountBodyTokenMin)
+    .max(setupAccountBodyTokenMax)
+    .regex(setupAccountBodyTokenRegExp),
+  password: zod
+    .string()
+    .min(setupAccountBodyPasswordMin)
+    .max(setupAccountBodyPasswordMax)
+    .describe('AUTH-02 : 12 caractères au moins, sans règle de composition.'),
+});
+
 /**
  * @summary AUTH-16, AUTH-14 : même réponse que la nouvelle adresse soit libre ou prise.
  */

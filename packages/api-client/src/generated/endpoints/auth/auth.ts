@@ -14,6 +14,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountSetupDto,
   EmailDto,
   EmailTokenDto,
   GoogleRedirectView,
@@ -37,6 +38,83 @@ import type { ErrorType } from '../../../http/fetcher';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export const getSetupAccountUrl = () => {
+  return `/api/v1/accounts/setup`;
+};
+
+export const setupAccount = async (
+  accountSetupDto: AccountSetupDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getSetupAccountUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(accountSetupDto),
+  });
+};
+
+export const getSetupAccountMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setupAccount>>,
+    TError,
+    { data: AccountSetupDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setupAccount>>,
+  TError,
+  { data: AccountSetupDto },
+  TContext
+> => {
+  const mutationKey = ['setupAccount'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setupAccount>>,
+    { data: AccountSetupDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return setupAccount(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetupAccountMutationResult = NonNullable<Awaited<ReturnType<typeof setupAccount>>>;
+export type SetupAccountMutationBody = AccountSetupDto;
+export type SetupAccountMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useSetupAccount = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof setupAccount>>,
+      TError,
+      { data: AccountSetupDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof setupAccount>>,
+  TError,
+  { data: AccountSetupDto },
+  TContext
+> => {
+  const mutationOptions = getSetupAccountMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 /**
  * @summary AUTH-16, AUTH-14 : même réponse que la nouvelle adresse soit libre ou prise.
  */

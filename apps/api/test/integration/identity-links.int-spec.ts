@@ -424,9 +424,13 @@ describe('setChild (PRO-09)', () => {
     const outcome = await redeem(await openInvitation(kid.profileId), friend.profileId);
     if (outcome.kind !== 'linked') throw new Error('lien attendu');
     const profiles = app.get(ProfileRepository);
-    expect(await profiles.setChild(kid.accountId, kid.profileId, false)).toBe(true);
+    expect(await profiles.setChild(kid.accountId, kid.profileId, false, new Date())).toBe(
+      'updated',
+    );
     expect(await links.findLink(outcome.linkId)).toBeNull();
-    expect(await profiles.setChild(friend.accountId, kid.profileId, true)).toBe(false);
+    expect(await profiles.setChild(friend.accountId, kid.profileId, true, new Date())).toBe(
+      'missing',
+    );
   });
 });
 
@@ -454,10 +458,22 @@ describe('revue SEC-40 : verrous et éligibilité', () => {
     for (let round = 0; round < 6; round += 1) {
       const inviter = await person();
       const guest = await person();
+      // PRO-12 : le compte garde un adulte, sinon le marquage serait refusé (`GUARDIAN_REQUIRED`).
+      await prisma.profile.create({
+        data: {
+          id: randomUUID(),
+          accountId: guest.accountId,
+          displayName: 'Adulte',
+          accentColor: '#336699',
+          locale: 'fr',
+          currency: 'EUR',
+          timezone: 'Europe/Paris',
+        },
+      });
       const token = await openInvitation(inviter.profileId);
       const [outcome] = await Promise.all([
         redeem(token, guest.profileId),
-        profiles.setChild(guest.accountId, guest.profileId, true),
+        profiles.setChild(guest.accountId, guest.profileId, true, new Date()),
       ]);
       if (outcome.kind !== 'linked') throw new Error('lien attendu');
       const row = await prisma.profileLink.findUniqueOrThrow({ where: { id: outcome.linkId } });

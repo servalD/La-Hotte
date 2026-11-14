@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { GuardianNotices } from './guardian-notices';
 import { Clock } from '../../../shared/domain';
 import { AccountTokenInvalidError } from '../domain/account.errors';
 import { AccountRepository, IdentitySettings } from '../domain/account.ports';
@@ -24,6 +25,7 @@ export class ConfirmPasswordReset {
     private readonly lifecycle: SessionLifecycle,
     private readonly securityLog: SecurityLog,
     private readonly limiter: RateLimiter,
+    private readonly guardianNotices: GuardianNotices,
     private readonly clock: Clock,
   ) {}
 
@@ -64,5 +66,7 @@ export class ConfirmPasswordReset {
       userAgent: input.client.userAgent,
       at: this.clock.now(),
     });
+    // PRO-16 : le tuteur d'un compte sous tutelle est averti.
+    this.guardianNotices.notify(consumed.accountId, 'password');
   }
 }

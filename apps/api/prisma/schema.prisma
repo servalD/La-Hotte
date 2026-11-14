@@ -407,6 +407,8 @@ model ProfileTransfer {
   newEmail               String?           @map("new_email") @db.VarChar(254)
   /// SHA-256 du jeton de passage (`MOVE`) ou du lien d'installation (`DETACH`, `WARD`).
   tokenHash              String            @unique @map("token_hash") @db.Char(64)
+  /// Échéance du jeton : 7 jours pour un jeton de passage, 24 heures pour un lien d'installation, renvoyable.
+  tokenExpiresAt         DateTime          @map("token_expires_at") @db.Timestamptz(3)
   /// PRO-12 : figé à la création.
   profileConsentRequired Boolean           @map("profile_consent_required")
   /// PRO-12 : regroupement déclaré par le compte d'origine.
