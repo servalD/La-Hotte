@@ -26,6 +26,20 @@ const securityHeaders = [
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
 ];
 
+/** Pages dont le jeton à usage unique est dans le fragment : aucune ne doit rien laisser fuir par Referer. */
+const TOKEN_PAGES = [
+  '/auth/verify-email',
+  '/auth/reset-password',
+  '/auth/cancel-email-change',
+  '/auth/google/return',
+  '/invitations/open',
+  '/invitations/profile',
+  '/accounts/setup',
+  '/profiles/verify-email',
+  '/transfers/consent',
+  '/transfers/cancel',
+];
+
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -37,7 +51,14 @@ const config: NextConfig = {
   // ne soit servi. Partout ailleurs (développement, CI des demandes de fusion), aucune carte.
   productionBrowserSourceMaps: process.env.BROWSER_SOURCEMAPS === 'true',
   headers() {
-    return Promise.resolve([{ source: '/:path*', headers: securityHeaders }]);
+    return Promise.resolve([
+      { source: '/:path*', headers: securityHeaders },
+      // Jeton à usage unique dans le fragment : ces pages ne doivent rien laisser fuir par Referer.
+      ...TOKEN_PAGES.map((source) => ({
+        source,
+        headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }],
+      })),
+    ]);
   },
   rewrites() {
     return Promise.resolve([{ source: '/api/:path*', destination: `${API_ORIGIN}/api/:path*` }]);
