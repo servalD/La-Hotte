@@ -366,6 +366,7 @@ export class InMemoryTransferRepository extends TransferRepository {
     if (!profile || profile.accountId !== t.fromAccountId || !from || from.guardianAccountId) {
       return fail();
     }
+    if (!t.profileConsentRequired && !(profile.isChild ?? false)) return fail();
 
     let toAccountId = t.toAccountId;
     if (t.kind === 'DETACH') {

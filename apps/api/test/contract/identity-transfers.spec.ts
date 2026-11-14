@@ -523,7 +523,10 @@ describe('revue SEC-40 du code (cycle 1)', () => {
     await runDue(mover.profileId ?? '');
     // Le lien d'installation expire sans être servi.
     for (const t of identity.transfers.transfers.values()) {
-      if (t.profileId === mover.profileId) t.tokenExpiresAt = new Date(Date.now() - 1);
+      if (t.profileId !== mover.profileId) continue;
+      // Échéance bien avant le lien, lien expiré : sans égalité à la milliseconde près.
+      t.executesAt = new Date(Date.now() - 10_000);
+      t.tokenExpiresAt = new Date(Date.now() - 1);
     }
     await app.get(RunDueTransfers).execute();
     const own = await http().get('/api/v1/profiles/me/transfer').set({ Cookie: mover.cookie });
@@ -557,5 +560,69 @@ describe('revue SEC-40 du code (cycle 1)', () => {
       .send({ kind: 'DETACH' })
       .expect(422);
     expect(res.body.code).toBe('DETACH_EMAIL_REQUIRED');
+  });
+});
+
+describe('revue SEC-40 du code (cycle 2)', () => {
+  it('I1 : l’espace Compte ne lit pas l’adresse du profil prise par défaut ; le profil, si', async () => {
+    const stayer = await account('Parent');
+    const mover = await addProfile(stayer, { displayName: 'Majeur' });
+    const email = `perso-${randomUUID()}@lahotte.test`;
+    const profile = identity.accounts.profiles.get(mover.profileId ?? '');
+    if (profile) {
+      profile.email = email;
+      profile.emailVerifiedAt = new Date(Date.now() - 10 * DAY);
+    }
+    const origin = await reauthenticated(stayer);
+    await http()
+      .post(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+      .set(origin.mutation)
+      .send({ kind: 'DETACH' })
+      .expect(201);
+    const asAccount = await http()
+      .get(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+      .set({ Cookie: origin.cookie })
+      .expect(200);
+    expect(asAccount.body.newEmail).toBeNull();
+    expect(JSON.stringify(asAccount.body)).not.toContain(email);
+    const asProfile = await http()
+      .get('/api/v1/profiles/me/transfer')
+      .set({ Cookie: mover.cookie });
+    expect(asProfile.body.transfer.newEmail).toBe(email);
+  });
+
+  it('I2 : des jetons faux ne bloquent pas un lien d’annulation valable', async () => {
+    const { mover, host, origin } = await families();
+    const email = `part-${randomUUID()}@lahotte.test`;
+    const profile = identity.accounts.profiles.get(mover.profileId ?? '');
+    if (profile) {
+      profile.email = email;
+      profile.emailVerifiedAt = new Date(Date.now() - 10 * DAY);
+    }
+    const requested = await requestMove(origin, mover.profileId ?? '').expect(201);
+    await http()
+      .post('/api/v1/profiles/me/transfer/consent')
+      .set(mover.mutation)
+      .send({ pinChoice: 'NONE' })
+      .expect(204);
+    const hostFresh = await reauthenticated(host);
+    await http()
+      .post('/api/v1/account/transfers/accept')
+      .set(hostFresh.mutation)
+      .send({ token: requested.body.token })
+      .expect(204);
+    await identity.background.flush();
+    const token = identity.mail.lastToken(email);
+    const anonymous = await presession();
+    let limited = false;
+    for (let i = 0; i < 40 && !limited; i += 1) {
+      const res = await http()
+        .post('/api/v1/transfers/cancel')
+        .set(anonymous)
+        .send({ token: 'A'.repeat(43) });
+      limited = res.status === 429;
+    }
+    expect(limited).toBe(true);
+    await http().post('/api/v1/transfers/cancel').set(anonymous).send({ token }).expect(204);
   });
 });

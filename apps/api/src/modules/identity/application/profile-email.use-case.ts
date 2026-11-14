@@ -8,11 +8,12 @@ import { RateLimiter, SecretTokens } from '../domain/ports';
 import { ProfileNotFoundError } from '../domain/profile.errors';
 import { ProfileRepository } from '../domain/profile.ports';
 import { EmailNotVerifiedError } from '../domain/second-factor.errors';
-import { RateLimitedError, SessionRequiredError } from '../domain/session.errors';
+import { SessionRequiredError } from '../domain/session.errors';
 import { PROFILE_EMAIL_VERIFY_TTL_MS } from '../domain/transfer';
 import { AccountMailer } from './account-mailer';
 import type { ActiveProfile } from './authorize-profile.use-case';
 import type { ClientInfo } from './client-info';
+import { failToken } from './token-failure';
 
 /**
  * PRO-10 : adresse du profil actif, fixée depuis le profil (PIN validé par la garde), jamais depuis
@@ -97,15 +98,16 @@ export class VerifyProfileEmail {
   ) {}
 
   async execute(input: { readonly token: string; readonly client: ClientInfo }): Promise<void> {
-    const limited = [{ scope: 'profile_link_ip' as const, parts: [input.client.ip] }];
-    const limit = await this.limiter.check(limited, this.clock.now());
-    if (!limit.allowed || !limit.reservation) throw new RateLimitedError(limit.retryAfterMs);
-    await this.limiter.recordFailure(limited, this.clock.now(), limit.reservation);
-    if (!this.tokens.isWellFormed(input.token)) throw new AccountTokenInvalidError();
-    const confirmed = await this.profiles.confirmEmail(
-      this.tokens.hash(input.token),
-      this.clock.now(),
-    );
-    if (!confirmed) throw new AccountTokenInvalidError();
+    const confirmed = this.tokens.isWellFormed(input.token)
+      ? await this.profiles.confirmEmail(this.tokens.hash(input.token), this.clock.now())
+      : null;
+    if (!confirmed) {
+      await failToken(
+        this.limiter,
+        input.client.ip,
+        this.clock.now(),
+        new AccountTokenInvalidError(),
+      );
+    }
   }
 }

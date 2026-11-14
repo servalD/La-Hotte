@@ -493,6 +493,8 @@ export class PrismaTransferRepository extends TransferRepository {
       select: { id: true, isChild: true, email: true, emailVerifiedAt: true },
     });
     if (!profile) throw new ExecutionFailed();
+    // Revue SEC-40 (cycle 2, m1) : sans accord du profil, il doit être enfant à l'exécution.
+    if (!transfer.profile_consent_required && !profile.isChild) throw new ExecutionFailed();
     const [from] = await tx.$queryRaw<{ guardian_account_id: string | null; status: string }[]>`
       SELECT "guardian_account_id", "status"::text AS status FROM "account"
       WHERE "id" = ${fromAccountId}::uuid`;

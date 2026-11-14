@@ -125,9 +125,13 @@ export class AccountProfileTransferController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentSession() current: ResolvedSession,
   ): Promise<TransferView> {
-    return toTransferView(
-      await this.getUseCase.execute({ accountId: current.record.accountId, profileId: id }),
-    );
+    const transfer = await this.getUseCase.execute({
+      accountId: current.record.accountId,
+      profileId: id,
+    });
+    // Revue SEC-40 (cycle 2, I1) : l'adresse du détachement peut être celle du profil, que
+    // l'espace Compte ne lit jamais (PRO-10, PIN-08) ; seul le profil la voit.
+    return { ...toTransferView(transfer), newEmail: null };
   }
 
   @Delete(':id/transfer')

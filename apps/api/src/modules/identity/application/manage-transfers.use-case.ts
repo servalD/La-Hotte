@@ -48,6 +48,7 @@ import { AccountMailer } from './account-mailer';
 import type { ActiveProfile } from './authorize-profile.use-case';
 import type { ClientInfo } from './client-info';
 import { SessionLifecycle } from './session-lifecycle';
+import { failToken } from './token-failure';
 
 /** Client des tâches planifiées (exécution différée, PRO-12) : aucune requête d'origine. */
 export const SCHEDULER_CLIENT: ClientInfo = { ip: '0.0.0.0', userAgent: 'task:profile.transfer' };
@@ -504,15 +505,14 @@ export class ConsentTransferByEmail {
     readonly client: ClientInfo;
   }): Promise<void> {
     const { transfers, tokens, clock, limiter } = this.consent;
-    const limited = [{ scope: 'profile_link_ip' as const, parts: [input.client.ip] }];
-    const limit = await limiter.check(limited, clock.now());
-    if (!limit.allowed || !limit.reservation) throw new RateLimitedError(limit.retryAfterMs);
-    await limiter.recordFailure(limited, clock.now(), limit.reservation);
-    if (!tokens.isWellFormed(input.token)) throw new TransferInvalidError();
-    const tokenHash = tokens.hash(input.token);
-    const found = await transfers.findMailToken(tokenHash, 'TRANSFER_CONSENT', clock.now());
+    const tokenHash = tokens.isWellFormed(input.token) ? tokens.hash(input.token) : null;
+    const found = tokenHash
+      ? await transfers.findMailToken(tokenHash, 'TRANSFER_CONSENT', clock.now())
+      : null;
     const transfer = found ? await transfers.findOpenByProfile(found.profileId, clock.now()) : null;
-    if (!found || !transfer || transfer.id !== found.transferId) throw new TransferInvalidError();
+    if (!tokenHash || !found || !transfer || transfer.id !== found.transferId) {
+      return failToken(limiter, input.client.ip, clock.now(), new TransferInvalidError());
+    }
     await this.consent.give({
       transfer,
       channel: 'EMAIL',
@@ -536,16 +536,17 @@ export class CancelTransferByEmail {
   ) {}
 
   async execute(input: { readonly token: string; readonly client: ClientInfo }): Promise<void> {
-    const limited = [{ scope: 'profile_link_ip' as const, parts: [input.client.ip] }];
-    const limit = await this.limiter.check(limited, this.clock.now());
-    if (!limit.allowed || !limit.reservation) throw new RateLimitedError(limit.retryAfterMs);
-    await this.limiter.recordFailure(limited, this.clock.now(), limit.reservation);
-    if (!this.tokens.isWellFormed(input.token)) throw new TransferInvalidError();
     const now = this.clock.now();
-    const tokenHash = this.tokens.hash(input.token);
-    const found = await this.transfers.findMailToken(tokenHash, 'TRANSFER_CANCEL', now);
-    if (!found || !(await this.transfers.consumeMailToken(tokenHash, 'TRANSFER_CANCEL', now))) {
-      throw new TransferInvalidError();
+    const tokenHash = this.tokens.isWellFormed(input.token) ? this.tokens.hash(input.token) : null;
+    const found = tokenHash
+      ? await this.transfers.findMailToken(tokenHash, 'TRANSFER_CANCEL', now)
+      : null;
+    if (
+      !tokenHash ||
+      !found ||
+      !(await this.transfers.consumeMailToken(tokenHash, 'TRANSFER_CANCEL', now))
+    ) {
+      return failToken(this.limiter, input.client.ip, now, new TransferInvalidError());
     }
     if (!(await this.transfers.cancel(found.transferId, now))) throw new TransferInvalidError();
     const subject = await this.transfers.subject(found.profileId);

@@ -94,10 +94,12 @@ async function dueMove(input: {
       toAccountId: input.to,
       tokenHash: hashOf(randomUUID()),
       tokenExpiresAt: new Date(Date.now() + 7 * DAY),
-      profileConsentRequired: false,
+      // Profil adulte : son accord est requis, et donné (m1 du cycle 2).
+      profileConsentRequired: true,
       regroup: input.regroup ?? false,
       fromAcceptedAt: past,
       toAcceptedAt: past,
+      profileAcceptedAt: past,
       pinChoice: 'KEEP',
       executesAt: past,
       expiresAt: new Date(Date.now() + 7 * DAY),

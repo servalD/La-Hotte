@@ -395,6 +395,13 @@ Revue `security-reviewer` du code de la tranche 6 bis (cycle 1, 2026-11-14) : **
 
 Acceptés, à revoir avec leur phase : M2 (compte tuteur sans tuteur pour un enfant sous tutelle vérifié seulement à l'exécution ; l'échec clôt désormais la demande), M6 (effets d'après exécution en chaîne : un compte vidé par un regroupement dont la suppression échoue reste actif sans profil ; à rejouer par la tâche planifiée), M9 (délai de `TRANSFER_INVALID` inégal, borné par la limitation), M10 (la levée de tutelle ne révoque pas les sessions du compte), M11 (le quota par destinataire peut retenir un lien d'annulation après plusieurs demandes).
 
+Revue `security-reviewer` du code (cycle 2, dernier, 2026-11-14) : **aucun point bloquant** ; corrections du cycle 1 confirmées, points acceptés jugés non bloquants. Deux points importants, nés des corrections du cycle 1, corrigés :
+
+- I1 : l'adresse du détachement prise par défaut (M3) était rendue à l'espace Compte par `GET /account/profiles/{id}/transfer` ; cette vue rend désormais `newEmail: null`, seul le profil la voit (test de contrat) ;
+- I2 : la limitation `profile_link_ip` (M8) comptait toute requête, si bien qu'un proche derrière la même adresse IP pouvait bloquer le lien d'annulation ; seuls les jetons qui échouent sont comptés, un jeton valable passe toujours (`failToken`, test de contrat à 40 jetons faux).
+
+Corrigé aussi : m1 (un passage sans accord du profil échoue si le profil n'est plus enfant à l'exécution). Restent, mineurs : m2 (adresse de l'avis `child_marked` lue hors transaction), m3 (`setChild` verrouille la demande d'un profil avant de vérifier son compte : sérialisation inutile, sans cycle de verrous). **Visa SEC-40 pour la tranche 6 bis**, sous réserve des restes « non faits » ci-dessus.
+
 Constat d'environnement : en local, ouvrir une connexion PostgreSQL prend près de 2 s (`localhost` essayé en IPv6 sous Windows, avant IPv4). Deux transactions simultanées sur des connexions neuves dépassent alors l'attente de Prisma (`maxWait`, 2 s). Le test de concurrence de l'installation ouvre deux connexions d'avance. Mettre `127.0.0.1` dans `DATABASE_URL` de `apps/api/.env` devrait supprimer le délai (à vérifier).
 - Tranche 7 : pages `/invitations/open` (jeton dans le fragment, `Referrer-Policy: no-referrer`), cercle, liens à valider (`awaitingMyApproval`), blocages, marqueur enfant dans l'espace Compte (ré-authentification), champ `invitationToken` à l'inscription et avant « S'inscrire avec Google ».
 
