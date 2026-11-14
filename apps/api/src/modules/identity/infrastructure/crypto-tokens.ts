@@ -22,6 +22,10 @@ export class CryptoSecretTokens extends SecretTokens {
     return TOKEN_PATTERN.test(token);
   }
 
+  generateInvitation(): string {
+    return randomBytes(16).toString('base64url');
+  }
+
   generateRecoveryCode(): string {
     return encodeRecoveryCode(randomBytes(10));
   }

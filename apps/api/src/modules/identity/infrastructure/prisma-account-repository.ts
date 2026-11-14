@@ -124,6 +124,7 @@ export class PrismaAccountRepository extends AccountRepository {
             passwordHash: account.passwordHash,
             ageAttestedAt: account.ageAttestedAt,
             createdAt: account.createdAt,
+            pendingInvitationId: account.pendingInvitationId ?? null,
           },
         }),
         this.prisma.profile.create({
@@ -197,23 +198,29 @@ export class PrismaAccountRepository extends AccountRepository {
   async markEmailVerified(accountId: string, now: Date): Promise<void> {
     await this.prisma.account.updateMany({
       where: { id: accountId, emailVerifiedAt: null },
-      data: { emailVerifiedAt: now },
+      data: { emailVerifiedAt: now, pendingInvitationId: null },
     });
   }
 
+  /**
+   * AUTH-06 : la réinitialisation vérifie l'adresse (le lien le prouve), sauf pour un compte qui
+   * attend une invitation (AUTH-09) : il se vérifie par son lien, qui la consomme.
+   */
   async setPassword(input: {
     accountId: string;
     passwordHash: string;
     authEpoch: number;
     reset: boolean;
+    verifyEmail?: boolean;
     now: Date;
   }): Promise<void> {
+    const verify = input.reset && (input.verifyEmail ?? true);
     await this.prisma.$transaction(async (tx) => {
       const updated = await tx.$executeRaw`
         UPDATE "account"
         SET "password_hash" = ${input.passwordHash},
             "auth_epoch" = GREATEST("auth_epoch", ${input.authEpoch}),
-            "email_verified_at" = CASE WHEN ${input.reset}
+            "email_verified_at" = CASE WHEN ${verify} AND "pending_invitation_id" IS NULL
               THEN COALESCE("email_verified_at", ${input.now}) ELSE "email_verified_at" END,
             "updated_at" = ${input.now}
         WHERE "id" = ${input.accountId}::uuid`;

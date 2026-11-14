@@ -114,6 +114,7 @@ export class AuthController {
       ageAttested: body.ageAttested,
       ...(body.locale ? { locale: body.locale } : {}),
       ...(body.timezone ? { timezone: body.timezone } : {}),
+      ...(body.invitationToken ? { invitationToken: body.invitationToken } : {}),
       client,
     });
   }

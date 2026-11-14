@@ -73,6 +73,12 @@ const googleSecrets: Record<string, string> = {};
  */
 const pinSecrets: Record<string, string> = {};
 const randomPin = (): string => String(randomInt(10_000_000, 99_999_999));
+/**
+ * Secrets des liens (LNK-01 à LNK-09) : jetons d'invitation et leur hash, adresse invitée (en
+ * minuscules, donc hors d'atteinte du marqueur). Les noms de profils porteurs du marqueur sont
+ * cherchés par `findMarker`.
+ */
+const linkSecrets: Record<string, string> = {};
 /** Fournisseur OpenID Connect local, à la place de Google. */
 let provider: FakeOidcProvider | undefined;
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
@@ -267,6 +273,154 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playAuthScenario(app, pre.body.csrfToken as string, presessionCookie?.split(';')[0] ?? '');
   await playGoogleScenario(app);
   await playProfileScenario(app);
+  await playLinkScenario(app);
+}
+
+/**
+ * Liens, cercle, invitations, blocage (tranche 6) : jeton d'invitation dans les corps, les
+ * chemins et l'e-mail, adresse invitée, noms de profils porteurs du marqueur dans le cercle, les
+ * liens et les blocages, jeton forgé (refus commun), marqueur enfant, validation parentale.
+ */
+async function playLinkScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const lifecycle = app.get(SessionLifecycle);
+
+  const inviter = await createAccountWithProfile(prisma);
+  const guest = await createAccountWithProfile(prisma);
+  const kid = await createAccountWithProfile(prisma);
+  await prisma.profile.update({
+    where: { id: inviter.profileId },
+    data: { displayName: `Invitant ${MARKER}` },
+  });
+  await prisma.profile.update({
+    where: { id: guest.profileId },
+    data: { displayName: `Invité ${MARKER}` },
+  });
+  await prisma.profile.update({
+    where: { id: kid.profileId },
+    data: { displayName: `Enfant ${MARKER}` },
+  });
+  let inviterSession = await signIn(app, inviter);
+  const guestSession = await signIn(app, guest);
+  const kidSession = await signIn(app, kid);
+  const as = (signed: { cookie: string; csrf: string }) => ({
+    ...markedHeaders,
+    Cookie: `${signed.cookie}; session=${MARKER}`,
+    'X-CSRF-Token': signed.csrf,
+    Origin: 'http://localhost:3000',
+  });
+
+  // LNK-01 : invitation avec adresse ; jeton rendu une fois, hash en base.
+  linkSecrets.invitedEmail = `invite_${MARKER}@example.test`.toLowerCase();
+  const created = await http
+    .post('/api/v1/invitations')
+    .set(as(inviterSession))
+    .send({ email: linkSecrets.invitedEmail })
+    .expect(201);
+  linkSecrets.token = created.body.token as string;
+  linkSecrets.tokenHash = createHash('sha256').update(linkSecrets.token, 'utf8').digest('hex');
+  await http.get('/api/v1/invitations').set(as(inviterSession)).expect(200);
+
+  // LNK-07 : jeton forgé porteur du marqueur, refus commun ; jeton légitime lu puis ouvert.
+  await http
+    .post('/api/v1/invitations/inspect')
+    .set(as(guestSession))
+    .send({ token: MARKER })
+    .expect(400);
+  await http
+    .post('/api/v1/invitations/redeem')
+    .set(as(guestSession))
+    .send({ token: randomBytes(16).toString('base64url') })
+    .expect(404);
+  await http
+    .post('/api/v1/invitations/inspect')
+    .set(as(guestSession))
+    .send({ token: linkSecrets.token })
+    .expect(200);
+  const linked = await http
+    .post('/api/v1/invitations/redeem')
+    .set(as(guestSession))
+    .send({ token: linkSecrets.token })
+    .expect(201);
+  // Rejeu : refus commun, rien n'est consommé.
+  await http
+    .post('/api/v1/invitations/redeem')
+    .set(as(guestSession))
+    .send({ token: linkSecrets.token })
+    .expect(404);
+
+  // LNK-09 : cercle et liens, noms porteurs du marqueur.
+  await http.get('/api/v1/circle').set(as(guestSession)).expect(200);
+  await http.get('/api/v1/links').set(as(inviterSession)).expect(200);
+
+  // LNK-05 : blocage (supprime le lien), liste, levée.
+  await http
+    .post('/api/v1/blocks')
+    .set(as(guestSession))
+    .send({ profileId: inviter.profileId })
+    .expect(204);
+  await http.get('/api/v1/blocks').set(as(guestSession)).expect(200);
+  await http.delete(`/api/v1/blocks/${inviter.profileId}`).set(as(guestSession)).expect(204);
+  expect(linked.body.linkId).toBeTruthy();
+
+  // PRO-09 : marqueur enfant, après une ré-authentification (rotation réelle).
+  const rotated = await lifecycle.rotate({
+    id: inviterSession.sessionId,
+    accountId: inviter.accountId,
+    tokenHash: inviterSession.tokenHash,
+  });
+  inviterSession = sessionHeaders(
+    app,
+    rotated.token,
+    rotated.record.tokenHash,
+    inviterSession.sessionId,
+    inviter.accountId,
+    inviter.profileId,
+  );
+  await http
+    .put(`/api/v1/account/profiles/${inviter.profileId}/child`)
+    .set(as(inviterSession))
+    .send({ isChild: true })
+    .expect(204);
+  // PRO-05 : un enfant n'invite pas par e-mail.
+  await http
+    .post('/api/v1/invitations')
+    .set(as(inviterSession))
+    .send({ email: linkSecrets.invitedEmail })
+    .expect(403);
+
+  // LNK-06 : lien d'un enfant en attente de validation par un profil non enfant du compte.
+  const childInvitation = await http
+    .post('/api/v1/invitations')
+    .set(as(inviterSession))
+    .send({})
+    .expect(201);
+  linkSecrets.childToken = childInvitation.body.token as string;
+  const pending = await http
+    .post('/api/v1/invitations/redeem')
+    .set(as(kidSession))
+    .send({ token: linkSecrets.childToken })
+    .expect(201);
+  const guardian = await http
+    .post('/api/v1/account/profiles')
+    .set(as(inviterSession))
+    .send({ displayName: `Parent ${MARKER}` })
+    .expect(201);
+  await http
+    .post('/api/v1/session/profile')
+    .set(as(inviterSession))
+    .send({ profileId: guardian.body.id as string })
+    .expect(200);
+  await http.get('/api/v1/links').set(as(inviterSession)).expect(200);
+  await http
+    .post(`/api/v1/links/${pending.body.linkId as string}/approve`)
+    .set(as(inviterSession))
+    .expect(204);
+  await http
+    .delete(`/api/v1/links/${pending.body.linkId as string}`)
+    .set(as(inviterSession))
+    .expect(204);
 }
 
 /**
@@ -916,6 +1070,33 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     // OBS-02 : les refus d'autorisation (PIN faux, profil verrouillé) sont comptés.
     expect(bodies('metrics')).toContain('wishlist.authorization_denied');
     expect(bodies('metrics')).toContain('PIN_RATE_LIMITED');
+  });
+
+  it('LNK-01 à LNK-09 : jeton d’invitation, hash, adresse invitée absents de toute sortie', () => {
+    expect(Object.keys(linkSecrets).sort()).toEqual(
+      ['childToken', 'invitedEmail', 'token', 'tokenHash'].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    // Les routes des liens ont bien été tracées (pas de faux vert).
+    for (const route of [
+      '/api/v1/invitations',
+      '/api/v1/invitations/redeem',
+      '/api/v1/circle',
+      '/api/v1/links/:id/approve',
+      '/api/v1/blocks',
+      '/api/v1/account/profiles/:id/child',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(linkSecrets)) {
+      expect(secret.length).toBeGreaterThanOrEqual(16);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
   });
 
   it('ADR 0013, OBS-23 : commandes Redis tracées sans clé ni argument (sérialiseur de telemetry.ts, puis scrub)', () => {

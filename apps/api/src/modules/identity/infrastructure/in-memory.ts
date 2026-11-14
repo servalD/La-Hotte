@@ -462,6 +462,13 @@ export class InMemoryProfileRepository extends ProfileRepository {
     return { status: 'updated', profile: details(next) };
   }
 
+  async setChild(accountId: string, profileId: string, isChild: boolean): Promise<boolean> {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return false;
+    this.profiles.set(profileId, { ...profile, isChild, version: (profile.version ?? 1) + 1 });
+    return true;
+  }
+
   async delete(accountId: string, profileId: string): Promise<'deleted' | 'last' | 'missing'> {
     if (!this.owned(accountId, profileId)) return 'missing';
     if (this.ofAccount(accountId).length <= 1) return 'last';
@@ -647,6 +654,8 @@ interface MemoryAccountRow {
   emailVerifiedAt: Date | null;
   totpEnabled: boolean;
   createdAt: Date;
+  /** AUTH-09 : invitation à consommer à la vérification de l'e-mail. */
+  pendingInvitationId?: string | null;
 }
 
 interface MemoryTokenRow extends NewAccountToken {
@@ -714,6 +723,7 @@ export class InMemoryAccountRepository extends AccountRepository {
       emailVerifiedAt: null,
       totpEnabled: false,
       createdAt: account.createdAt,
+      pendingInvitationId: account.pendingInvitationId ?? null,
     });
     this.sessions.addAccount(account.id);
     this.profiles.set(account.profile.id, {
@@ -798,7 +808,10 @@ export class InMemoryAccountRepository extends AccountRepository {
 
   async markEmailVerified(accountId: string, now: Date): Promise<void> {
     const row = this.rows.get(accountId);
-    if (row && !row.emailVerifiedAt) row.emailVerifiedAt = now;
+    if (row && !row.emailVerifiedAt) {
+      row.emailVerifiedAt = now;
+      row.pendingInvitationId = null;
+    }
   }
 
   async setPassword(input: {
@@ -806,6 +819,7 @@ export class InMemoryAccountRepository extends AccountRepository {
     passwordHash: string;
     authEpoch: number;
     reset: boolean;
+    verifyEmail?: boolean;
     now: Date;
   }): Promise<void> {
     const row = this.rows.get(input.accountId);
@@ -813,7 +827,7 @@ export class InMemoryAccountRepository extends AccountRepository {
     row.passwordHash = input.passwordHash;
     this.sessions.commitEpoch(input.accountId, input.authEpoch);
     if (!input.reset) return;
-    row.emailVerifiedAt ??= input.now;
+    if (!row.pendingInvitationId && (input.verifyEmail ?? true)) row.emailVerifiedAt ??= input.now;
     this.trustedDevicesRevokedAt.set(input.accountId, input.now);
     for (const token of this.tokens.values()) {
       if (token.accountId === input.accountId && token.purpose === 'PASSWORD_RESET') {

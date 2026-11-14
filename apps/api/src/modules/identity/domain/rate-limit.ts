@@ -21,6 +21,7 @@ export const RATE_LIMIT_SCOPES = [
   'reset_ip', // demandes de réinitialisation, par IP
   'oidc_ip', // démarrages d'un parcours Google, par IP (AUTH-03)
   'mail_recipient', // envois d'e-mail, par adresse destinataire (jamais de 429)
+  'invitation_profile', // créations d'invitation, par profil (LNK-01)
 ] as const;
 export type RateLimitScope = (typeof RATE_LIMIT_SCOPES)[number];
 
@@ -54,6 +55,8 @@ export const RATE_LIMIT_POLICIES: Readonly<Record<RateLimitScope, RateLimitPolic
   // de démarrages remplirait la mémoire et fermerait toute l'authentification.
   oidc_ip: { threshold: 30, windowMs: HOUR, resetOnSuccess: false },
   mail_recipient: { threshold: 3, windowMs: 24 * HOUR, resetOnSuccess: false },
+  // Demandes, pas échecs : chaque création compte (LNK-01).
+  invitation_profile: { threshold: 20, windowMs: 24 * HOUR, resetOnSuccess: false },
 };
 
 /** Seuil du compteur par compte depuis un appareil de confiance du compte (ADR 0013). */

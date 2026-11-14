@@ -34,8 +34,10 @@ import {
   GoogleReauthProofs,
   OidcFlows,
 } from '../domain/google.ports';
+import { LinkRepository } from '../domain/link.ports';
 import {
   EventThrottle,
+  IdentityEvents,
   type SecurityEvent,
   SecretTokens,
   SecurityLog,
@@ -46,6 +48,7 @@ import { ReauthRequiredError } from '../domain/session.errors';
 import { EmailNotVerifiedError } from '../domain/second-factor.errors';
 import { AccountMailer } from './account-mailer';
 import type { ClientInfo } from './client-info';
+import { RemoveUnverifiedAccount } from './remove-unverified-account';
 import { type IssuedSession, SessionLifecycle } from './session-lifecycle';
 import { SignInCompletion } from './sign-in-completion';
 
@@ -86,6 +89,9 @@ export class CompleteGoogleFlow {
     private readonly proofs: GoogleReauthProofs,
     private readonly identities: GoogleIdentityRepository,
     private readonly accounts: AccountRepository,
+    private readonly links: LinkRepository,
+    private readonly removal: RemoveUnverifiedAccount,
+    private readonly events: IdentityEvents,
     private readonly lifecycle: SessionLifecycle,
     private readonly completion: SignInCompletion,
     private readonly mailer: AccountMailer,
@@ -190,6 +196,8 @@ export class CompleteGoogleFlow {
     ) {
       throw new GoogleFlowInvalidError();
     }
+    // AUTH-09 : un compte né d'une invitation non consommée ne s'ouvre pas (reprise impossible ici).
+    if (!account.emailVerified) throw new GoogleFlowInvalidError();
     if (!account.active || !state.active) {
       await this.log(accountId, 'login.failed', input.client);
       throw new AccountSuspendedError();
@@ -238,8 +246,13 @@ export class CompleteGoogleFlow {
     }
     const registration = flow.registration;
     if (!registration) throw new GoogleRegistrationRequiredError();
-    // AUTH-09 : l'invitation arrive avec la tranche 6 ; d'ici là, l'inscription est fermée.
-    if (this.settings.registrationMode === 'INVITE_ONLY') throw new InvitationRequiredError();
+    // AUTH-09, LNK-08 : en `INVITE_ONLY`, une invitation ouverte est exigée avant toute écriture.
+    const invitation = registration.invitationTokenHash
+      ? await this.links.findOpenInvitation(registration.invitationTokenHash, now)
+      : null;
+    if (this.settings.registrationMode === 'INVITE_ONLY' && !invitation) {
+      throw new InvitationRequiredError();
+    }
     if (decision === 'replace' && existing)
       await this.replaceUnverified(existing.accountId, client);
 
@@ -252,6 +265,7 @@ export class CompleteGoogleFlow {
       identityId: this.ids.next(),
       ageAttestedAt: now,
       createdAt: now,
+      pendingInvitationId: invitation?.id ?? null,
       profile: {
         id: profileId,
         displayName: registration.displayName,
@@ -265,7 +279,34 @@ export class CompleteGoogleFlow {
     if (created === 'email_taken') throw new GoogleLinkRequiredError();
     if (created === 'subject_taken') throw new GoogleFlowInvalidError();
     await this.log(accountId, 'account.registered', client);
+    if (invitation) await this.consumeInvitation(accountId, client);
     return accountId;
+  }
+
+  /**
+   * AUTH-09, LNK-08 : un compte créé avec une invitation naît non vérifié ; la consommation crée le
+   * lien et vérifie l'adresse (déjà vérifiée par Google) dans une transaction. Épuisée entre la
+   * lecture et la création (ouverture concurrente du même jeton) : en `INVITE_ONLY` le compte est
+   * supprimé et le retour refusé ; en `OPEN` l'adresse est simplement vérifiée, sans lien.
+   */
+  private async consumeInvitation(accountId: string, client: ClientInfo): Promise<void> {
+    const now = this.clock.now();
+    const linkId = this.ids.next();
+    const outcome = await this.links.consumePendingInvitation({ accountId, linkId, now });
+    if (
+      (outcome === 'exhausted' || outcome === 'none') &&
+      this.settings.registrationMode === 'INVITE_ONLY'
+    ) {
+      await this.removal.execute(accountId);
+      throw new InvitationRequiredError();
+    }
+    if (outcome !== 'linked') {
+      await this.accounts.markEmailVerified(accountId, now);
+      return;
+    }
+    await this.log(accountId, 'link.created', client);
+    const link = await this.links.findLink(linkId);
+    if (link) this.events.publish({ type: 'circle.changed', profileIds: [link.a.id, link.b.id] });
   }
 
   /**

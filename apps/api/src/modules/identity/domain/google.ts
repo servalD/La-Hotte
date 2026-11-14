@@ -61,6 +61,11 @@ export interface GoogleRegistration {
   readonly displayName: string;
   readonly locale: string | null;
   readonly timezone: string | null;
+  /**
+   * AUTH-09, LNK-08 : SHA-256 du jeton d'invitation présenté au départ (jamais le jeton lui-même
+   * dans l'état Redis du parcours). Validé au retour, à la création du compte.
+   */
+  readonly invitationTokenHash: string | null;
 }
 
 /**

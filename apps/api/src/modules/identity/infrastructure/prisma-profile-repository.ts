@@ -158,6 +158,30 @@ export class PrismaProfileRepository extends ProfileRepository {
     });
   }
 
+  async setChild(accountId: string, profileId: string, isChild: boolean): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.profile.updateMany({
+        where: { id: profileId, accountId },
+        data: { isChild, version: { increment: 1 } },
+      });
+      if (count === 0) return false;
+      // PRO-09 : un profil qui cesse d'être enfant n'a plus de tuteur ; ses liens encore en attente
+      // de validation ne pourraient plus être approuvés. Ils sont supprimés (il faut réinviter).
+      if (!isChild) {
+        await tx.profileLink.deleteMany({
+          where: {
+            status: 'AWAITING_GUARDIAN',
+            OR: [
+              { profileAId: profileId, aGuardianRequired: true },
+              { profileBId: profileId, bGuardianRequired: true },
+            ],
+          },
+        });
+      }
+      return true;
+    });
+  }
+
   async countPinAttempt(
     accountId: string,
     profileId: string,

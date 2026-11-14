@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { Clock } from '../../../shared/domain';
+import { Clock, IdGenerator } from '../../../shared/domain';
 import { AccountTokenInvalidError } from '../domain/account.errors';
-import { AccountRepository } from '../domain/account.ports';
-import { SecretTokens, SecurityLog } from '../domain/ports';
+import { AccountRepository, IdentitySettings } from '../domain/account.ports';
+import { LinkRepository } from '../domain/link.ports';
+import { IdentityEvents, SecretTokens, type SecurityEvent, SecurityLog } from '../domain/ports';
 import type { ClientInfo } from './client-info';
+import { RemoveUnverifiedAccount } from './remove-unverified-account';
 
 /**
  * Lien reçu par e-mail (`POST /auth/email/verify`, jeton dans le corps, ADR 0013) : vérification
@@ -12,13 +14,22 @@ import type { ClientInfo } from './client-info';
  * reçu le lien d'une inscription faite par un autre ne connaît pas le mot de passe ; il passe par
  * la réinitialisation, qui évince l'auteur (AUTH-06, AUTH-15). Un seul message de refus, quelle
  * qu'en soit la raison (adresse prise ou réservée comprise).
+ *
+ * Inscription par invitation (AUTH-09, LNK-08) : l'invitation est consommée ici, avec la création
+ * du lien et la vérification, dans une seule transaction. Épuisée, elle fait refuser la
+ * vérification en `INVITE_ONLY` (message neutre, compte supprimé) et se laisse ignorer en `OPEN`.
  */
 @Injectable()
 export class VerifyEmail {
   constructor(
     private readonly accounts: AccountRepository,
+    private readonly links: LinkRepository,
     private readonly tokens: SecretTokens,
+    private readonly removal: RemoveUnverifiedAccount,
+    private readonly events: IdentityEvents,
+    private readonly settings: IdentitySettings,
     private readonly securityLog: SecurityLog,
+    private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
 
@@ -40,15 +51,34 @@ export class VerifyEmail {
       await this.log(consumed.accountId, 'email.changed', input.client);
       return;
     }
-    await this.accounts.markEmailVerified(consumed.accountId, now);
+
+    const linkId = this.ids.next();
+    const invitation = await this.links.consumePendingInvitation({
+      accountId: consumed.accountId,
+      linkId,
+      now,
+    });
+    // `none` compte aussi : l'invitation a disparu depuis l'inscription (profil de l'invitant supprimé).
+    if (
+      (invitation === 'exhausted' || invitation === 'none') &&
+      this.settings.registrationMode === 'INVITE_ONLY'
+    ) {
+      if (await this.removal.execute(consumed.accountId)) {
+        await this.log(consumed.accountId, 'account.purged', input.client);
+      }
+      throw new AccountTokenInvalidError();
+    }
+    // `linked` a déjà vérifié l'adresse, dans la transaction de l'invitation.
+    if (invitation !== 'linked') await this.accounts.markEmailVerified(consumed.accountId, now);
     await this.log(consumed.accountId, 'email.verified', input.client);
+    if (invitation === 'linked') {
+      await this.log(consumed.accountId, 'link.created', input.client);
+      const link = await this.links.findLink(linkId);
+      if (link) this.events.publish({ type: 'circle.changed', profileIds: [link.a.id, link.b.id] });
+    }
   }
 
-  private async log(
-    accountId: string,
-    event: 'email.changed' | 'email.verified',
-    client: ClientInfo,
-  ): Promise<void> {
+  private async log(accountId: string, event: SecurityEvent, client: ClientInfo): Promise<void> {
     await this.securityLog.record({
       accountId,
       event,

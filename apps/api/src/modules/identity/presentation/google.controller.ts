@@ -84,6 +84,7 @@ export class GoogleController {
           displayName: body.registration.displayName,
           locale: body.registration.locale ?? null,
           timezone: body.registration.timezone ?? null,
+          invitationToken: body.registration.invitationToken ?? null,
         }
       : null;
     const started = await this.start.execute({

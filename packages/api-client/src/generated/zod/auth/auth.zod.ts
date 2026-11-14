@@ -95,6 +95,10 @@ export const startGoogleSignInBodyRegistrationDisplayNameRegExp = new RegExp('\\
 export const startGoogleSignInBodyRegistrationLocaleRegExp = new RegExp('^[a-z]{2}(-[A-Z]{2})?$');
 export const startGoogleSignInBodyRegistrationTimezoneMax = 64;
 
+export const startGoogleSignInBodyRegistrationInvitationTokenRegExp = new RegExp(
+  '^[A-Za-z0-9_-]{22}$',
+);
+
 export const startGoogleSignInBody = zod.object({
   registration: zod
     .object({
@@ -111,6 +115,11 @@ export const startGoogleSignInBody = zod.object({
         ),
       locale: zod.string().regex(startGoogleSignInBodyRegistrationLocaleRegExp).optional(),
       timezone: zod.string().max(startGoogleSignInBodyRegistrationTimezoneMax).optional(),
+      invitationToken: zod
+        .string()
+        .regex(startGoogleSignInBodyRegistrationInvitationTokenRegExp)
+        .optional()
+        .describe("LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`)."),
     })
     .optional(),
 });
@@ -290,6 +299,8 @@ export const registerAccountBodyDisplayNameRegExp = new RegExp('\\S');
 export const registerAccountBodyLocaleRegExp = new RegExp('^[a-z]{2}(-[A-Z]{2})?$');
 export const registerAccountBodyTimezoneMax = 64;
 
+export const registerAccountBodyInvitationTokenRegExp = new RegExp('^[A-Za-z0-9_-]{22}$');
+
 export const registerAccountBody = zod.object({
   email: zod.email().max(registerAccountBodyEmailMax),
   password: zod
@@ -318,6 +329,11 @@ export const registerAccountBody = zod.object({
     .max(registerAccountBodyTimezoneMax)
     .optional()
     .describe('Fuseau IANA du navigateur ; à défaut, Europe\/Paris.'),
+  invitationToken: zod
+    .string()
+    .regex(registerAccountBodyInvitationTokenRegExp)
+    .optional()
+    .describe("LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`)."),
 });
 
 /**

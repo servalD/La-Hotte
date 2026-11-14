@@ -9,6 +9,7 @@ import {
   tokenExpiry,
 } from '../domain/account';
 import { InvitationRequiredError } from '../domain/account.errors';
+import { LinkRepository } from '../domain/link.ports';
 import { AccountRepository, BackgroundTasks, IdentitySettings } from '../domain/account.ports';
 import { RateLimiter, SecretTokens, SecurityLog } from '../domain/ports';
 import { RateLimitedError } from '../domain/session.errors';
@@ -24,6 +25,8 @@ export interface RegisterAccountInput {
   readonly ageAttested: true;
   readonly locale?: string;
   readonly timezone?: string;
+  /** LNK-08 : jeton d'invitation, en clair, tel que reçu. */
+  readonly invitationToken?: string;
   readonly client: ClientInfo;
 }
 
@@ -33,6 +36,7 @@ interface PendingRegistration {
   readonly displayName: string;
   readonly locale: string | undefined;
   readonly timezone: string | undefined;
+  readonly invitationId: string | null;
   readonly client: ClientInfo;
 }
 
@@ -51,6 +55,7 @@ export class RegisterAccount {
     private readonly passwords: PasswordPolicy,
     private readonly limiter: RateLimiter,
     private readonly tokens: SecretTokens,
+    private readonly links: LinkRepository,
     private readonly mailer: AccountMailer,
     private readonly background: BackgroundTasks,
     private readonly securityLog: SecurityLog,
@@ -60,14 +65,21 @@ export class RegisterAccount {
   ) {}
 
   async execute(input: RegisterAccountInput): Promise<void> {
-    // AUTH-09 : sans invitation (tranche 6), l'inscription est fermée en `INVITE_ONLY`.
-    if (this.settings.registrationMode === 'INVITE_ONLY') throw new InvitationRequiredError();
-
     const subjects = [{ scope: 'register_ip' as const, parts: [input.client.ip] }];
     const now = this.clock.now();
     const check = await this.limiter.check(subjects, now);
     if (!check.allowed || !check.reservation) throw new RateLimitedError(check.retryAfterMs);
     await this.limiter.recordFailure(subjects, now, check.reservation);
+
+    // AUTH-09, LNK-08 : en `INVITE_ONLY`, une invitation ouverte est exigée ; le contrôle ne dépend
+    // pas de l'adresse, la réponse ne dit donc rien d'un compte existant. En `OPEN`, une invitation
+    // invalide est ignorée sans bruit.
+    const invitation = input.invitationToken
+      ? await this.links.findOpenInvitation(this.tokens.hash(input.invitationToken), now)
+      : null;
+    if (this.settings.registrationMode === 'INVITE_ONLY' && !invitation) {
+      throw new InvitationRequiredError();
+    }
 
     const passwordHash = await this.passwords.hashNew(input.password);
     // Le mot de passe en clair ne passe pas dans la tâche de fond : seulement son hash.
@@ -77,6 +89,7 @@ export class RegisterAccount {
       displayName: input.displayName,
       locale: input.locale,
       timezone: input.timezone,
+      invitationId: invitation?.id ?? null,
       client: input.client,
     };
     this.background.run('account.register', () => this.createOrWarn(pending));
@@ -102,6 +115,7 @@ export class RegisterAccount {
         passwordHash: input.passwordHash,
         ageAttestedAt: now,
         createdAt: now,
+        pendingInvitationId: input.invitationId,
         profile: {
           id: profileId,
           displayName: input.displayName.trim(),

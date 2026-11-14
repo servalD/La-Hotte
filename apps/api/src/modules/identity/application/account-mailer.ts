@@ -11,6 +11,7 @@ export const EMAIL_LINK_PATHS = {
   verifyEmail: '/auth/verify-email',
   resetPassword: '/auth/reset-password',
   cancelEmailChange: '/auth/cancel-email-change',
+  invitation: '/invitations/open',
 } as const;
 
 type MailKind =
@@ -27,13 +28,20 @@ type MailKind =
   | { readonly kind: 'second_factor_attempts' }
   | { readonly kind: 'google_linked' }
   | { readonly kind: 'google_unlinked' }
-  | { readonly kind: 'pin_attempts' };
+  | { readonly kind: 'pin_attempts' }
+  | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string };
+
+/** M4 (SEC-40) : le nom est choisi par l'expéditeur ; aucun saut de ligne ni caractère de contrôle. */
+function cleanName(name: string): string {
+  return name.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, ' ').trim();
+}
 
 const SIGNATURE = '\n\n— La Hotte';
 
 /**
- * E-mails du compte, en texte brut (invariant 6), sans aucun contenu d'utilisateur (ni nom ni
- * adresse dans le corps). Chaque envoi passe par le quota par destinataire (`01`, « Limitation ») :
+ * E-mails du compte, en texte brut (invariant 6), sans contenu d'utilisateur (ni nom ni adresse
+ * dans le corps), à une exception : l'invitation (LNK-01) dit le nom de l'invitant à celui qu'il a
+ * choisi d'inviter. Chaque envoi passe par le quota par destinataire (`01`, « Limitation ») :
  * au-delà, rien n'est envoyé et rien ne le signale, pour que la réponse ne dise rien d'un compte.
  */
 @Injectable()
@@ -208,6 +216,18 @@ export class AccountMailer {
             'votre entourage n’a simplement oublié son code, quelqu’un essaie peut-être d’entrer ' +
             'dans ce profil. Depuis votre espace Compte, vous pouvez réinitialiser le code PIN ' +
             'du profil concerné.' +
+            SIGNATURE,
+        };
+      case 'link_invitation':
+        return {
+          to,
+          subject: 'Une invitation à rejoindre un cercle sur La Hotte',
+          text:
+            `Une personne nommée « ${cleanName(mail.inviterName)} » vous invite à rejoindre son ` +
+            `cercle sur La Hotte.\n\n` +
+            `Pour accepter, ouvrez ce lien (valable 7 jours) :\n` +
+            `${this.link(EMAIL_LINK_PATHS.invitation, mail.token)}\n\n` +
+            'Si vous ne connaissez pas cette personne, ignorez ce message.' +
             SIGNATURE,
         };
       case 'email_taken_notice':

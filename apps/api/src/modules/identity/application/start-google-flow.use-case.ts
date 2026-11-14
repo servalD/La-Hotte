@@ -14,6 +14,11 @@ import { RateLimitedError, SessionRequiredError } from '../domain/session.errors
 import type { ClientInfo } from './client-info';
 import { SessionLifecycle } from './session-lifecycle';
 
+/** LNK-08 : le jeton d'invitation arrive en clair du client ; seul son hash va dans l'état du parcours. */
+export type GoogleRegistrationInput = Omit<GoogleRegistration, 'invitationTokenHash'> & {
+  readonly invitationToken: string | null;
+};
+
 export type StartGoogleFlowInput =
   | {
       /** Connexion ou inscription, avant session (AUTH-01, AUTH-03). */
@@ -21,7 +26,7 @@ export type StartGoogleFlowInput =
       /** Cookie `__Host-lh_presession`, tel que reçu ; un nouveau est tiré s'il manque. */
       readonly presessionId: string | null;
       /** AUTH-08 : déclaration d'âge et premier profil, si l'utilisateur s'inscrit. */
-      readonly registration: GoogleRegistration | null;
+      readonly registration: GoogleRegistrationInput | null;
       readonly client: ClientInfo;
     }
   | {
@@ -90,7 +95,7 @@ export class StartGoogleFlow {
       epoch,
       nonce: this.tokens.generate(),
       codeVerifier: this.tokens.generate(),
-      registration: input.kind === 'login' ? normalizeRegistration(input.registration) : null,
+      registration: input.kind === 'login' ? this.normalizeRegistration(input.registration) : null,
       createdAt: now,
     };
     const authorizationUrl = await this.google.authorizationUrl({
@@ -120,13 +125,18 @@ export class StartGoogleFlow {
     }
     return state.epoch;
   }
-}
 
-function normalizeRegistration(registration: GoogleRegistration | null): GoogleRegistration | null {
-  if (!registration) return null;
-  return {
-    displayName: registration.displayName.trim(),
-    locale: registration.locale,
-    timezone: registration.timezone,
-  };
+  private normalizeRegistration(
+    registration: GoogleRegistrationInput | null,
+  ): GoogleRegistration | null {
+    if (!registration) return null;
+    return {
+      displayName: registration.displayName.trim(),
+      locale: registration.locale,
+      timezone: registration.timezone,
+      invitationTokenHash: registration.invitationToken
+        ? this.tokens.hash(registration.invitationToken)
+        : null,
+    };
+  }
 }

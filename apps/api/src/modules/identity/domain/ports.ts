@@ -147,6 +147,8 @@ export abstract class SecretTokens {
   abstract generateRecoveryCode(): string;
   /** Forme d'un jeton tiré par `generate` (refus rapide de toute autre valeur). */
   abstract isWellFormed(token: string): boolean;
+  /** LNK-01 : jeton d'invitation de 128 bits, 22 caractères base64url. */
+  abstract generateInvitation(): string;
 }
 
 /** Jeton CSRF à double soumission signée (ADR 0013, « CSRF »). */
@@ -243,6 +245,14 @@ export const SECURITY_EVENTS = [
   'pin.disabled',
   'profile.created',
   'profile.deleted',
+  'profile.child_changed',
+  'invitation.created',
+  'invitation.revoked',
+  'link.created',
+  'link.approved',
+  'link.deleted',
+  'block.created',
+  'block.removed',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 
@@ -280,7 +290,12 @@ export type IdentityEvent =
       readonly type: 'session.profile_changed';
       readonly sessionId: string;
       readonly profileId: string | null;
-    };
+    }
+  /**
+   * LNK-09 : le cercle de ces profils a changé (lien accepté, rompu, blocage). La passerelle
+   * temps réel (phase 4, RT-07) désabonne et purge le cache local.
+   */
+  | { readonly type: 'circle.changed'; readonly profileIds: readonly string[] };
 
 export type IdentityEventListener = (event: IdentityEvent) => void;
 

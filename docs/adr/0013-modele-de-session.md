@@ -85,12 +85,12 @@ L'ADR 0003 parlait des « profils dont le PIN est validé » ; on n'en garde qu'
 
 Gardes NestJS globales, dans cet ordre, refus par défaut (SEC-01) :
 
-| Garde | Effet | Exception |
-|---|---|---|
-| `SessionGuard` | Session valide exigée, sinon `401` | `@Public()` : liste explicite, vérifiée par le test « routes sans session » |
-| `CsrfGuard` | Toute méthode autre que `GET`, `HEAD`, `OPTIONS` : origine puis jeton, sinon `403 CSRF_REJECTED` | `@OidcCallback()` seulement (voir ci-dessous) |
-| `ProfileGuard` | `@RequiresProfile()` : profil actif présent et déverrouillé, sinon `423 PROFILE_LOCKED` | Routes de l'espace Compte, marquées `@AccountScope()` (PIN-08) |
-| `ReauthGuard` | `@RequiresRecentReauth()` : `reauth_at` de moins de 10 minutes (2 minutes pour PIN-05), sinon `401 REAUTH_REQUIRED` (AUTH-14) | |
+| Garde          | Effet                                                                                                                         | Exception                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `SessionGuard` | Session valide exigée, sinon `401`                                                                                            | `@Public()` : liste explicite, vérifiée par le test « routes sans session » |
+| `CsrfGuard`    | Toute méthode autre que `GET`, `HEAD`, `OPTIONS` : origine puis jeton, sinon `403 CSRF_REJECTED`                              | `@OidcCallback()` seulement (voir ci-dessous)                               |
+| `ProfileGuard` | `@RequiresProfile()` : profil actif présent et déverrouillé, sinon `423 PROFILE_LOCKED`                                       | Routes de l'espace Compte, marquées `@AccountScope()` (PIN-08)              |
+| `ReauthGuard`  | `@RequiresRecentReauth()` : `reauth_at` de moins de 10 minutes (2 minutes pour PIN-05), sinon `401 REAUTH_REQUIRED` (AUTH-14) |                                                                             |
 
 - Une route porte exactement une marque parmi `@Public()`, `@AccountScope()`, `@RequiresProfile()` ; un test parcourt les routes et refuse une route sans marque ou avec deux.
 - **Aucun `GET` ne modifie l'état**, sauf le retour OIDC marqué `@OidcCallback()`. Un test parcourt les routes `GET` et refuse toute autre exception.

@@ -57,10 +57,12 @@ export class PrismaGoogleIdentityRepository extends GoogleIdentityRepository {
           data: {
             id: account.id,
             email: account.email,
-            emailVerifiedAt: account.createdAt,
+            // Avec une invitation, l'adresse est vérifiée par sa consommation (LNK-08).
+            emailVerifiedAt: account.pendingInvitationId ? null : account.createdAt,
             passwordHash: null,
             ageAttestedAt: account.ageAttestedAt,
             createdAt: account.createdAt,
+            pendingInvitationId: account.pendingInvitationId ?? null,
           },
         }),
         this.prisma.profile.create({

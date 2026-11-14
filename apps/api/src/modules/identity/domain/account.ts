@@ -111,6 +111,8 @@ export interface NewAccount {
   readonly ageAttestedAt: Date;
   readonly createdAt: Date;
   readonly profile: NewProfile;
+  /** AUTH-09, LNK-08 : invitation à consommer à la vérification de l'e-mail. */
+  readonly pendingInvitationId?: string | null;
 }
 
 export interface NewAccountToken {

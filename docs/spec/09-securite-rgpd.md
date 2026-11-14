@@ -6,31 +6,31 @@ Fixer les exigences de sécurité vérifiables. La référence est OWASP ASVS ni
 
 ## Ce qu'on protège
 
-| Actif | Pourquoi |
-|---|---|
-| **La surprise** (qui offre quoi à qui) | Propre au produit ; une fuite est irréversible. |
-| Les identifiants et sessions | Prise de contrôle de compte. |
-| Les données de mineurs | Obligation légale et morale. |
-| La compta | Litiges d'argent entre proches. |
-| Les envies et le réseau familial | Données personnelles révélatrices (goûts, santé, religion, moyens). |
+| Actif                                  | Pourquoi                                                            |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| **La surprise** (qui offre quoi à qui) | Propre au produit ; une fuite est irréversible.                     |
+| Les identifiants et sessions           | Prise de contrôle de compte.                                        |
+| Les données de mineurs                 | Obligation légale et morale.                                        |
+| La compta                              | Litiges d'argent entre proches.                                     |
+| Les envies et le réseau familial       | Données personnelles révélatrices (goûts, santé, religion, moyens). |
 
 ## Modèle de menaces
 
-| Menace | Exemple | Parades |
-|---|---|---|
+| Menace                                                        | Exemple                                                                                                          | Parades                                                                                                                                                                  |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Curiosité interne** : un destinataire veut voir ses cadeaux | Appels directs à l'API, écoute du WebSocket, inspection du cache, changement de profil sur le téléphone familial | Moteur de visibilité (VIS-30), salons séparés (RT-03), champs absents, PIN serveur (PIN-02), cache cloisonné et chiffré (OFF-20, OFF-21), notifications neutres (NOT-06) |
-| **Accès à la ressource d'autrui** (IDOR) | Deviner l'identifiant d'une liste | Identifiants non devinables (UUID v7), contrôle d'accès systématique par le moteur, réponse `404` identique pour « n'existe pas » et « pas le droit » |
-| **Prise de compte** | Bourrage d'identifiants, hameçonnage | argon2id, mots de passe compromis refusés, TOTP, limitation, alertes de connexion, révocation de sessions |
-| **SSRF** par l'extraction de lien | URL vers le réseau interne | EXT-40 à EXT-45 |
-| **Injection de prompt** par une page marchande | Texte piégé dans une page | EXT-31 : pas d'outil, sortie validée, brouillon confirmé |
-| **XSS** | Titre de produit ou commentaire piégé | Échappement systématique, aucune injection HTML, CSP stricte |
-| **CSRF** | Site tiers qui déclenche une action | Cookies `SameSite`, jeton anti-CSRF sur les mutations, vérification de l'en-tête `Origin` |
-| **Abus d'invitation** | Liens d'invitation devinés ou diffusés | Jetons aléatoires de 128 bits, usage limité, expiration, révocation |
-| **Énumération** | Découvrir si un e-mail a un compte | Réponses et délais identiques |
-| **Abus de ressources** | Extraction en masse, envoi massif d'invitations | Plafonds par profil, compte et IP |
-| **Administrateur trop curieux** | Lecture des listes privées | Pas d'accès aux contenus, journal d'audit immuable (`11-admin-rbac.md`) |
-| **Fuite de la base ou d'une sauvegarde** | Vol d'un export | Chiffrement au repos, secrets TOTP chiffrés par clé externe, sauvegardes chiffrées |
-| **Dépendance compromise** | Paquet npm malveillant | Verrouillage des versions, audit et analyse Trivy en CI, actions de CI épinglées par commit (CI-07), mises à jour revues, scripts d'installation désactivés |
+| **Accès à la ressource d'autrui** (IDOR)                      | Deviner l'identifiant d'une liste                                                                                | Identifiants non devinables (UUID v7), contrôle d'accès systématique par le moteur, réponse `404` identique pour « n'existe pas » et « pas le droit »                    |
+| **Prise de compte**                                           | Bourrage d'identifiants, hameçonnage                                                                             | argon2id, mots de passe compromis refusés, TOTP, limitation, alertes de connexion, révocation de sessions                                                                |
+| **SSRF** par l'extraction de lien                             | URL vers le réseau interne                                                                                       | EXT-40 à EXT-45                                                                                                                                                          |
+| **Injection de prompt** par une page marchande                | Texte piégé dans une page                                                                                        | EXT-31 : pas d'outil, sortie validée, brouillon confirmé                                                                                                                 |
+| **XSS**                                                       | Titre de produit ou commentaire piégé                                                                            | Échappement systématique, aucune injection HTML, CSP stricte                                                                                                             |
+| **CSRF**                                                      | Site tiers qui déclenche une action                                                                              | Cookies `SameSite`, jeton anti-CSRF sur les mutations, vérification de l'en-tête `Origin`                                                                                |
+| **Abus d'invitation**                                         | Liens d'invitation devinés ou diffusés                                                                           | Jetons aléatoires de 128 bits, usage limité, expiration, révocation                                                                                                      |
+| **Énumération**                                               | Découvrir si un e-mail a un compte                                                                               | Réponses et délais identiques                                                                                                                                            |
+| **Abus de ressources**                                        | Extraction en masse, envoi massif d'invitations                                                                  | Plafonds par profil, compte et IP                                                                                                                                        |
+| **Administrateur trop curieux**                               | Lecture des listes privées                                                                                       | Pas d'accès aux contenus, journal d'audit immuable (`11-admin-rbac.md`)                                                                                                  |
+| **Fuite de la base ou d'une sauvegarde**                      | Vol d'un export                                                                                                  | Chiffrement au repos, secrets TOTP chiffrés par clé externe, sauvegardes chiffrées                                                                                       |
+| **Dépendance compromise**                                     | Paquet npm malveillant                                                                                           | Verrouillage des versions, audit et analyse Trivy en CI, actions de CI épinglées par commit (CI-07), mises à jour revues, scripts d'installation désactivés              |
 
 ## Exigences
 

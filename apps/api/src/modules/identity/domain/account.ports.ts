@@ -59,6 +59,8 @@ export abstract class AccountRepository {
     readonly passwordHash: string;
     readonly authEpoch: number;
     readonly reset: boolean;
+    /** `reset` vérifie l'adresse, sauf si faux (AUTH-09, `INVITE_ONLY`). Défaut : vrai. */
+    readonly verifyEmail?: boolean;
     readonly now: Date;
   }): Promise<void>;
 

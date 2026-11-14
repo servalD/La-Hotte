@@ -45,6 +45,12 @@ export abstract class ProfileRepository {
   abstract delete(accountId: string, profileId: string): Promise<'deleted' | 'last' | 'missing'>;
 
   /**
+   * PRO-09 : marqueur « profil enfant », changé depuis l'espace Compte seulement ; la version
+   * augmente. Faux si le profil n'existe pas ou n'est pas du compte.
+   */
+  abstract setChild(accountId: string, profileId: string, isChild: boolean): Promise<boolean>;
+
+  /**
    * PIN-03 : essai compté **avant** d'être évalué, en une seule écriture conditionnelle. Hors
    * attente, le compteur augmente et, s'il atteint le seuil, l'attente suivante est posée tout de
    * suite (`lockStepsMs`, indexée depuis le seuil). Pendant l'attente, rien n'est écrit. Le

@@ -30,6 +30,7 @@ export {
   DisableProfilePin,
   ListAccountProfiles,
   ResetProfilePin,
+  SetProfileChildMarker,
 } from './manage-account-profiles.use-case';
 export { GetOwnProfile, SetOwnPin, UpdateOwnProfile } from './manage-own-profile.use-case';
 export { LockSession, type ProfileSelection, SelectProfile } from './select-profile.use-case';
@@ -79,3 +80,29 @@ export { RegenerateRecoveryCodes } from './regenerate-recovery-codes.use-case';
 export { type SecondFactorOutcome, VerifySecondFactor } from './verify-second-factor.use-case';
 export { RECOVERY_CODE_COUNT } from '../domain/second-factor';
 export { PENDING_SECOND_FACTOR_TTL_MS, TRUSTED_DEVICE_LIFETIME_MS } from '../domain/second-factor';
+export { INVITATION_TOKEN_PATTERN } from '../domain/link';
+export {
+  ApproveLink,
+  BlockProfile,
+  BreakLink,
+  CreateInvitation,
+  type CreatedInvitation,
+  InspectInvitation,
+  type InvitationPreview,
+  ListBlocks,
+  ListCircle,
+  ListInvitations,
+  ListLinks,
+  RedeemInvitation,
+  RevokeInvitation,
+  UnblockProfile,
+} from './manage-links.use-case';
+export type {
+  BlockedProfile,
+  CircleMember,
+  LinkRole,
+  LinkStatus,
+  LinkView,
+  OpenInvitation,
+} from '../domain/link';
+export { RemoveUnverifiedAccount } from './remove-unverified-account';

@@ -30,8 +30,8 @@ Réunir des profils autour d'une date, et faire en sorte que chacun arrive avec 
 - **EVT-21** Reprendre un souhait non obtenu le **déplace par référence** : le même souhait apparaît dans la nouvelle liste et l'ancienne liste garde une trace « reporté vers… ». Ses commentaires publics suivent, son fil des offreurs repart de zéro.
 - **EVT-22** La liste des « non obtenus » est calculée par le serveur **sans rien révéler** : elle contient tous les souhaits passés du profil qu'il n'a pas cochés « reçu » ni retirés, **quel que soit leur état réel**. Un souhait secrètement réservé ou acheté y figure comme les autres : l'en retirer trahirait l'achat par son absence.
 - **EVT-26** Si le destinataire reprend un souhait réellement `RÉSERVÉ` ou `ACHETÉ` :
-  - côté offreurs, l'élément garde son état et ses participations, avec la mention « déjà acheté pour *Noël 2025* » ou « déjà réservé pour… » ;
-  - les participants de l'ancien élément sont notifiés (« Léa a remis ce souhait dans sa liste pour *Anniversaire 2026* ») et décident : prévenir Léa dans le fil public, ou laisser faire ;
+  - côté offreurs, l'élément garde son état et ses participations, avec la mention « déjà acheté pour _Noël 2025_ » ou « déjà réservé pour… » ;
+  - les participants de l'ancien élément sont notifiés (« Léa a remis ce souhait dans sa liste pour _Anniversaire 2026_ ») et décident : prévenir Léa dans le fil public, ou laisser faire ;
   - côté destinataire, rien ne change : l'élément est neutre comme les autres.
 - **EVT-23** Piocher dans la liste d'un autre crée une copie (ART-04). L'autre n'en est pas notifié.
 - **EVT-24** Le profil peut aussi rattacher une liste existante à l'événement plutôt que d'en créer une.
@@ -48,13 +48,13 @@ Réunir des profils autour d'une date, et faire en sorte que chacun arrive avec 
 
 ## Valeurs par défaut
 
-| Réglage | Défaut |
-|---|---|
-| Forme | `Échange` pour Noël, `À l'honneur` pour anniversaire, naissance, mariage |
-| Surprise | Non |
-| Rappels | J-14 et J-3 |
-| Audience des listes | Participants de l'événement |
-| Souhaits non obtenus à l'étape 1 | Tous présélectionnés |
+| Réglage                          | Défaut                                                                   |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| Forme                            | `Échange` pour Noël, `À l'honneur` pour anniversaire, naissance, mariage |
+| Surprise                         | Non                                                                      |
+| Rappels                          | J-14 et J-3                                                              |
+| Audience des listes              | Participants de l'événement                                              |
+| Souhaits non obtenus à l'étape 1 | Tous présélectionnés                                                     |
 
 ## Critères d'acceptation
 

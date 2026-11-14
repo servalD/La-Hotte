@@ -22,6 +22,7 @@ import {
   InMemoryBackgroundTasks,
   InMemoryBreachChecker,
   InMemoryEventThrottle,
+  InMemoryLinkRepository,
   InMemoryMailSender,
   InMemoryPendingSecondFactors,
   InMemorySecondFactorRepository,
@@ -29,6 +30,7 @@ import {
   InMemoryProfileLockPolicies,
   InMemoryProfileRepository,
   InMemoryRateLimiter,
+  LinkRepository,
   InMemorySecurityLog,
   InMemorySessionStore,
   MailSender,
@@ -67,11 +69,20 @@ export interface TestIdentity {
   readonly oidcFlows: InMemoryOidcFlows;
   readonly googleReauthProofs: InMemoryGoogleReauthProofs;
   readonly googleIdentities: InMemoryGoogleIdentityRepository;
+  /** Liens, blocages et invitations (LNK-01 à LNK-10) ; profils partagés avec `accounts`. */
+  readonly links: InMemoryLinkRepository;
   /**
    * Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé), `TEST_PIN`
    * sinon. `withProfile: false` : compte sans aucun profil.
    */
-  signIn(options?: { pin?: boolean; relock?: PinRelock; withProfile?: boolean }): Promise<SignedIn>;
+  signIn(options?: {
+    pin?: boolean;
+    relock?: PinRelock;
+    withProfile?: boolean;
+    /** PRO-05 : profil enfant. */
+    isChild?: boolean;
+    displayName?: string;
+  }): Promise<SignedIn>;
 }
 
 /** Application montée avec ses vrais réglages (filtre, validation, en-têtes, gardes), ports en mémoire. */
@@ -104,6 +115,7 @@ export async function createTestApp(
   const oidcFlows = new InMemoryOidcFlows();
   const googleReauthProofs = new InMemoryGoogleReauthProofs();
   const googleIdentities = new InMemoryGoogleIdentityRepository(accounts, sessions);
+  const links = new InMemoryLinkRepository(accounts);
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -148,6 +160,8 @@ export async function createTestApp(
     .useValue(googleReauthProofs)
     .overrideProvider(GoogleIdentityRepository)
     .useValue(googleIdentities)
+    .overrideProvider(LinkRepository)
+    .useValue(links)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
@@ -174,11 +188,26 @@ export async function createTestApp(
     oidcFlows,
     googleReauthProofs,
     googleIdentities,
-    async signIn({ pin = false, relock = 'IDLE_15', withProfile = true } = {}) {
+    links,
+    async signIn({
+      pin = false,
+      relock = 'IDLE_15',
+      withProfile = true,
+      isChild = false,
+      displayName,
+    } = {}) {
       const accountId = randomUUID();
       const profileId = randomUUID();
       sessions.addAccount(accountId);
       if (withProfile) profiles.set({ profileId, accountId, hasPin: pin, relock });
+      const created = accounts.profiles.get(profileId);
+      if (created && withProfile) {
+        accounts.profiles.set(profileId, {
+          ...created,
+          isChild,
+          ...(displayName ? { displayName } : {}),
+        });
+      }
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { UNVERIFIED_ACCOUNT_MAX_AGE_MS } from '../domain/account';
 import { AccountRepository } from '../domain/account.ports';
+import { INVITATION_RETENTION_MS } from '../domain/link';
+import { LinkRepository } from '../domain/link.ports';
 import { SecurityLog } from '../domain/ports';
 import { SessionLifecycle } from './session-lifecycle';
 
@@ -21,6 +23,7 @@ const SYSTEM_CLIENT = { ip: '0.0.0.0', userAgent: 'system' } as const;
 export class PurgeUnverifiedAccounts {
   constructor(
     private readonly accounts: AccountRepository,
+    private readonly links: LinkRepository,
     private readonly lifecycle: SessionLifecycle,
     private readonly securityLog: SecurityLog,
     private readonly clock: Clock,
@@ -44,6 +47,10 @@ export class PurgeUnverifiedAccounts {
         at: this.clock.now(),
       });
     }
+    // LNK-10, RGPD-09 : invitations terminées depuis 30 jours.
+    await this.links.purgeInvitations(
+      new Date(this.clock.now().getTime() - INVITATION_RETENTION_MS),
+    );
     return purged;
   }
 }

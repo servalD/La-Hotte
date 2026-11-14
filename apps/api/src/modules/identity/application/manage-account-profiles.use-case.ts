@@ -8,7 +8,8 @@ import {
   DISPLAY_NAME_MAX_LENGTH,
 } from '../domain/account';
 import { AccountRepository, PasswordHasher } from '../domain/account.ports';
-import { type SecurityEvent, SecurityLog, type SessionRef } from '../domain/ports';
+import { LinkRepository } from '../domain/link.ports';
+import { IdentityEvents, type SecurityEvent, SecurityLog, type SessionRef } from '../domain/ports';
 import { isPinWellFormed, normalizeDisplayName, type ProfileMetadata } from '../domain/profile';
 import {
   InvalidProfileError,
@@ -97,6 +98,8 @@ export class CreateAccountProfile {
 export class DeleteAccountProfile {
   constructor(
     private readonly profiles: ProfileRepository,
+    private readonly links: LinkRepository,
+    private readonly events: IdentityEvents,
     private readonly lifecycle: SessionLifecycle,
     private readonly securityLog: SecurityLog,
     private readonly clock: Clock,
@@ -110,6 +113,7 @@ export class DeleteAccountProfile {
     const accountId = input.session.accountId;
     // Lues avant : après la suppression, `SET NULL` a effacé le profil actif des lignes.
     const sessions = await this.lifecycle.sessionsWithProfile(accountId, input.profileId);
+    const circle = await this.links.membersOf(input.profileId);
     const result = await this.profiles.delete(accountId, input.profileId);
     if (result === 'missing') throw new ProfileNotFoundError();
     if (result === 'last') throw new LastProfileError();
@@ -117,6 +121,8 @@ export class DeleteAccountProfile {
     // temps réel). Une session qui l'aurait choisi entre les deux n'y trouve plus qu'un profil
     // absent, donc verrouillé (423).
     await this.lifecycle.deselect(sessions);
+    // LNK-09 : la suppression emporte liens et blocages (cascade) ; leurs contreparties en sont prévenues.
+    this.events.publish({ type: 'circle.changed', profileIds: [input.profileId, ...circle] });
     await log(this.securityLog, accountId, 'profile.deleted', input.client, this.clock.now());
   }
 }
@@ -202,4 +208,33 @@ async function log(
   at: Date,
 ): Promise<void> {
   await securityLog.record({ accountId, event, ip: client.ip, userAgent: client.userAgent, at });
+}
+
+/**
+ * PRO-09 (AUTH-14, ré-authentification exigée par la route) : marqueur « profil enfant », changé
+ * dans les deux sens depuis l'espace Compte seulement. Les liens déjà acceptés sont conservés.
+ */
+@Injectable()
+export class SetProfileChildMarker {
+  constructor(
+    private readonly profiles: ProfileRepository,
+    private readonly events: IdentityEvents,
+    private readonly securityLog: SecurityLog,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(input: {
+    readonly session: SessionRef;
+    readonly profileId: string;
+    readonly isChild: boolean;
+    readonly client: ClientInfo;
+  }): Promise<void> {
+    const accountId = input.session.accountId;
+    if (!(await this.profiles.setChild(accountId, input.profileId, input.isChild))) {
+      throw new ProfileNotFoundError();
+    }
+    await log(this.securityLog, accountId, 'profile.child_changed', input.client, this.clock.now());
+    // LNK-09 : le nom de l'enfant et la tutelle changent pour ses contreparties.
+    this.events.publish({ type: 'circle.changed', profileIds: [input.profileId] });
+  }
 }

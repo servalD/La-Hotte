@@ -70,6 +70,18 @@ export const deleteAccountProfileParams = zod.object({
   id: zod.uuid(),
 });
 
+/**
+ * @summary PRO-09 : marqueur « profil enfant », dans les deux sens, depuis l'espace Compte seulement et
+après une ré-authentification de moins de 10 minutes (AUTH-14).
+ */
+export const setChildMarkerParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const setChildMarkerBody = zod.object({
+  isChild: zod.boolean(),
+});
+
 export const disableProfilePinParams = zod.object({
   id: zod.uuid(),
 });

@@ -20,4 +20,9 @@ export interface GoogleRegistrationDto {
   locale?: string;
   /** @maxLength 64 */
   timezone?: string;
+  /**
+   * LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`).
+   * @pattern ^[A-Za-z0-9_-]{22}$
+   */
+  invitationToken?: string;
 }

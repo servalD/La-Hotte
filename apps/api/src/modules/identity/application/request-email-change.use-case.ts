@@ -44,7 +44,7 @@ export class RequestEmailChange {
 
   private async issue(accountId: string, newEmail: string): Promise<void> {
     const account = await this.accounts.findById(accountId);
-    if (!account?.active || account.email === newEmail) return;
+    if (!account?.active || !account.emailVerified || account.email === newEmail) return;
 
     // L'adresse actuelle est prévenue d'abord. Si l'avertissement ne part pas (quota du
     // destinataire épuisé, par exemple par un tiers qui a multiplié les demandes), on s'arrête :

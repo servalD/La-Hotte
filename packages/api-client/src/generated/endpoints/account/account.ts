@@ -28,6 +28,7 @@ import type {
   CreateProfileDto,
   ProblemDetailsDto,
   ResetProfilePinDto,
+  SetChildMarkerDto,
   TrustedDeviceListView,
 } from '../../model';
 
@@ -418,6 +419,92 @@ export const useDeleteAccountProfile = <TError = ErrorType<ProblemDetailsDto>, T
   TContext
 > => {
   const mutationOptions = getDeleteAccountProfileMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary PRO-09 : marqueur « profil enfant », dans les deux sens, depuis l'espace Compte seulement et
+après une ré-authentification de moins de 10 minutes (AUTH-14).
+ */
+export const getSetChildMarkerUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}/child`;
+};
+
+export const setChildMarker = async (
+  id: string,
+  setChildMarkerDto: SetChildMarkerDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getSetChildMarkerUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setChildMarkerDto),
+  });
+};
+
+export const getSetChildMarkerMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setChildMarker>>,
+    TError,
+    { id: string; data: SetChildMarkerDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setChildMarker>>,
+  TError,
+  { id: string; data: SetChildMarkerDto },
+  TContext
+> => {
+  const mutationKey = ['setChildMarker'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setChildMarker>>,
+    { id: string; data: SetChildMarkerDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return setChildMarker(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetChildMarkerMutationResult = NonNullable<Awaited<ReturnType<typeof setChildMarker>>>;
+export type SetChildMarkerMutationBody = SetChildMarkerDto;
+export type SetChildMarkerMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-09 : marqueur « profil enfant », dans les deux sens, depuis l'espace Compte seulement et
+après une ré-authentification de moins de 10 minutes (AUTH-14).
+ */
+export const useSetChildMarker = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof setChildMarker>>,
+      TError,
+      { id: string; data: SetChildMarkerDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof setChildMarker>>,
+  TError,
+  { id: string; data: SetChildMarkerDto },
+  TContext
+> => {
+  const mutationOptions = getSetChildMarkerMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

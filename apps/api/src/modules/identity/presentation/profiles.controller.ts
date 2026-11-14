@@ -35,6 +35,7 @@ import {
   type ResolvedSession,
   sessionRef,
   SetOwnPin,
+  SetProfileChildMarker,
   UpdateOwnProfile,
 } from '../application/contract';
 import { clearUnlockCookie, setUnlockCookie } from './cookies';
@@ -47,6 +48,7 @@ import {
   RequiresProfile,
   RequiresRecentReauth,
 } from './decorators';
+import { SetChildMarkerDto } from './dto/link.dto';
 import {
   CreateProfileDto,
   ResetProfilePinDto,
@@ -189,6 +191,7 @@ export class AccountProfilesController {
     private readonly deleteUseCase: DeleteAccountProfile,
     private readonly resetPinUseCase: ResetProfilePin,
     private readonly disablePinUseCase: DisableProfilePin,
+    private readonly childMarkerUseCase: SetProfileChildMarker,
   ) {}
 
   @Get()
@@ -230,6 +233,29 @@ export class AccountProfilesController {
     await this.deleteUseCase.execute({
       session: sessionRef(current.record),
       profileId: id,
+      client,
+    });
+  }
+
+  /**
+   * PRO-09 : marqueur « profil enfant », dans les deux sens, depuis l'espace Compte seulement et
+   * après une ré-authentification de moins de 10 minutes (AUTH-14).
+   */
+  @Put(':id/child')
+  @RequiresRecentReauth()
+  @HttpCode(204)
+  @ApiParam({ name: 'id', schema: { type: 'string', format: 'uuid' } })
+  @ApiNoContentResponse()
+  async setChildMarker(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: SetChildMarkerDto,
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+  ): Promise<void> {
+    await this.childMarkerUseCase.execute({
+      session: sessionRef(current.record),
+      profileId: id,
+      isChild: body.isChild,
       client,
     });
   }

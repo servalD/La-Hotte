@@ -22,4 +22,10 @@ export type { ActiveProfile as ActiveProfileValue } from './application/authoriz
  * émission, et les événements `session.revoked`, `profile.locked`, `session.profile_changed`.
  */
 export { CheckSessionAccess } from './application/check-session-access.use-case';
+
+/**
+ * Cercle d'un profil (LNK-09), lu en base à chaque appel : seul juge du cercle pour le futur module
+ * `visibility` (invariant 2). `circle.changed` est publié à l'acceptation, la rupture et le blocage.
+ */
+export { CircleReader } from './domain/link.ports';
 export { type IdentityEvent, IdentityEvents, type IdentityEventListener } from './domain/ports';

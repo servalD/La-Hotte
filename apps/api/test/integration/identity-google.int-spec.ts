@@ -170,7 +170,12 @@ describe('Redis : parcours et preuves (ADR 0013)', () => {
     epoch: null,
     nonce: 'n',
     codeVerifier: 'v',
-    registration: { displayName: 'Camille', locale: null, timezone: 'Europe/Paris' },
+    registration: {
+      displayName: 'Camille',
+      locale: null,
+      timezone: 'Europe/Paris',
+      invitationTokenHash: null,
+    },
     createdAt: new Date(),
   };
 

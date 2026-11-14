@@ -137,6 +137,51 @@
         ]
       }
     },
+    "/api/v1/account/profiles/{id}/child": {
+      "put": {
+        "operationId": "setChildMarker",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetChildMarkerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-09 : marqueur « profil enfant », dans les deux sens, depuis l'espace Compte seulement et\naprès une ré-authentification de moins de 10 minutes (AUTH-14).",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/account/profiles/{id}/pin": {
       "delete": {
         "operationId": "disableProfilePin",
@@ -894,6 +939,134 @@
         ]
       }
     },
+    "/api/v1/blocks": {
+      "get": {
+        "operationId": "listBlocks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blocks"
+        ]
+      },
+      "post": {
+        "operationId": "blockProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/blocks/{profileId}": {
+      "delete": {
+        "operationId": "unblockProfile",
+        "parameters": [
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/circle": {
+      "get": {
+        "operationId": "getCircle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircleView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "circle"
+        ]
+      }
+    },
     "/api/v1/example-items": {
       "post": {
         "operationId": "createExampleItem",
@@ -988,6 +1161,296 @@
         "summary": "Vue polymorphe : la forme dépend du lecteur, discriminée par `view` (API-12).",
         "tags": [
           "example-items"
+        ]
+      }
+    },
+    "/api/v1/invitations": {
+      "post": {
+        "operationId": "createInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedInvitationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Le jeton n'est rendu qu'ici, une seule fois.",
+        "tags": [
+          "invitations"
+        ]
+      },
+      "get": {
+        "operationId": "listInvitations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/{id}": {
+      "delete": {
+        "operationId": "revokeInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/inspect": {
+      "post": {
+        "operationId": "inspectInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-07 : le jeton dans le corps, jamais dans l'adresse (journaux, historique).",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/redeem": {
+      "post": {
+        "operationId": "redeemInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemedInvitationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-06 : accepté d'office, ou en attente d'un tuteur si un enfant est partie.",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/links": {
+      "get": {
+        "operationId": "listLinks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/links/{id}": {
+      "delete": {
+        "operationId": "deleteLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-02 : rompre, ou refuser un lien en attente ; les accès tombent à la requête suivante.",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/links/{id}/approve": {
+      "post": {
+        "operationId": "approveLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-06 : `404` pour tout lien que le profil actif n'a pas à valider (SEC-04).",
+        "tags": [
+          "links"
         ]
       }
     },
@@ -1539,6 +2002,125 @@
           "year"
         ]
       },
+      "BlockedProfileView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-05 : absent pour un enfant."
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "accentColor"
+        ]
+      },
+      "BlockListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockedProfileView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BlockProfileDto": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      },
+      "CircleMemberView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "source": {
+            "enum": [
+              "ACCOUNT",
+              "LINK"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "source"
+        ]
+      },
+      "CircleView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CircleMemberView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreatedInvitationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "format": "password"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "token",
+          "expiresAt"
+        ]
+      },
       "CreateExampleItemDto": {
         "type": "object",
         "properties": {
@@ -1561,6 +2143,16 @@
         "required": [
           "title"
         ]
+      },
+      "CreateInvitationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          }
+        }
       },
       "CreateProfileDto": {
         "type": "object",
@@ -1771,6 +2363,11 @@
             "type": "string",
             "maxLength": 64,
             "example": "Europe/Paris"
+          },
+          "invitationToken": {
+            "type": "string",
+            "description": "LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`).",
+            "pattern": "^[A-Za-z0-9_-]{22}$"
           }
         },
         "required": [
@@ -1785,6 +2382,162 @@
             "$ref": "#/components/schemas/GoogleRegistrationDto"
           }
         }
+      },
+      "InvitationListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenInvitationView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "InvitationPreviewView": {
+        "type": "object",
+        "properties": {
+          "inviterName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent si l'invitant est un enfant."
+          },
+          "inviterAccentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "inviterName",
+          "inviterAccentColor",
+          "expiresAt"
+        ]
+      },
+      "InvitationTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "LinkChildView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName"
+        ]
+      },
+      "LinkCounterpartView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-05 : absent tant que le lien n'est pas accepté, si l'autre partie est un enfant."
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "accentColor"
+        ]
+      },
+      "LinkItemView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "AWAITING_GUARDIAN",
+              "ACCEPTED"
+            ],
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "PARTY",
+              "GUARDIAN"
+            ],
+            "type": "string"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/LinkCounterpartView"
+          },
+          "child": {
+            "nullable": true,
+            "description": "Pour un tuteur : l'enfant qu'il garde dans ce lien ; sinon `null`.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LinkChildView"
+              }
+            ]
+          },
+          "awaitingMyApproval": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "role",
+          "counterpart",
+          "child",
+          "awaitingMyApproval",
+          "createdAt"
+        ]
+      },
+      "LinkListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkItemView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
       },
       "LoginDto": {
         "type": "object",
@@ -1818,6 +2571,28 @@
         },
         "required": [
           "newPassword"
+        ]
+      },
+      "OpenInvitationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "expiresAt"
         ]
       },
       "PasswordResetConfirmDto": {
@@ -2034,6 +2809,27 @@
           "recoveryCodes"
         ]
       },
+      "RedeemedInvitationView": {
+        "type": "object",
+        "properties": {
+          "linkId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "AWAITING_GUARDIAN",
+              "ACCEPTED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "linkId",
+          "status"
+        ]
+      },
       "RegisterDto": {
         "type": "object",
         "properties": {
@@ -2074,6 +2870,11 @@
             "description": "Fuseau IANA du navigateur ; à défaut, Europe/Paris.",
             "maxLength": 64,
             "example": "Europe/Paris"
+          },
+          "invitationToken": {
+            "type": "string",
+            "description": "LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`).",
+            "pattern": "^[A-Za-z0-9_-]{22}$"
           }
         },
         "required": [
@@ -2194,6 +2995,17 @@
           "activeProfileId",
           "profileUnlocked",
           "expiresAt"
+        ]
+      },
+      "SetChildMarkerDto": {
+        "type": "object",
+        "properties": {
+          "isChild": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isChild"
         ]
       },
       "SetOwnPinDto": {

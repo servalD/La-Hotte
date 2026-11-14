@@ -181,8 +181,9 @@ export class InMemoryGoogleIdentityRepository extends GoogleIdentityRepository {
       id: account.id,
       email: account.email,
       passwordHash: null,
-      emailVerifiedAt: account.createdAt,
+      emailVerifiedAt: account.pendingInvitationId ? null : account.createdAt,
       createdAt: account.createdAt,
+      pendingInvitationId: account.pendingInvitationId ?? null,
     });
     this.accounts.profiles.set(account.profile.id, { ...account.profile, accountId: account.id });
     this.identities.set(account.subject, account.id);

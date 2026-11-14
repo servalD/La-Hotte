@@ -2,7 +2,7 @@
 
 PWA de listes de souhaits et de cadeaux : plusieurs profils par compte, fiches article extraites par IA, événements, visibilité fine, giftlists secrètes, commentaires, compta des participations, temps réel, hors ligne.
 
-**État : phase 0 (socle) livrée.** La prochaine étape est la phase 1 de `docs/roadmap.md`.
+**État : phase 0 (socle) livrée ; phase 1 en cours (tranches 1 à 6 faites, voir `docs/roadmap.md`).**
 
 ## Où trouver quoi
 

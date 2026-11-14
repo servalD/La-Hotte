@@ -102,6 +102,7 @@ import {
   DisableProfilePin,
   ListAccountProfiles,
   ResetProfilePin,
+  SetProfileChildMarker,
 } from './application/manage-account-profiles.use-case';
 import {
   GetOwnProfile,
@@ -113,6 +114,29 @@ import { LockSession, SelectProfile } from './application/select-profile.use-cas
 import { ProfileRepository } from './domain/profile.ports';
 import { PrismaProfileRepository } from './infrastructure/prisma-profile-repository';
 import { AccountProfilesController, ProfilesController } from './presentation/profiles.controller';
+import {
+  ApproveLink,
+  BlockProfile,
+  BreakLink,
+  CreateInvitation,
+  InspectInvitation,
+  ListBlocks,
+  ListCircle,
+  ListInvitations,
+  ListLinks,
+  RedeemInvitation,
+  RevokeInvitation,
+  UnblockProfile,
+} from './application/manage-links.use-case';
+import { RemoveUnverifiedAccount } from './application/remove-unverified-account';
+import { CircleReader, LinkRepository } from './domain/link.ports';
+import { PrismaLinkRepository } from './infrastructure/prisma-link-repository';
+import {
+  BlocksController,
+  CircleController,
+  InvitationsController,
+  LinksController,
+} from './presentation/links.controller';
 
 /**
  * Module `identity` (ADR 0011, ADR 0013) : sessions, gardes, limitation, journal de sécurité,
@@ -129,6 +153,10 @@ import { AccountProfilesController, ProfilesController } from './presentation/pr
     TrustedDevicesController,
     ProfilesController,
     AccountProfilesController,
+    CircleController,
+    LinksController,
+    InvitationsController,
+    BlocksController,
   ],
   providers: [
     ResolveSession,
@@ -176,6 +204,22 @@ import { AccountProfilesController, ProfilesController } from './presentation/pr
     DeleteAccountProfile,
     ResetProfilePin,
     DisableProfilePin,
+    SetProfileChildMarker,
+    RemoveUnverifiedAccount,
+    CreateInvitation,
+    ListInvitations,
+    RevokeInvitation,
+    InspectInvitation,
+    RedeemInvitation,
+    ListCircle,
+    ListLinks,
+    ApproveLink,
+    BreakLink,
+    BlockProfile,
+    UnblockProfile,
+    ListBlocks,
+    { provide: LinkRepository, useClass: PrismaLinkRepository },
+    { provide: CircleReader, useExisting: LinkRepository },
     { provide: ProfileRepository, useClass: PrismaProfileRepository },
     { provide: SessionStore, useClass: RedisSessionStore },
     { provide: SecretTokens, useClass: CryptoSecretTokens },
@@ -204,6 +248,6 @@ import { AccountProfilesController, ProfilesController } from './presentation/pr
     { provide: APP_GUARD, useClass: IdentityGuardChain },
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
-  exports: [CheckSessionAccess, IdentityEvents],
+  exports: [CheckSessionAccess, IdentityEvents, CircleReader],
 })
 export class IdentityModule {}

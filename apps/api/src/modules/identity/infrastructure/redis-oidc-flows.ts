@@ -15,7 +15,7 @@ interface StoredFlow {
   e: number | null;
   n: string;
   v: string;
-  r: { d: string; l: string | null; t: string | null } | null;
+  r: { d: string; l: string | null; t: string | null; i?: string | null } | null;
   c: number;
 }
 
@@ -43,7 +43,14 @@ function parseFlow(raw: string | null): OidcFlow | null {
       epoch: v.e,
       nonce: v.n,
       codeVerifier: v.v,
-      registration: v.r ? { displayName: v.r.d, locale: v.r.l, timezone: v.r.t } : null,
+      registration: v.r
+        ? {
+            displayName: v.r.d,
+            locale: v.r.l,
+            timezone: v.r.t,
+            invitationTokenHash: typeof v.r.i === 'string' ? v.r.i : null,
+          }
+        : null,
       createdAt: new Date(v.c),
     };
   } catch {
@@ -94,6 +101,7 @@ export class RedisOidcFlows extends OidcFlows {
             d: flow.registration.displayName,
             l: flow.registration.locale,
             t: flow.registration.timezone,
+            i: flow.registration.invitationTokenHash,
           }
         : null,
       c: flow.createdAt.getTime(),

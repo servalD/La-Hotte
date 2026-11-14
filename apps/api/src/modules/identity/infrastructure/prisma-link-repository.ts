@@ -1,0 +1,521 @@
+import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../platform/prisma/prisma.service';
+import {
+  type BlockedRow,
+  type CircleMember,
+  type InvitationLookup,
+  type LinkParty,
+  type LinkPartyDetails,
+  type LinkRecord,
+  type LinkSide,
+  type OpenInvitation,
+  orderPair,
+  planLink,
+} from '../domain/link';
+import { LinkRepository, type RedeemOutcome } from '../domain/link.ports';
+
+const PARTY = {
+  id: true,
+  accountId: true,
+  isChild: true,
+  displayName: true,
+  accentColor: true,
+  avatar: true,
+} as const;
+
+const LINK_WITH_PARTIES = {
+  profileA: { select: PARTY },
+  profileB: { select: PARTY },
+} as const;
+
+type PartyRow = Prisma.ProfileGetPayload<{ select: typeof PARTY }>;
+type LinkRow = Prisma.ProfileLinkGetPayload<{ include: typeof LINK_WITH_PARTIES }>;
+type Tx = Prisma.TransactionClient;
+
+interface InvitationRow {
+  id: string;
+  expires_at: Date;
+  created_at: Date;
+  profile_id: string;
+  account_id: string;
+  is_child: boolean;
+  display_name: string;
+  accent_color: string;
+  avatar: string | null;
+}
+
+function toParty(row: PartyRow): LinkPartyDetails {
+  return {
+    id: row.id,
+    accountId: row.accountId,
+    isChild: row.isChild,
+    displayName: row.displayName,
+    accentColor: row.accentColor,
+    avatar: row.avatar,
+  };
+}
+
+function toRecord(row: LinkRow): LinkRecord {
+  return {
+    id: row.id,
+    status: row.status,
+    requestedBy: row.requestedBy,
+    a: toParty(row.profileA),
+    b: toParty(row.profileB),
+    aGuardianRequired: row.aGuardianRequired,
+    bGuardianRequired: row.bGuardianRequired,
+    aGuardianApprovedBy: row.aGuardianApprovedBy,
+    bGuardianApprovedBy: row.bGuardianApprovedBy,
+    createdAt: row.createdAt,
+  };
+}
+
+function toInviter(row: InvitationRow): LinkPartyDetails {
+  return {
+    id: row.profile_id,
+    accountId: row.account_id,
+    isChild: row.is_child,
+    displayName: row.display_name,
+    accentColor: row.accent_color,
+    avatar: row.avatar,
+  };
+}
+
+/**
+ * Verrou partagé sur les profils d'une paire : un changement du marqueur enfant (`setChild`, verrou
+ * exclusif de la ligne) attend la fin de l'ouverture, ou la précède ; `planLink` lit toujours le
+ * marqueur à jour.
+ */
+async function lockProfiles(tx: Tx, ids: readonly string[]): Promise<void> {
+  await tx.$queryRaw`SELECT "id" FROM "profile" WHERE "id" = ANY(${ids}::uuid[]) ORDER BY "id" FOR SHARE`;
+}
+
+/** Verrou consultatif de la paire : ouverture, rupture et blocage concurrents se sérialisent. */
+async function lockPair(tx: Tx, x: string, y: string): Promise<void> {
+  const [a, b] = x < y ? [x, y] : [y, x];
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`link:${a}:${b}`}, 0))`;
+}
+
+/**
+ * Liens, blocages et invitations en base (LNK-01 à LNK-10). Les règles sont dans `domain/link` ;
+ * ici, seulement les écritures conditionnelles et les verrous qui les rendent atomiques.
+ */
+@Injectable()
+export class PrismaLinkRepository extends LinkRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async findParty(profileId: string): Promise<LinkPartyDetails | null> {
+    const row = await this.prisma.profile.findUnique({ where: { id: profileId }, select: PARTY });
+    return row ? toParty(row) : null;
+  }
+
+  async circleOf(profileId: string): Promise<CircleMember[]> {
+    const me = await this.prisma.profile.findUnique({
+      where: { id: profileId },
+      select: { accountId: true },
+    });
+    if (!me) return [];
+    const [siblings, links, blocks] = await Promise.all([
+      this.prisma.profile.findMany({
+        where: { accountId: me.accountId, id: { not: profileId } },
+        select: PARTY,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.profileLink.findMany({
+        where: {
+          status: 'ACCEPTED',
+          OR: [{ profileAId: profileId }, { profileBId: profileId }],
+        },
+        include: LINK_WITH_PARTIES,
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.profileBlock.findMany({
+        where: { OR: [{ blockerId: profileId }, { blockedId: profileId }] },
+        select: { blockerId: true, blockedId: true },
+      }),
+    ]);
+    const blocked = new Set(blocks.flatMap((b) => [b.blockerId, b.blockedId]));
+    const members: CircleMember[] = [];
+    const seen = new Set<string>([profileId]);
+    const add = (party: PartyRow, source: CircleMember['source']): void => {
+      if (seen.has(party.id) || blocked.has(party.id)) return;
+      seen.add(party.id);
+      members.push({
+        profileId: party.id,
+        displayName: party.displayName,
+        avatar: party.avatar,
+        accentColor: party.accentColor,
+        source,
+      });
+    };
+    for (const sibling of siblings) add(sibling, 'ACCOUNT');
+    for (const link of links)
+      add(link.profileAId === profileId ? link.profileB : link.profileA, 'LINK');
+    return members;
+  }
+
+  async membersOf(profileId: string): Promise<string[]> {
+    return (await this.circleOf(profileId)).map((member) => member.profileId);
+  }
+
+  async inCircle(profileId: string, otherProfileId: string): Promise<boolean> {
+    return (await this.membersOf(profileId)).includes(otherProfileId);
+  }
+
+  async isBlockedEitherWay(profileId: string, otherProfileId: string): Promise<boolean> {
+    const count = await this.prisma.profileBlock.count({
+      where: {
+        OR: [
+          { blockerId: profileId, blockedId: otherProfileId },
+          { blockerId: otherProfileId, blockedId: profileId },
+        ],
+      },
+    });
+    return count > 0;
+  }
+
+  async createInvitation(input: {
+    readonly id: string;
+    readonly tokenHash: string;
+    readonly createdBy: string;
+    readonly now: Date;
+    readonly expiresAt: Date;
+    readonly maxOpen: number;
+  }): Promise<'created' | 'limit'> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`invitations:${input.createdBy}`}, 0))`;
+      const [{ open }] = await tx.$queryRaw<[{ open: number }]>`
+        SELECT count(*)::int AS open FROM "invitation"
+        WHERE "created_by" = ${input.createdBy}::uuid AND "kind" = 'LINK'
+          AND "revoked_at" IS NULL AND "expires_at" > ${input.now}
+          AND "used_count" < "max_uses"`;
+      if (open >= input.maxOpen) return 'limit' as const;
+      await tx.invitation.create({
+        data: {
+          id: input.id,
+          kind: 'LINK',
+          targetId: input.createdBy,
+          tokenHash: input.tokenHash,
+          createdBy: input.createdBy,
+          maxUses: 1,
+          createdAt: input.now,
+          expiresAt: input.expiresAt,
+        },
+      });
+      return 'created' as const;
+    });
+  }
+
+  async listOpenInvitations(profileId: string, now: Date): Promise<OpenInvitation[]> {
+    const rows = await this.prisma.$queryRaw<{ id: string; created_at: Date; expires_at: Date }[]>`
+      SELECT "id", "created_at", "expires_at" FROM "invitation"
+      WHERE "created_by" = ${profileId}::uuid AND "kind" = 'LINK'
+        AND "revoked_at" IS NULL AND "expires_at" > ${now} AND "used_count" < "max_uses"
+      ORDER BY "created_at" DESC`;
+    return rows.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+    }));
+  }
+
+  async revokeInvitation(profileId: string, invitationId: string, now: Date): Promise<boolean> {
+    const { count } = await this.prisma.invitation.updateMany({
+      where: {
+        id: invitationId,
+        createdBy: profileId,
+        kind: 'LINK',
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: { revokedAt: now },
+    });
+    return count > 0;
+  }
+
+  async findOpenInvitation(tokenHash: string, now: Date): Promise<InvitationLookup | null> {
+    const rows = await this.prisma.$queryRaw<InvitationRow[]>`
+      SELECT i."id", i."expires_at", i."created_at", p."id" AS profile_id, p."account_id",
+             p."is_child", p."display_name", p."accent_color", p."avatar"
+      FROM "invitation" i JOIN "profile" p ON p."id" = i."created_by"
+      WHERE i."token_hash" = ${tokenHash} AND i."kind" = 'LINK' AND i."revoked_at" IS NULL
+        AND i."expires_at" > ${now} AND i."used_count" < i."max_uses"`;
+    const row = rows[0];
+    return row ? { id: row.id, inviter: toInviter(row), expiresAt: row.expires_at } : null;
+  }
+
+  async redeemInvitation(input: {
+    readonly tokenHash: string;
+    readonly redeemerId: string;
+    readonly linkId: string;
+    readonly now: Date;
+  }): Promise<RedeemOutcome> {
+    const found = await this.findOpenInvitation(input.tokenHash, input.now);
+    if (!found) return { kind: 'invalid' };
+    return this.prisma.$transaction(async (tx): Promise<RedeemOutcome> => {
+      const redeemer = await tx.profile.findUnique({
+        where: { id: input.redeemerId },
+        select: PARTY,
+      });
+      if (!redeemer) return { kind: 'invalid' };
+      if (redeemer.id === found.inviter.id || redeemer.accountId === found.inviter.accountId) {
+        return { kind: 'same_account' };
+      }
+      await lockPair(tx, redeemer.id, found.inviter.id);
+      await lockProfiles(tx, [redeemer.id, found.inviter.id]);
+      // L'invitant peut avoir changé de statut enfant depuis la lecture : relu sous verrou.
+      const inviter = await tx.profile.findUnique({
+        where: { id: found.inviter.id },
+        select: PARTY,
+      });
+      if (!inviter) return { kind: 'invalid' };
+      // Idem pour celui qui ouvre : le marqueur enfant lu avant le verrou peut être périmé (PRO-05).
+      const locked = await tx.profile.findUnique({ where: { id: redeemer.id }, select: PARTY });
+      if (!locked) return { kind: 'invalid' };
+      const blocked = await tx.profileBlock.count({
+        where: {
+          OR: [
+            { blockerId: redeemer.id, blockedId: inviter.id },
+            { blockerId: inviter.id, blockedId: redeemer.id },
+          ],
+        },
+      });
+      if (blocked > 0) return { kind: 'invalid' };
+      const [a, b] = orderPair(toParty(inviter), toParty(locked));
+      const existing = await tx.profileLink.findUnique({
+        where: { profileAId_profileBId: { profileAId: a.id, profileBId: b.id } },
+        select: { id: true },
+      });
+      if (existing) return { kind: 'already_linked' };
+      const consumed = await tx.$executeRaw`
+        UPDATE "invitation" SET "used_count" = "used_count" + 1, "updated_at" = ${input.now}
+        WHERE "id" = ${found.id}::uuid AND "used_count" < "max_uses"
+          AND "revoked_at" IS NULL AND "expires_at" > ${input.now}`;
+      if (consumed !== 1) return { kind: 'invalid' };
+      const plan = planLink(a, b);
+      await tx.profileLink.create({
+        data: {
+          id: input.linkId,
+          profileAId: a.id,
+          profileBId: b.id,
+          status: plan.status,
+          requestedBy: inviter.id,
+          aGuardianRequired: plan.aGuardianRequired,
+          bGuardianRequired: plan.bGuardianRequired,
+          createdAt: input.now,
+        },
+      });
+      return { kind: 'linked', linkId: input.linkId, status: plan.status };
+    });
+  }
+
+  async consumePendingInvitation(input: {
+    readonly accountId: string;
+    readonly linkId: string;
+    readonly now: Date;
+  }): Promise<'none' | 'linked' | 'exhausted'> {
+    return this.prisma.$transaction(async (tx) => {
+      const account = await tx.account.findUnique({
+        where: { id: input.accountId },
+        select: { pendingInvitationId: true, status: true },
+      });
+      if (!account?.pendingInvitationId) return 'none' as const;
+      if (account.status !== 'ACTIVE') return 'exhausted' as const;
+      const rows = await tx.$queryRaw<InvitationRow[]>`
+        SELECT i."id", i."expires_at", i."created_at", p."id" AS profile_id, p."account_id",
+               p."is_child", p."display_name", p."accent_color", p."avatar"
+        FROM "invitation" i JOIN "profile" p ON p."id" = i."created_by"
+        WHERE i."id" = ${account.pendingInvitationId}::uuid AND i."kind" = 'LINK'
+          AND i."revoked_at" IS NULL AND i."expires_at" > ${input.now}
+          AND i."used_count" < i."max_uses"`;
+      const invitation = rows[0];
+      const first = await tx.profile.findFirst({
+        where: { accountId: input.accountId },
+        orderBy: { createdAt: 'asc' },
+        select: PARTY,
+      });
+      if (!invitation || !first || invitation.account_id === input.accountId) {
+        return 'exhausted' as const;
+      }
+      await lockPair(tx, first.id, invitation.profile_id);
+      await lockProfiles(tx, [first.id, invitation.profile_id]);
+      const inviter = await tx.profile.findUnique({
+        where: { id: invitation.profile_id },
+        select: PARTY,
+      });
+      if (!inviter) return 'exhausted' as const;
+      const lockedFirst = await tx.profile.findUnique({ where: { id: first.id }, select: PARTY });
+      if (!lockedFirst) return 'exhausted' as const;
+      const blocked = await tx.profileBlock.count({
+        where: {
+          OR: [
+            { blockerId: first.id, blockedId: inviter.id },
+            { blockerId: inviter.id, blockedId: first.id },
+          ],
+        },
+      });
+      if (blocked > 0) return 'exhausted' as const;
+      const consumed = await tx.$executeRaw`
+        UPDATE "invitation" SET "used_count" = "used_count" + 1, "updated_at" = ${input.now}
+        WHERE "id" = ${invitation.id}::uuid AND "used_count" < "max_uses"
+          AND "revoked_at" IS NULL AND "expires_at" > ${input.now}`;
+      if (consumed !== 1) return 'exhausted' as const;
+      const [a, b] = orderPair(toParty(inviter), toParty(lockedFirst));
+      const plan = planLink(a, b);
+      await tx.profileLink.create({
+        data: {
+          id: input.linkId,
+          profileAId: a.id,
+          profileBId: b.id,
+          status: plan.status,
+          requestedBy: inviter.id,
+          aGuardianRequired: plan.aGuardianRequired,
+          bGuardianRequired: plan.bGuardianRequired,
+          createdAt: input.now,
+        },
+      });
+      // Le lien prouve la boîte seulement par la vérification qui a amené ici : même transaction.
+      await tx.account.update({
+        where: { id: input.accountId },
+        data: { pendingInvitationId: null },
+      });
+      await tx.account.updateMany({
+        where: { id: input.accountId, emailVerifiedAt: null },
+        data: { emailVerifiedAt: input.now },
+      });
+      return 'linked' as const;
+    });
+  }
+
+  async listLinks(actor: LinkParty): Promise<LinkRecord[]> {
+    const guarded = actor.isChild
+      ? []
+      : [
+          { profileA: { accountId: actor.accountId, isChild: true } },
+          { profileB: { accountId: actor.accountId, isChild: true } },
+        ];
+    const rows = await this.prisma.profileLink.findMany({
+      where: { OR: [{ profileAId: actor.id }, { profileBId: actor.id }, ...guarded] },
+      include: LINK_WITH_PARTIES,
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map(toRecord);
+  }
+
+  async findLink(linkId: string): Promise<LinkRecord | null> {
+    const row = await this.prisma.profileLink.findUnique({
+      where: { id: linkId },
+      include: LINK_WITH_PARTIES,
+    });
+    return row ? toRecord(row) : null;
+  }
+
+  async approveSide(input: {
+    readonly linkId: string;
+    readonly side: LinkSide;
+    readonly guardianId: string;
+    readonly now: Date;
+  }): Promise<LinkRecord | null> {
+    // Une seule écriture : le côté est validé, et le lien passe à ACCEPTED si l'autre côté
+    // requis l'est déjà (la contrainte `profile_link_accepted_is_approved` le garantit).
+    const changed =
+      input.side === 'A'
+        ? await this.prisma.$executeRaw`
+            UPDATE "profile_link" SET
+              "a_guardian_approved_by" = ${input.guardianId}::uuid,
+              "status" = CASE WHEN (NOT "b_guardian_required" OR "b_guardian_approved_by" IS NOT NULL)
+                         THEN 'ACCEPTED'::"link_status" ELSE "status" END,
+              "updated_at" = ${input.now}
+            WHERE "id" = ${input.linkId}::uuid AND "status" = 'AWAITING_GUARDIAN'
+              AND "a_guardian_required" AND "a_guardian_approved_by" IS NULL
+              AND EXISTS (
+                SELECT 1 FROM "profile" g, "profile" c
+                WHERE g."id" = ${input.guardianId}::uuid AND c."id" = "profile_a_id"
+                  AND NOT g."is_child" AND c."is_child" AND g."account_id" = c."account_id")`
+        : await this.prisma.$executeRaw`
+            UPDATE "profile_link" SET
+              "b_guardian_approved_by" = ${input.guardianId}::uuid,
+              "status" = CASE WHEN (NOT "a_guardian_required" OR "a_guardian_approved_by" IS NOT NULL)
+                         THEN 'ACCEPTED'::"link_status" ELSE "status" END,
+              "updated_at" = ${input.now}
+            WHERE "id" = ${input.linkId}::uuid AND "status" = 'AWAITING_GUARDIAN'
+              AND "b_guardian_required" AND "b_guardian_approved_by" IS NULL
+              AND EXISTS (
+                SELECT 1 FROM "profile" g, "profile" c
+                WHERE g."id" = ${input.guardianId}::uuid AND c."id" = "profile_b_id"
+                  AND NOT g."is_child" AND c."is_child" AND g."account_id" = c."account_id")`;
+    return changed === 1 ? this.findLink(input.linkId) : null;
+  }
+
+  async deleteLink(linkId: string): Promise<LinkRecord | null> {
+    const link = await this.findLink(linkId);
+    if (!link) return null;
+    return this.prisma.$transaction(async (tx) => {
+      await lockPair(tx, link.a.id, link.b.id);
+      const { count } = await tx.profileLink.deleteMany({ where: { id: linkId } });
+      return count > 0 ? link : null;
+    });
+  }
+
+  async block(input: {
+    readonly id: string;
+    readonly blockerId: string;
+    readonly blockedId: string;
+    readonly now: Date;
+  }): Promise<'blocked' | 'not_linked'> {
+    return this.prisma.$transaction(async (tx) => {
+      await lockPair(tx, input.blockerId, input.blockedId);
+      const [a, b] =
+        input.blockerId < input.blockedId
+          ? [input.blockerId, input.blockedId]
+          : [input.blockedId, input.blockerId];
+      const { count } = await tx.profileLink.deleteMany({
+        where: { profileAId: a, profileBId: b },
+      });
+      if (count === 0) return 'not_linked' as const;
+      await tx.profileBlock.createMany({
+        data: [
+          {
+            id: input.id,
+            blockerId: input.blockerId,
+            blockedId: input.blockedId,
+            createdAt: input.now,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      return 'blocked' as const;
+    });
+  }
+
+  async unblock(blockerId: string, blockedId: string): Promise<boolean> {
+    const { count } = await this.prisma.profileBlock.deleteMany({
+      where: { blockerId, blockedId },
+    });
+    return count > 0;
+  }
+
+  async listBlocks(blockerId: string): Promise<BlockedRow[]> {
+    const rows = await this.prisma.profileBlock.findMany({
+      where: { blockerId },
+      include: { blocked: { select: PARTY } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => ({
+      profileId: row.blocked.id,
+      displayName: row.blocked.displayName,
+      accentColor: row.blocked.accentColor,
+      isChild: row.blocked.isChild,
+    }));
+  }
+
+  async purgeInvitations(before: Date): Promise<number> {
+    return this.prisma.$executeRaw`
+      DELETE FROM "invitation"
+      WHERE "expires_at" < ${before} OR "revoked_at" < ${before}
+         OR ("used_count" >= "max_uses" AND "updated_at" < ${before})`;
+  }
+}

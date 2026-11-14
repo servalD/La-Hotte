@@ -15,6 +15,7 @@ import {
 import {
   DISPLAY_NAME_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
+  INVITATION_TOKEN_PATTERN,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
 } from '../../application/contract';
@@ -65,6 +66,12 @@ export class RegisterDto {
   @MaxLength(64)
   @ApiProperty({ required: false, maxLength: 64, example: 'Europe/Paris' })
   timezone?: string;
+
+  /** LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`). */
+  @IsOptional()
+  @Matches(INVITATION_TOKEN_PATTERN)
+  @ApiProperty({ required: false, pattern: INVITATION_TOKEN_PATTERN.source })
+  invitationToken?: string;
 }
 
 /** Connexion : aucune règle de forme sur le mot de passe, pour ne rien dire de la politique. */
@@ -189,6 +196,12 @@ export class GoogleRegistrationDto {
   @MaxLength(64)
   @ApiProperty({ required: false, maxLength: 64, example: 'Europe/Paris' })
   timezone?: string;
+
+  /** LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`). */
+  @IsOptional()
+  @Matches(INVITATION_TOKEN_PATTERN)
+  @ApiProperty({ required: false, pattern: INVITATION_TOKEN_PATTERN.source })
+  invitationToken?: string;
 }
 
 /** Départ vers Google pour se connecter, ou s'inscrire si `registration` est fourni (AUTH-03). */

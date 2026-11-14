@@ -61,6 +61,8 @@ export interface NewGoogleAccount {
   readonly ageAttestedAt: Date;
   readonly createdAt: Date;
   readonly profile: NewProfile;
+  /** AUTH-09, LNK-08 : invitation à consommer tout de suite après la création. */
+  readonly pendingInvitationId?: string | null;
 }
 
 /** Identités Google en base (`auth_identity`, AUTH-03). */

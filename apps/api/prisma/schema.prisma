@@ -77,30 +77,50 @@ enum PinRelock {
   @@map("pin_relock")
 }
 
+enum LinkStatus {
+  PENDING
+  AWAITING_GUARDIAN
+  ACCEPTED
+
+  @@map("link_status")
+}
+
+enum InvitationKind {
+  LINK
+  LIST
+  EVENT
+
+  @@map("invitation_kind")
+}
+
 /// E-mail stocké normalisé (minuscules, CHECK en base) : l'unicité est donc insensible à la casse.
 model Account {
-  id              String        @id @db.Uuid
-  email           String        @unique @db.VarChar(254)
-  emailVerifiedAt DateTime?     @map("email_verified_at") @db.Timestamptz(3)
-  passwordHash    String?       @map("password_hash") @db.VarChar(255)
-  role            AccountRole   @default(USER)
-  status          AccountStatus @default(ACTIVE)
-  totpSecretEnc   Bytes?        @map("totp_secret_enc")
-  totpEnabledAt   DateTime?     @map("totp_enabled_at") @db.Timestamptz(3)
+  id                  String        @id @db.Uuid
+  email               String        @unique @db.VarChar(254)
+  emailVerifiedAt     DateTime?     @map("email_verified_at") @db.Timestamptz(3)
+  passwordHash        String?       @map("password_hash") @db.VarChar(255)
+  role                AccountRole   @default(USER)
+  status              AccountStatus @default(ACTIVE)
+  totpSecretEnc       Bytes?        @map("totp_secret_enc")
+  totpEnabledAt       DateTime?     @map("totp_enabled_at") @db.Timestamptz(3)
   /// AUTH-11 : dernier pas de temps TOTP accepté ; un code de ce pas ou d'un pas antérieur est refusé.
-  totpLastStep    Int?          @map("totp_last_step")
-  ageAttestedAt   DateTime      @map("age_attested_at") @db.Timestamptz(3)
-  authEpoch       Int           @default(0) @map("auth_epoch")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  totpLastStep        Int?          @map("totp_last_step")
+  ageAttestedAt       DateTime      @map("age_attested_at") @db.Timestamptz(3)
+  /// AUTH-09, LNK-08 : invitation à consommer à la vérification de l'e-mail.
+  pendingInvitationId String?       @map("pending_invitation_id") @db.Uuid
+  authEpoch           Int           @default(0) @map("auth_epoch")
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  identities     AuthIdentity[]
-  recoveryCodes  RecoveryCode[]
-  tokens         AccountToken[]
-  sessions       Session[]
-  trustedDevices TrustedDevice[]
-  profiles       Profile[]
+  identities        AuthIdentity[]
+  recoveryCodes     RecoveryCode[]
+  tokens            AccountToken[]
+  sessions          Session[]
+  trustedDevices    TrustedDevice[]
+  profiles          Profile[]
+  pendingInvitation Invitation?     @relation("PendingInvitation", fields: [pendingInvitationId], references: [id], onDelete: SetNull)
 
+  @@index([pendingInvitationId])
   @@map("account")
 }
 
@@ -223,11 +243,80 @@ model Profile {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  account  Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  sessions Session[]
+  account        Account        @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  sessions       Session[]
+  linksA         ProfileLink[]  @relation("LinkProfileA")
+  linksB         ProfileLink[]  @relation("LinkProfileB")
+  blocksMade     ProfileBlock[] @relation("Blocker")
+  blocksReceived ProfileBlock[] @relation("Blocked")
+  invitations    Invitation[]   @relation("InvitationCreator")
 
   @@index([accountId])
   @@map("profile")
+}
+
+/// LNK-02 à LNK-06 : lien entre deux profils de comptes différents. Paire rangée `a < b`
+/// (`CHECK`), comptes différents (déclencheur). `PENDING` est réservé à la phase 3.
+model ProfileLink {
+  id                  String     @id @db.Uuid
+  profileAId          String     @map("profile_a_id") @db.Uuid
+  profileBId          String     @map("profile_b_id") @db.Uuid
+  status              LinkStatus
+  /// L'invitant : l'un des deux profils (`CHECK`).
+  requestedBy         String     @map("requested_by") @db.Uuid
+  aGuardianRequired   Boolean    @map("a_guardian_required")
+  bGuardianRequired   Boolean    @map("b_guardian_required")
+  /// Profil non enfant qui a validé ; sans clé étrangère : un profil supprimé ne défait pas un lien.
+  aGuardianApprovedBy String?    @map("a_guardian_approved_by") @db.Uuid
+  bGuardianApprovedBy String?    @map("b_guardian_approved_by") @db.Uuid
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profileA Profile @relation("LinkProfileA", fields: [profileAId], references: [id], onDelete: Cascade)
+  profileB Profile @relation("LinkProfileB", fields: [profileBId], references: [id], onDelete: Cascade)
+
+  @@unique([profileAId, profileBId])
+  @@index([profileBId])
+  @@map("profile_link")
+}
+
+/// LNK-05 : jamais exposé au profil bloqué.
+model ProfileBlock {
+  id        String   @id @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  blocker Profile @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked Profile @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("profile_block")
+}
+
+/// LNK-01 : jeton de 128 bits, stocké en SHA-256. Pour `LINK`, `targetId` et `createdBy` sont le
+/// profil invitant. `targetId` est polymorphe (liste, événement plus tard) : pas de clé étrangère.
+model Invitation {
+  id        String         @id @db.Uuid
+  kind      InvitationKind
+  targetId  String         @map("target_id") @db.Uuid
+  tokenHash String         @unique @map("token_hash") @db.Char(64)
+  createdBy String         @map("created_by") @db.Uuid
+  maxUses   Int            @map("max_uses")
+  usedCount Int            @default(0) @map("used_count")
+  expiresAt DateTime       @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime?      @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  creator Profile   @relation("InvitationCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  pending Account[] @relation("PendingInvitation")
+
+  @@index([createdBy])
+  @@index([expiresAt])
+  @@map("invitation")
 }
 
 /// Ajout seul (DAT-02) : le rôle applicatif n'a ni UPDATE ni DELETE. Sans clé étrangère : le journal

@@ -52,3 +52,5 @@ export {
   TEST_PIN_STAMP,
 } from './infrastructure/in-memory';
 export { ProfileRepository } from './domain/profile.ports';
+export { CircleReader, LinkRepository } from './domain/link.ports';
+export { InMemoryLinkRepository } from './infrastructure/in-memory-links';

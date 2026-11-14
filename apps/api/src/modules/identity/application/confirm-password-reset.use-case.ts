@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { AccountTokenInvalidError } from '../domain/account.errors';
-import { AccountRepository } from '../domain/account.ports';
+import { AccountRepository, IdentitySettings } from '../domain/account.ports';
 import { RateLimiter, SecretTokens, SecurityLog } from '../domain/ports';
 import type { ClientInfo } from './client-info';
 import { PasswordPolicy } from './password-policy';
@@ -19,6 +19,7 @@ export class ConfirmPasswordReset {
   constructor(
     private readonly accounts: AccountRepository,
     private readonly passwords: PasswordPolicy,
+    private readonly settings: IdentitySettings,
     private readonly tokens: SecretTokens,
     private readonly lifecycle: SessionLifecycle,
     private readonly securityLog: SecurityLog,
@@ -47,6 +48,8 @@ export class ConfirmPasswordReset {
         passwordHash,
         authEpoch,
         reset: true,
+        // AUTH-09 : en `INVITE_ONLY`, un compte non vérifié ne se vérifie que par son lien.
+        verifyEmail: this.settings.registrationMode === 'OPEN',
         now: this.clock.now(),
       }),
     );
