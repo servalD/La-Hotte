@@ -21,13 +21,99 @@ import type {
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { ProblemDetailsDto, ProfileView, SetOwnPinDto, UpdateProfileDto } from '../../model';
+import type {
+  EmailDto,
+  EmailTokenDto,
+  ProblemDetailsDto,
+  ProfileView,
+  SetOwnPinDto,
+  UpdateProfileDto,
+} from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
 import type { ErrorType } from '../../../http/fetcher';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export const getVerifyProfileEmailUrl = () => {
+  return `/api/v1/profiles/email/verify`;
+};
+
+export const verifyProfileEmail = async (
+  emailTokenDto: EmailTokenDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getVerifyProfileEmailUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailTokenDto),
+  });
+};
+
+export const getVerifyProfileEmailMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyProfileEmail>>,
+    TError,
+    { data: EmailTokenDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyProfileEmail>>,
+  TError,
+  { data: EmailTokenDto },
+  TContext
+> => {
+  const mutationKey = ['verifyProfileEmail'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyProfileEmail>>,
+    { data: EmailTokenDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyProfileEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyProfileEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyProfileEmail>>
+>;
+export type VerifyProfileEmailMutationBody = EmailTokenDto;
+export type VerifyProfileEmailMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useVerifyProfileEmail = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof verifyProfileEmail>>,
+      TError,
+      { data: EmailTokenDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof verifyProfileEmail>>,
+  TError,
+  { data: EmailTokenDto },
+  TContext
+> => {
+  const mutationOptions = getVerifyProfileEmailMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 export const getGetOwnProfileUrl = () => {
   return `/api/v1/profiles/me`;
 };
@@ -217,6 +303,140 @@ export const useUpdateOwnProfile = <TError = ErrorType<ProblemDetailsDto>, TCont
   TContext
 > => {
   const mutationOptions = getUpdateOwnProfileMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à
+un profil enfant. Jamais un identifiant de connexion.
+ */
+export const getSetOwnEmailUrl = () => {
+  return `/api/v1/profiles/me/email`;
+};
+
+export const setOwnEmail = async (emailDto: EmailDto, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getSetOwnEmailUrl(), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailDto),
+  });
+};
+
+export const getSetOwnEmailMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setOwnEmail>>,
+    TError,
+    { data: EmailDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setOwnEmail>>,
+  TError,
+  { data: EmailDto },
+  TContext
+> => {
+  const mutationKey = ['setOwnEmail'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setOwnEmail>>,
+    { data: EmailDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return setOwnEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetOwnEmailMutationResult = NonNullable<Awaited<ReturnType<typeof setOwnEmail>>>;
+export type SetOwnEmailMutationBody = EmailDto;
+export type SetOwnEmailMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à
+un profil enfant. Jamais un identifiant de connexion.
+ */
+export const useSetOwnEmail = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof setOwnEmail>>,
+      TError,
+      { data: EmailDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof setOwnEmail>>,
+  TError,
+  { data: EmailDto },
+  TContext
+> => {
+  const mutationOptions = getSetOwnEmailMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getClearOwnEmailUrl = () => {
+  return `/api/v1/profiles/me/email`;
+};
+
+export const clearOwnEmail = async (options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getClearOwnEmailUrl(), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getClearOwnEmailMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof clearOwnEmail>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof clearOwnEmail>>, TError, void, TContext> => {
+  const mutationKey = ['clearOwnEmail'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof clearOwnEmail>>, void> = () => {
+    return clearOwnEmail(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClearOwnEmailMutationResult = NonNullable<Awaited<ReturnType<typeof clearOwnEmail>>>;
+
+export type ClearOwnEmailMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useClearOwnEmail = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof clearOwnEmail>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof clearOwnEmail>>, TError, void, TContext> => {
+  const mutationOptions = getClearOwnEmailMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

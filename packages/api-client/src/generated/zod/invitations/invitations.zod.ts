@@ -12,14 +12,36 @@ import * as zod from 'zod';
  */
 export const createInvitationBodyEmailMax = 254;
 
+export const createInvitationBodyKindDefault = 'LINK';
+export const createInvitationBodyProfileIsChildDefault = false;
+
 export const createInvitationBody = zod.object({
   email: zod.email().max(createInvitationBodyEmailMax).optional(),
+  kind: zod
+    .enum(['LINK', 'PROFILE'])
+    .default(createInvitationBodyKindDefault)
+    .describe('PRO-11 : `PROFILE` invite à créer un profil ; `LINK` par défaut.'),
+  targetProfileId: zod
+    .uuid()
+    .optional()
+    .describe(
+      "PRO-11 : profil du cercle de l'invitant dont le compte recevra le profil ; sans lui, le\ncompte de l'invitant. Seulement avec `kind: PROFILE`.",
+    ),
+  profileIsChild: zod
+    .boolean()
+    .optional()
+    .describe('PRO-11 : marqueur enfant du profil à créer. Seulement avec `kind: PROFILE`.'),
 });
 
 export const listInvitationsResponse = zod.object({
   items: zod.array(
     zod.object({
       id: zod.uuid(),
+      kind: zod.enum(['LINK', 'PROFILE']),
+      proposal: zod
+        .enum(['PENDING', 'ACCEPTED', 'REFUSED'])
+        .nullable()
+        .describe('PRO-11 : état de la proposition dans le compte visé ; `null` pour un lien.'),
       createdAt: zod.iso.datetime({}),
       expiresAt: zod.iso.datetime({}),
     }),
@@ -44,6 +66,51 @@ export const inspectInvitationResponseInviterAccentColorRegExp = new RegExp('^#[
 export const inspectInvitationResponse = zod.object({
   inviterName: zod.string().nullable().describe("Absent si l'invitant est un enfant."),
   inviterAccentColor: zod.string().regex(inspectInvitationResponseInviterAccentColorRegExp),
+  expiresAt: zod.iso.datetime({}),
+});
+
+export const acceptProfileInvitationBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{22}$');
+export const acceptProfileInvitationBodyDisplayNameMax = 60;
+
+export const acceptProfileInvitationBodyDisplayNameRegExp = new RegExp('\\S');
+export const acceptProfileInvitationBodyPinMin = 4;
+export const acceptProfileInvitationBodyPinMax = 8;
+
+export const acceptProfileInvitationBodyPinRegExp = new RegExp('^[0-9]+$');
+export const acceptProfileInvitationBodyEmailMax = 254;
+
+export const acceptProfileInvitationBody = zod.object({
+  token: zod.string().regex(acceptProfileInvitationBodyTokenRegExp),
+  displayName: zod
+    .string()
+    .min(1)
+    .max(acceptProfileInvitationBodyDisplayNameMax)
+    .regex(acceptProfileInvitationBodyDisplayNameRegExp),
+  pin: zod
+    .string()
+    .min(acceptProfileInvitationBodyPinMin)
+    .max(acceptProfileInvitationBodyPinMax)
+    .regex(acceptProfileInvitationBodyPinRegExp)
+    .optional()
+    .describe('PIN-01 : PIN du profil, dès sa création ; facultatif.'),
+  email: zod
+    .email()
+    .max(acceptProfileInvitationBodyEmailMax)
+    .optional()
+    .describe('PRO-10 : adresse du profil, vérifiée ensuite par un lien ; refusée pour un enfant.'),
+});
+
+export const inspectProfileInvitationBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{22}$');
+
+export const inspectProfileInvitationBody = zod.object({
+  token: zod.string().regex(inspectProfileInvitationBodyTokenRegExp),
+});
+
+export const inspectProfileInvitationResponseInviterNameMax = 60;
+
+export const inspectProfileInvitationResponse = zod.object({
+  inviterName: zod.string().max(inspectProfileInvitationResponseInviterNameMax),
+  profileIsChild: zod.boolean(),
   expiresAt: zod.iso.datetime({}),
 });
 

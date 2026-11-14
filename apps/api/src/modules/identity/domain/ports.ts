@@ -261,6 +261,11 @@ export const SECURITY_EVENTS = [
   'ward.profile_created',
   'ward.release_requested',
   'ward.released',
+  // PRO-11.
+  'profile_invitation.created',
+  'profile_invitation.redeemed',
+  'profile_proposal.accepted',
+  'profile_proposal.refused',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 

@@ -225,10 +225,41 @@ export interface CircleMember {
   readonly source: 'ACCOUNT' | 'LINK';
 }
 
-/** Invitation ouverte, telle que la liste son créateur (jamais le jeton). */
+/** LNK-01, PRO-11 : invitation à un lien, ou à créer un profil. */
+export type InvitationKind = 'LINK' | 'PROFILE';
+
+/**
+ * PRO-11 : état d'une invitation à créer un profil dans un autre compte, vu par l'invitant. Un
+ * refus et une révocation pour lien ou blocage disparus se montrent pareil (LNK-05).
+ */
+export type ProposalState = 'PENDING' | 'ACCEPTED' | 'REFUSED';
+
+/** Invitation ouverte (ou refusée), telle que la liste son créateur (jamais le jeton). */
 export interface OpenInvitation {
   readonly id: string;
+  readonly kind: InvitationKind;
+  /** PRO-11 : `null` pour un lien. */
+  readonly proposal: ProposalState | null;
   readonly createdAt: Date;
+  readonly expiresAt: Date;
+}
+
+/** PRO-11 : proposition reçue par l'espace Compte visé (nom de l'invitant et marqueur seulement). */
+export interface ProfileProposal {
+  readonly id: string;
+  readonly inviterName: string;
+  readonly profileIsChild: boolean;
+  readonly expiresAt: Date;
+}
+
+/** PRO-11 : invitation à créer un profil, retrouvée par son jeton. */
+export interface ProfileInvitationLookup {
+  readonly id: string;
+  readonly inviter: LinkPartyDetails;
+  readonly targetAccountId: string;
+  readonly profileIsChild: boolean;
+  /** Acceptée par le compte visé (posé d'office pour le compte de l'invitant). */
+  readonly accepted: boolean;
   readonly expiresAt: Date;
 }
 

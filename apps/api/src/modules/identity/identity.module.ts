@@ -113,7 +113,11 @@ import { PinVerifier } from './application/pin-verifier';
 import { LockSession, SelectProfile } from './application/select-profile.use-case';
 import { ProfileRepository } from './domain/profile.ports';
 import { PrismaProfileRepository } from './infrastructure/prisma-profile-repository';
-import { AccountProfilesController, ProfilesController } from './presentation/profiles.controller';
+import {
+  AccountProfilesController,
+  ProfileEmailVerificationController,
+  ProfilesController,
+} from './presentation/profiles.controller';
 import {
   ApproveLink,
   BlockProfile,
@@ -149,6 +153,21 @@ import {
   SetupWardAccount,
 } from './application/manage-wards.use-case';
 import { GuardianNotices } from './application/guardian-notices';
+import {
+  AcceptProfileInvitation,
+  DecideProfileProposal,
+  InspectProfileInvitation,
+  ListProfileProposals,
+} from './application/profile-invitations.use-case';
+import {
+  ProfileInvitationsController,
+  ProfileProposalsController,
+} from './presentation/profile-invitations.controller';
+import {
+  ClearOwnEmail,
+  SetOwnEmail,
+  VerifyProfileEmail,
+} from './application/profile-email.use-case';
 import { WardRepository } from './domain/ward.ports';
 import { PrismaWardRepository } from './infrastructure/prisma-ward-repository';
 import {
@@ -179,6 +198,9 @@ import {
     WardsController,
     AgeAttestationController,
     AccountSetupController,
+    ProfileEmailVerificationController,
+    ProfileProposalsController,
+    ProfileInvitationsController,
   ],
   providers: [
     ResolveSession,
@@ -250,6 +272,13 @@ import {
     RequestWardRelease,
     AttestAgeForRelease,
     GuardianNotices,
+    SetOwnEmail,
+    ClearOwnEmail,
+    VerifyProfileEmail,
+    ListProfileProposals,
+    DecideProfileProposal,
+    InspectProfileInvitation,
+    AcceptProfileInvitation,
     { provide: WardRepository, useClass: PrismaWardRepository },
     { provide: LinkRepository, useClass: PrismaLinkRepository },
     { provide: CircleReader, useExisting: LinkRepository },

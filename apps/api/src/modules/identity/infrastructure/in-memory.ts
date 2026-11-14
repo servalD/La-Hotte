@@ -316,6 +316,9 @@ export interface MemoryProfile extends NewProfile {
   /** PRO-09 : dernier changement du marqueur, et sa notice. */
   childChangedAt?: Date | null;
   childNoticeAt?: Date | null;
+  /** PRO-10 : adresse du profil, vérifiée à `emailVerifiedAt`. */
+  email?: string | null;
+  emailVerifiedAt?: Date | null;
   version?: number;
   createdAt?: Date;
 }
@@ -386,6 +389,7 @@ function details(profile: MemoryProfile): ProfileDetails {
     hasPin: (profile.pinHash ?? null) !== null,
     pinRelock: profile.pinRelock ?? 'IDLE_15',
     pinResetNoticeAt: profile.pinResetNoticeAt ?? null,
+    email: profile.emailVerifiedAt ? (profile.email ?? null) : null,
     version: profile.version ?? 1,
   };
 }
@@ -428,8 +432,65 @@ export class InMemoryProfileRepository extends ProfileRepository {
         accentColor: d.accentColor,
         hasPin: d.hasPin,
         isChild: d.isChild,
+        hasEmail: Boolean(p.emailVerifiedAt),
       };
     });
+  }
+
+  /** PRO-10 : jetons de vérification d'adresse en attente, par hash. */
+  readonly emailTokens = new Map<
+    string,
+    { accountId: string; profileId: string; email: string; expiresAt: Date; usedAt: Date | null }
+  >();
+
+  async requestEmailVerification(input: {
+    readonly tokenId: string;
+    readonly accountId: string;
+    readonly profileId: string;
+    readonly email: string;
+    readonly tokenHash: string;
+    readonly now: Date;
+    readonly expiresAt: Date;
+  }): Promise<'issued' | 'missing' | 'child'> {
+    const profile = this.owned(input.accountId, input.profileId);
+    if (!profile) return 'missing';
+    if (profile.isChild ?? false) return 'child';
+    for (const token of this.emailTokens.values()) {
+      if (token.profileId === input.profileId && !token.usedAt) token.usedAt = input.now;
+    }
+    this.emailTokens.set(input.tokenHash, {
+      accountId: input.accountId,
+      profileId: input.profileId,
+      email: input.email,
+      expiresAt: input.expiresAt,
+      usedAt: null,
+    });
+    return 'issued';
+  }
+
+  async confirmEmail(
+    tokenHash: string,
+    now: Date,
+  ): Promise<{ readonly accountId: string; readonly profileId: string } | null> {
+    const token = this.emailTokens.get(tokenHash);
+    if (!token || token.usedAt || token.expiresAt <= now) return null;
+    token.usedAt = now;
+    const profile = this.owned(token.accountId, token.profileId);
+    if (!profile || (profile.isChild ?? false)) return null;
+    profile.email = token.email;
+    profile.emailVerifiedAt = now;
+    return { accountId: token.accountId, profileId: token.profileId };
+  }
+
+  async clearEmail(accountId: string, profileId: string, now: Date): Promise<boolean> {
+    const profile = this.owned(accountId, profileId);
+    if (!profile) return false;
+    profile.email = null;
+    profile.emailVerifiedAt = null;
+    for (const token of this.emailTokens.values()) {
+      if (token.profileId === profileId && !token.usedAt) token.usedAt = now;
+    }
+    return true;
   }
 
   async findDetails(accountId: string, profileId: string): Promise<ProfileDetails | null> {
@@ -496,6 +557,7 @@ export class InMemoryProfileRepository extends ProfileRepository {
       version: (profile.version ?? 1) + 1,
       childChangedAt: now,
       childNoticeAt: now,
+      ...(isChild ? { email: null, emailVerifiedAt: null } : {}),
     };
     this.profiles.set(profileId, changed);
     if (!gapBefore && this.guardianRules?.gap(accountId)) {

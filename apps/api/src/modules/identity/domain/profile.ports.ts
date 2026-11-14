@@ -99,6 +99,34 @@ export abstract class ProfileRepository {
    * notice ne s'efface que par lui). Renvoie l'empreinte du nouveau PIN (PIN-05) ; `null` si le
    * profil n'existe pas ou si son hash a changé.
    */
+  /**
+   * PRO-10 : demande de vérification d'une adresse pour le profil (un jeton `PROFILE_EMAIL_VERIFY`
+   * qui porte l'adresse ; les précédents du profil sont désarmés). L'adresse n'est écrite sur le
+   * profil qu'à la vérification. `missing` si le profil n'est pas du compte, `child` pour un enfant.
+   */
+  abstract requestEmailVerification(input: {
+    readonly tokenId: string;
+    readonly accountId: string;
+    readonly profileId: string;
+    readonly email: string;
+    readonly tokenHash: string;
+    readonly now: Date;
+    readonly expiresAt: Date;
+  }): Promise<'issued' | 'missing' | 'child'>;
+
+  /**
+   * PRO-10, usage unique : le jeton est consommé et l'adresse écrite, vérifiée, sur le profil s'il
+   * existe encore et n'est pas enfant. Les liens d'accord et d'annulation envoyés à l'ancienne
+   * adresse sont désarmés. `null` si le jeton ne sert pas.
+   */
+  abstract confirmEmail(
+    tokenHash: string,
+    now: Date,
+  ): Promise<{ readonly accountId: string; readonly profileId: string } | null>;
+
+  /** PRO-10 : adresse effacée ; jetons de vérification, d'accord et d'annulation désarmés. */
+  abstract clearEmail(accountId: string, profileId: string, now: Date): Promise<boolean>;
+
   abstract setPin(input: {
     readonly accountId: string;
     readonly profileId: string;

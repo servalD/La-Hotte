@@ -37,6 +37,9 @@ import {
   SetOwnPin,
   SetProfileChildMarker,
   UpdateOwnProfile,
+  SetOwnEmail,
+  ClearOwnEmail,
+  VerifyProfileEmail,
 } from '../application/contract';
 import { clearUnlockCookie, setUnlockCookie } from './cookies';
 import {
@@ -45,9 +48,11 @@ import {
   ClientContext,
   type ClientContextValue,
   CurrentSession,
+  Public,
   RequiresProfile,
   RequiresRecentReauth,
 } from './decorators';
+import { EmailDto, EmailTokenDto } from './dto/auth.dto';
 import { SetChildMarkerDto } from './dto/link.dto';
 import {
   CreateProfileDto,
@@ -74,6 +79,7 @@ function toView(profile: ProfileDetails): ProfileView {
     hasPin: profile.hasPin,
     pinRelock: profile.pinRelock,
     pinResetNoticeAt: profile.pinResetNoticeAt?.toISOString() ?? null,
+    email: profile.email,
     version: profile.version,
   };
 }
@@ -98,6 +104,8 @@ export class ProfilesController {
     private readonly getUseCase: GetOwnProfile,
     private readonly updateUseCase: UpdateOwnProfile,
     private readonly setPinUseCase: SetOwnPin,
+    private readonly setEmailUseCase: SetOwnEmail,
+    private readonly clearEmailUseCase: ClearOwnEmail,
   ) {}
 
   @Get()
@@ -173,6 +181,42 @@ export class ProfilesController {
     });
     if (unlockNonce) setUnlockCookie(response, unlockNonce);
     else clearUnlockCookie(response);
+  }
+
+  /**
+   * PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à
+   * un profil enfant. Jamais un identifiant de connexion.
+   */
+  @Put('email')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async setOwnEmail(
+    @Body() body: EmailDto,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<void> {
+    await this.setEmailUseCase.execute({ profile, email: body.email });
+  }
+
+  @Delete('email')
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async clearOwnEmail(@ActiveProfile() profile: ActiveProfileValue): Promise<void> {
+    await this.clearEmailUseCase.execute(profile);
+  }
+}
+
+/** PRO-10 : vérification de l'adresse d'un profil par son lien (publique, jeton dans le corps). */
+@ApiTags('profiles')
+@Controller('profiles/email/verify')
+export class ProfileEmailVerificationController {
+  constructor(private readonly verifyUseCase: VerifyProfileEmail) {}
+
+  @Post()
+  @Public()
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async verifyProfileEmail(@Body() body: EmailTokenDto): Promise<void> {
+    await this.verifyUseCase.execute({ token: body.token });
   }
 }
 
@@ -306,6 +350,7 @@ function toAccountProfileView(profile: {
   readonly accentColor: string;
   readonly hasPin: boolean;
   readonly isChild: boolean;
+  readonly hasEmail: boolean;
 }): AccountProfileView {
   // Champ par champ : rien d'autre ne sort, même si le cas d'usage en renvoyait plus (PIN-08).
   return {
@@ -315,5 +360,6 @@ function toAccountProfileView(profile: {
     accentColor: profile.accentColor,
     hasPin: profile.hasPin,
     isChild: profile.isChild,
+    hasEmail: profile.hasEmail,
   };
 }

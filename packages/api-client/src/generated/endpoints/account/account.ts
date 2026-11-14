@@ -31,6 +31,7 @@ import type {
   CreateWardProfileDto,
   CreatedWardProfileView,
   ProblemDetailsDto,
+  ProfileProposalListView,
   ResetProfilePinDto,
   SetChildMarkerDto,
   TrustedDeviceListView,
@@ -224,6 +225,273 @@ export const useAttestAge = <TError = ErrorType<ProblemDetailsDto>, TContext = u
   TContext
 > => {
   const mutationOptions = getAttestAgeMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getListProfileProposalsUrl = () => {
+  return `/api/v1/account/profile-proposals`;
+};
+
+export const listProfileProposals = async (
+  options?: RequestInit,
+): Promise<ProfileProposalListView> => {
+  return apiFetch<ProfileProposalListView>(getListProfileProposalsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListProfileProposalsQueryKey = () => {
+  return [`/api/v1/account/profile-proposals`] as const;
+};
+
+export const getListProfileProposalsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProfileProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listProfileProposals>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProfileProposalsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProfileProposals>>> = ({ signal }) =>
+    listProfileProposals({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProfileProposals>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListProfileProposalsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProfileProposals>>
+>;
+export type ListProfileProposalsQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListProfileProposals<
+  TData = Awaited<ReturnType<typeof listProfileProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listProfileProposals>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProfileProposals>>,
+          TError,
+          Awaited<ReturnType<typeof listProfileProposals>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListProfileProposals<
+  TData = Awaited<ReturnType<typeof listProfileProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listProfileProposals>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listProfileProposals>>,
+          TError,
+          Awaited<ReturnType<typeof listProfileProposals>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListProfileProposals<
+  TData = Awaited<ReturnType<typeof listProfileProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listProfileProposals>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListProfileProposals<
+  TData = Awaited<ReturnType<typeof listProfileProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listProfileProposals>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListProfileProposalsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getRefuseProfileProposalUrl = (id: string) => {
+  return `/api/v1/account/profile-proposals/${id}`;
+};
+
+export const refuseProfileProposal = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getRefuseProfileProposalUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getRefuseProfileProposalMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refuseProfileProposal>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof refuseProfileProposal>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['refuseProfileProposal'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof refuseProfileProposal>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return refuseProfileProposal(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RefuseProfileProposalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof refuseProfileProposal>>
+>;
+
+export type RefuseProfileProposalMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRefuseProfileProposal = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof refuseProfileProposal>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof refuseProfileProposal>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getRefuseProfileProposalMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getAcceptProfileProposalUrl = (id: string) => {
+  return `/api/v1/account/profile-proposals/${id}/accept`;
+};
+
+export const acceptProfileProposal = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getAcceptProfileProposalUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getAcceptProfileProposalMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptProfileProposal>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptProfileProposal>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['acceptProfileProposal'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptProfileProposal>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return acceptProfileProposal(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptProfileProposalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptProfileProposal>>
+>;
+
+export type AcceptProfileProposalMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useAcceptProfileProposal = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof acceptProfileProposal>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof acceptProfileProposal>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getAcceptProfileProposalMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

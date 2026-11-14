@@ -323,7 +323,7 @@ describe('pouvoirs du tuteur (PRO-16)', () => {
     );
     const [profile] = (item?.profiles ?? []) as Record<string, unknown>[];
     expect(Object.keys(profile ?? {}).sort()).toEqual(
-      ['accentColor', 'avatar', 'displayName', 'hasPin', 'id', 'isChild'].sort(),
+      ['accentColor', 'avatar', 'displayName', 'hasEmail', 'hasPin', 'id', 'isChild'].sort(),
     );
     const detail = await http()
       .get(`/api/v1/account/wards/${ward.accountId}`)

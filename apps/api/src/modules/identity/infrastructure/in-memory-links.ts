@@ -12,12 +12,22 @@ import {
   type OpenInvitation,
   orderPair,
   planLink,
+  type ProfileInvitationLookup,
+  type ProfileProposal,
 } from '../domain/link';
+import type { NewProfile } from '../domain/account';
+import { MAX_PROFILES_PER_ACCOUNT } from '../domain/profile';
 import { LinkRepository, type RedeemOutcome } from '../domain/link.ports';
 import type { InMemoryAccountRepository, MemoryProfile } from './in-memory';
 
 interface MemoryInvitation {
   id: string;
+  kind: 'LINK' | 'PROFILE';
+  /** PRO-11 : compte visé, marqueur du profil à créer, décision du compte visé. */
+  targetAccountId: string | null;
+  profileIsChild: boolean | null;
+  targetAcceptedAt: Date | null;
+  targetRefusedAt: Date | null;
   tokenHash: string;
   createdBy: string;
   maxUses: number;
@@ -240,6 +250,11 @@ export class InMemoryLinkRepository extends LinkRepository {
     readonly now: Date;
     readonly expiresAt: Date;
     readonly maxOpen: number;
+    readonly profile?: {
+      readonly targetAccountId: string;
+      readonly profileIsChild: boolean;
+      readonly accepted: boolean;
+    };
   }): Promise<'created' | 'limit'> {
     const open = [...this.invitations.values()].filter(
       (i) => i.createdBy === input.createdBy && this.isOpen(i, input.now),
@@ -247,6 +262,11 @@ export class InMemoryLinkRepository extends LinkRepository {
     if (open >= input.maxOpen) return 'limit';
     this.invitations.set(input.id, {
       id: input.id,
+      kind: input.profile ? 'PROFILE' : 'LINK',
+      targetAccountId: input.profile?.targetAccountId ?? null,
+      profileIsChild: input.profile?.profileIsChild ?? null,
+      targetAcceptedAt: input.profile?.accepted ? input.now : null,
+      targetRefusedAt: null,
       tokenHash: input.tokenHash,
       createdBy: input.createdBy,
       maxUses: 1,
@@ -261,9 +281,27 @@ export class InMemoryLinkRepository extends LinkRepository {
 
   async listOpenInvitations(profileId: string, now: Date): Promise<OpenInvitation[]> {
     return [...this.invitations.values()]
-      .filter((i) => i.createdBy === profileId && this.isOpen(i, now))
+      .filter(
+        (i) =>
+          i.createdBy === profileId &&
+          (this.isOpen(i, now) ||
+            (i.targetRefusedAt !== null && i.expiresAt > now && i.usedCount < i.maxUses)),
+      )
       .sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime())
-      .map((i) => ({ id: i.id, createdAt: i.createdAt, expiresAt: i.expiresAt }));
+      .map((i) => ({
+        id: i.id,
+        kind: i.kind,
+        proposal:
+          i.kind === 'LINK'
+            ? null
+            : i.targetRefusedAt
+              ? ('REFUSED' as const)
+              : i.targetAcceptedAt
+                ? ('ACCEPTED' as const)
+                : ('PENDING' as const),
+        createdAt: i.createdAt,
+        expiresAt: i.expiresAt,
+      }));
   }
 
   async revokeInvitation(profileId: string, invitationId: string, now: Date): Promise<boolean> {
@@ -282,7 +320,9 @@ export class InMemoryLinkRepository extends LinkRepository {
   }
 
   async findOpenInvitation(tokenHash: string, now: Date): Promise<InvitationLookup | null> {
-    const invitation = [...this.invitations.values()].find((i) => i.tokenHash === tokenHash);
+    const invitation = [...this.invitations.values()].find(
+      (i) => i.tokenHash === tokenHash && i.kind === 'LINK',
+    );
     return invitation ? this.lookup(invitation, now) : null;
   }
 
@@ -474,6 +514,160 @@ export class InMemoryLinkRepository extends LinkRepository {
             ]
           : [];
       });
+  }
+
+  /** PRO-11 : un profil du compte est lié à l'invitant, sans blocage. */
+  private inviterLinkedTo(inviterId: string, accountId: string): boolean {
+    return this.linksOf(inviterId).some((l) => {
+      const other = this.profile(l.otherId);
+      return (
+        l.status === 'ACCEPTED' &&
+        other?.accountId === accountId &&
+        !this.blockedEitherWay(inviterId, other.id)
+      );
+    });
+  }
+
+  async listProfileProposals(accountId: string, now: Date): Promise<ProfileProposal[]> {
+    return [...this.invitations.values()]
+      .filter(
+        (i) =>
+          i.kind === 'PROFILE' &&
+          i.targetAccountId === accountId &&
+          this.profile(i.createdBy)?.accountId !== accountId &&
+          !i.targetAcceptedAt &&
+          !i.targetRefusedAt &&
+          this.isOpen(i, now),
+      )
+      .flatMap((i) => {
+        const inviter = this.profile(i.createdBy);
+        return inviter
+          ? [
+              {
+                id: i.id,
+                inviterName: inviter.displayName,
+                profileIsChild: i.profileIsChild ?? false,
+                expiresAt: i.expiresAt,
+              },
+            ]
+          : [];
+      });
+  }
+
+  async decideProfileProposal(input: {
+    readonly invitationId: string;
+    readonly accountId: string;
+    readonly accept: boolean;
+    readonly now: Date;
+  }): Promise<'accepted' | 'refused' | 'revoked' | 'missing'> {
+    const i = this.invitations.get(input.invitationId);
+    if (
+      !i ||
+      i.kind !== 'PROFILE' ||
+      i.targetAccountId !== input.accountId ||
+      this.profile(i.createdBy)?.accountId === input.accountId ||
+      i.targetAcceptedAt ||
+      i.targetRefusedAt ||
+      !this.isOpen(i, input.now)
+    ) {
+      return 'missing';
+    }
+    if (!input.accept || !this.inviterLinkedTo(i.createdBy, input.accountId)) {
+      i.revokedAt = input.now;
+      i.targetRefusedAt = input.now;
+      return input.accept ? 'revoked' : 'refused';
+    }
+    i.targetAcceptedAt = input.now;
+    return 'accepted';
+  }
+
+  async findProfileInvitation(
+    tokenHash: string,
+    now: Date,
+  ): Promise<ProfileInvitationLookup | null> {
+    const i = [...this.invitations.values()].find(
+      (x) => x.tokenHash === tokenHash && x.kind === 'PROFILE',
+    );
+    const inviter = i ? this.profile(i.createdBy) : null;
+    if (!i || !inviter || !this.isOpen(i, now) || !i.targetAccountId) return null;
+    return {
+      id: i.id,
+      inviter: party(inviter),
+      targetAccountId: i.targetAccountId,
+      profileIsChild: i.profileIsChild ?? false,
+      accepted: i.targetAcceptedAt !== null,
+      expiresAt: i.expiresAt,
+    };
+  }
+
+  async redeemProfileInvitation(input: {
+    readonly tokenHash: string;
+    readonly profile: NewProfile;
+    readonly pinHash: string | null;
+    readonly linkId: string;
+    readonly now: Date;
+  }): Promise<
+    | {
+        readonly status: 'created';
+        readonly targetAccountId: string;
+        readonly inviterId: string;
+        readonly inviterAccountId: string;
+        readonly isChild: boolean;
+      }
+    | { readonly status: 'invalid' | 'pending' | 'limit' }
+  > {
+    const found = await this.findProfileInvitation(input.tokenHash, input.now);
+    const invitation = found ? this.invitations.get(found.id) : undefined;
+    if (!found || !invitation) return { status: 'invalid' };
+    if (!found.accepted) return { status: 'pending' };
+    const inviter = this.profile(found.inviter.id);
+    if (!inviter || (inviter.isChild ?? false)) return { status: 'invalid' };
+    const target = this.accounts.rows.get(found.targetAccountId);
+    if (!target || target.guardianAccountId) return { status: 'invalid' };
+    const otherAccount = inviter.accountId !== found.targetAccountId;
+    if (otherAccount && !this.inviterLinkedTo(inviter.id, found.targetAccountId)) {
+      return { status: 'invalid' };
+    }
+    const count = [...this.accounts.profiles.values()].filter(
+      (p) => p.accountId === found.targetAccountId,
+    ).length;
+    if (count >= MAX_PROFILES_PER_ACCOUNT) return { status: 'limit' };
+    this.accounts.profiles.set(input.profile.id, {
+      ...input.profile,
+      accountId: found.targetAccountId,
+      isChild: found.profileIsChild,
+      childChangedAt: found.profileIsChild ? input.now : null,
+      pinHash: input.pinHash,
+      createdAt: input.now,
+    });
+    invitation.usedCount += 1;
+    invitation.updatedAt = input.now;
+    if (otherAccount) {
+      const [aId, bId] =
+        inviter.id < input.profile.id
+          ? [inviter.id, input.profile.id]
+          : [input.profile.id, inviter.id];
+      this.links.set(input.linkId, {
+        id: input.linkId,
+        aId,
+        bId,
+        status: 'ACCEPTED',
+        origin: 'INVITATION',
+        requestedBy: inviter.id,
+        aGuardianRequired: false,
+        bGuardianRequired: false,
+        aGuardianApprovedBy: null,
+        bGuardianApprovedBy: null,
+        createdAt: input.now,
+      });
+    }
+    return {
+      status: 'created',
+      targetAccountId: found.targetAccountId,
+      inviterId: inviter.id,
+      inviterAccountId: inviter.accountId,
+      isChild: found.profileIsChild,
+    };
   }
 
   async purgeInvitations(before: Date): Promise<number> {

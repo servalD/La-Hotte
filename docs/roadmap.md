@@ -364,6 +364,15 @@ Reportés :
 - **au lot (c)** : refuser au compte sous tutelle de démarrer ou d'accepter un passage (les routes n'existent pas encore) ;
 - revue `security-reviewer` : à la fin de la tranche 6 bis, sur tout le diff, avant l'envoi groupé.
 
+**Lot (b) fait le 2026-11-14** (opus). Adresse du profil (PRO-10) : `PUT/DELETE /profiles/me/email`, `POST /profiles/email/verify` (publique) ; l'adresse n'est écrite sur le profil qu'à sa vérification (elle vit d'ici là dans le jeton `PROFILE_EMAIL_VERIFY`) ; `email` dans `GET /profiles/me`, `hasEmail` dans l'espace Compte (forme figée étendue). Invitation à créer un profil (PRO-11) : `POST /invitations` avec `kind: PROFILE` (`targetProfileId`, `profileIsChild`), `GET /invitations` rend `kind` et `proposal` (en attente, acceptée, refusée), `GET /account/profile-proposals`, `POST /account/profile-proposals/{id}/accept` (ré-authentification), `DELETE /account/profile-proposals/{id}`, `POST /invitations/profile/inspect` et `/accept` (publiques, limitées par IP) ; plafonds de LNK-01 partagés entre les deux sortes. Tests : contrat `identity-profile-invitations.spec.ts` (12), intégration `identity-profile-invitations.int-spec.ts` (7), non-fuite OBS-26 étendue (adresse, jeton de vérification, jeton `PROFILE`, nom et PIN saisis). Choix faits dans les silences, à relire :
+
+- le lien entre l'invitant et le profil créé dans un autre compte naît `ACCEPTED` avec l'exigence de validation à faux des deux côtés (« réputé validé ») et l'origine `INVITATION` ;
+- refuser une proposition n'exige pas de ré-authentification, l'accepter si ;
+- un compte sous tutelle ne peut ni inviter à créer un profil ni être visé (`PROFILE_INVITATION_FORBIDDEN`, `INVITATION_TARGET_INVALID`) ;
+- un champ de `PROFILE` envoyé avec un lien est refusé (`400`).
+
+Reste pour le lot (c) : révoquer les invitations `PROFILE` ouvertes d'un profil qui change de compte (PRO-14) ; notice de marquage enfant (`child_notice_at`) à rendre à l'entrée dans le profil.
+
 Constat d'environnement : en local, ouvrir une connexion PostgreSQL prend près de 2 s (`localhost` essayé en IPv6 sous Windows, avant IPv4). Deux transactions simultanées sur des connexions neuves dépassent alors l'attente de Prisma (`maxWait`, 2 s). Le test de concurrence de l'installation ouvre deux connexions d'avance. Mettre `127.0.0.1` dans `DATABASE_URL` de `apps/api/.env` devrait supprimer le délai (à vérifier).
 - Tranche 7 : pages `/invitations/open` (jeton dans le fragment, `Referrer-Policy: no-referrer`), cercle, liens à valider (`awaitingMyApproval`), blocages, marqueur enfant dans l'espace Compte (ré-authentification), champ `invitationToken` à l'inscription et avant « S'inscrire avec Google ».
 

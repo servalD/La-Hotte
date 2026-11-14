@@ -93,6 +93,13 @@ export class OpenInvitationView {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
+  @ApiProperty({ enum: ['LINK', 'PROFILE'] })
+  kind!: 'LINK' | 'PROFILE';
+
+  /** PRO-11 : état de la proposition dans le compte visé ; `null` pour un lien. */
+  @ApiProperty({ type: String, enum: ['PENDING', 'ACCEPTED', 'REFUSED'], nullable: true })
+  proposal!: 'PENDING' | 'ACCEPTED' | 'REFUSED' | null;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: string;
 
@@ -103,6 +110,38 @@ export class OpenInvitationView {
 export class InvitationListView {
   @ApiProperty({ type: [OpenInvitationView] })
   items!: OpenInvitationView[];
+}
+
+/** PRO-11 : proposition reçue par l'espace Compte (nom de l'invitant et marqueur seulement). */
+export class ProfileProposalView {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ maxLength: 60 })
+  inviterName!: string;
+
+  @ApiProperty()
+  profileIsChild!: boolean;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  expiresAt!: string;
+}
+
+export class ProfileProposalListView {
+  @ApiProperty({ type: [ProfileProposalView] })
+  items!: ProfileProposalView[];
+}
+
+/** PRO-11 : ce que voit la personne invitée à créer un profil. */
+export class ProfileInvitationPreviewView {
+  @ApiProperty({ maxLength: 60 })
+  inviterName!: string;
+
+  @ApiProperty()
+  profileIsChild!: boolean;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  expiresAt!: string;
 }
 
 /** LNK-07 : ce que voit celui qui ouvre un lien. */

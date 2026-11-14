@@ -12,7 +12,9 @@ export const EMAIL_LINK_PATHS = {
   resetPassword: '/auth/reset-password',
   cancelEmailChange: '/auth/cancel-email-change',
   invitation: '/invitations/open',
+  profileInvitation: '/invitations/profile',
   accountSetup: '/accounts/setup',
+  verifyProfileEmail: '/profiles/verify-email',
 } as const;
 
 /** PRO-16 : actions du tuteur dont le compte sous tutelle est averti. */
@@ -53,7 +55,9 @@ type MailKind =
   | { readonly kind: 'google_unlinked' }
   | { readonly kind: 'pin_attempts' }
   | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string }
+  | { readonly kind: 'profile_invitation'; readonly token: string; readonly inviterName: string }
   | { readonly kind: 'ward_setup'; readonly token: string }
+  | { readonly kind: 'verify_profile_email'; readonly token: string }
   | { readonly kind: 'ward_password_reset'; readonly token: string }
   | { readonly kind: 'guardian_action'; readonly action: GuardianAction }
   | { readonly kind: 'ward_account_changed'; readonly change: WardChange };
@@ -265,6 +269,19 @@ export class AccountMailer {
             'Si vous ne connaissez pas cette personne, ignorez ce message.' +
             SIGNATURE,
         };
+      case 'verify_profile_email':
+        // PRO-10 : ni nom du profil ni du compte dans le corps.
+        return {
+          to,
+          subject: 'Confirmez l’adresse de votre profil',
+          text:
+            'Pour associer cette adresse à votre profil La Hotte, ouvrez ce lien (valable ' +
+            `24 heures) :\n${this.link(EMAIL_LINK_PATHS.verifyProfileEmail, mail.token)}\n\n` +
+            'Elle ne sert pas à se connecter : seulement à recevoir les demandes qui concernent ' +
+            'votre profil, comme un changement de compte, et à y répondre.\n\n' +
+            'Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.' +
+            SIGNATURE,
+        };
       case 'ward_setup':
         // PRO-15 : ni nom ni adresse du tuteur dans le corps.
         return {
@@ -305,6 +322,20 @@ export class AccountMailer {
             `${WARD_CHANGE_TEXT[mail.change]} d’un compte sous votre tutelle vient de changer.\n\n` +
             'Depuis votre espace Compte, vous pouvez en déconnecter les appareils ou en ' +
             'réinitialiser le mot de passe.' +
+            SIGNATURE,
+        };
+      case 'profile_invitation':
+        // PRO-11 : comme LNK-01, le nom de l'invitant seul, choisi par lui et nettoyé (M4).
+        return {
+          to,
+          subject: 'Une invitation à avoir votre profil sur La Hotte',
+          text:
+            `Une personne nommée « ${cleanName(mail.inviterName)} » vous propose d’avoir votre ` +
+            'profil sur La Hotte, dans un compte de sa famille.\n\n' +
+            'Pour le créer, ouvrez ce lien (valable 7 jours) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.profileInvitation, mail.token)}\n\n` +
+            'Les personnes qui se connectent à ce compte pourront réinitialiser le code PIN de ' +
+            'votre profil. Si vous ne connaissez pas cette personne, ignorez ce message.' +
             SIGNATURE,
         };
       case 'email_taken_notice':

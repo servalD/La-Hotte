@@ -330,6 +330,7 @@ describe('/profiles/me (PRO-02, PRO-03)', () => {
       hasPin: true,
       pinRelock: 'IDLE_15',
       pinResetNoticeAt: null,
+      email: null,
       version: 1,
     });
     expect(res.text).not.toMatch(/pinHash|fake\$/);
@@ -478,7 +479,7 @@ describe('Espace Compte : /account/profiles (PIN-08, PRO-08)', () => {
     expect(Object.keys(res.body as object)).toEqual(['items']);
     for (const item of res.body.items as object[]) {
       expect(Object.keys(item).sort()).toEqual(
-        ['accentColor', 'avatar', 'displayName', 'hasPin', 'id', 'isChild'].sort(),
+        ['accentColor', 'avatar', 'displayName', 'hasEmail', 'hasPin', 'id', 'isChild'].sort(),
       );
     }
     expect(res.body.items).toEqual([
@@ -489,6 +490,7 @@ describe('Espace Compte : /account/profiles (PIN-08, PRO-08)', () => {
         accentColor: '#336699',
         hasPin: true,
         isChild: false,
+        hasEmail: false,
       },
     ]);
   });

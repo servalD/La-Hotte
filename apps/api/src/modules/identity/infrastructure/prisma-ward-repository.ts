@@ -15,6 +15,7 @@ const PROFILE_METADATA = {
   accentColor: true,
   pinHash: true,
   isChild: true,
+  emailVerifiedAt: true,
 } as const satisfies Prisma.ProfileSelect;
 
 const WARD = {
@@ -33,9 +34,10 @@ function toSummary(row: WardRow): WardSummary {
     email: row.email,
     createdAt: row.createdAt,
     releaseRequested: row.guardianReleaseRequestedAt !== null,
-    profiles: row.profiles.map(({ pinHash, ...profile }): ProfileMetadata => ({
+    profiles: row.profiles.map(({ pinHash, emailVerifiedAt, ...profile }): ProfileMetadata => ({
       ...profile,
       hasPin: pinHash !== null,
+      hasEmail: emailVerifiedAt !== null,
     })),
   };
 }

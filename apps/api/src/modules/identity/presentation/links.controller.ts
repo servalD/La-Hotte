@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -141,9 +142,20 @@ export class InvitationsController {
     @ActiveProfile() profile: ActiveProfileValue,
     @ClientContext() client: ClientContextValue,
   ): Promise<CreatedInvitationView> {
+    if (body.kind !== 'PROFILE' && (body.targetProfileId || body.profileIsChild !== undefined)) {
+      throw new BadRequestException();
+    }
     const created = await this.create.execute({
       active: profile,
       ...(body.email ? { email: body.email } : {}),
+      ...(body.kind === 'PROFILE'
+        ? {
+            profile: {
+              ...(body.targetProfileId ? { targetProfileId: body.targetProfileId } : {}),
+              isChild: body.profileIsChild ?? false,
+            },
+          }
+        : {}),
       client,
     });
     return { id: created.id, token: created.token, expiresAt: created.expiresAt.toISOString() };
@@ -156,6 +168,8 @@ export class InvitationsController {
     return {
       items: invitations.map((invitation) => ({
         id: invitation.id,
+        kind: invitation.kind,
+        proposal: invitation.proposal,
         createdAt: invitation.createdAt.toISOString(),
         expiresAt: invitation.expiresAt.toISOString(),
       })),

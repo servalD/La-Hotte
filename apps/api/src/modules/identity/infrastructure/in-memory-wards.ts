@@ -193,6 +193,7 @@ export class InMemoryWardRepository extends WardRepository implements MemoryGuar
         accentColor: p.accentColor,
         hasPin: Boolean(p.pinHash),
         isChild: p.isChild ?? false,
+        hasEmail: Boolean(p.emailVerifiedAt),
       })),
     };
   }

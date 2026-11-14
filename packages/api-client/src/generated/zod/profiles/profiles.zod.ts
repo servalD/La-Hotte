@@ -7,6 +7,19 @@
  */
 import * as zod from 'zod';
 
+export const verifyProfileEmailBodyTokenMin = 43;
+export const verifyProfileEmailBodyTokenMax = 43;
+
+export const verifyProfileEmailBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+export const verifyProfileEmailBody = zod.object({
+  token: zod
+    .string()
+    .min(verifyProfileEmailBodyTokenMin)
+    .max(verifyProfileEmailBodyTokenMax)
+    .regex(verifyProfileEmailBodyTokenRegExp),
+});
+
 export const getOwnProfileResponseDisplayNameMax = 60;
 
 export const getOwnProfileResponseAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
@@ -38,6 +51,10 @@ export const getOwnProfileResponse = zod.object({
     .describe(
       "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte ; reste affiché tant que le\nprofil ne s'est pas redonné un PIN (`PUT \/profiles\/me\/pin`).",
     ),
+  email: zod
+    .email()
+    .nullable()
+    .describe('PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse.'),
   version: zod
     .number()
     .min(1)
@@ -136,10 +153,24 @@ export const updateOwnProfileResponse = zod.object({
     .describe(
       "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte ; reste affiché tant que le\nprofil ne s'est pas redonné un PIN (`PUT \/profiles\/me\/pin`).",
     ),
+  email: zod
+    .email()
+    .nullable()
+    .describe('PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse.'),
   version: zod
     .number()
     .min(1)
     .describe('À renvoyer dans `If-Match` pour modifier le profil (API-17).'),
+});
+
+/**
+ * @summary PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à
+un profil enfant. Jamais un identifiant de connexion.
+ */
+export const setOwnEmailBodyEmailMax = 254;
+
+export const setOwnEmailBody = zod.object({
+  email: zod.email().max(setOwnEmailBodyEmailMax),
 });
 
 /**

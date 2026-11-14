@@ -105,6 +105,7 @@ export class CreateAccountProfile {
       accentColor: accentColorFor(id),
       hasPin: false,
       isChild: input.isChild,
+      hasEmail: false,
     };
   }
 }

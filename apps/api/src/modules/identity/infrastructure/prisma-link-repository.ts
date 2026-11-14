@@ -12,7 +12,11 @@ import {
   type OpenInvitation,
   orderPair,
   planLink,
+  type ProfileInvitationLookup,
+  type ProfileProposal,
 } from '../domain/link';
+import type { NewProfile } from '../domain/account';
+import { MAX_PROFILES_PER_ACCOUNT } from '../domain/profile';
 import { LinkRepository, type RedeemOutcome } from '../domain/link.ports';
 
 const PARTY = {
@@ -93,6 +97,27 @@ async function lockProfiles(tx: Tx, ids: readonly string[]): Promise<void> {
 }
 
 type Db = Tx | PrismaService;
+
+/**
+ * PRO-11 : un profil du compte `accountId` est lié (`ACCEPTED`) à l'invitant, sans blocage dans un
+ * sens ou l'autre. Revérifié à l'acceptation de la proposition et à sa consommation.
+ */
+async function inviterLinkedTo(db: Db, inviterId: string, accountId: string): Promise<boolean> {
+  const [row] = await db.$queryRaw<[{ linked: boolean }]>`
+    SELECT EXISTS (
+      SELECT 1 FROM "profile_link" l
+      JOIN "profile" p ON p."id" = CASE WHEN l."profile_a_id" = ${inviterId}::uuid
+        THEN l."profile_b_id" ELSE l."profile_a_id" END
+      WHERE l."status" = 'ACCEPTED'
+        AND (l."profile_a_id" = ${inviterId}::uuid OR l."profile_b_id" = ${inviterId}::uuid)
+        AND p."account_id" = ${accountId}::uuid
+        AND NOT EXISTS (
+          SELECT 1 FROM "profile_block" b
+          WHERE (b."blocker_id" = p."id" AND b."blocked_id" = ${inviterId}::uuid)
+             OR (b."blocker_id" = ${inviterId}::uuid AND b."blocked_id" = p."id"))
+    ) AS linked`;
+  return row.linked;
+}
 
 /**
  * Revérification en base de `isGuardianOf` (LNK-06, PRO-15), pour `g` le tuteur et `c` l'enfant :
@@ -253,20 +278,27 @@ export class PrismaLinkRepository extends LinkRepository {
     readonly now: Date;
     readonly expiresAt: Date;
     readonly maxOpen: number;
+    readonly profile?: {
+      readonly targetAccountId: string;
+      readonly profileIsChild: boolean;
+      readonly accepted: boolean;
+    };
   }): Promise<'created' | 'limit'> {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`invitations:${input.createdBy}`}, 0))`;
       const [{ open }] = await tx.$queryRaw<[{ open: number }]>`
         SELECT count(*)::int AS open FROM "invitation"
-        WHERE "created_by" = ${input.createdBy}::uuid AND "kind" = 'LINK'
+        WHERE "created_by" = ${input.createdBy}::uuid AND "kind" IN ('LINK', 'PROFILE')
           AND "revoked_at" IS NULL AND "expires_at" > ${input.now}
           AND "used_count" < "max_uses"`;
       if (open >= input.maxOpen) return 'limit' as const;
       await tx.invitation.create({
         data: {
           id: input.id,
-          kind: 'LINK',
-          targetId: input.createdBy,
+          kind: input.profile ? 'PROFILE' : 'LINK',
+          targetId: input.profile?.targetAccountId ?? input.createdBy,
+          profileIsChild: input.profile?.profileIsChild ?? null,
+          targetAcceptedAt: input.profile?.accepted ? input.now : null,
           tokenHash: input.tokenHash,
           createdBy: input.createdBy,
           maxUses: 1,
@@ -279,13 +311,34 @@ export class PrismaLinkRepository extends LinkRepository {
   }
 
   async listOpenInvitations(profileId: string, now: Date): Promise<OpenInvitation[]> {
-    const rows = await this.prisma.$queryRaw<{ id: string; created_at: Date; expires_at: Date }[]>`
-      SELECT "id", "created_at", "expires_at" FROM "invitation"
-      WHERE "created_by" = ${profileId}::uuid AND "kind" = 'LINK'
-        AND "revoked_at" IS NULL AND "expires_at" > ${now} AND "used_count" < "max_uses"
+    const rows = await this.prisma.$queryRaw<
+      {
+        id: string;
+        kind: 'LINK' | 'PROFILE';
+        target_accepted_at: Date | null;
+        target_refused_at: Date | null;
+        created_at: Date;
+        expires_at: Date;
+      }[]
+    >`
+      SELECT "id", "kind"::text AS kind, "target_accepted_at", "target_refused_at", "created_at",
+             "expires_at"
+      FROM "invitation"
+      WHERE "created_by" = ${profileId}::uuid AND "kind" IN ('LINK', 'PROFILE')
+        AND "expires_at" > ${now} AND "used_count" < "max_uses"
+        AND ("revoked_at" IS NULL OR "target_refused_at" IS NOT NULL)
       ORDER BY "created_at" DESC`;
     return rows.map((row) => ({
       id: row.id,
+      kind: row.kind,
+      proposal:
+        row.kind === 'LINK'
+          ? null
+          : row.target_refused_at
+            ? ('REFUSED' as const)
+            : row.target_accepted_at
+              ? ('ACCEPTED' as const)
+              : ('PENDING' as const),
       createdAt: row.created_at,
       expiresAt: row.expires_at,
     }));
@@ -296,7 +349,7 @@ export class PrismaLinkRepository extends LinkRepository {
       where: {
         id: invitationId,
         createdBy: profileId,
-        kind: 'LINK',
+        kind: { in: ['LINK', 'PROFILE'] },
         revokedAt: null,
         expiresAt: { gt: now },
       },
@@ -611,6 +664,184 @@ export class PrismaLinkRepository extends LinkRepository {
       accentColor: row.blocked.accentColor,
       isChild: row.blocked.isChild,
     }));
+  }
+
+  async listProfileProposals(accountId: string, now: Date): Promise<ProfileProposal[]> {
+    const rows = await this.prisma.$queryRaw<
+      { id: string; display_name: string; profile_is_child: boolean; expires_at: Date }[]
+    >`
+      SELECT i."id", p."display_name", i."profile_is_child", i."expires_at"
+      FROM "invitation" i JOIN "profile" p ON p."id" = i."created_by"
+      WHERE i."kind" = 'PROFILE' AND i."target_id" = ${accountId}::uuid
+        AND p."account_id" <> ${accountId}::uuid
+        AND i."target_accepted_at" IS NULL AND i."target_refused_at" IS NULL
+        AND i."revoked_at" IS NULL AND i."expires_at" > ${now} AND i."used_count" < i."max_uses"
+      ORDER BY i."created_at" DESC`;
+    return rows.map((row) => ({
+      id: row.id,
+      inviterName: row.display_name,
+      profileIsChild: row.profile_is_child,
+      expiresAt: row.expires_at,
+    }));
+  }
+
+  async decideProfileProposal(input: {
+    readonly invitationId: string;
+    readonly accountId: string;
+    readonly accept: boolean;
+    readonly now: Date;
+  }): Promise<'accepted' | 'refused' | 'revoked' | 'missing'> {
+    return this.prisma.$transaction(async (tx) => {
+      const [invitation] = await tx.$queryRaw<{ created_by: string }[]>`
+        SELECT i."created_by" FROM "invitation" i JOIN "profile" p ON p."id" = i."created_by"
+        WHERE i."id" = ${input.invitationId}::uuid AND i."kind" = 'PROFILE'
+          AND i."target_id" = ${input.accountId}::uuid AND p."account_id" <> ${input.accountId}::uuid
+          AND i."target_accepted_at" IS NULL AND i."target_refused_at" IS NULL
+          AND i."revoked_at" IS NULL AND i."expires_at" > ${input.now}
+          AND i."used_count" < i."max_uses"
+        FOR UPDATE OF i`;
+      if (!invitation) return 'missing' as const;
+      const stillLinked =
+        input.accept && (await inviterLinkedTo(tx, invitation.created_by, input.accountId));
+      if (!stillLinked) {
+        // Refus, ou lien et absence de blocage perdus : même état vu de l'invitant (LNK-05).
+        await tx.invitation.update({
+          where: { id: input.invitationId },
+          data: { revokedAt: input.now, targetRefusedAt: input.now },
+        });
+        return input.accept ? ('revoked' as const) : ('refused' as const);
+      }
+      await tx.invitation.update({
+        where: { id: input.invitationId },
+        data: { targetAcceptedAt: input.now },
+      });
+      return 'accepted' as const;
+    });
+  }
+
+  async findProfileInvitation(
+    tokenHash: string,
+    now: Date,
+  ): Promise<ProfileInvitationLookup | null> {
+    const rows = await this.prisma.$queryRaw<
+      (InvitationRow & {
+        target_id: string;
+        profile_is_child: boolean;
+        target_accepted_at: Date | null;
+      })[]
+    >`
+      SELECT i."id", i."expires_at", i."created_at", i."target_id", i."profile_is_child",
+             i."target_accepted_at", p."id" AS profile_id, p."account_id", p."is_child",
+             p."display_name", p."accent_color", p."avatar"
+      FROM "invitation" i JOIN "profile" p ON p."id" = i."created_by"
+      WHERE i."token_hash" = ${tokenHash} AND i."kind" = 'PROFILE' AND i."revoked_at" IS NULL
+        AND i."expires_at" > ${now} AND i."used_count" < i."max_uses"`;
+    const row = rows[0];
+    return row
+      ? {
+          id: row.id,
+          inviter: toInviter(row),
+          targetAccountId: row.target_id,
+          profileIsChild: row.profile_is_child,
+          accepted: row.target_accepted_at !== null,
+          expiresAt: row.expires_at,
+        }
+      : null;
+  }
+
+  async redeemProfileInvitation(input: {
+    readonly tokenHash: string;
+    readonly profile: NewProfile;
+    readonly pinHash: string | null;
+    readonly linkId: string;
+    readonly now: Date;
+  }): Promise<
+    | {
+        readonly status: 'created';
+        readonly targetAccountId: string;
+        readonly inviterId: string;
+        readonly inviterAccountId: string;
+        readonly isChild: boolean;
+      }
+    | { readonly status: 'invalid' | 'pending' | 'limit' }
+  > {
+    return this.prisma.$transaction(async (tx) => {
+      // Invitation verrouillée : deux ouvertures simultanées n'en servent qu'une.
+      const [invitation] = await tx.$queryRaw<
+        {
+          id: string;
+          created_by: string;
+          target_id: string;
+          profile_is_child: boolean;
+          target_accepted_at: Date | null;
+        }[]
+      >`
+        SELECT "id", "created_by", "target_id", "profile_is_child", "target_accepted_at"
+        FROM "invitation"
+        WHERE "token_hash" = ${input.tokenHash} AND "kind" = 'PROFILE' AND "revoked_at" IS NULL
+          AND "expires_at" > ${input.now} AND "used_count" < "max_uses"
+        FOR UPDATE`;
+      if (!invitation) return { status: 'invalid' as const };
+      if (!invitation.target_accepted_at) return { status: 'pending' as const };
+      const inviter = await tx.profile.findUnique({
+        where: { id: invitation.created_by },
+        select: { id: true, accountId: true, isChild: true },
+      });
+      // PRO-11 : l'invitant est resté adulte ; le compte visé n'est pas sous tutelle.
+      if (!inviter || inviter.isChild) return { status: 'invalid' as const };
+      const [target] = await tx.$queryRaw<{ guardian_account_id: string | null }[]>`
+        SELECT "guardian_account_id" FROM "account"
+        WHERE "id" = ${invitation.target_id}::uuid AND "status" = 'ACTIVE' FOR UPDATE`;
+      if (!target || target.guardian_account_id !== null) return { status: 'invalid' as const };
+      const otherAccount = inviter.accountId !== invitation.target_id;
+      if (otherAccount && !(await inviterLinkedTo(tx, inviter.id, invitation.target_id))) {
+        return { status: 'invalid' as const };
+      }
+      const count = await tx.profile.count({ where: { accountId: invitation.target_id } });
+      if (count >= MAX_PROFILES_PER_ACCOUNT) return { status: 'limit' as const };
+      await tx.profile.create({
+        data: {
+          ...input.profile,
+          accountId: invitation.target_id,
+          isChild: invitation.profile_is_child,
+          // PRO-11 : un profil créé enfant garde son propre accord 30 jours (PRO-12).
+          childChangedAt: invitation.profile_is_child ? input.now : null,
+          pinHash: input.pinHash,
+          createdAt: input.now,
+        },
+      });
+      await tx.invitation.update({
+        where: { id: invitation.id },
+        data: { usedCount: { increment: 1 } },
+      });
+      if (otherAccount) {
+        const [a, b] =
+          inviter.id < input.profile.id
+            ? [inviter.id, input.profile.id]
+            : [input.profile.id, inviter.id];
+        // PRO-11 : lien accepté d'office ; un côté enfant est réputé validé par l'accord du compte
+        // qui le porte (LNK-06), d'où l'exigence de validation à faux.
+        await tx.profileLink.create({
+          data: {
+            id: input.linkId,
+            profileAId: a,
+            profileBId: b,
+            status: 'ACCEPTED',
+            requestedBy: inviter.id,
+            aGuardianRequired: false,
+            bGuardianRequired: false,
+            createdAt: input.now,
+          },
+        });
+      }
+      return {
+        status: 'created' as const,
+        targetAccountId: invitation.target_id,
+        inviterId: inviter.id,
+        inviterAccountId: inviter.accountId,
+        isChild: invitation.profile_is_child,
+      };
+    });
   }
 
   async purgeInvitations(before: Date): Promise<number> {

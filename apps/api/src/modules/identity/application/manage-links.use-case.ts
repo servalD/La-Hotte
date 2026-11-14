@@ -10,6 +10,7 @@ import {
   type CircleMember,
   INVITATION_TTL_MS,
   linkViewFor,
+  type LinkPartyDetails,
   type LinkStatus,
   type LinkView,
   MAX_OPEN_INVITATIONS_PER_PROFILE,
@@ -21,9 +22,12 @@ import {
   ChildEmailForbiddenError,
   InvitationInvalidError,
   InvitationLimitReachedError,
+  InvitationTargetInvalidError,
   LinkNotFoundError,
   LinkSameAccountError,
+  ProfileInvitationForbiddenError,
 } from '../domain/link.errors';
+import { WardRepository } from '../domain/ward.ports';
 import { LinkRepository } from '../domain/link.ports';
 import {
   IdentityEvents,
@@ -78,6 +82,7 @@ export class CreateInvitation {
     private readonly mailer: AccountMailer,
     private readonly background: BackgroundTasks,
     private readonly securityLog: SecurityLog,
+    private readonly wards: WardRepository,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
@@ -85,6 +90,8 @@ export class CreateInvitation {
   async execute(input: {
     readonly active: ActiveProfile;
     readonly email?: string;
+    /** PRO-11 : invitation à créer un profil, dans son compte ou celui de `targetProfileId`. */
+    readonly profile?: { readonly targetProfileId?: string; readonly isChild: boolean };
     readonly client: ClientInfo;
   }): Promise<CreatedInvitation> {
     const inviter = await partyOf(this.links, input.active);
@@ -92,6 +99,7 @@ export class CreateInvitation {
     if (!account) throw new SessionRequiredError();
     if (!account.emailVerified) throw new EmailNotVerifiedError();
     if (input.email && inviter.isChild) throw new ChildEmailForbiddenError();
+    const profileTarget = input.profile ? await this.profileTarget(inviter, input.profile) : null;
 
     const now = this.clock.now();
     const subjects = [{ scope: 'invitation_profile' as const, parts: [inviter.id] }];
@@ -108,22 +116,61 @@ export class CreateInvitation {
       now,
       expiresAt,
       maxOpen: MAX_OPEN_INVITATIONS_PER_PROFILE,
+      ...(profileTarget && input.profile
+        ? {
+            profile: {
+              targetAccountId: profileTarget.accountId,
+              profileIsChild: input.profile.isChild,
+              // PRO-11 : pour son propre compte, l'invitant donne l'accord en créant l'invitation.
+              accepted: profileTarget.accountId === inviter.accountId,
+            },
+          }
+        : {}),
     });
     if (created === 'limit') throw new InvitationLimitReachedError();
     // Compté après succès : un plafond atteint ne consomme pas le budget de 24 heures.
     await this.limiter.recordFailure(subjects, now, check.reservation);
-    await log(this.securityLog, input.active.accountId, 'invitation.created', input.client, now);
+    await log(
+      this.securityLog,
+      input.active.accountId,
+      profileTarget ? 'profile_invitation.created' : 'invitation.created',
+      input.client,
+      now,
+    );
     if (input.email) {
       const to = normalizeEmail(input.email);
+      const kind = profileTarget ? ('profile_invitation' as const) : ('link_invitation' as const);
       this.background.run('invitation.mail', async () => {
-        await this.mailer.send(to, {
-          kind: 'link_invitation',
-          token,
-          inviterName: inviter.displayName,
-        });
+        await this.mailer.send(to, { kind, token, inviterName: inviter.displayName });
       });
     }
     return { id, token, expiresAt };
+  }
+
+  /**
+   * PRO-11 : compte où naîtra le profil. Un profil non enfant seulement ; son propre compte par
+   * défaut, sinon celui d'une contrepartie d'un lien accepté sans blocage, hors compte sous
+   * tutelle. Tout autre identifiant reçoit le même refus (SEC-04).
+   */
+  private async profileTarget(
+    inviter: LinkPartyDetails,
+    profile: { readonly targetProfileId?: string },
+  ): Promise<{ readonly accountId: string }> {
+    if (inviter.isChild) throw new ProfileInvitationForbiddenError();
+    if (await this.wards.guardianshipOf(inviter.accountId)) {
+      throw new ProfileInvitationForbiddenError();
+    }
+    if (!profile.targetProfileId) return { accountId: inviter.accountId };
+    const circle = await this.links.circleOf(inviter.id);
+    const member = circle.find(
+      (m) => m.profileId === profile.targetProfileId && m.source === 'LINK',
+    );
+    const target = member ? await this.links.findParty(member.profileId) : null;
+    if (!target || target.accountId === inviter.accountId) {
+      throw new InvitationTargetInvalidError();
+    }
+    if (await this.wards.guardianshipOf(target.accountId)) throw new InvitationTargetInvalidError();
+    return { accountId: target.accountId };
   }
 }
 

@@ -82,6 +82,8 @@ const randomPin = (): string => String(randomInt(10_000_000, 99_999_999));
 const linkSecrets: Record<string, string> = {};
 /** Secrets de la tutelle (PRO-15, PRO-16) : adresse et nom du profil, lien d'installation, mot de passe. */
 const wardSecrets: Record<string, string> = {};
+/** Secrets de l'adresse d'un profil et de l'invitation à créer un profil (PRO-10, PRO-11). */
+const profileInvitationSecrets: Record<string, string> = {};
 /** Fournisseur OpenID Connect local, à la place de Google. */
 let provider: FakeOidcProvider | undefined;
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
@@ -278,6 +280,80 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playProfileScenario(app);
   await playLinkScenario(app);
   await playWardScenario(app);
+  await playProfileInvitationScenario(app);
+}
+
+/**
+ * Adresse d'un profil et invitation à créer un profil (tranche 6 bis, lot b) : adresse porteuse
+ * du marqueur, lien de vérification, jeton `PROFILE` dans les corps, nom et PIN saisis à
+ * l'ouverture sans session. Rien ne doit en sortir.
+ */
+async function playProfileInvitationScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const inviter = await createAccountWithProfile(prisma);
+  const signed = await signIn(app, inviter);
+  const as = {
+    ...markedHeaders,
+    Cookie: `${signed.cookie}; session=${MARKER}`,
+    'X-CSRF-Token': signed.csrf,
+    Origin: 'http://localhost:3000',
+  };
+  const pre = await http.get('/api/v1/session').set(markedHeaders).expect(200);
+  const anonymous = {
+    ...markedHeaders,
+    Cookie:
+      (pre.headers['set-cookie'] as unknown as string[] | undefined)
+        ?.find((c) => c.startsWith(`${PRESESSION_COOKIE}=`))
+        ?.split(';')[0] ?? '',
+    'X-CSRF-Token': pre.body.csrfToken as string,
+    Origin: 'http://localhost:3000',
+  };
+
+  profileInvitationSecrets.profileEmail = `profil_${MARKER}@example.test`.toLowerCase();
+  await http
+    .put('/api/v1/profiles/me/email')
+    .set(as)
+    .send({ email: profileInvitationSecrets.profileEmail })
+    .expect(204);
+  await background.flush();
+  profileInvitationSecrets.verifyToken =
+    mail.lastToken(profileInvitationSecrets.profileEmail) ?? '';
+  await http
+    .post('/api/v1/profiles/email/verify')
+    .set(anonymous)
+    .send({ token: profileInvitationSecrets.verifyToken })
+    .expect(204);
+  await http.get('/api/v1/profiles/me').set(as).expect(200);
+
+  const created = await http
+    .post('/api/v1/invitations')
+    .set(as)
+    .send({ kind: 'PROFILE' })
+    .expect(201);
+  profileInvitationSecrets.token = created.body.token as string;
+  profileInvitationSecrets.displayName = `Mamie ${MARKER}`;
+  pinSecrets.invitationPin = String(randomInt(10_000_000, 100_000_000));
+  await http
+    .post('/api/v1/invitations/profile/inspect')
+    .set(anonymous)
+    .send({ token: profileInvitationSecrets.token })
+    .expect(200);
+  await http
+    .post('/api/v1/invitations/profile/accept')
+    .set(anonymous)
+    .send({
+      token: profileInvitationSecrets.token,
+      displayName: profileInvitationSecrets.displayName,
+      pin: pinSecrets.invitationPin,
+    })
+    .expect(204);
+  // Rejeu : refus commun.
+  await http
+    .post('/api/v1/invitations/profile/accept')
+    .set(anonymous)
+    .send({ token: profileInvitationSecrets.token, displayName: 'Autre' })
+    .expect(404);
 }
 
 /**
@@ -1136,7 +1212,16 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
 
   it('PIN-01 à PIN-07 : PIN, hash du PIN, nonce de déverrouillage absents de toute sortie', () => {
     expect(Object.keys(pinSecrets).sort()).toEqual(
-      ['pin', 'pinHash', 'pinStamp', 'reauthToken', 'resetPin', 'unlockNonce', 'wrongPin'].sort(),
+      [
+        'invitationPin',
+        'pin',
+        'pinHash',
+        'pinStamp',
+        'reauthToken',
+        'resetPin',
+        'unlockNonce',
+        'wrongPin',
+      ].sort(),
     );
     const everything = [
       logLines.join(''),
@@ -1153,7 +1238,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     ]) {
       expect(bodies('traces')).toContain(route);
     }
-    for (const name of ['pin', 'wrongPin', 'resetPin']) {
+    for (const name of ['pin', 'wrongPin', 'resetPin', 'invitationPin']) {
       const pin = pinSecrets[name] ?? '';
       expect(pin).toMatch(/^[0-9]{8}$/);
       const leaked = new RegExp(`(?<!\\d)${pin}(?!\\d)`).test(everything);
@@ -1216,6 +1301,30 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       expect(bodies('traces')).toContain(route);
     }
     for (const [name, secret] of Object.entries(wardSecrets)) {
+      expect(secret.length).toBeGreaterThanOrEqual(16);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('PRO-10, PRO-11 : adresse du profil, jetons, nom saisi absents de toute sortie', () => {
+    expect(Object.keys(profileInvitationSecrets).sort()).toEqual(
+      ['displayName', 'profileEmail', 'token', 'verifyToken'].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    for (const route of [
+      '/api/v1/profiles/me/email',
+      '/api/v1/profiles/email/verify',
+      '/api/v1/invitations/profile/inspect',
+      '/api/v1/invitations/profile/accept',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(profileInvitationSecrets)) {
       expect(secret.length).toBeGreaterThanOrEqual(16);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }

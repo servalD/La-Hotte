@@ -8,7 +8,10 @@ import type {
   LinkSide,
   LinkStatus,
   OpenInvitation,
+  ProfileInvitationLookup,
+  ProfileProposal,
 } from './link';
+import type { NewProfile } from './account';
 
 /**
  * Lecture du cercle (LNK-09), exposée aux autres modules par `identity/index.ts` : le futur
@@ -43,8 +46,10 @@ export abstract class LinkRepository extends CircleReader {
   abstract circleOf(profileId: string): Promise<CircleMember[]>;
 
   /**
-   * LNK-01 : invitation `LINK` ; `limit` si `maxOpen` invitations sont déjà ouvertes (comptées
-   * sous verrou du profil).
+   * LNK-01, PRO-11 : invitation `LINK`, ou `PROFILE` si `profile` est donné (compte visé, marqueur
+   * du profil à créer, acceptation posée d'office pour le compte de l'invitant) ; `limit` si
+   * `maxOpen` invitations, toutes sortes confondues, sont déjà ouvertes (comptées sous verrou du
+   * profil).
    */
   abstract createInvitation(input: {
     readonly id: string;
@@ -53,12 +58,20 @@ export abstract class LinkRepository extends CircleReader {
     readonly now: Date;
     readonly expiresAt: Date;
     readonly maxOpen: number;
+    readonly profile?: {
+      readonly targetAccountId: string;
+      readonly profileIsChild: boolean;
+      readonly accepted: boolean;
+    };
   }): Promise<'created' | 'limit'>;
 
-  /** Invitations `LINK` ouvertes du profil (ni révoquées, ni expirées, ni épuisées). */
+  /**
+   * Invitations ouvertes du profil (ni révoquées, ni expirées, ni épuisées), et ses invitations
+   * `PROFILE` refusées pas encore expirées (PRO-11 : l'invitant voit le refus).
+   */
   abstract listOpenInvitations(profileId: string, now: Date): Promise<OpenInvitation[]>;
 
-  /** Vrai si l'invitation était ouverte et appartient au profil. */
+  /** Vrai si l'invitation (de toute sorte) était ouverte et appartient au profil. */
   abstract revokeInvitation(profileId: string, invitationId: string, now: Date): Promise<boolean>;
 
   /** Invitation `LINK` ouverte désignée par ce jeton, avec son invitant ; `null` sinon. */
@@ -125,6 +138,50 @@ export abstract class LinkRepository extends CircleReader {
   abstract unblock(blockerId: string, blockedId: string): Promise<boolean>;
 
   abstract listBlocks(blockerId: string): Promise<BlockedRow[]>;
+
+  /** PRO-11 : propositions ouvertes reçues par le compte, pas encore acceptées ni refusées. */
+  abstract listProfileProposals(accountId: string, now: Date): Promise<ProfileProposal[]>;
+
+  /**
+   * PRO-11 : décision du compte visé. L'acceptation revérifie, sous verrou, qu'un profil du compte
+   * est lié à l'invitant sans blocage ; sinon l'invitation est révoquée comme refusée (`revoked`).
+   * `missing` si ce n'est pas une proposition ouverte de ce compte.
+   */
+  abstract decideProfileProposal(input: {
+    readonly invitationId: string;
+    readonly accountId: string;
+    readonly accept: boolean;
+    readonly now: Date;
+  }): Promise<'accepted' | 'refused' | 'revoked' | 'missing'>;
+
+  /** PRO-11 : invitation `PROFILE` ouverte désignée par ce jeton, acceptée ou non ; `null` sinon. */
+  abstract findProfileInvitation(
+    tokenHash: string,
+    now: Date,
+  ): Promise<ProfileInvitationLookup | null>;
+
+  /**
+   * PRO-11, une transaction : invitation verrouillée, acceptation du compte visé exigée (`pending`
+   * sinon), lien et absence de blocage revérifiés pour un autre compte, plafond de PRO-01 sous
+   * verrou du compte (`limit`), profil créé, invitation consommée, lien `ACCEPTED` créé avec
+   * l'invitant si le compte n'est pas le sien. Rien n'est écrit hors de `created`.
+   */
+  abstract redeemProfileInvitation(input: {
+    readonly tokenHash: string;
+    readonly profile: NewProfile;
+    readonly pinHash: string | null;
+    readonly linkId: string;
+    readonly now: Date;
+  }): Promise<
+    | {
+        readonly status: 'created';
+        readonly targetAccountId: string;
+        readonly inviterId: string;
+        readonly inviterAccountId: string;
+        readonly isChild: boolean;
+      }
+    | { readonly status: 'invalid' | 'pending' | 'limit' }
+  >;
 
   /** LNK-10 : supprime les invitations terminées avant `before`. Renvoie leur nombre. */
   abstract purgeInvitations(before: Date): Promise<number>;

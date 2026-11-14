@@ -30,6 +30,7 @@ const DETAILS = {
   pinHash: true,
   pinRelock: true,
   pinResetNoticeAt: true,
+  email: true,
   version: true,
 } as const satisfies Prisma.ProfileSelect;
 
@@ -123,10 +124,104 @@ export class PrismaProfileRepository extends ProfileRepository {
         accentColor: true,
         pinHash: true,
         isChild: true,
+        emailVerifiedAt: true,
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
-    return rows.map(({ pinHash, ...row }) => ({ ...row, hasPin: pinHash !== null }));
+    return rows.map(({ pinHash, emailVerifiedAt, ...row }) => ({
+      ...row,
+      hasPin: pinHash !== null,
+      hasEmail: emailVerifiedAt !== null,
+    }));
+  }
+
+  async requestEmailVerification(input: {
+    readonly tokenId: string;
+    readonly accountId: string;
+    readonly profileId: string;
+    readonly email: string;
+    readonly tokenHash: string;
+    readonly now: Date;
+    readonly expiresAt: Date;
+  }): Promise<'issued' | 'missing' | 'child'> {
+    return this.prisma.$transaction(async (tx) => {
+      const [profile] = await tx.$queryRaw<{ is_child: boolean }[]>`
+        SELECT "is_child" FROM "profile"
+        WHERE "id" = ${input.profileId}::uuid AND "account_id" = ${input.accountId}::uuid
+        FOR UPDATE`;
+      if (!profile) return 'missing' as const;
+      if (profile.is_child) return 'child' as const;
+      await tx.accountToken.updateMany({
+        where: { profileId: input.profileId, purpose: 'PROFILE_EMAIL_VERIFY', usedAt: null },
+        data: { usedAt: input.now },
+      });
+      await tx.accountToken.create({
+        data: {
+          id: input.tokenId,
+          accountId: input.accountId,
+          profileId: input.profileId,
+          purpose: 'PROFILE_EMAIL_VERIFY',
+          tokenHash: input.tokenHash,
+          newEmail: input.email,
+          createdAt: input.now,
+          expiresAt: input.expiresAt,
+        },
+      });
+      return 'issued' as const;
+    });
+  }
+
+  async confirmEmail(
+    tokenHash: string,
+    now: Date,
+  ): Promise<{ readonly accountId: string; readonly profileId: string } | null> {
+    return this.prisma.$transaction(async (tx) => {
+      // Usage unique par une écriture conditionnelle : deux ouvertures simultanées, un seul succès.
+      const [token] = await tx.$queryRaw<
+        { account_id: string; profile_id: string | null; new_email: string | null }[]
+      >`
+        UPDATE "account_token" t SET "used_at" = ${now}, "updated_at" = ${now}
+        FROM "account" a
+        WHERE t."token_hash" = ${tokenHash} AND t."purpose" = 'PROFILE_EMAIL_VERIFY'
+          AND t."used_at" IS NULL AND t."expires_at" > ${now}
+          AND a."id" = t."account_id" AND a."status" = 'ACTIVE'
+        RETURNING t."account_id", t."profile_id", t."new_email"`;
+      if (!token?.profile_id || !token.new_email) return null;
+      const { count } = await tx.profile.updateMany({
+        where: { id: token.profile_id, accountId: token.account_id, isChild: false },
+        data: { email: token.new_email, emailVerifiedAt: now },
+      });
+      if (count === 0) return null;
+      // PRO-10 : les liens envoyés à l'ancienne adresse ne servent plus.
+      await tx.accountToken.updateMany({
+        where: {
+          profileId: token.profile_id,
+          purpose: { in: ['TRANSFER_CONSENT', 'TRANSFER_CANCEL'] },
+          usedAt: null,
+        },
+        data: { usedAt: now },
+      });
+      return { accountId: token.account_id, profileId: token.profile_id };
+    });
+  }
+
+  async clearEmail(accountId: string, profileId: string, now: Date): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.profile.updateMany({
+        where: { id: profileId, accountId },
+        data: { email: null, emailVerifiedAt: null },
+      });
+      if (count === 0) return false;
+      await tx.accountToken.updateMany({
+        where: {
+          profileId,
+          purpose: { in: ['PROFILE_EMAIL_VERIFY', 'TRANSFER_CONSENT', 'TRANSFER_CANCEL'] },
+          usedAt: null,
+        },
+        data: { usedAt: now },
+      });
+      return true;
+    });
   }
 
   async findDetails(accountId: string, profileId: string): Promise<ProfileDetails | null> {

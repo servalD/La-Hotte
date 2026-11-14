@@ -31,6 +31,11 @@ profil ne s'est pas redonné un PIN (`PUT /profiles/me/pin`).
    */
   pinResetNoticeAt: string | null;
   /**
+   * PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse.
+   * @nullable
+   */
+  email: string | null;
+  /**
    * À renvoyer dans `If-Match` pour modifier le profil (API-17).
    * @minimum 1
    */

@@ -22,12 +22,14 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcceptProfileInvitationDto,
   CreateInvitationDto,
   CreatedInvitationView,
   InvitationListView,
   InvitationPreviewView,
   InvitationTokenDto,
   ProblemDetailsDto,
+  ProfileInvitationPreviewView,
   RedeemedInvitationView,
 } from '../../model';
 
@@ -384,6 +386,170 @@ export const useInspectInvitation = <TError = ErrorType<ProblemDetailsDto>, TCon
   TContext
 > => {
   const mutationOptions = getInspectInvitationMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getAcceptProfileInvitationUrl = () => {
+  return `/api/v1/invitations/profile/accept`;
+};
+
+export const acceptProfileInvitation = async (
+  acceptProfileInvitationDto: AcceptProfileInvitationDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getAcceptProfileInvitationUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(acceptProfileInvitationDto),
+  });
+};
+
+export const getAcceptProfileInvitationMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptProfileInvitation>>,
+    TError,
+    { data: AcceptProfileInvitationDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptProfileInvitation>>,
+  TError,
+  { data: AcceptProfileInvitationDto },
+  TContext
+> => {
+  const mutationKey = ['acceptProfileInvitation'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptProfileInvitation>>,
+    { data: AcceptProfileInvitationDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return acceptProfileInvitation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptProfileInvitationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptProfileInvitation>>
+>;
+export type AcceptProfileInvitationMutationBody = AcceptProfileInvitationDto;
+export type AcceptProfileInvitationMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useAcceptProfileInvitation = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof acceptProfileInvitation>>,
+      TError,
+      { data: AcceptProfileInvitationDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof acceptProfileInvitation>>,
+  TError,
+  { data: AcceptProfileInvitationDto },
+  TContext
+> => {
+  const mutationOptions = getAcceptProfileInvitationMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getInspectProfileInvitationUrl = () => {
+  return `/api/v1/invitations/profile/inspect`;
+};
+
+export const inspectProfileInvitation = async (
+  invitationTokenDto: InvitationTokenDto,
+  options?: RequestInit,
+): Promise<ProfileInvitationPreviewView> => {
+  return apiFetch<ProfileInvitationPreviewView>(getInspectProfileInvitationUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(invitationTokenDto),
+  });
+};
+
+export const getInspectProfileInvitationMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inspectProfileInvitation>>,
+    TError,
+    { data: InvitationTokenDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inspectProfileInvitation>>,
+  TError,
+  { data: InvitationTokenDto },
+  TContext
+> => {
+  const mutationKey = ['inspectProfileInvitation'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inspectProfileInvitation>>,
+    { data: InvitationTokenDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return inspectProfileInvitation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InspectProfileInvitationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof inspectProfileInvitation>>
+>;
+export type InspectProfileInvitationMutationBody = InvitationTokenDto;
+export type InspectProfileInvitationMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useInspectProfileInvitation = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof inspectProfileInvitation>>,
+      TError,
+      { data: InvitationTokenDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof inspectProfileInvitation>>,
+  TError,
+  { data: InvitationTokenDto },
+  TContext
+> => {
+  const mutationOptions = getInspectProfileInvitationMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

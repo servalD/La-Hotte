@@ -19,4 +19,6 @@ export interface AccountProfileView {
   accentColor: string;
   hasPin: boolean;
   isChild: boolean;
+  /** PRO-10 : le profil a une adresse vérifiée (l'adresse n'est rendue qu'à lui). */
+  hasEmail: boolean;
 }

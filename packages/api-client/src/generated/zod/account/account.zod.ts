@@ -30,6 +30,27 @@ export const attestAgeBody = zod.object({
   ageAttested: zod.literal(true),
 });
 
+export const listProfileProposalsResponseItemsItemInviterNameMax = 60;
+
+export const listProfileProposalsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      inviterName: zod.string().max(listProfileProposalsResponseItemsItemInviterNameMax),
+      profileIsChild: zod.boolean(),
+      expiresAt: zod.iso.datetime({}),
+    }),
+  ),
+});
+
+export const refuseProfileProposalParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const acceptProfileProposalParams = zod.object({
+  id: zod.uuid(),
+});
+
 export const listAccountProfilesResponseItemsItemDisplayNameMax = 60;
 
 export const listAccountProfilesResponseItemsItemAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
@@ -46,6 +67,9 @@ export const listAccountProfilesResponse = zod.object({
       accentColor: zod.string().regex(listAccountProfilesResponseItemsItemAccentColorRegExp),
       hasPin: zod.boolean(),
       isChild: zod.boolean(),
+      hasEmail: zod
+        .boolean()
+        .describe("PRO-10 : le profil a une adresse vérifiée (l'adresse n'est rendue qu'à lui)."),
     }),
   ),
 });
@@ -155,6 +179,11 @@ export const listWardsResponse = zod.object({
           accentColor: zod.string().regex(listWardsResponseItemsItemProfilesItemAccentColorRegExp),
           hasPin: zod.boolean(),
           isChild: zod.boolean(),
+          hasEmail: zod
+            .boolean()
+            .describe(
+              "PRO-10 : le profil a une adresse vérifiée (l'adresse n'est rendue qu'à lui).",
+            ),
         }),
       ),
     }),
@@ -188,6 +217,9 @@ export const getWardResponse = zod.object({
       accentColor: zod.string().regex(getWardResponseProfilesItemAccentColorRegExp),
       hasPin: zod.boolean(),
       isChild: zod.boolean(),
+      hasEmail: zod
+        .boolean()
+        .describe("PRO-10 : le profil a une adresse vérifiée (l'adresse n'est rendue qu'à lui)."),
     }),
   ),
   sessions: zod.array(

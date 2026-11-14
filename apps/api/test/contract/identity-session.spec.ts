@@ -52,6 +52,11 @@ const PUBLIC_ROUTES = [
   'GET /api/v1/auth/google/callback',
   // PRO-15 : installation d'un compte sous tutelle par son lien (jeton dans le corps).
   'POST /api/v1/accounts/setup',
+  // PRO-10 : vérification de l'adresse d'un profil par son lien.
+  'POST /api/v1/profiles/email/verify',
+  // PRO-11 : invitation à créer un profil, ouverte sans compte (jeton dans le corps).
+  'POST /api/v1/invitations/profile/inspect',
+  'POST /api/v1/invitations/profile/accept',
 ];
 /** Seul `GET` autorisé à modifier l'état (API-21). */
 const OIDC_CALLBACK_ROUTES = ['GET /api/v1/auth/google/callback'];

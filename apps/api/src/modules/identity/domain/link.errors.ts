@@ -72,3 +72,36 @@ export class LinkNotFoundError extends DomainError {
     super('Lien introuvable.');
   }
 }
+
+/** PRO-11 : seul un profil non enfant invite à créer un profil. */
+export class ProfileInvitationForbiddenError extends DomainError {
+  readonly kind = 'forbidden';
+  readonly code = 'PROFILE_INVITATION_FORBIDDEN';
+
+  constructor() {
+    super('Un profil enfant ne peut pas inviter à créer un profil.');
+  }
+}
+
+/**
+ * PRO-11, SEC-04 : profil visé hors du cercle de l'invitant (ou de son compte, ou bloqué, ou d'un
+ * compte sous tutelle) : un seul refus, qui ne dit pas pourquoi.
+ */
+export class InvitationTargetInvalidError extends DomainError {
+  readonly kind = 'not_found';
+  readonly code = 'INVITATION_TARGET_INVALID';
+
+  constructor() {
+    super('Ce compte ne peut pas être visé.');
+  }
+}
+
+/** PRO-11 : le compte visé n'a pas encore accepté la proposition ; le jeton n'est pas consommé. */
+export class ProfileProposalPendingError extends DomainError {
+  readonly kind = 'conflict';
+  readonly code = 'PROFILE_PROPOSAL_PENDING';
+
+  constructor() {
+    super('Le compte qui recevra ce profil ne l’a pas encore accepté.');
+  }
+}

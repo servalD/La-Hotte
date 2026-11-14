@@ -24,6 +24,10 @@ export class AccountProfileView {
 
   @ApiProperty()
   isChild!: boolean;
+
+  /** PRO-10 : le profil a une adresse vérifiée (l'adresse n'est rendue qu'à lui). */
+  @ApiProperty()
+  hasEmail!: boolean;
 }
 
 export class AccountProfileListView {
@@ -83,6 +87,10 @@ export class ProfileView {
    */
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   pinResetNoticeAt!: string | null;
+
+  /** PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse. */
+  @ApiProperty({ type: String, format: 'email', nullable: true })
+  email!: string | null;
 
   /** À renvoyer dans `If-Match` pour modifier le profil (API-17). */
   @ApiProperty({ minimum: 1 })

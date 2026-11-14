@@ -68,6 +68,7 @@ function toWardView(ward: WardSummary): WardFields {
       accentColor: profile.accentColor,
       hasPin: profile.hasPin,
       isChild: profile.isChild,
+      hasEmail: profile.hasEmail,
     })),
   };
 }

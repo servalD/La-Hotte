@@ -5,9 +5,17 @@
  * Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.
  * OpenAPI spec version: 1
  */
+import type { OpenInvitationViewKind } from './openInvitationViewKind';
+import type { OpenInvitationViewProposal } from './openInvitationViewProposal';
 
 export interface OpenInvitationView {
   id: string;
+  kind: OpenInvitationViewKind;
+  /**
+   * PRO-11 : état de la proposition dans le compte visé ; `null` pour un lien.
+   * @nullable
+   */
+  proposal: OpenInvitationViewProposal;
   createdAt: string;
   expiresAt: string;
 }

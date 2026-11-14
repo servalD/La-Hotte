@@ -59,6 +59,8 @@ export interface ProfileDetails {
   readonly pinRelock: PinRelock;
   /** PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte, tant que le profil ne s'en est pas redonné un. */
   readonly pinResetNoticeAt: Date | null;
+  /** PRO-10 : adresse vérifiée du profil, rendue au seul profil ; `null` sans adresse. */
+  readonly email: string | null;
   readonly version: number;
 }
 
@@ -84,6 +86,8 @@ export interface ProfileMetadata {
   readonly accentColor: string;
   readonly hasPin: boolean;
   readonly isChild: boolean;
+  /** PRO-10 : le profil a une adresse vérifiée (jamais l'adresse : elle n'est rendue qu'à lui). */
+  readonly hasEmail: boolean;
 }
 
 /**

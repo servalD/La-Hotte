@@ -118,3 +118,10 @@ export {
   SetupWardAccount,
 } from './manage-wards.use-case';
 export type { WardSummary } from '../domain/ward';
+export { ClearOwnEmail, SetOwnEmail, VerifyProfileEmail } from './profile-email.use-case';
+export {
+  AcceptProfileInvitation,
+  DecideProfileProposal,
+  InspectProfileInvitation,
+  ListProfileProposals,
+} from './profile-invitations.use-case';
