@@ -656,6 +656,8 @@ interface MemoryAccountRow {
   createdAt: Date;
   /** AUTH-09 : invitation à consommer à la vérification de l'e-mail. */
   pendingInvitationId?: string | null;
+  /** PRO-15 : compte tuteur d'un compte sous tutelle. */
+  guardianAccountId?: string | null;
 }
 
 interface MemoryTokenRow extends NewAccountToken {

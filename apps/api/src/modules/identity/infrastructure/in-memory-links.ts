@@ -5,6 +5,7 @@ import {
   type InvitationLookup,
   type LinkParty,
   type LinkPartyDetails,
+  type LinkOrigin,
   type LinkRecord,
   type LinkSide,
   type LinkStatus,
@@ -32,6 +33,7 @@ interface MemoryLink {
   aId: string;
   bId: string;
   status: LinkStatus;
+  origin: LinkOrigin;
   requestedBy: string;
   aGuardianRequired: boolean;
   bGuardianRequired: boolean;
@@ -75,6 +77,29 @@ export class InMemoryLinkRepository extends LinkRepository {
     return this.accounts.profiles.get(id) ?? null;
   }
 
+  /**
+   * PRO-15 : tuteurs d'un enfant d'un compte sous tutelle (adultes du compte tuteur reliés par un
+   * lien `GUARDIANSHIP`), comme `wardGuardiansOf` du dépôt Prisma.
+   */
+  private wardGuardianIds(child: MemoryProfile): string[] | null {
+    if (!(child.isChild ?? false)) return null;
+    const guardianAccountId = this.accounts.rows.get(child.accountId)?.guardianAccountId;
+    if (!guardianAccountId) return null;
+    return [...this.links.values()].flatMap((link) => {
+      if (link.origin !== 'GUARDIANSHIP') return [];
+      const otherId = link.aId === child.id ? link.bId : link.bId === child.id ? link.aId : null;
+      const other = otherId ? this.profile(otherId) : null;
+      return other && other.accountId === guardianAccountId && !(other.isChild ?? false)
+        ? [other.id]
+        : [];
+    });
+  }
+
+  private party(profile: MemoryProfile): LinkPartyDetails {
+    const guardians = this.wardGuardianIds(profile);
+    return guardians ? { ...party(profile), wardGuardianIds: guardians } : party(profile);
+  }
+
   private record(link: MemoryLink): LinkRecord {
     const a = this.profile(link.aId);
     const b = this.profile(link.bId);
@@ -82,9 +107,10 @@ export class InMemoryLinkRepository extends LinkRepository {
     return {
       id: link.id,
       status: link.status,
+      origin: link.origin,
       requestedBy: link.requestedBy,
-      a: party(a),
-      b: party(b),
+      a: this.party(a),
+      b: this.party(b),
       aGuardianRequired: link.aGuardianRequired,
       bGuardianRequired: link.bGuardianRequired,
       aGuardianApprovedBy: link.aGuardianApprovedBy,
@@ -114,7 +140,7 @@ export class InMemoryLinkRepository extends LinkRepository {
 
   async findParty(profileId: string): Promise<LinkPartyDetails | null> {
     const profile = this.profile(profileId);
-    return profile ? party(profile) : null;
+    return profile ? this.party(profile) : null;
   }
 
   async circleOf(profileId: string): Promise<CircleMember[]> {
@@ -232,6 +258,7 @@ export class InMemoryLinkRepository extends LinkRepository {
       aId: a.id,
       bId: b.id,
       status: plan.status,
+      origin: 'INVITATION',
       requestedBy: inviter.id,
       aGuardianRequired: plan.aGuardianRequired,
       bGuardianRequired: plan.bGuardianRequired,
@@ -296,7 +323,10 @@ export class InMemoryLinkRepository extends LinkRepository {
       .filter((link) => {
         if (link.a.id === actor.id || link.b.id === actor.id) return true;
         if (actor.isChild) return false;
-        return [link.a, link.b].some((p) => p.isChild && p.accountId === actor.accountId);
+        return [link.a, link.b].some(
+          (p) =>
+            p.isChild && (p.accountId === actor.accountId || p.wardGuardianIds?.includes(actor.id)),
+        );
       })
       .sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
   }
@@ -343,7 +373,8 @@ export class InMemoryLinkRepository extends LinkRepository {
     readonly now: Date;
   }): Promise<'blocked' | 'not_linked'> {
     const link = this.linkBetween(input.blockerId, input.blockedId);
-    if (!link) return 'not_linked';
+    // PRO-15 : un lien de tutelle ne se bloque pas.
+    if (!link || link.origin === 'GUARDIANSHIP') return 'not_linked';
     this.links.delete(link.id);
     if (
       !this.blocks.some((b) => b.blockerId === input.blockerId && b.blockedId === input.blockedId)

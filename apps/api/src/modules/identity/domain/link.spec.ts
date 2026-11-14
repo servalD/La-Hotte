@@ -27,6 +27,7 @@ function record(overrides: Partial<LinkRecord> & Pick<LinkRecord, 'a' | 'b'>): L
   return {
     id: 'link-1',
     status: 'ACCEPTED',
+    origin: 'INVITATION',
     requestedBy: overrides.a.id,
     aGuardianRequired: false,
     bGuardianRequired: false,
@@ -84,6 +85,41 @@ describe('isGuardianOf (PRO-05, LNK-06)', () => {
     expect(isGuardianOf(party('k2', 'acc-kid', true), child)).toBe(false);
     expect(isGuardianOf(party('x', 'acc-other'), child)).toBe(false);
     expect(isGuardianOf(party('p', 'acc-kid'), party('q', 'acc-kid'))).toBe(false);
+  });
+});
+
+describe('isGuardianOf, compte sous tutelle (PRO-15)', () => {
+  const ward = { ...party('w', 'acc-ward', true), wardGuardianIds: ['p'] };
+
+  it('un adulte du compte tuteur relié par un lien de tutelle garde l’enfant', () => {
+    expect(isGuardianOf(party('p', 'acc-guardian'), ward)).toBe(true);
+  });
+
+  it('un autre adulte du compte tuteur, sans lien de tutelle, n’en est pas tuteur', () => {
+    expect(isGuardianOf(party('q', 'acc-guardian'), ward)).toBe(false);
+  });
+
+  it('sans liste de tuteurs, échec fermé hors du compte de l’enfant', () => {
+    expect(isGuardianOf(party('p', 'acc-guardian'), party('w', 'acc-ward', true))).toBe(false);
+  });
+
+  it('un enfant n’est jamais tuteur, même nommé dans la liste', () => {
+    expect(isGuardianOf(party('p', 'acc-guardian', true), ward)).toBe(false);
+  });
+});
+
+describe('canBreakLink, lien de tutelle (PRO-15)', () => {
+  const guardian = party('p', 'acc-guardian');
+  const kid = { ...party('w', 'acc-ward', true), wardGuardianIds: ['p'] };
+  const guardianship = record({ a: guardian, b: kid, origin: 'GUARDIANSHIP' });
+
+  it('le tuteur peut le rompre, l’enfant non', () => {
+    expect(canBreakLink(guardianship, guardian)).toBe(true);
+    expect(canBreakLink(guardianship, kid)).toBe(false);
+  });
+
+  it('un tiers non plus', () => {
+    expect(canBreakLink(guardianship, party('t', 'acc-third'))).toBe(false);
   });
 });
 

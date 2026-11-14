@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../platform/prisma/prisma.service';
 import {
   type BlockedRow,
@@ -60,6 +60,7 @@ function toRecord(row: LinkRow): LinkRecord {
   return {
     id: row.id,
     status: row.status,
+    origin: row.origin,
     requestedBy: row.requestedBy,
     a: toParty(row.profileA),
     b: toParty(row.profileB),
@@ -91,6 +92,70 @@ async function lockProfiles(tx: Tx, ids: readonly string[]): Promise<void> {
   await tx.$queryRaw`SELECT "id" FROM "profile" WHERE "id" = ANY(${ids}::uuid[]) ORDER BY "id" FOR SHARE`;
 }
 
+type Db = Tx | PrismaService;
+
+/**
+ * Revérification en base de `isGuardianOf` (LNK-06, PRO-15), pour `g` le tuteur et `c` l'enfant :
+ * même compte, ou compte tuteur de celui de l'enfant avec un lien de tutelle entre eux.
+ */
+const GUARDIAN_OF_CHILD = Prisma.sql`(
+  g."account_id" = c."account_id"
+  OR EXISTS (
+    SELECT 1 FROM "account" ca
+    JOIN "profile_link" gl ON gl."origin" = 'GUARDIANSHIP'
+      AND gl."profile_a_id" = LEAST(g."id", c."id") AND gl."profile_b_id" = GREATEST(g."id", c."id")
+    WHERE ca."id" = c."account_id" AND ca."guardian_account_id" = g."account_id"))`;
+
+/**
+ * PRO-15 : tuteurs de chaque enfant d'un compte sous tutelle parmi `childIds` : les profils non
+ * enfants du compte tuteur reliés à lui par un lien `GUARDIANSHIP`. Les autres profils n'ont pas
+ * d'entrée (aucun tuteur hors de leur compte).
+ */
+async function wardGuardiansOf(
+  db: Db,
+  childIds: readonly string[],
+): Promise<Map<string, string[]>> {
+  const guardians = new Map<string, string[]>();
+  if (childIds.length === 0) return guardians;
+  const rows = await db.$queryRaw<{ child_id: string; guardian_id: string }[]>`
+    SELECT c."id" AS child_id, g."id" AS guardian_id
+    FROM "profile" c
+    JOIN "account" ca ON ca."id" = c."account_id" AND ca."guardian_account_id" IS NOT NULL
+    JOIN "profile_link" l ON l."origin" = 'GUARDIANSHIP'
+      AND (l."profile_a_id" = c."id" OR l."profile_b_id" = c."id")
+    JOIN "profile" g ON g."id" = CASE WHEN l."profile_a_id" = c."id"
+      THEN l."profile_b_id" ELSE l."profile_a_id" END
+    WHERE c."id" = ANY(${[...childIds]}::uuid[]) AND c."is_child"
+      AND g."account_id" = ca."guardian_account_id" AND NOT g."is_child"`;
+  for (const row of rows) {
+    guardians.set(row.child_id, [...(guardians.get(row.child_id) ?? []), row.guardian_id]);
+  }
+  return guardians;
+}
+
+function withGuardians(
+  party: LinkPartyDetails,
+  guardians: Map<string, string[]>,
+): LinkPartyDetails {
+  const ids = guardians.get(party.id);
+  return ids ? { ...party, wardGuardianIds: ids } : party;
+}
+
+/** Complète les parties enfants des liens par leurs tuteurs de compte sous tutelle (PRO-15). */
+async function completeRecords(db: Db, records: LinkRecord[]): Promise<LinkRecord[]> {
+  const children = records
+    .flatMap((r) => [r.a, r.b])
+    .filter((p) => p.isChild)
+    .map((p) => p.id);
+  const guardians = await wardGuardiansOf(db, [...new Set(children)]);
+  if (guardians.size === 0) return records;
+  return records.map((r) => ({
+    ...r,
+    a: withGuardians(r.a, guardians),
+    b: withGuardians(r.b, guardians),
+  }));
+}
+
 /** Verrou consultatif de la paire : ouverture, rupture et blocage concurrents se sérialisent. */
 async function lockPair(tx: Tx, x: string, y: string): Promise<void> {
   const [a, b] = x < y ? [x, y] : [y, x];
@@ -109,7 +174,11 @@ export class PrismaLinkRepository extends LinkRepository {
 
   async findParty(profileId: string): Promise<LinkPartyDetails | null> {
     const row = await this.prisma.profile.findUnique({ where: { id: profileId }, select: PARTY });
-    return row ? toParty(row) : null;
+    if (!row) return null;
+    const party = toParty(row);
+    return party.isChild
+      ? withGuardians(party, await wardGuardiansOf(this.prisma, [party.id]))
+      : party;
   }
 
   async circleOf(profileId: string): Promise<CircleMember[]> {
@@ -391,18 +460,33 @@ export class PrismaLinkRepository extends LinkRepository {
   }
 
   async listLinks(actor: LinkParty): Promise<LinkRecord[]> {
+    // PRO-15 : enfants de comptes sous tutelle que l'acteur garde par un lien de tutelle.
+    const wards = actor.isChild
+      ? []
+      : (
+          await this.prisma.$queryRaw<{ id: string }[]>`
+            SELECT c."id" FROM "profile_link" l
+            JOIN "profile" c ON c."id" = CASE WHEN l."profile_a_id" = ${actor.id}::uuid
+              THEN l."profile_b_id" ELSE l."profile_a_id" END
+            JOIN "account" ca ON ca."id" = c."account_id"
+            WHERE l."origin" = 'GUARDIANSHIP'
+              AND (l."profile_a_id" = ${actor.id}::uuid OR l."profile_b_id" = ${actor.id}::uuid)
+              AND c."is_child" AND ca."guardian_account_id" = ${actor.accountId}::uuid`
+        ).map((row) => row.id);
     const guarded = actor.isChild
       ? []
       : [
           { profileA: { accountId: actor.accountId, isChild: true } },
           { profileB: { accountId: actor.accountId, isChild: true } },
+          { profileAId: { in: wards } },
+          { profileBId: { in: wards } },
         ];
     const rows = await this.prisma.profileLink.findMany({
       where: { OR: [{ profileAId: actor.id }, { profileBId: actor.id }, ...guarded] },
       include: LINK_WITH_PARTIES,
       orderBy: { createdAt: 'desc' },
     });
-    return rows.map(toRecord);
+    return completeRecords(this.prisma, rows.map(toRecord));
   }
 
   async findLink(linkId: string): Promise<LinkRecord | null> {
@@ -410,7 +494,9 @@ export class PrismaLinkRepository extends LinkRepository {
       where: { id: linkId },
       include: LINK_WITH_PARTIES,
     });
-    return row ? toRecord(row) : null;
+    if (!row) return null;
+    const [record] = await completeRecords(this.prisma, [toRecord(row)]);
+    return record ?? null;
   }
 
   async approveSide(input: {
@@ -434,7 +520,7 @@ export class PrismaLinkRepository extends LinkRepository {
               AND EXISTS (
                 SELECT 1 FROM "profile" g, "profile" c
                 WHERE g."id" = ${input.guardianId}::uuid AND c."id" = "profile_a_id"
-                  AND NOT g."is_child" AND c."is_child" AND g."account_id" = c."account_id")`
+                  AND NOT g."is_child" AND c."is_child" AND ${GUARDIAN_OF_CHILD})`
         : await this.prisma.$executeRaw`
             UPDATE "profile_link" SET
               "b_guardian_approved_by" = ${input.guardianId}::uuid,
@@ -446,7 +532,7 @@ export class PrismaLinkRepository extends LinkRepository {
               AND EXISTS (
                 SELECT 1 FROM "profile" g, "profile" c
                 WHERE g."id" = ${input.guardianId}::uuid AND c."id" = "profile_b_id"
-                  AND NOT g."is_child" AND c."is_child" AND g."account_id" = c."account_id")`;
+                  AND NOT g."is_child" AND c."is_child" AND ${GUARDIAN_OF_CHILD})`;
     return changed === 1 ? this.findLink(input.linkId) : null;
   }
 
@@ -472,8 +558,9 @@ export class PrismaLinkRepository extends LinkRepository {
         input.blockerId < input.blockedId
           ? [input.blockerId, input.blockedId]
           : [input.blockedId, input.blockerId];
+      // PRO-15 : un lien de tutelle ne se bloque pas ; il est traité comme absent (`404`).
       const { count } = await tx.profileLink.deleteMany({
-        where: { profileAId: a, profileBId: b },
+        where: { profileAId: a, profileBId: b, origin: { not: 'GUARDIANSHIP' } },
       });
       if (count === 0) return 'not_linked' as const;
       await tx.profileBlock.createMany({

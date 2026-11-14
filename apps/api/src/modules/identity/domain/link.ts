@@ -17,6 +17,12 @@ export const INVITATION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 
 export type LinkStatus = 'PENDING' | 'AWAITING_GUARDIAN' | 'ACCEPTED';
 
+/**
+ * LNK-11, PRO-15 : d'où vient un lien. `TRANSFER` et `GUARDIANSHIP` naissent acceptés ;
+ * `GUARDIANSHIP` seul fonde la tutelle d'un compte sous tutelle.
+ */
+export type LinkOrigin = 'INVITATION' | 'TRANSFER' | 'GUARDIANSHIP';
+
 /** Les deux côtés d'un lien, rangés par identifiant (`a < b`, contrainte de base). */
 export type LinkSide = 'A' | 'B';
 
@@ -25,6 +31,12 @@ export interface LinkParty {
   readonly id: string;
   readonly accountId: string;
   readonly isChild: boolean;
+  /**
+   * PRO-15 : pour un enfant d'un compte sous tutelle, ses tuteurs : les profils non enfants du
+   * compte tuteur qui lui sont reliés par un lien `GUARDIANSHIP`, calculés par le dépôt. Absent ou
+   * vide : aucun tuteur hors de son propre compte (échec fermé).
+   */
+  readonly wardGuardianIds?: readonly string[];
 }
 
 /** Profil d'une partie, avec de quoi l'afficher. */
@@ -61,20 +73,26 @@ export function planLink(a: Pick<LinkParty, 'isChild'>, b: Pick<LinkParty, 'isCh
 }
 
 /**
- * PRO-05, LNK-06 : un tuteur est un profil **non enfant du compte de l'enfant**. Point unique
- * d'extension : la tutelle d'un compte parent sur un compte d'enfants (tranche 6 bis) s'y ajoute.
+ * PRO-05, LNK-06, PRO-15 : un tuteur est un profil non enfant **du compte de l'enfant**, ou, pour
+ * un enfant d'un compte sous tutelle, **du compte tuteur relié à lui par un lien de tutelle**
+ * (`wardGuardianIds`). Un adulte arrivé plus tard dans le compte tuteur n'en est pas tuteur.
+ * Point unique de la règle : aucun autre endroit ne la réécrit (SQL de `approveSide` mis à part,
+ * qui la revérifie en base).
  */
 export function isGuardianOf(
   guardian: Pick<LinkParty, 'id' | 'accountId' | 'isChild'>,
-  child: Pick<LinkParty, 'id' | 'accountId' | 'isChild'>,
+  child: Pick<LinkParty, 'id' | 'accountId' | 'isChild' | 'wardGuardianIds'>,
 ): boolean {
-  return child.isChild && !guardian.isChild && guardian.accountId === child.accountId;
+  if (!child.isChild || guardian.isChild || guardian.id === child.id) return false;
+  if (guardian.accountId === child.accountId) return true;
+  return child.wardGuardianIds?.includes(guardian.id) ?? false;
 }
 
 /** Un lien et ses deux parties, tels que les lit un cas d'usage. */
 export interface LinkRecord {
   readonly id: string;
   readonly status: LinkStatus;
+  readonly origin: LinkOrigin;
   readonly requestedBy: string;
   readonly a: LinkPartyDetails;
   readonly b: LinkPartyDetails;
@@ -107,8 +125,18 @@ export function approvableSide(link: LinkRecord, guardian: LinkParty): LinkSide 
   return null;
 }
 
-/** LNK-02 : qui peut rompre un lien : l'une des parties, ou le tuteur d'une partie enfant. */
+/**
+ * LNK-02 : qui peut rompre un lien : l'une des parties, ou le tuteur d'une partie enfant.
+ * PRO-15 : un lien de tutelle ne se rompt pas depuis le compte sous tutelle, seulement par la
+ * partie non enfant (le tuteur) ; que ce ne soit pas le dernier tuteur de l'enfant se vérifie en
+ * base (`GUARDIAN_REQUIRED`).
+ */
 export function canBreakLink(link: LinkRecord, actor: LinkParty): boolean {
+  if (link.origin === 'GUARDIANSHIP') {
+    const side = sideOf(link, actor.id);
+    if (side === null) return false;
+    return !(side === 'A' ? link.a : link.b).isChild;
+  }
   return (
     link.a.id === actor.id ||
     link.b.id === actor.id ||

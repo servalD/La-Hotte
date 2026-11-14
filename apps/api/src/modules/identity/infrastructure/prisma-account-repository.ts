@@ -174,7 +174,9 @@ export class PrismaAccountRepository extends AccountRepository {
       },
       select: { accountId: true, purpose: true, newEmail: true, createdAt: true },
     });
-    return row;
+    // La requête ne rend que les usages demandés ; les usages de profil (PRO-10, PRO-12) n'y sont pas.
+    const purpose = purposes.find((wanted) => wanted === row?.purpose);
+    return row && purpose ? { ...row, purpose } : null;
   }
 
   async isEmailReserved(
