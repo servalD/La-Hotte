@@ -9,7 +9,10 @@ export function safeAuthorizationUrl(value: string): string | null {
   } catch {
     return null;
   }
-  const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  // Un fournisseur local n'existe qu'en développement et en test.
+  const local =
+    process.env.NODE_ENV !== 'production' &&
+    (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
   if (url.protocol === 'https:' && url.hostname === 'accounts.google.com') return url.toString();
   if (local && (url.protocol === 'http:' || url.protocol === 'https:')) return url.toString();
   return null;

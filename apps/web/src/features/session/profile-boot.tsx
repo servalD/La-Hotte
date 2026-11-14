@@ -9,7 +9,7 @@ import {
 } from '@wishlist/api-client';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isLocale, LOCALE_COOKIE } from '@/i18n/config';
@@ -45,22 +45,29 @@ export function ProfileBoot({ children }: { children: ReactNode }) {
     profile.pinRelock === ProfileViewPinRelock.EVERY_OPEN &&
     !launchHandled();
 
-  useEffect(() => {
-    if (profile === undefined) return;
-    if (!mustLock) {
-      markLaunchHandled();
-      return;
-    }
-    markLaunchHandled();
+  const attempted = useRef(false);
+  const lockNow = useCallback(() => {
+    attempted.current = true;
     lock.mutate(undefined, {
       onSuccess: () => {
+        // Le lancement n'est traité qu'une fois le verrou posé : un échec se retente (PIN-07).
+        markLaunchHandled();
         purgeUserData(queryClient);
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() }).then(() => {
           router.replace('/profiles/unlock');
         });
       },
     });
-  }, [profile, mustLock, lock, queryClient, router]);
+  }, [lock, queryClient, router]);
+
+  useEffect(() => {
+    if (profile === undefined) return;
+    if (!mustLock) {
+      markLaunchHandled();
+      return;
+    }
+    if (!attempted.current) lockNow();
+  }, [profile, mustLock, lockNow]);
 
   if (isError || lock.isError) {
     return (
@@ -69,7 +76,8 @@ export function ProfileBoot({ children }: { children: ReactNode }) {
         <Button
           className="self-start"
           onClick={() => {
-            void refetch();
+            if (lock.isError) lockNow();
+            else void refetch();
           }}
         >
           {t('retry')}

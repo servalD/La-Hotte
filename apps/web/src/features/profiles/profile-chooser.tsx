@@ -56,6 +56,11 @@ export function ProfileChooser({ unlockOnly = false }: { unlockOnly?: boolean })
         onSuccess: (selection) => {
           void entered(selection);
         },
+        // Le serveur a déjà changé de profil (PRO-07), même si le PIN est faux : on efface l'ancien.
+        onError: () => {
+          // On garde la mutation : son erreur (PIN faux, attente) reste affichée.
+          purgeUserData(queryClient, { keepMutations: true });
+        },
       },
     );
   }

@@ -4,10 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useGetSession } from '@wishlist/api-client';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { purgeUserData } from '@/lib/session/purge';
 import { identityKey, nextRoute, type Requirement } from './next-route';
+
+// Dernière identité vue, partagée entre les mises en page `(app)` et `(account)`.
+let lastIdentity: string | null = null;
 
 /**
  * Garde d'écran : suit l'état de session rendu par l'API et redirige. Ce n'est pas une règle
@@ -29,11 +32,10 @@ export function SessionGate({
   // Filet de sécurité : quelle que soit la cause (session expirée, autre onglet, verrouillage), un
   // changement d'identité efface les données de l'ancienne (OFF-20, PIN-02).
   const key = data ? identityKey(data) : null;
-  const previous = useRef<string | null>(null);
   useEffect(() => {
     if (key === null) return;
-    if (previous.current !== null && previous.current !== key) purgeUserData(queryClient);
-    previous.current = key;
+    if (lastIdentity !== null && lastIdentity !== key) purgeUserData(queryClient);
+    lastIdentity = key;
   }, [key, queryClient]);
 
   useEffect(() => {

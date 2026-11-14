@@ -163,6 +163,38 @@ describe('démarrage d’un profil (PIN-07)', () => {
     expect(screen.queryByText('cercle affiché')).toBeNull();
   });
 
+  it('verrou en échec : rien n’est affiché, et il est retenté au remontage (PIN-07)', async () => {
+    const { ProfileBoot: Boot } = await import('./profile-boot');
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let lockAttempts = 0;
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith('/api/v1/profiles/me')) return json(PROFILE);
+      if (url.endsWith('/api/v1/session/lock')) {
+        lockAttempts += 1;
+        return json({ type: 'x', title: 'x', status: 500, code: 'INTERNAL' }, 500);
+      }
+      return json(sessionOf('p', false));
+    });
+    const tree = (
+      <Boot>
+        <p>cercle affiché</p>
+      </Boot>
+    );
+    const first = wrap(tree, client);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Impossible de vérifier ce profil');
+    expect(screen.queryByText('cercle affiché')).toBeNull();
+    expect(lockAttempts).toBe(1);
+
+    // Navigation puis retour : l'écran est remonté, le profil est toujours déverrouillé côté serveur.
+    first.unmount();
+    wrap(tree, client);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText('cercle affiché')).toBeNull();
+    await waitFor(() => {
+      expect(lockAttempts).toBe(2);
+    });
+  });
+
   it('sans verrou demandé, les écrans sont montés', async () => {
     const { ProfileBoot: Boot } = await import('./profile-boot');
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
