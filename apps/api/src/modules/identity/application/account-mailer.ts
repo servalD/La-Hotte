@@ -1,0 +1,415 @@
+import { Injectable } from '@nestjs/common';
+import { Clock } from '../../../shared/domain';
+import { IdentitySettings } from '../domain/account.ports';
+import { type MailMessage, MailSender, RateLimiter } from '../domain/ports';
+
+/**
+ * Pages du web qui reçoivent un jeton (ADR 0013, « Liens envoyés par e-mail ») : le jeton est
+ * dans le **fragment**, que le navigateur n'envoie à aucun serveur ; la page le poste dans le corps.
+ */
+export const EMAIL_LINK_PATHS = {
+  verifyEmail: '/auth/verify-email',
+  resetPassword: '/auth/reset-password',
+  cancelEmailChange: '/auth/cancel-email-change',
+  invitation: '/invitations/open',
+  profileInvitation: '/invitations/profile',
+  accountSetup: '/accounts/setup',
+  verifyProfileEmail: '/profiles/verify-email',
+  transferConsent: '/transfers/consent',
+  transferCancel: '/transfers/cancel',
+} as const;
+
+/** PRO-16 : actions du tuteur dont le compte sous tutelle est averti. */
+export type GuardianAction =
+  'sessions_revoked' | 'password_reset' | 'profile_created' | 'release_requested';
+
+/** PRO-16 : changements du compte sous tutelle dont le tuteur est averti. */
+export type WardChange = 'email' | 'password' | 'totp';
+
+const GUARDIAN_ACTION_TEXT: Readonly<Record<GuardianAction, string>> = {
+  sessions_revoked: 'a déconnecté tous les appareils de votre compte',
+  password_reset: 'a demandé la réinitialisation du mot de passe de votre compte',
+  profile_created: 'a ajouté un profil à votre compte',
+  release_requested:
+    'a demandé la levée de la tutelle : elle prendra effet quand vous déclarerez votre âge ' +
+    'depuis votre espace Compte',
+};
+
+const WARD_CHANGE_TEXT: Readonly<Record<WardChange, string>> = {
+  email: 'L’adresse e-mail',
+  password: 'Le mot de passe',
+  totp: 'La double authentification',
+};
+
+type MailKind =
+  | { readonly kind: 'verify_email'; readonly token: string }
+  | { readonly kind: 'confirm_email_change'; readonly token: string }
+  | { readonly kind: 'email_change_notice'; readonly token: string }
+  | { readonly kind: 'reset_password'; readonly token: string }
+  | { readonly kind: 'registration_attempt' }
+  | { readonly kind: 'email_taken_notice' }
+  | { readonly kind: 'password_changed' }
+  | { readonly kind: 'totp_enabled' }
+  | { readonly kind: 'totp_disabled' }
+  | { readonly kind: 'recovery_code_used' }
+  | { readonly kind: 'second_factor_attempts' }
+  | { readonly kind: 'google_linked' }
+  | { readonly kind: 'google_unlinked' }
+  | { readonly kind: 'pin_attempts' }
+  | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string }
+  | { readonly kind: 'profile_invitation'; readonly token: string; readonly inviterName: string }
+  | { readonly kind: 'ward_setup'; readonly token: string }
+  | { readonly kind: 'verify_profile_email'; readonly token: string }
+  | { readonly kind: 'transfer_consent'; readonly token: string }
+  | { readonly kind: 'transfer_cancel'; readonly token: string; readonly executesAt: Date }
+  | { readonly kind: 'detach_setup'; readonly token: string }
+  | { readonly kind: 'transfer_completed' }
+  | { readonly kind: 'child_marked' }
+  | { readonly kind: 'ward_password_reset'; readonly token: string }
+  | { readonly kind: 'guardian_action'; readonly action: GuardianAction }
+  | { readonly kind: 'ward_account_changed'; readonly change: WardChange };
+
+/** M4 (SEC-40) : le nom est choisi par l'expéditeur ; aucun saut de ligne ni caractère de contrôle. */
+function cleanName(name: string): string {
+  return name.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, ' ').trim();
+}
+
+const SIGNATURE = '\n\n— La Hotte';
+
+/**
+ * E-mails du compte, en texte brut (invariant 6), sans contenu d'utilisateur (ni nom ni adresse
+ * dans le corps), à une exception : l'invitation (LNK-01) dit le nom de l'invitant à celui qu'il a
+ * choisi d'inviter. Chaque envoi passe par le quota par destinataire (`01`, « Limitation ») :
+ * au-delà, rien n'est envoyé et rien ne le signale, pour que la réponse ne dise rien d'un compte.
+ */
+@Injectable()
+export class AccountMailer {
+  constructor(
+    private readonly sender: MailSender,
+    private readonly limiter: RateLimiter,
+    private readonly settings: IdentitySettings,
+    private readonly clock: Clock,
+  ) {}
+
+  /** Vrai si l'e-mail est parti ; faux si le quota du destinataire est atteint. */
+  async send(to: string, mail: MailKind): Promise<boolean> {
+    // Quota par (destinataire, sorte) : épuiser les réinitialisations ne coupe pas l'avertissement
+    // d'un changement d'e-mail, ni l'inverse (`01`, « Limitation »).
+    // Les avis de tutelle comptent par action : trois réinitialisations n'étouffent pas l'avis
+    // d'un changement d'adresse.
+    const variant =
+      mail.kind === 'guardian_action'
+        ? [mail.action]
+        : mail.kind === 'ward_account_changed'
+          ? [mail.change]
+          : [];
+    const subjects = [{ scope: 'mail_recipient' as const, parts: [to, mail.kind, ...variant] }];
+    const now = this.clock.now();
+    const check = await this.limiter.check(subjects, now);
+    if (!check.allowed || !check.reservation) return false;
+    // Chaque envoi compte, qu'il réussisse ou non : un échec SMTP répété ne donne pas d'envoi de plus.
+    await this.limiter.recordFailure(subjects, now, check.reservation);
+    await this.sender.send(this.compose(to, mail));
+    return true;
+  }
+
+  private link(path: string, token: string): string {
+    return `${this.settings.webOrigin}${path}#${token}`;
+  }
+
+  private compose(to: string, mail: MailKind): MailMessage {
+    switch (mail.kind) {
+      case 'verify_email':
+        return {
+          to,
+          subject: 'Confirmez votre adresse e-mail',
+          text:
+            'Bienvenue sur La Hotte.\n\nPour confirmer votre adresse e-mail, ouvrez ce lien ' +
+            `(valable 7 jours) :\n${this.link(EMAIL_LINK_PATHS.verifyEmail, mail.token)}\n\n` +
+            'Sans confirmation sous 7 jours, le compte est supprimé. Si vous n’êtes pas à ' +
+            'l’origine de cette inscription, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'confirm_email_change':
+        return {
+          to,
+          subject: 'Confirmez votre nouvelle adresse e-mail',
+          text:
+            'Pour utiliser cette adresse sur votre compte La Hotte, ouvrez ce lien (valable ' +
+            `24 heures) :\n${this.link(EMAIL_LINK_PATHS.verifyEmail, mail.token)}\n\n` +
+            'Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'email_change_notice':
+        return {
+          to,
+          subject: 'Changement d’adresse e-mail demandé',
+          text:
+            'Un changement de l’adresse e-mail de votre compte La Hotte a été demandé.\n\n' +
+            'Si vous n’en êtes pas à l’origine, ouvrez ce lien (valable 7 jours) : il rétablit ' +
+            'cette adresse, déconnecte tous les appareils et efface le mot de passe, que la ' +
+            'personne qui a fait la demande connaît.\n' +
+            `${this.link(EMAIL_LINK_PATHS.cancelEmailChange, mail.token)}\n\n` +
+            'Vous recevrez ensuite un lien pour choisir un nouveau mot de passe.' +
+            SIGNATURE,
+        };
+      case 'reset_password':
+        return {
+          to,
+          subject: 'Réinitialisation de votre mot de passe',
+          text:
+            'Pour choisir un nouveau mot de passe, ouvrez ce lien (valable 30 minutes) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.resetPassword, mail.token)}\n\n` +
+            'La réinitialisation déconnecte tous les appareils. Si vous n’êtes pas à l’origine ' +
+            'de cette demande, ignorez ce message : votre mot de passe ne change pas.' +
+            SIGNATURE,
+        };
+      case 'registration_attempt':
+        return {
+          to,
+          subject: 'Tentative d’inscription avec votre adresse',
+          text:
+            'Quelqu’un a voulu créer un compte La Hotte avec cette adresse, qui en a déjà un. ' +
+            'Aucun compte n’a été créé.\n\nSi c’était vous et que vous avez oublié votre mot de ' +
+            `passe, réinitialisez-le :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'password_changed':
+        return {
+          to,
+          subject: 'Votre mot de passe a été changé',
+          text:
+            'Le mot de passe de votre compte La Hotte vient d’être changé, et les autres ' +
+            'appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
+            'réinitialisez-le sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'totp_enabled':
+        return {
+          to,
+          subject: 'Double authentification activée',
+          text:
+            'La double authentification vient d’être activée sur votre compte La Hotte. Chaque ' +
+            'connexion demandera désormais un code de votre application d’authentification.\n\n' +
+            'Si vous n’en êtes pas à l’origine, réinitialisez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'totp_disabled':
+        return {
+          to,
+          subject: 'Double authentification désactivée',
+          text:
+            'La double authentification vient d’être désactivée sur votre compte La Hotte, et ' +
+            'les autres appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
+            'réinitialisez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'recovery_code_used':
+        return {
+          to,
+          subject: 'Code de secours utilisé',
+          text:
+            'Un code de secours vient de servir à se connecter à votre compte La Hotte. Chaque ' +
+            'code ne sert qu’une fois ; vous pouvez en générer de nouveaux dans votre espace ' +
+            'Compte.\n\nSi vous n’en êtes pas à l’origine, réinitialisez votre mot de passe sans ' +
+            `attendre :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'second_factor_attempts':
+        return {
+          to,
+          subject: 'Codes de double authentification erronés',
+          text:
+            'Plusieurs codes de double authentification erronés viennent d’être saisis sur votre ' +
+            'compte La Hotte, après votre mot de passe : quelqu’un d’autre le connaît sans doute.' +
+            '\n\nChangez-le sans attendre ; la réinitialisation déconnecte aussi tous les ' +
+            `appareils :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'google_linked':
+        return {
+          to,
+          subject: 'Compte Google associé',
+          text:
+            'Un compte Google vient d’être associé à votre compte La Hotte : il permet désormais ' +
+            'de s’y connecter.\n\nSi vous n’en êtes pas à l’origine, réinitialisez votre mot de ' +
+            'passe, puis dissociez Google depuis votre espace Compte, ce qui déconnecte tous les ' +
+            `appareils :\n${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'google_unlinked':
+        return {
+          to,
+          subject: 'Compte Google dissocié',
+          text:
+            'Le compte Google associé à votre compte La Hotte vient d’en être dissocié, et les ' +
+            'autres appareils ont été déconnectés.\n\nSi vous n’en êtes pas à l’origine, ' +
+            'réinitialisez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'pin_attempts':
+        // PIN-03 : aucun nom de profil (aucun contenu d'utilisateur dans les e-mails du compte).
+        return {
+          to,
+          subject: 'Codes PIN erronés sur un profil',
+          text:
+            'Cinq codes PIN erronés de suite viennent d’être saisis sur un profil de votre compte ' +
+            'La Hotte. Ce profil attend désormais avant chaque nouvel essai.\n\nSi personne de ' +
+            'votre entourage n’a simplement oublié son code, quelqu’un essaie peut-être d’entrer ' +
+            'dans ce profil. Depuis votre espace Compte, vous pouvez réinitialiser le code PIN ' +
+            'du profil concerné.' +
+            SIGNATURE,
+        };
+      case 'link_invitation':
+        return {
+          to,
+          subject: 'Une invitation à rejoindre un cercle sur La Hotte',
+          text:
+            `Une personne nommée « ${cleanName(mail.inviterName)} » vous invite à rejoindre son ` +
+            `cercle sur La Hotte.\n\n` +
+            `Pour accepter, ouvrez ce lien (valable 7 jours) :\n` +
+            `${this.link(EMAIL_LINK_PATHS.invitation, mail.token)}\n\n` +
+            'Si vous ne connaissez pas cette personne, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'verify_profile_email':
+        // PRO-10 : ni nom du profil ni du compte dans le corps.
+        return {
+          to,
+          subject: 'Confirmez l’adresse de votre profil',
+          text:
+            'Pour associer cette adresse à votre profil La Hotte, ouvrez ce lien (valable ' +
+            `24 heures) :\n${this.link(EMAIL_LINK_PATHS.verifyProfileEmail, mail.token)}\n\n` +
+            'Elle ne sert pas à se connecter : seulement à recevoir les demandes qui concernent ' +
+            'votre profil, comme un changement de compte, et à y répondre.\n\n' +
+            'Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'transfer_consent':
+        // PRO-12 : ni nom de profil ni de compte dans le corps.
+        return {
+          to,
+          subject: 'Votre accord est demandé pour un changement de compte',
+          text:
+            'Le compte qui porte votre profil La Hotte demande à le faire passer dans un autre ' +
+            'compte, ou à vous en donner un à vous.\n\nPour voir la demande et y répondre, ouvrez ' +
+            `ce lien (valable 24 heures) :\n${this.link(EMAIL_LINK_PATHS.transferConsent, mail.token)}\n\n` +
+            'Sans votre accord, rien ne change. Vous pouvez aussi répondre depuis votre profil.' +
+            SIGNATURE,
+        };
+      case 'transfer_cancel':
+        return {
+          to,
+          subject: 'Votre profil va changer de compte',
+          text:
+            'Toutes les parties ont donné leur accord : votre profil La Hotte changera de compte ' +
+            `le ${mail.executesAt.toISOString().slice(0, 16).replace('T', ' à ')} (UTC).\n\n` +
+            'Si vous n’êtes pas d’accord, annulez avant cette date en ouvrant ce lien :\n' +
+            this.link(EMAIL_LINK_PATHS.transferCancel, mail.token) +
+            SIGNATURE,
+        };
+      case 'detach_setup':
+        return {
+          to,
+          subject: 'Votre compte La Hotte est prêt',
+          text:
+            'Un profil La Hotte va recevoir son propre compte, à cette adresse.\n\nPour ' +
+            'déclarer votre âge, choisir votre mot de passe et l’activer, ouvrez ce lien (valable ' +
+            `24 heures) :\n${this.link(EMAIL_LINK_PATHS.accountSetup, mail.token)}\n\n` +
+            'Si vous ne vous attendiez pas à ce message, ignorez-le : rien ne sera créé.' +
+            SIGNATURE,
+        };
+      case 'child_marked':
+        // PRO-09, PRO-10 : l'adresse va être effacée ; ni nom de profil ni de compte.
+        return {
+          to,
+          subject: 'Votre profil est désormais un profil enfant',
+          text:
+            'Depuis l’espace Compte, votre profil La Hotte vient d’être marqué comme profil ' +
+            'enfant. Cette adresse ne lui est donc plus associée, et ce message est le dernier ' +
+            'qu’elle recevra pour lui.\n\nSi vous n’êtes pas un enfant et n’êtes pas à ' +
+            'l’origine de ce changement, parlez-en au titulaire du compte : pendant 30 jours, ' +
+            'aucun changement de compte ne peut se faire sans votre accord.' +
+            SIGNATURE,
+        };
+      case 'transfer_completed':
+        return {
+          to,
+          subject: 'Un profil a changé de compte',
+          text:
+            'Un profil vient de changer de compte sur La Hotte, avec l’accord de chacun. Les ' +
+            'appareils où il était ouvert dans l’ancien compte reviennent au choix du profil.' +
+            SIGNATURE,
+        };
+      case 'ward_setup':
+        // PRO-15 : ni nom ni adresse du tuteur dans le corps.
+        return {
+          to,
+          subject: 'Votre compte La Hotte est prêt',
+          text:
+            'Un parent vous a préparé un compte La Hotte, rattaché au sien.\n\nPour choisir votre ' +
+            'mot de passe et l’activer, ouvrez ce lien (valable 24 heures) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.accountSetup, mail.token)}\n\n` +
+            'Si vous ne vous attendiez pas à ce message, ignorez-le : rien ne sera créé.' +
+            SIGNATURE,
+        };
+      case 'ward_password_reset':
+        return {
+          to,
+          subject: 'Réinitialisation du mot de passe d’un compte sous votre tutelle',
+          text:
+            'Vous avez demandé à réinitialiser le mot de passe d’un compte sous votre tutelle. ' +
+            'Pour choisir le nouveau mot de passe, ouvrez ce lien (valable 30 minutes) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.resetPassword, mail.token)}\n\n` +
+            'La réinitialisation déconnecte tous les appareils de ce compte, qui en est averti.' +
+            SIGNATURE,
+        };
+      case 'guardian_action':
+        return {
+          to,
+          subject: 'Action de votre tuteur sur votre compte',
+          text:
+            `Le compte qui a la tutelle du vôtre ${GUARDIAN_ACTION_TEXT[mail.action]}.\n\n` +
+            'Il ne voit ni vos listes ni vos souhaits.' +
+            SIGNATURE,
+        };
+      case 'ward_account_changed':
+        return {
+          to,
+          subject: 'Changement sur un compte sous votre tutelle',
+          text:
+            `${WARD_CHANGE_TEXT[mail.change]} d’un compte sous votre tutelle vient de changer.\n\n` +
+            'Depuis votre espace Compte, vous pouvez en déconnecter les appareils ou en ' +
+            'réinitialiser le mot de passe.' +
+            SIGNATURE,
+        };
+      case 'profile_invitation':
+        // PRO-11 : comme LNK-01, le nom de l'invitant seul, choisi par lui et nettoyé (M4).
+        return {
+          to,
+          subject: 'Une invitation à avoir votre profil sur La Hotte',
+          text:
+            `Une personne nommée « ${cleanName(mail.inviterName)} » vous propose d’avoir votre ` +
+            'profil sur La Hotte, dans un compte de sa famille.\n\n' +
+            'Pour le créer, ouvrez ce lien (valable 7 jours) :\n' +
+            `${this.link(EMAIL_LINK_PATHS.profileInvitation, mail.token)}\n\n` +
+            'Les personnes qui se connectent à ce compte pourront réinitialiser le code PIN de ' +
+            'votre profil. Si vous ne connaissez pas cette personne, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'email_taken_notice':
+        return {
+          to,
+          subject: 'Tentative d’utilisation de votre adresse',
+          text:
+            'Quelqu’un a voulu associer cette adresse à un autre compte La Hotte. Elle est déjà ' +
+            'celle de votre compte : rien n’a changé.' +
+            SIGNATURE,
+        };
+    }
+  }
+}

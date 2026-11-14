@@ -1,6 +1,1762 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/account": {
+      "get": {
+        "operationId": "getAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/age-attestation": {
+      "post": {
+        "operationId": "attestAge",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgeAttestationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profile-proposals": {
+      "get": {
+        "operationId": "listProfileProposals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileProposalListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profile-proposals/{id}": {
+      "delete": {
+        "operationId": "refuseProfileProposal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profile-proposals/{id}/accept": {
+      "post": {
+        "operationId": "acceptProfileProposal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles": {
+      "get": {
+        "operationId": "listAccountProfiles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      },
+      "post": {
+        "operationId": "createAccountProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}": {
+      "delete": {
+        "operationId": "deleteAccountProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "`404` pour un profil inconnu comme pour celui d'un autre compte (SEC-04).",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}/child": {
+      "put": {
+        "operationId": "setChildMarker",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetChildMarkerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-09 : marqueur « profil enfant », dans les deux sens, depuis l'espace Compte seulement et\naprès une ré-authentification de moins de 10 minutes (AUTH-14).",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}/pin": {
+      "delete": {
+        "operationId": "disableProfilePin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}/pin/reset": {
+      "put": {
+        "operationId": "resetProfilePin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetProfilePinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/profiles/{id}/transfer": {
+      "post": {
+        "operationId": "requestTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTransferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedTransferView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      },
+      "get": {
+        "operationId": "getAccountProfileTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      },
+      "delete": {
+        "operationId": "cancelAccountProfileTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers": {
+      "get": {
+        "operationId": "listIncomingTransfers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomingTransferListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers/{id}/acceptance": {
+      "delete": {
+        "operationId": "withdrawTransferAcceptance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers/accept": {
+      "post": {
+        "operationId": "acceptTransfer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers/inspect": {
+      "post": {
+        "operationId": "inspectTransfer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferPreviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Le jeton dans le corps, jamais dans l'adresse (journaux, historique).",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards": {
+      "post": {
+        "operationId": "createWard",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-15 : la réponse est la même que l'adresse ait déjà un compte ou non (AUTH-09).",
+        "tags": [
+          "account"
+        ]
+      },
+      "get": {
+        "operationId": "listWards",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WardListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}": {
+      "get": {
+        "operationId": "getWard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WardDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/password-reset": {
+      "post": {
+        "operationId": "resetWardPassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-16 : le lien de réinitialisation part à l'adresse du tuteur.",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/profiles": {
+      "post": {
+        "operationId": "createWardProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWardProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedWardProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/release": {
+      "post": {
+        "operationId": "requestWardRelease",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-16 : levée demandée ; elle prend effet à la déclaration d'âge du compte.",
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/wards/{id}/sessions": {
+      "delete": {
+        "operationId": "revokeWardSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/accounts/setup": {
+      "post": {
+        "operationId": "setupAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountSetupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email": {
+      "put": {
+        "operationId": "requestEmailChange",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Demande reçue ; la suite arrive par e-mail."
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-16, AUTH-14 : même réponse que la nouvelle adresse soit libre ou prise.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email/cancel": {
+      "post": {
+        "operationId": "cancelEmailChange",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-16 : annulation depuis l'ancienne adresse ; toutes les sessions sont révoquées.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email/verify": {
+      "post": {
+        "operationId": "verifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lien de vérification (AUTH-15) ou de confirmation d'un changement d'adresse (AUTH-16). N'ouvre\njamais de session : on se connecte ensuite avec son mot de passe.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/google": {
+      "delete": {
+        "operationId": "unlinkGoogle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-03, AUTH-05, AUTH-14 : dissociation, seulement avec un mot de passe. Toutes les autres\nsessions tombent ; celle-ci est remplacée.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/google/link": {
+      "post": {
+        "operationId": "startGoogleLink",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleRedirectView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-03, AUTH-14, AUTH-15 : association, après ré-authentification, compte vérifié.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/google/reauth": {
+      "post": {
+        "operationId": "startGoogleReauth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleRedirectView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-14 : ré-authentification par le compte Google associé, authentification fraîche.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/google/start": {
+      "post": {
+        "operationId": "startGoogleSignIn",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleStartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoogleRedirectView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Connexion, ou inscription si `registration` est fourni (AUTH-03, AUTH-08). Avant session :\njeton CSRF de pré-session ; le parcours est lié à cette pré-session.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "signIn",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Connexion (AUTH-07, AUTH-12) : nouvelle session, ancienne session du navigateur révoquée. Si\nle TOTP est actif (hors appareil de confiance), aucune session : `secondFactorPending`, et le\nclient poste le code à `POST /auth/totp/verify`.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "signOut",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Déconnexion : session courante révoquée, cookies retirés.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "put": {
+        "operationId": "changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-05, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset": {
+      "post": {
+        "operationId": "requestPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Demande reçue ; la suite arrive par e-mail."
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-06 : même réponse que l'adresse ait un compte ou non.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password/reset/confirm": {
+      "post": {
+        "operationId": "confirmPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-06 : toutes les sessions, pré-authentifications et appareils de confiance révoqués.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/reauth": {
+      "post": {
+        "operationId": "reauthenticate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-14 : mot de passe, plus un code si le TOTP est actif. Même session, nouveau jeton,\n`reauth_at` posé ; jeton CSRF renouvelé.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/recovery-codes": {
+      "post": {
+        "operationId": "regenerateRecoveryCodes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCodesView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-10, AUTH-14 : les anciens codes de secours sont invalidés.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "registerAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Demande reçue ; la suite arrive par e-mail."
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-01, AUTH-09 : même réponse (`202`), même délai, que l'adresse ait déjà un compte ou non.\nAucune session n'est ouverte ; le lien de vérification part par e-mail.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/activate": {
+      "post": {
+        "operationId": "activateTotp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TotpCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpActivationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-05, AUTH-10, AUTH-14 : confirmation par un code ; toutes les autres sessions tombent,\ncelle-ci est remplacée ; codes de secours, une seule fois.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/disable": {
+      "post": {
+        "operationId": "disableTotp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/enroll": {
+      "post": {
+        "operationId": "startTotpEnrollment",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TotpEnrollmentView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/verify": {
+      "post": {
+        "operationId": "verifySecondFactor",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecondFactorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification\ndu cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/blocks": {
+      "get": {
+        "operationId": "listBlocks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlockListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blocks"
+        ]
+      },
+      "post": {
+        "operationId": "blockProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlockProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/blocks/{profileId}": {
+      "delete": {
+        "operationId": "unblockProfile",
+        "parameters": [
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blocks"
+        ]
+      }
+    },
+    "/api/v1/circle": {
+      "get": {
+        "operationId": "getCircle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircleView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "circle"
+        ]
+      }
+    },
     "/api/v1/example-items": {
       "post": {
         "operationId": "createExampleItem",
@@ -97,6 +1853,989 @@
           "example-items"
         ]
       }
+    },
+    "/api/v1/invitations": {
+      "post": {
+        "operationId": "createInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedInvitationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Le jeton n'est rendu qu'ici, une seule fois.",
+        "tags": [
+          "invitations"
+        ]
+      },
+      "get": {
+        "operationId": "listInvitations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/{id}": {
+      "delete": {
+        "operationId": "revokeInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/inspect": {
+      "post": {
+        "operationId": "inspectInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-07 : le jeton dans le corps, jamais dans l'adresse (journaux, historique).",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/profile/accept": {
+      "post": {
+        "operationId": "acceptProfileInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptProfileInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/profile/inspect": {
+      "post": {
+        "operationId": "inspectProfileInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileInvitationPreviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/invitations/redeem": {
+      "post": {
+        "operationId": "redeemInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedeemedInvitationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-06 : accepté d'office, ou en attente d'un tuteur si un enfant est partie.",
+        "tags": [
+          "invitations"
+        ]
+      }
+    },
+    "/api/v1/links": {
+      "get": {
+        "operationId": "listLinks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/links/{id}": {
+      "delete": {
+        "operationId": "deleteLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-02 : rompre, ou refuser un lien en attente ; les accès tombent à la requête suivante.",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/links/{id}/approve": {
+      "post": {
+        "operationId": "approveLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "LNK-06 : `404` pour tout lien que le profil actif n'a pas à valider (SEC-04).",
+        "tags": [
+          "links"
+        ]
+      }
+    },
+    "/api/v1/profiles/email/verify": {
+      "post": {
+        "operationId": "verifyProfileEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me": {
+      "get": {
+        "operationId": "getOwnProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      },
+      "patch": {
+        "operationId": "updateOwnProfile",
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Version lue (API-17).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-03 : sans marqueur enfant. Version dépassée : `412`, le client relit le profil.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/child-notice": {
+      "delete": {
+        "operationId": "readChildNotice",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-09 : le profil a lu la notice du changement de son marqueur enfant.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/email": {
+      "put": {
+        "operationId": "setOwnEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à\nun profil enfant. Jamais un identifiant de connexion.",
+        "tags": [
+          "profiles"
+        ]
+      },
+      "delete": {
+        "operationId": "clearOwnEmail",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/pin": {
+      "put": {
+        "operationId": "setOwnPin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetOwnPinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PIN-04 : créer son PIN, ou le changer avec l'ancien (compté par PIN-03), sans\nré-authentification. Jamais de désactivation ici.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/transfer": {
+      "get": {
+        "operationId": "getOwnTransfer",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnTransferStateView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      },
+      "delete": {
+        "operationId": "refuseOwnTransfer",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/transfer/consent": {
+      "post": {
+        "operationId": "consentOwnTransfer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferConsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "getSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "État de la session et jeton CSRF (API-21, ADR 0013). Public : avant session, il pose la\npré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne\nprolonge jamais le déverrouillage du profil.",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/v1/session/lock": {
+      "post": {
+        "operationId": "lockSession",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PIN-07 : verrouille le profil actif sans le changer ; efface la ré-authentification.",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/v1/session/profile": {
+      "post": {
+        "operationId": "selectProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileSelectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "PRO-07, API-11 : choisit le profil actif, et le déverrouille avec son PIN s'il en a un. Le\nchangement a lieu avant la vérification : un PIN faux (`422 PIN_INVALID`) laisse le nouveau\nprofil actif et verrouillé. Pendant l'attente de PIN-03 : `429`.",
+        "tags": [
+          "session"
+        ]
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
+        "operationId": "listSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountSessionListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/v1/sessions/{id}": {
+      "delete": {
+        "operationId": "revokeSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "`404` pour une session inconnue comme pour celle d'un autre compte (SEC-04).",
+        "tags": [
+          "sessions"
+        ]
+      }
+    },
+    "/api/v1/transfers/cancel": {
+      "post": {
+        "operationId": "cancelTransferByEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCancelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/transfers/consent": {
+      "post": {
+        "operationId": "consentTransferByEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferConsentByEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/trusted-devices": {
+      "get": {
+        "operationId": "listTrustedDevices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrustedDeviceListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/trusted-devices/{id}": {
+      "delete": {
+        "operationId": "revokeTrustedDevice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Révoque l'appareil et les sessions ouvertes grâce à lui. `404` pour un appareil inconnu comme\npour celui d'un autre compte (SEC-04).",
+        "tags": [
+          "account"
+        ]
+      }
     }
   },
   "info": {
@@ -116,6 +2855,426 @@
       }
     },
     "schemas": {
+      "AcceptProfileInvitationDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "format": "password"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "pin": {
+            "type": "string",
+            "description": "PIN-01 : PIN du profil, dès sa création ; facultatif.",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          },
+          "email": {
+            "type": "string",
+            "description": "PRO-10 : adresse du profil, vérifiée ensuite par un lien ; refusée pour un enfant.",
+            "maxLength": 254,
+            "format": "email"
+          }
+        },
+        "required": [
+          "token",
+          "displayName"
+        ]
+      },
+      "AccountProfileListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountProfileView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AccountProfileView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true,
+            "description": "Clé d'image ; `null` : couleur d'accent et initiales."
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "hasPin": {
+            "type": "boolean"
+          },
+          "isChild": {
+            "type": "boolean"
+          },
+          "hasEmail": {
+            "type": "boolean",
+            "description": "PRO-10 : le profil a une adresse vérifiée (l'adresse n'est rendue qu'à lui)."
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "hasPin",
+          "isChild",
+          "hasEmail"
+        ]
+      },
+      "AccountSessionListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountSessionView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AccountSessionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "Agent utilisateur déclaré par l'appareil, tel quel (512 caractères au plus).",
+            "maxLength": 512
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "description": "Dernière activité, à 5 minutes près (ADR 0013).",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Session de la requête."
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "createdAt",
+          "lastSeenAt",
+          "current"
+        ]
+      },
+      "AccountSetupDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          },
+          "password": {
+            "type": "string",
+            "description": "AUTH-02 : 12 caractères au moins, sans règle de composition.",
+            "minLength": 12,
+            "maxLength": 256,
+            "format": "password"
+          },
+          "ageAttested": {
+            "type": "boolean",
+            "description": "AUTH-08 : exigé pour un compte détaché (PRO-13) ; sans objet pour un compte sous tutelle.",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ]
+      },
+      "AccountView": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "googleLinked": {
+            "type": "boolean",
+            "description": "AUTH-03 : un compte Google est associé ; la ré-authentification peut passer par lui."
+          },
+          "totpEnabled": {
+            "type": "boolean",
+            "description": "La ré-authentification demande alors un code (AUTH-14)."
+          },
+          "recoveryCodesRemaining": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "email",
+          "emailVerified",
+          "hasPassword",
+          "googleLinked",
+          "totpEnabled",
+          "recoveryCodesRemaining"
+        ]
+      },
+      "AgeAttestationDto": {
+        "type": "object",
+        "properties": {
+          "ageAttested": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ageAttested"
+        ]
+      },
+      "BirthdayDto": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "month": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "year": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1900,
+            "maximum": 2200
+          }
+        },
+        "required": [
+          "day",
+          "month"
+        ]
+      },
+      "BirthdayView": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "month": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 12
+          },
+          "year": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ]
+      },
+      "BlockedProfileView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-05 : absent pour un enfant."
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "accentColor"
+        ]
+      },
+      "BlockListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockedProfileView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BlockProfileDto": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      },
+      "CircleMemberView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "source": {
+            "enum": [
+              "ACCOUNT",
+              "LINK"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "source"
+        ]
+      },
+      "CircleView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CircleMemberView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreatedInvitationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "format": "password"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "token",
+          "expiresAt"
+        ]
+      },
+      "CreatedTransferView": {
+        "type": "object",
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "nullable": true,
+            "description": "Passage seulement ; `null` pour un détachement (le lien part à la nouvelle adresse).",
+            "format": "password"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "transferId",
+          "token",
+          "expiresAt"
+        ]
+      },
+      "CreatedWardProfileView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      },
       "CreateExampleItemDto": {
         "type": "object",
         "properties": {
@@ -137,6 +3296,124 @@
         },
         "required": [
           "title"
+        ]
+      },
+      "CreateInvitationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "kind": {
+            "description": "PRO-11 : `PROFILE` invite à créer un profil ; `LINK` par défaut.",
+            "enum": [
+              "LINK",
+              "PROFILE"
+            ],
+            "type": "string",
+            "default": "LINK"
+          },
+          "targetProfileId": {
+            "type": "string",
+            "description": "PRO-11 : profil du cercle de l'invitant dont le compte recevra le profil ; sans lui, le\ncompte de l'invitant. Seulement avec `kind: PROFILE`.",
+            "format": "uuid"
+          },
+          "profileIsChild": {
+            "type": "boolean",
+            "description": "PRO-11 : marqueur enfant du profil à créer. Seulement avec `kind: PROFILE`.",
+            "default": false
+          }
+        }
+      },
+      "CreateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "isChild": {
+            "type": "boolean",
+            "description": "Marqueur « profil enfant » (PRO-05), fixé ici seulement (PRO-03).",
+            "default": false
+          }
+        },
+        "required": [
+          "displayName"
+        ]
+      },
+      "CreateWardDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "profileName": {
+            "type": "string",
+            "description": "Nom affiché du profil enfant (PRO-02).",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "guardianAttested": {
+            "type": "boolean",
+            "description": "RGPD-06 : case « J'ai l'autorité parentale », non précochée. Seule `true` est acceptée.",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "email",
+          "profileName",
+          "guardianAttested"
+        ]
+      },
+      "CreateWardProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          }
+        },
+        "required": [
+          "displayName"
+        ]
+      },
+      "EmailDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "EmailTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "token"
         ]
       },
       "ExampleItemGiverView": {
@@ -264,6 +3541,447 @@
           "message"
         ]
       },
+      "GoogleRedirectView": {
+        "type": "object",
+        "properties": {
+          "authorizationUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "authorizationUrl"
+        ]
+      },
+      "GoogleRegistrationDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "description": "Nom affiché du premier profil (PRO-01, PRO-02).",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "ageAttested": {
+            "type": "boolean",
+            "description": "AUTH-08 : case « J'ai 15 ans ou plus », non précochée. Seule la valeur `true` est acceptée.",
+            "enum": [
+              true
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "example": "fr"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "example": "Europe/Paris"
+          },
+          "invitationToken": {
+            "type": "string",
+            "description": "LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`).",
+            "pattern": "^[A-Za-z0-9_-]{22}$"
+          }
+        },
+        "required": [
+          "displayName",
+          "ageAttested"
+        ]
+      },
+      "GoogleStartDto": {
+        "type": "object",
+        "properties": {
+          "registration": {
+            "$ref": "#/components/schemas/GoogleRegistrationDto"
+          }
+        }
+      },
+      "IncomingTransferListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomingTransferView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "IncomingTransferView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "executesAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "profileName",
+          "accentColor",
+          "executesAt"
+        ]
+      },
+      "InvitationListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenInvitationView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "InvitationPreviewView": {
+        "type": "object",
+        "properties": {
+          "inviterName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Absent si l'invitant est un enfant."
+          },
+          "inviterAccentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "inviterName",
+          "inviterAccentColor",
+          "expiresAt"
+        ]
+      },
+      "InvitationTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "LinkChildView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName"
+        ]
+      },
+      "LinkCounterpartView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-05 : absent tant que le lien n'est pas accepté, si l'autre partie est un enfant."
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "accentColor"
+        ]
+      },
+      "LinkItemView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "AWAITING_GUARDIAN",
+              "ACCEPTED"
+            ],
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "PARTY",
+              "GUARDIAN"
+            ],
+            "type": "string"
+          },
+          "counterpart": {
+            "$ref": "#/components/schemas/LinkCounterpartView"
+          },
+          "child": {
+            "nullable": true,
+            "description": "Pour un tuteur : l'enfant qu'il garde dans ce lien ; sinon `null`.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LinkChildView"
+              }
+            ]
+          },
+          "awaitingMyApproval": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "role",
+          "counterpart",
+          "child",
+          "awaitingMyApproval",
+          "createdAt"
+        ]
+      },
+      "LinkListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LinkItemView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "format": "password"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "NewPasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 256,
+            "format": "password"
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
+      "OpenInvitationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "LINK",
+              "PROFILE"
+            ],
+            "type": "string"
+          },
+          "proposal": {
+            "nullable": true,
+            "description": "PRO-11 : état de la proposition dans le compte visé ; `null` pour un lien.",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REFUSED"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "proposal",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
+      "OwnTransferStateView": {
+        "type": "object",
+        "properties": {
+          "transfer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OwnTransferView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "transfer"
+        ]
+      },
+      "OwnTransferView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "MOVE",
+              "DETACH"
+            ],
+            "type": "string"
+          },
+          "regroup": {
+            "type": "boolean"
+          },
+          "newEmail": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-13 : adresse du nouveau compte, montrée sur l'écran d'accord (I3).",
+            "format": "email"
+          },
+          "profileConsentRequired": {
+            "type": "boolean"
+          },
+          "profileConsented": {
+            "type": "boolean"
+          },
+          "destinationAccepted": {
+            "type": "boolean"
+          },
+          "pinChoice": {
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "executesAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-12 : 48 heures après le dernier accord ; `null` tant qu'il en manque.",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destinationNames": {
+            "description": "Profils du compte d'arrivée que le profil connaît (passage accepté).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "regroup",
+          "newEmail",
+          "profileConsentRequired",
+          "profileConsented",
+          "destinationAccepted",
+          "pinChoice",
+          "executesAt",
+          "expiresAt",
+          "destinationNames"
+        ]
+      },
+      "PasswordResetConfirmDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 256,
+            "format": "password"
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
       "ProblemDetailsDto": {
         "type": "object",
         "properties": {
@@ -305,6 +4023,962 @@
           "title",
           "status",
           "code"
+        ]
+      },
+      "ProfileInvitationPreviewView": {
+        "type": "object",
+        "properties": {
+          "inviterName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "profileIsChild": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "inviterName",
+          "profileIsChild",
+          "expiresAt"
+        ]
+      },
+      "ProfileProposalListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProfileProposalView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ProfileProposalView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inviterName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "profileIsChild": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "inviterName",
+          "profileIsChild",
+          "expiresAt"
+        ]
+      },
+      "ProfileSelectionView": {
+        "type": "object",
+        "properties": {
+          "activeProfileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileUnlocked": {
+            "type": "boolean",
+            "description": "Faux : le profil a un PIN et aucun PIN n'a été envoyé."
+          },
+          "pinResetNoticeAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte, rendu à chaque entrée tant que\nle profil ne s'est pas redonné un PIN. `null` si le profil reste verrouillé.",
+            "format": "date-time"
+          },
+          "failedPinAttempts": {
+            "type": "number",
+            "description": "PIN-03 : PIN faux saisis depuis la dernière entrée dans ce profil.",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "activeProfileId",
+          "profileUnlocked",
+          "pinResetNoticeAt",
+          "failedPinAttempts"
+        ]
+      },
+      "ProfileView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "birthday": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BirthdayView"
+              }
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "example": "fr"
+          },
+          "currency": {
+            "type": "string",
+            "example": "EUR"
+          },
+          "timezone": {
+            "type": "string",
+            "example": "Europe/Paris"
+          },
+          "isChild": {
+            "type": "boolean"
+          },
+          "hasPin": {
+            "type": "boolean"
+          },
+          "pinRelock": {
+            "enum": [
+              "NEVER",
+              "IDLE_15",
+              "EVERY_OPEN"
+            ],
+            "type": "string"
+          },
+          "pinResetNoticeAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PIN-05 : PIN réinitialisé ou désactivé depuis l'espace Compte ; reste affiché tant que le\nprofil ne s'est pas redonné un PIN (`PUT /profiles/me/pin`).",
+            "format": "date-time"
+          },
+          "childNoticeAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-09 : marqueur enfant changé depuis l'espace Compte ; affiché tant que le profil ne l'a pas lu.",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-10 : adresse vérifiée du profil, rendue à lui seul ; `null` sans adresse.",
+            "format": "email"
+          },
+          "version": {
+            "type": "number",
+            "description": "À renvoyer dans `If-Match` pour modifier le profil (API-17).",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "birthday",
+          "locale",
+          "currency",
+          "timezone",
+          "isChild",
+          "hasPin",
+          "pinRelock",
+          "pinResetNoticeAt",
+          "childNoticeAt",
+          "email",
+          "version"
+        ]
+      },
+      "ReauthDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "description": "Absent seulement après un retour de Google qui attend le code TOTP\n(`reauth_second_factor`, AUTH-14).",
+            "minLength": 1,
+            "maxLength": 256,
+            "format": "password"
+          },
+          "code": {
+            "type": "string",
+            "description": "AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours).",
+            "pattern": "^[0-9A-Za-z -]{6,32}$",
+            "minLength": 6,
+            "maxLength": 32
+          }
+        }
+      },
+      "RecoveryCodesView": {
+        "type": "object",
+        "properties": {
+          "recoveryCodes": {
+            "minItems": 10,
+            "maxItems": 10,
+            "example": [
+              "7K2M-9QXA-4T0P-ZR8H"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "recoveryCodes"
+        ]
+      },
+      "RedeemedInvitationView": {
+        "type": "object",
+        "properties": {
+          "linkId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "AWAITING_GUARDIAN",
+              "ACCEPTED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "linkId",
+          "status"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "description": "AUTH-02 : 12 caractères au moins, sans règle de composition.",
+            "minLength": 12,
+            "maxLength": 256,
+            "format": "password"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Nom affiché du premier profil (PRO-01, PRO-02).",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "ageAttested": {
+            "type": "boolean",
+            "description": "AUTH-08 : case « J'ai 15 ans ou plus », non précochée. Seule la valeur `true` est acceptée.",
+            "enum": [
+              true
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "description": "Langue du navigateur ; à défaut, français.",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "example": "fr"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "Fuseau IANA du navigateur ; à défaut, Europe/Paris.",
+            "maxLength": 64,
+            "example": "Europe/Paris"
+          },
+          "invitationToken": {
+            "type": "string",
+            "description": "LNK-08, AUTH-09 : jeton d'invitation (obligatoire en `INVITE_ONLY`).",
+            "pattern": "^[A-Za-z0-9_-]{22}$"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "displayName",
+          "ageAttested"
+        ]
+      },
+      "RequestTransferDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "MOVE",
+              "DETACH"
+            ],
+            "type": "string"
+          },
+          "regroup": {
+            "type": "boolean",
+            "description": "PRO-12 : regroupement déclaré (dernier profil du compte, qui disparaît).",
+            "default": false
+          },
+          "email": {
+            "type": "string",
+            "description": "PRO-13 : adresse du nouveau compte (détachement seulement).",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "pinChoice": {
+            "description": "Par défaut : garder son PIN s'il en a un, sinon en fixer un.",
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "newPin": {
+            "type": "string",
+            "description": "Nouveau PIN d'un profil dont l'accord n'est pas demandé (enfant).",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "ResetProfilePinDto": {
+        "type": "object",
+        "properties": {
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "newPin"
+        ]
+      },
+      "SecondFactorDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[0-9A-Za-z -]{6,32}$",
+            "minLength": 6,
+            "maxLength": 32
+          },
+          "trustDevice": {
+            "type": "boolean",
+            "description": "« Faire confiance à cet appareil 30 jours » (AUTH-12).",
+            "default": false
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "SelectProfileDto": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pin": {
+            "type": "string",
+            "description": "Exigé pour déverrouiller un profil à PIN ; sans lui, le profil devient actif, verrouillé.",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "profileId"
+        ]
+      },
+      "SessionStatusView": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation."
+          },
+          "session": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionSummaryView"
+              }
+            ]
+          },
+          "secondFactorPending": {
+            "type": "boolean",
+            "description": "Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST /auth/totp/verify`). Expire en 5 minutes."
+          }
+        },
+        "required": [
+          "authenticated",
+          "csrfToken",
+          "session",
+          "secondFactorPending"
+        ]
+      },
+      "SessionSummaryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "activeProfileId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "profileUnlocked": {
+            "type": "boolean",
+            "description": "Profil actif présent et déverrouillé (PIN-02)."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "activeProfileId",
+          "profileUnlocked",
+          "expiresAt"
+        ]
+      },
+      "SetChildMarkerDto": {
+        "type": "object",
+        "properties": {
+          "isChild": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isChild"
+        ]
+      },
+      "SetOwnPinDto": {
+        "type": "object",
+        "properties": {
+          "currentPin": {
+            "type": "string",
+            "description": "Exigé si le profil a déjà un PIN.",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          },
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "newPin"
+        ]
+      },
+      "TotpActivationView": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation."
+          },
+          "session": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionSummaryView"
+              }
+            ]
+          },
+          "secondFactorPending": {
+            "type": "boolean",
+            "description": "Mot de passe validé, second facteur attendu (AUTH-12) : le client affiche la saisie du code\n(`POST /auth/totp/verify`). Expire en 5 minutes."
+          },
+          "recoveryCodes": {
+            "minItems": 10,
+            "maxItems": 10,
+            "example": [
+              "7K2M-9QXA-4T0P-ZR8H"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "authenticated",
+          "csrfToken",
+          "session",
+          "secondFactorPending",
+          "recoveryCodes"
+        ]
+      },
+      "TotpCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "minLength": 6,
+            "maxLength": 6
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "TotpEnrollmentView": {
+        "type": "object",
+        "properties": {
+          "secret": {
+            "type": "string",
+            "description": "Secret base32, pour une saisie à la main."
+          },
+          "otpauthUri": {
+            "type": "string",
+            "description": "URI otpauth:// à afficher en QR code."
+          }
+        },
+        "required": [
+          "secret",
+          "otpauthUri"
+        ]
+      },
+      "TransferCancelDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "TransferConsentByEmailDto": {
+        "type": "object",
+        "properties": {
+          "pinChoice": {
+            "description": "PRO-12 : `KEEP` garder son PIN, `NEW` en fixer un (`newPin`), `NONE` n'en avoir aucun\n(jamais par défaut, efface le PIN existant).",
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "pinChoice",
+          "token"
+        ]
+      },
+      "TransferConsentDto": {
+        "type": "object",
+        "properties": {
+          "pinChoice": {
+            "description": "PRO-12 : `KEEP` garder son PIN, `NEW` en fixer un (`newPin`), `NONE` n'en avoir aucun\n(jamais par défaut, efface le PIN existant).",
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "pinChoice"
+        ]
+      },
+      "TransferPreviewView": {
+        "type": "object",
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "isChild": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "transferId",
+          "profileName",
+          "avatar",
+          "accentColor",
+          "isChild"
+        ]
+      },
+      "TransferTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "TransferView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "MOVE",
+              "DETACH"
+            ],
+            "type": "string"
+          },
+          "regroup": {
+            "type": "boolean"
+          },
+          "newEmail": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-13 : adresse du nouveau compte, montrée sur l'écran d'accord (I3).",
+            "format": "email"
+          },
+          "profileConsentRequired": {
+            "type": "boolean"
+          },
+          "profileConsented": {
+            "type": "boolean"
+          },
+          "destinationAccepted": {
+            "type": "boolean"
+          },
+          "pinChoice": {
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "executesAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-12 : 48 heures après le dernier accord ; `null` tant qu'il en manque.",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "regroup",
+          "newEmail",
+          "profileConsentRequired",
+          "profileConsented",
+          "destinationAccepted",
+          "pinChoice",
+          "executesAt",
+          "expiresAt"
+        ]
+      },
+      "TrustedDeviceListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrustedDeviceView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "TrustedDeviceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "Appareil de ce navigateur."
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "createdAt",
+          "expiresAt",
+          "current"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "pattern": "\\S"
+          },
+          "birthday": {
+            "nullable": true,
+            "description": "`null` efface la date.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BirthdayDto"
+              }
+            ]
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+            "example": "fr"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "example": "EUR"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "example": "Europe/Paris"
+          },
+          "pinRelock": {
+            "description": "PIN-07 : redemande du PIN.",
+            "enum": [
+              "NEVER",
+              "IDLE_15",
+              "EVERY_OPEN"
+            ],
+            "type": "string"
+          },
+          "currentPin": {
+            "type": "string",
+            "description": "PRO-03 : exigé pour affaiblir `pinRelock` d'un profil à PIN (compté par PIN-03).",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]{4,8}$",
+            "format": "password"
+          }
+        }
+      },
+      "WardDetailView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releaseRequested": {
+            "type": "boolean",
+            "description": "Levée demandée, en attente de la déclaration d'âge du compte."
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountProfileView"
+            }
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WardSessionView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "releaseRequested",
+          "profiles",
+          "sessions"
+        ]
+      },
+      "WardListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WardView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "WardSessionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "createdAt",
+          "lastSeenAt"
+        ]
+      },
+      "WardView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releaseRequested": {
+            "type": "boolean",
+            "description": "Levée demandée, en attente de la déclaration d'âge du compte."
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountProfileView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "createdAt",
+          "releaseRequested",
+          "profiles"
         ]
       }
     }

@@ -15,41 +15,41 @@ Une action est autorisée si les deux étages l'autorisent.
 
 ## Étage 1 — Rôles plateforme
 
-| Rôle | Porté par | Description |
-|---|---|---|
-| `USER` | Compte | Rôle par défaut. Toutes les fonctions du produit. |
-| `MODERATOR` | Compte | `USER` + modération du catalogue global et traitement des signalements. |
-| `ADMIN` | Compte | `MODERATOR` + gestion des comptes, des rôles, des réglages de plateforme. |
+| Rôle        | Porté par | Description                                                               |
+| ----------- | --------- | ------------------------------------------------------------------------- |
+| `USER`      | Compte    | Rôle par défaut. Toutes les fonctions du produit.                         |
+| `MODERATOR` | Compte    | `USER` + modération du catalogue global et traitement des signalements.   |
+| `ADMIN`     | Compte    | `MODERATOR` + gestion des comptes, des rôles, des réglages de plateforme. |
 
 - **RBAC-01** Le rôle est porté par le **compte**, pas par le profil. Les actions d'administration se font hors de tout profil, dans un espace séparé (`/admin`), avec une session plus courte (AUTH-04) et TOTP obligatoire (AUTH-13).
 - **RBAC-02** Permissions plateforme :
 
-| Permission | USER | MODERATOR | ADMIN |
-|---|---|---|---|
-| Utiliser le produit | ✔ | ✔ | ✔ |
-| Voir la file de modération du catalogue | | ✔ | ✔ |
-| Retirer une fiche du catalogue global | | ✔ | ✔ |
-| Traiter un signalement | | ✔ | ✔ |
-| Suspendre la publication au catalogue pour un compte | | ✔ | ✔ |
-| Rechercher un compte par e-mail | | | ✔ |
-| Suspendre ou réactiver un compte | | | ✔ |
-| Forcer la déconnexion, réinitialiser le TOTP d'un compte (procédure vérifiée) | | | ✔ |
-| Attribuer ou retirer un rôle | | | ✔ |
-| Consulter le journal d'audit | | | ✔ |
-| Modifier les réglages de plateforme (plafonds, inscriptions ouvertes) | | | ✔ |
-| Consulter les statistiques agrégées | | ✔ | ✔ |
+| Permission                                                                    | USER | MODERATOR | ADMIN |
+| ----------------------------------------------------------------------------- | ---- | --------- | ----- |
+| Utiliser le produit                                                           | ✔    | ✔         | ✔     |
+| Voir la file de modération du catalogue                                       |      | ✔         | ✔     |
+| Retirer une fiche du catalogue global                                         |      | ✔         | ✔     |
+| Traiter un signalement                                                        |      | ✔         | ✔     |
+| Suspendre la publication au catalogue pour un compte                          |      | ✔         | ✔     |
+| Rechercher un compte par e-mail                                               |      |           | ✔     |
+| Suspendre ou réactiver un compte                                              |      |           | ✔     |
+| Forcer la déconnexion, réinitialiser le TOTP d'un compte (procédure vérifiée) |      |           | ✔     |
+| Attribuer ou retirer un rôle                                                  |      |           | ✔     |
+| Consulter le journal d'audit                                                  |      |           | ✔     |
+| Modifier les réglages de plateforme (plafonds, inscriptions ouvertes)         |      |           | ✔     |
+| Consulter les statistiques agrégées                                           |      | ✔         | ✔     |
 
 - **RBAC-03** Attribuer `ADMIN` demande un administrateur existant et une ré-authentification. Le premier administrateur est créé par une commande d'exploitation, jamais par l'interface. Un administrateur ne peut pas retirer son propre rôle s'il est le dernier.
 - **RBAC-04** Les permissions sont vérifiées par un garde déclaratif sur chaque route, avec refus par défaut.
 
 ## Étage 2 — Rôles de ressource
 
-| Ressource | Rôles | Défini en |
-|---|---|---|
-| Liste | Créateur, Responsable, Contributeur, Lecteur | LST-02 |
-| Événement | Organisateur, Participant, Invité | EVT-03, EVT-13 |
-| Élément | Destinataire, Offreur, Participant, Acheteur (rôles dérivés) | `03`, `07` |
-| Compte | Tout profil non-enfant (gestion des profils) | `01` |
+| Ressource | Rôles                                                        | Défini en      |
+| --------- | ------------------------------------------------------------ | -------------- |
+| Liste     | Créateur, Responsable, Contributeur, Lecteur                 | LST-02         |
+| Événement | Organisateur, Participant, Invité                            | EVT-03, EVT-13 |
+| Élément   | Destinataire, Offreur, Participant, Acheteur (rôles dérivés) | `03`, `07`     |
+| Compte    | Tout profil non-enfant (gestion des profils)                 | `01`           |
 
 - **RBAC-10** Ces rôles sont portés par des **profils**.
 - **RBAC-11** Les politiques sont écrites une fois, dans le domaine, sous forme de règles (sujet, action, ressource, conditions), mises en œuvre avec CASL. Les contrôleurs ne contiennent aucune logique d'autorisation.
@@ -91,4 +91,4 @@ Une action est autorisée si les deux étages l'autorisent.
 ## Questions ouvertes
 
 1. Faut-il un rôle `SUPPORT` distinct (métadonnées de compte sans pouvoir de suspension) ? Inutile tant que l'équipe est petite.
-2. Inscriptions ouvertes à tous ou sur invitation au lancement ? Recommandé : sur invitation pendant la phase de rodage.
+2. Inscriptions ouvertes à tous ou sur invitation au lancement ? Recommandé : sur invitation pendant la phase de rodage. Le mécanisme est décidé (AUTH-09, interrupteur `REGISTRATION_MODE`) ; reste à choisir sa valeur au lancement, en phase 7.

@@ -18,41 +18,43 @@ Exclus : paiement en ligne, cagnotte, achat depuis l'application, application na
 
 ## Personas
 
-| Persona | Besoin principal |
-|---|---|
+| Persona                    | Besoin principal                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
 | **Le parent organisateur** | Gère les profils des enfants sur un seul compte, crée l'événement de Noël, suit son budget. |
-| **L'enfant ou l'ado** | Ajoute ses souhaits depuis le téléphone familial, sans pouvoir modifier ceux des autres. |
-| **Le proche qui offre** | Voit les souhaits, réserve, participe à un cadeau commun, sait ce qu'il doit à qui. |
-| **Le couple** | Tient une liste commune (naissance, mariage, emménagement). |
-| **L'administrateur** | Modère le catalogue global, traite les signalements, n'a pas accès aux contenus privés. |
+| **L'enfant ou l'ado**      | Ajoute ses souhaits depuis le téléphone familial, sans pouvoir modifier ceux des autres.    |
+| **Le proche qui offre**    | Voit les souhaits, réserve, participe à un cadeau commun, sait ce qu'il doit à qui.         |
+| **Le couple**              | Tient une liste commune (naissance, mariage, emménagement).                                 |
+| **L'administrateur**       | Modère le catalogue global, traite les signalements, n'a pas accès aux contenus privés.     |
 
 ## Glossaire
 
 Ces termes sont utilisés tels quels dans toute la spec, le code et l'interface. Ne jamais employer « compte » pour « profil ».
 
-| Terme | Définition |
-|---|---|
-| **Compte** | Identité de connexion : une adresse e-mail, un moyen d'authentification (mot de passe ou Google), éventuellement le TOTP. Un compte porte un rôle plateforme. |
-| **Profil** | Une personne. Un compte contient un ou plusieurs profils. Tout ce qui est social (listes, invitations, visibilité, compta) vise des profils, jamais des comptes. |
-| **Profil actif** | Le profil sous lequel on agit dans la session courante. |
-| **Code PIN** | Code optionnel protégeant l'entrée dans un profil. |
-| **Lien** | Relation acceptée entre deux profils de comptes différents. |
-| **Cercle** | Pour un profil : les autres profils de son compte et les profils avec lesquels il a un lien. |
-| **Fiche article** | Description d'un produit : titre, image, description, prix unitaire, devise, vendeur, URL d'origine. Réutilisable dans plusieurs listes. |
-| **Élément** | Ligne d'une liste, qui référence une fiche article et porte une quantité, une visibilité et un état. |
-| **Souhait** | Élément d'une wishlist. |
-| **Cadeau** | Élément d'une giftlist. |
-| **Wishlist** | Liste de souhaits tenue par son ou ses destinataires. |
-| **Giftlist** | Liste de cadeaux tenue par des offreurs pour un ou plusieurs destinataires, secrète par défaut. |
-| **Destinataire** | Profil qui recevra les éléments d'une liste. |
-| **Offreur** | Profil qui voit une liste sans en être destinataire. |
-| **Événement** | Occasion datée (Noël, anniversaire) qui réunit des profils invités et leurs listes. |
-| **Réservation** | Engagement d'un offreur à offrir tout ou partie d'un élément. |
-| **Participation** | Part financière d'un offreur sur un élément : montant fixe, pourcentage ou totalité. |
-| **Acheteur** | Profil chargé d'acheter un élément et de pointer les remboursements. |
-| **Répertoire** | Ensemble des fiches article qu'un profil a choisi de partager, à son cercle ou au catalogue global. |
-| **Catalogue global** | Partie du répertoire visible de tous les utilisateurs inscrits, anonymisée et modérée. |
-| **Règle de visibilité** | `TOUS`, `SEULEMENT (profils)` ou `TOUS SAUF (profils)`, appliquée à un élément. |
+| Terme                   | Définition                                                                                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Compte**              | Identité de connexion : une adresse e-mail, un moyen d'authentification (mot de passe ou Google), éventuellement le TOTP. Un compte porte un rôle plateforme.    |
+| **Profil**              | Une personne. Un compte contient un ou plusieurs profils. Tout ce qui est social (listes, invitations, visibilité, compta) vise des profils, jamais des comptes. |
+| **Profil actif**        | Le profil sous lequel on agit dans la session courante.                                                                                                          |
+| **Passage**             | Changement de compte d'un profil, avec l'accord des deux comptes et du profil. Le **détachement** fait passer un profil dans un nouveau compte ; le **regroupement** emporte le dernier profil d'un compte, qui disparaît. |
+| **Compte sous tutelle** | Compte dont tous les profils sont enfants, rattaché à un **compte tuteur** qui l'a créé et en garde les garde-fous. Il se connecte seul, sans plus de droits qu'un profil enfant. |
+| **Code PIN**            | Code optionnel protégeant l'entrée dans un profil.                                                                                                               |
+| **Lien**                | Relation acceptée entre deux profils de comptes différents.                                                                                                      |
+| **Cercle**              | Pour un profil : les autres profils de son compte et les profils avec lesquels il a un lien.                                                                     |
+| **Fiche article**       | Description d'un produit : titre, image, description, prix unitaire, devise, vendeur, URL d'origine. Réutilisable dans plusieurs listes.                         |
+| **Élément**             | Ligne d'une liste, qui référence une fiche article et porte une quantité, une visibilité et un état.                                                             |
+| **Souhait**             | Élément d'une wishlist.                                                                                                                                          |
+| **Cadeau**              | Élément d'une giftlist.                                                                                                                                          |
+| **Wishlist**            | Liste de souhaits tenue par son ou ses destinataires.                                                                                                            |
+| **Giftlist**            | Liste de cadeaux tenue par des offreurs pour un ou plusieurs destinataires, secrète par défaut.                                                                  |
+| **Destinataire**        | Profil qui recevra les éléments d'une liste.                                                                                                                     |
+| **Offreur**             | Profil qui voit une liste sans en être destinataire.                                                                                                             |
+| **Événement**           | Occasion datée (Noël, anniversaire) qui réunit des profils invités et leurs listes.                                                                              |
+| **Réservation**         | Engagement d'un offreur à offrir tout ou partie d'un élément.                                                                                                    |
+| **Participation**       | Part financière d'un offreur sur un élément : montant fixe, pourcentage ou totalité.                                                                             |
+| **Acheteur**            | Profil chargé d'acheter un élément et de pointer les remboursements.                                                                                             |
+| **Répertoire**          | Ensemble des fiches article qu'un profil a choisi de partager, à son cercle ou au catalogue global.                                                              |
+| **Catalogue global**    | Partie du répertoire visible de tous les utilisateurs inscrits, anonymisée et modérée.                                                                           |
+| **Règle de visibilité** | `TOUS`, `SEULEMENT (profils)` ou `TOUS SAUF (profils)`, appliquée à un élément.                                                                                  |
 
 ## Principes directeurs
 

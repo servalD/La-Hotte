@@ -15,11 +15,11 @@ Savoir à tout moment qui offre quoi, combien chacun s'est engagé à payer, qui
 
 - **CPT-01** Sur un élément qu'il voit et dont il n'est pas destinataire, un profil choisit :
 
-| Mode | Saisie | Montant |
-|---|---|---|
-| **Tout** | — | Coût total restant |
-| **Un pourcentage** | 1 à 100 % | Pourcentage du coût total |
-| **Un montant** | Montant libre | Ce montant |
+| Mode               | Saisie        | Montant                   |
+| ------------------ | ------------- | ------------------------- |
+| **Tout**           | —             | Coût total restant        |
+| **Un pourcentage** | 1 à 100 %     | Pourcentage du coût total |
+| **Un montant**     | Montant libre | Ce montant                |
 
 - **CPT-02** Le bouton principal est « Je l'offre » (mode Tout). « Participer » ouvre les deux autres modes. Un élément déjà entamé propose d'office « Compléter (reste 23 €) ».
 - **CPT-03** La somme des participations ne peut pas dépasser le coût total. Le contrôle est fait par le serveur, dans une transaction : si deux profils prennent le dernier reste en même temps, le second reçoit « Quelqu'un vient de compléter ce cadeau » avec le reste à jour.
@@ -44,7 +44,7 @@ Savoir à tout moment qui offre quoi, combien chacun s'est engagé à payer, qui
 - **CPT-18** **Refus d'une hausse.** Tout participant dont la part augmente est notifié et peut, pendant 7 jours, la ramener à un montant inférieur, sans descendre sous son montant d'avant l'achat. La différence devient un **reste à couvrir**.
 - **CPT-19** **Fenêtre de notification.** Quand une action laisse un reste à couvrir, une fenêtre s'ouvre pour son auteur :
 
-  > Il reste 18 € à couvrir sur *Robot pâtissier*. Prévenir les autres participants ?
+  > Il reste 18 € à couvrir sur _Robot pâtissier_. Prévenir les autres participants ?
   > ☑ Paul ☑ Marie ☐ Tom
   > [Prévenir] [Ne prévenir personne]
 
@@ -95,12 +95,12 @@ Papa                            0 €   rien encore
 
 ## Valeurs par défaut
 
-| Réglage | Défaut |
-|---|---|
-| Mode de participation | Tout |
-| Acheteur | Premier participant |
-| Budget | Aucun |
-| Rappel de part | J+7 après l'achat, puis date de l'événement |
+| Réglage               | Défaut                                      |
+| --------------------- | ------------------------------------------- |
+| Mode de participation | Tout                                        |
+| Acheteur              | Premier participant                         |
+| Budget                | Aucun                                       |
+| Rappel de part        | J+7 après l'achat, puis date de l'événement |
 
 ## Critères d'acceptation
 

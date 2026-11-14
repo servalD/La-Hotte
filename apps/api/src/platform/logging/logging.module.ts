@@ -7,7 +7,8 @@ import { activeTraceIds } from '../telemetry/correlation';
 import { scrubError } from '../telemetry/scrub';
 
 const REQUEST_ID_HEADER = 'x-request-id';
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
+/** Identifiant de requête reçu : UUID seulement (sinon un texte libre du client irait aux journaux). */
+const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Destination des journaux : la sortie standard, comme pino par défaut. Jeton remplaçable en

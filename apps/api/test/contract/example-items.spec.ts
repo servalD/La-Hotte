@@ -3,15 +3,21 @@ import request from 'supertest';
 import { ExampleItem } from '../../src/modules/example/domain/example-item';
 import { createTestApp } from './create-test-app';
 import type { InMemoryExampleItemRepository } from '../../src/modules/example';
+import type { SignedIn } from '../support/sign-in';
 
-// Contrat de la route d'exemple : nominal, validation, introuvable, forme des erreurs.
-// « Non connecté » et « interdit » arrivent avec la session (phase 1).
+// Contrat de la route d'exemple : nominal, non connecté, verrouillé, validation, introuvable,
+// forme des erreurs.
 
 let app: INestApplication;
 let exampleItems: InMemoryExampleItemRepository;
+let user: SignedIn;
+let locked: SignedIn;
 
 beforeAll(async () => {
-  ({ app, exampleItems } = await createTestApp());
+  let identity;
+  ({ app, exampleItems, identity } = await createTestApp());
+  user = await identity.signIn();
+  locked = await identity.signIn({ pin: true });
 });
 
 afterAll(async () => {
@@ -24,6 +30,7 @@ describe('POST /api/v1/example-items', () => {
   it('crée l’élément et renvoie la vue destinataire (201)', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: 'Vélo', priority: 'high' })
       .expect(201);
 
@@ -39,6 +46,7 @@ describe('POST /api/v1/example-items', () => {
   it('SEC-10 / API-14 : champ inconnu rejeté en problem+json, valeur jamais renvoyée', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: 'Vélo', isAdmin: 'valeur-piegee' })
       .expect(400);
 
@@ -53,6 +61,7 @@ describe('POST /api/v1/example-items', () => {
   it('API-04 : contraintes de longueur et d’énumération', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: 'x'.repeat(121), priority: 'urgent' })
       .expect(400);
 
@@ -63,6 +72,7 @@ describe('POST /api/v1/example-items', () => {
   it('API-13 : une règle métier non respectée donne 422 avec un code stable', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: '   ' })
       .expect(422);
 
@@ -70,15 +80,40 @@ describe('POST /api/v1/example-items', () => {
   });
 });
 
+describe('Session et profil (SEC-01, PIN-02)', () => {
+  it('SEC-01 : sans session, 401 problem+json, en lecture comme en écriture', async () => {
+    const read = await request(app.getHttpServer())
+      .get('/api/v1/example-items/0190f3c2-0000-7000-8000-000000000000')
+      .expect(401);
+    expect(read.body).toMatchObject({ code: 'UNAUTHENTICATED', status: 401 });
+    await request(app.getHttpServer())
+      .post('/api/v1/example-items')
+      .set({ Origin: 'http://localhost:3000' })
+      .send({ title: 'Vélo' })
+      .expect(401);
+  });
+
+  it('PIN-02 : profil protégé non déverrouillé, 423 PROFILE_LOCKED', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/example-items')
+      .set(locked.mutation)
+      .send({ title: 'Vélo' })
+      .expect(423);
+    expect(res.body).toMatchObject({ code: 'PROFILE_LOCKED' });
+  });
+});
+
 describe('GET /api/v1/example-items/:id', () => {
-  it('VIS-20 : le lecteur de phase 0 reçoit la vue destinataire, sans champ d’offreur', async () => {
+  it('VIS-20 : le profil actif, sans lien avec l’élément, reçoit la vue destinataire, sans champ d’offreur', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: 'Livre' })
       .expect(201);
 
     const res = await request(app.getHttpServer())
       .get(`/api/v1/example-items/${created.body.id as string}`)
+      .set('Cookie', user.cookie)
       .expect(200);
 
     expect(res.body.view).toBe('recipient');
@@ -99,7 +134,10 @@ describe('GET /api/v1/example-items/:id', () => {
       }),
     );
 
-    const res = await request(app.getHttpServer()).get(`/api/v1/example-items/${id}`).expect(200);
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/example-items/${id}`)
+      .set('Cookie', user.cookie)
+      .expect(200);
 
     expect(Object.keys(res.body as object).sort()).toEqual(['id', 'priority', 'title', 'view']);
     expect(JSON.stringify(res.body)).not.toContain(SENTINEL);
@@ -110,6 +148,7 @@ describe('GET /api/v1/example-items/:id', () => {
   it('SEC-04 : introuvable renvoie 404 problem+json', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/example-items/0190f3c2-0000-7000-8000-000000000000')
+      .set('Cookie', user.cookie)
       .expect(404);
 
     expect(res.headers['content-type']).toMatch(PROBLEM);
@@ -117,7 +156,10 @@ describe('GET /api/v1/example-items/:id', () => {
   });
 
   it('identifiant mal formé : 400', async () => {
-    await request(app.getHttpServer()).get('/api/v1/example-items/pas-un-uuid').expect(400);
+    await request(app.getHttpServer())
+      .get('/api/v1/example-items/pas-un-uuid')
+      .set('Cookie', user.cookie)
+      .expect(400);
   });
 });
 
@@ -136,6 +178,7 @@ describe('Socle HTTP', () => {
   it('API-14 : un corps trop volumineux donne 413 problem+json, pas une erreur interne', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: 'x'.repeat(200_000) })
       .expect(413);
 
@@ -146,6 +189,7 @@ describe('Socle HTTP', () => {
   it('API-14 : un JSON invalide donne 400 problem+json sans écho du contenu', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .set('Content-Type', 'application/json')
       .send('{"title": "valeur-piegee", ')
       .expect(400);
@@ -158,9 +202,17 @@ describe('Socle HTTP', () => {
   it('OBS-01 : identifiant de requête propagé', async () => {
     const res = await request(app.getHttpServer())
       .get('/health/live')
-      .set('x-request-id', 'abcdef12-3456')
+      .set('x-request-id', '0190f3c2-0000-7000-8000-0000000000aa')
       .expect(200);
-    expect(res.headers['x-request-id']).toBe('abcdef12-3456');
+    expect(res.headers['x-request-id']).toBe('0190f3c2-0000-7000-8000-0000000000aa');
+  });
+
+  it('OBS-01 : un identifiant de requête qui n’est pas un UUID est remplacé', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/health/live')
+      .set('x-request-id', 'texte-libre-du-client')
+      .expect(200);
+    expect(res.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('SEC-13 : en-têtes de sécurité', async () => {

@@ -51,7 +51,15 @@ Modèle à copier pour un nouveau module (phase 0, à retirer quand un vrai modu
 
 Réponse polymorphe : `@ApiExtraModels` + `oneOf` avec `discriminator` sur `view` (voir `getExampleItem`). L'`operationId` est le nom de la méthode du contrôleur et devient le nom du hook (`useGetExampleItem`) : le choisir unique et parlant (un doublon fait échouer l'émission).
 
-Le lecteur y est figé en destinataire (`PHASE0_VIEWER`) faute de session : la phase 1 le remplace par le décorateur de profil actif.
+Le contrôleur reçoit le profil actif par `@ActiveProfile()` ; faute de propriétaire, le lecteur y reste traité en destinataire.
+
+### Session et gardes : `src/modules/identity` (ADR 0013)
+
+Une garde globale (`IdentityGuardChain`) enchaîne session, CSRF, profil et ré-authentification. **Toute route porte exactement une marque** : `@Public()` (liste explicite, figée par `test/contract/identity-session.spec.ts`), `@AccountScope()` (espace Compte, métadonnées seulement) ou `@RequiresProfile()` (profil actif déverrouillé). Ajouter `@RequiresRecentReauth()` pour AUTH-14. Paramètres : `@CurrentSession()`, `@ActiveProfile()`, `@ClientContext()` (adresse retenue par `trust proxy`). Un module importe ces décorateurs depuis `modules/identity`.
+
+Les autres modules n'en importent que `modules/identity` (décorateurs, `CheckSessionAccess`, `IdentityEvents`) : ni le magasin de sessions ni le cycle de vie. Les jetons des ports et les doubles en mémoire sont dans `modules/identity/testing`, réservé aux tests.
+
+Tests : `createTestApp()` remplace les ports d'`identity` par leurs doubles en mémoire et fournit `identity.signIn({ pin, relock, withProfile })` ; les tâches de fond (e-mails, inscription) ne s'exécutent qu'à `identity.background.flush()`, le dernier jeton envoyé se lit par `identity.mail.lastToken(adresse)`, et `identity.rateLimiter.reset()` vide les compteurs (toutes les requêtes de supertest ont la même adresse) ; second facteur : `identity.secondFactors` (secrets chiffrés, `lastSteps`, codes de secours hachés), `identity.trustedDevices`, `identity.pendingSecondFactors.expireAll()` ; codes TOTP des tests par `generate` d'`otplib` ; `test/support/sign-in.ts` ouvre une session réelle (`createAccountWithProfile` puis `signIn`) pour l'intégration et la non-fuite. Une mutation porte `user.mutation` (cookie, `X-CSRF-Token`, `Origin`), une lecture `Cookie: user.cookie`.
 
 ## Ajouter un cas d'usage
 

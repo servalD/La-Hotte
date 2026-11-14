@@ -36,3 +36,418 @@ model ExampleItem {
 
   @@map("example_item")
 }
+
+// --- Identité (docs/spec/12, « Identité » ; ADR 0013) ---
+
+enum AccountRole {
+  USER
+  MODERATOR
+  ADMIN
+
+  @@map("account_role")
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@map("account_status")
+}
+
+enum AuthProvider {
+  GOOGLE
+
+  @@map("auth_provider")
+}
+
+enum AccountTokenPurpose {
+  EMAIL_VERIFY
+  EMAIL_CHANGE
+  EMAIL_CHANGE_CANCEL
+  PASSWORD_RESET
+  /// PRO-10 : vérification de l'adresse d'un profil.
+  PROFILE_EMAIL_VERIFY
+  /// PRO-12 : accord du profil à un passage, par son adresse.
+  TRANSFER_CONSENT
+  /// PRO-12 : annulation d'un passage par le profil, pendant le délai d'exécution.
+  TRANSFER_CANCEL
+
+  @@map("account_token_purpose")
+}
+
+enum PinRelock {
+  NEVER
+  IDLE_15
+  EVERY_OPEN
+
+  @@map("pin_relock")
+}
+
+enum LinkStatus {
+  PENDING
+  AWAITING_GUARDIAN
+  ACCEPTED
+
+  @@map("link_status")
+}
+
+enum InvitationKind {
+  LINK
+  /// PRO-11 : invitation à créer un profil.
+  PROFILE
+  LIST
+  EVENT
+
+  @@map("invitation_kind")
+}
+
+/// LNK-11, PRO-15 : d'où vient un lien. `GUARDIANSHIP` seul fonde la tutelle d'un compte sous tutelle.
+enum LinkOrigin {
+  INVITATION
+  TRANSFER
+  GUARDIANSHIP
+
+  @@map("link_origin")
+}
+
+/// PRO-12, PRO-13, PRO-15.
+enum TransferKind {
+  MOVE
+  DETACH
+  WARD
+
+  @@map("transfer_kind")
+}
+
+/// PRO-12 : PIN du profil dans le compte d'arrivée.
+enum TransferPinChoice {
+  KEEP
+  NEW
+  NONE
+
+  @@map("transfer_pin_choice")
+}
+
+/// E-mail stocké normalisé (minuscules, CHECK en base) : l'unicité est donc insensible à la casse.
+model Account {
+  id                         String        @id @db.Uuid
+  email                      String        @unique @db.VarChar(254)
+  emailVerifiedAt            DateTime?     @map("email_verified_at") @db.Timestamptz(3)
+  passwordHash               String?       @map("password_hash") @db.VarChar(255)
+  role                       AccountRole   @default(USER)
+  status                     AccountStatus @default(ACTIVE)
+  totpSecretEnc              Bytes?        @map("totp_secret_enc")
+  totpEnabledAt              DateTime?     @map("totp_enabled_at") @db.Timestamptz(3)
+  /// AUTH-11 : dernier pas de temps TOTP accepté ; un code de ce pas ou d'un pas antérieur est refusé.
+  totpLastStep               Int?          @map("totp_last_step")
+  /// AUTH-08 : absent seulement pour un compte sous tutelle (`CHECK`), dont le tuteur a déclaré l'autorité.
+  ageAttestedAt              DateTime?     @map("age_attested_at") @db.Timestamptz(3)
+  /// PRO-15 : compte tuteur ; jamais lui-même sous tutelle, et tous les profils sont enfants (déclencheurs).
+  guardianAccountId          String?       @map("guardian_account_id") @db.Uuid
+  /// RGPD-06 : déclaration d'autorité parentale du tuteur.
+  guardianAttestedAt         DateTime?     @map("guardian_attested_at") @db.Timestamptz(3)
+  /// PRO-16 : levée demandée par le tuteur, effective à la déclaration d'âge.
+  guardianReleaseRequestedAt DateTime?     @map("guardian_release_requested_at") @db.Timestamptz(3)
+  /// AUTH-09, LNK-08 : invitation à consommer à la vérification de l'e-mail.
+  pendingInvitationId        String?       @map("pending_invitation_id") @db.Uuid
+  authEpoch                  Int           @default(0) @map("auth_epoch")
+  createdAt                  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  identities        AuthIdentity[]
+  recoveryCodes     RecoveryCode[]
+  tokens            AccountToken[]
+  sessions          Session[]
+  trustedDevices    TrustedDevice[]
+  profiles          Profile[]
+  pendingInvitation Invitation?       @relation("PendingInvitation", fields: [pendingInvitationId], references: [id], onDelete: SetNull)
+  guardian          Account?          @relation("Guardianship", fields: [guardianAccountId], references: [id], onDelete: Restrict)
+  wards             Account[]         @relation("Guardianship")
+  transfersFrom     ProfileTransfer[] @relation("TransferFrom")
+  transfersTo       ProfileTransfer[] @relation("TransferTo")
+
+  @@index([pendingInvitationId])
+  @@index([guardianAccountId])
+  @@map("account")
+}
+
+model AuthIdentity {
+  id        String       @id @db.Uuid
+  accountId String       @map("account_id") @db.Uuid
+  provider  AuthProvider
+  subject   String       @db.VarChar(255)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  /// AUTH-03 : une seule identité Google par compte.
+  @@unique([accountId, provider])
+  @@index([accountId])
+  @@map("auth_identity")
+}
+
+/// Codes de secours (AUTH-10, SEC-22) : 80 bits tirés par le serveur, stockés en SHA-256.
+model RecoveryCode {
+  id        String    @id @db.Uuid
+  accountId String    @map("account_id") @db.Uuid
+  /// SHA-256 du code normalisé, en hexadécimal.
+  codeHash  String    @map("code_hash") @db.Char(64)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, codeHash])
+  @@map("recovery_code")
+}
+
+model AccountToken {
+  id         String              @id @db.Uuid
+  accountId  String              @map("account_id") @db.Uuid
+  purpose    AccountTokenPurpose
+  /// SHA-256 du jeton, en hexadécimal (64 caractères).
+  tokenHash  String              @unique @map("token_hash") @db.Char(64)
+  newEmail   String?             @map("new_email") @db.VarChar(254)
+  /// PRO-10, PRO-12 : profil visé (`PROFILE_EMAIL_VERIFY`, `TRANSFER_CONSENT`, `TRANSFER_CANCEL`).
+  profileId  String?             @map("profile_id") @db.Uuid
+  /// PRO-12 : demande visée (`TRANSFER_CONSENT`, `TRANSFER_CANCEL`).
+  transferId String?             @map("transfer_id") @db.Uuid
+  expiresAt  DateTime            @map("expires_at") @db.Timestamptz(3)
+  usedAt     DateTime?           @map("used_at") @db.Timestamptz(3)
+  createdAt  DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account  Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  profile  Profile?         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  transfer ProfileTransfer? @relation(fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, purpose])
+  @@index([profileId])
+  @@index([transferId])
+  @@map("account_token")
+}
+
+/// Une ligne ne disparaît que par la procédure de révocation (ADR 0013) : `account_id` en RESTRICT.
+model Session {
+  id                String    @id @db.Uuid
+  accountId         String    @map("account_id") @db.Uuid
+  /// SHA-256 du jeton, en hexadécimal. Ni le jeton ni ce hash ne sortent du serveur.
+  tokenHash         String    @unique @map("token_hash") @db.Char(64)
+  authEpoch         Int       @map("auth_epoch")
+  activeProfileId   String?   @map("active_profile_id") @db.Uuid
+  reauthAt          DateTime? @map("reauth_at") @db.Timestamptz(3)
+  trustedDeviceId   String?   @map("trusted_device_id") @db.Uuid
+  userAgent         String    @map("user_agent") @db.VarChar(512)
+  lastSeenAt        DateTime  @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(3)
+  absoluteExpiresAt DateTime  @map("absolute_expires_at") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account       Account        @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  activeProfile Profile?       @relation(fields: [activeProfileId], references: [id], onDelete: SetNull)
+  trustedDevice TrustedDevice? @relation(fields: [trustedDeviceId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@map("session")
+}
+
+model TrustedDevice {
+  id        String    @id @db.Uuid
+  accountId String    @map("account_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  userAgent String    @map("user_agent") @db.VarChar(512)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@index([accountId])
+  @@map("trusted_device")
+}
+
+/// 10 profils au plus par compte : garanti par un déclencheur (migration), DAT-01.
+model Profile {
+  id                    String    @id @db.Uuid
+  accountId             String    @map("account_id") @db.Uuid
+  displayName           String    @map("display_name") @db.VarChar(60)
+  /// Clé de l'image d'avatar ; sans image, couleur d'accent et initiales.
+  avatar                String?   @db.VarChar(200)
+  accentColor           String    @map("accent_color") @db.Char(7)
+  birthdayDay           Int?      @map("birthday_day") @db.SmallInt
+  birthdayMonth         Int?      @map("birthday_month") @db.SmallInt
+  birthdayYear          Int?      @map("birthday_year") @db.SmallInt
+  locale                String    @db.VarChar(16)
+  currency              String    @db.Char(3)
+  timezone              String    @db.VarChar(64)
+  isChild               Boolean   @default(false) @map("is_child")
+  /// PRO-09, PRO-12 : dernier changement du marqueur enfant ; moins de 30 jours, l'accord du profil reste requis.
+  childChangedAt        DateTime? @map("child_changed_at") @db.Timestamptz(3)
+  /// PRO-09 : notice du changement de marqueur, effacée par l'entrée qui la montre.
+  childNoticeAt         DateTime? @map("child_notice_at") @db.Timestamptz(3)
+  /// PRO-10 : adresse facultative, jamais identifiant de connexion ; absente pour un enfant (`CHECK`).
+  email                 String?   @db.VarChar(254)
+  emailVerifiedAt       DateTime? @map("email_verified_at") @db.Timestamptz(3)
+  pinHash               String?   @map("pin_hash") @db.VarChar(255)
+  pinRelock             PinRelock @default(IDLE_15) @map("pin_relock")
+  pinFailedCount        Int       @default(0) @map("pin_failed_count")
+  /// PIN-03 : PIN faux depuis la dernière entrée dans le profil ; seule la sélection l'efface.
+  pinFailuresSinceEntry Int       @default(0) @map("pin_failures_since_entry")
+  pinLockedUntil        DateTime? @map("pin_locked_until") @db.Timestamptz(3)
+  pinResetNoticeAt      DateTime? @map("pin_reset_notice_at") @db.Timestamptz(3)
+  /// PIN-05, PRO-12 : dernière réinitialisation ou désactivation ; PIN-04 ne l'efface pas.
+  pinResetAt            DateTime? @map("pin_reset_at") @db.Timestamptz(3)
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  account        Account           @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  sessions       Session[]
+  linksA         ProfileLink[]     @relation("LinkProfileA")
+  linksB         ProfileLink[]     @relation("LinkProfileB")
+  blocksMade     ProfileBlock[]    @relation("Blocker")
+  blocksReceived ProfileBlock[]    @relation("Blocked")
+  invitations    Invitation[]      @relation("InvitationCreator")
+  tokens         AccountToken[]
+  transfers      ProfileTransfer[]
+
+  @@index([accountId])
+  @@map("profile")
+}
+
+/// LNK-02 à LNK-06 : lien entre deux profils de comptes différents. Paire rangée `a < b`
+/// (`CHECK`), comptes différents (déclencheur). `PENDING` est réservé à la phase 3.
+model ProfileLink {
+  id                  String     @id @db.Uuid
+  profileAId          String     @map("profile_a_id") @db.Uuid
+  profileBId          String     @map("profile_b_id") @db.Uuid
+  status              LinkStatus
+  /// L'invitant : l'un des deux profils (`CHECK`).
+  requestedBy         String     @map("requested_by") @db.Uuid
+  aGuardianRequired   Boolean    @map("a_guardian_required")
+  bGuardianRequired   Boolean    @map("b_guardian_required")
+  /// Profil non enfant qui a validé ; sans clé étrangère : un profil supprimé ne défait pas un lien.
+  aGuardianApprovedBy String?    @map("a_guardian_approved_by") @db.Uuid
+  bGuardianApprovedBy String?    @map("b_guardian_approved_by") @db.Uuid
+  /// LNK-11 : `TRANSFER` et `GUARDIANSHIP` naissent acceptés, l'accord du compte valant validation.
+  origin              LinkOrigin @default(INVITATION)
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profileA Profile @relation("LinkProfileA", fields: [profileAId], references: [id], onDelete: Cascade)
+  profileB Profile @relation("LinkProfileB", fields: [profileBId], references: [id], onDelete: Cascade)
+
+  @@unique([profileAId, profileBId])
+  @@index([profileBId])
+  @@map("profile_link")
+}
+
+/// LNK-05 : jamais exposé au profil bloqué.
+model ProfileBlock {
+  id        String   @id @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  blocker Profile @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked Profile @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("profile_block")
+}
+
+/// LNK-01 : jeton de 128 bits, stocké en SHA-256. Pour `LINK`, `targetId` et `createdBy` sont le
+/// profil invitant. `targetId` est polymorphe (liste, événement plus tard) : pas de clé étrangère.
+model Invitation {
+  id               String         @id @db.Uuid
+  kind             InvitationKind
+  targetId         String         @map("target_id") @db.Uuid
+  tokenHash        String         @unique @map("token_hash") @db.Char(64)
+  createdBy        String         @map("created_by") @db.Uuid
+  maxUses          Int            @map("max_uses")
+  usedCount        Int            @default(0) @map("used_count")
+  /// PRO-11 (`PROFILE`) : marqueur enfant du profil à créer ; `targetId` est alors le compte visé.
+  profileIsChild   Boolean?       @map("profile_is_child")
+  /// PRO-11 : acceptation par le compte visé, posée à la création pour le compte de l'invitant.
+  targetAcceptedAt DateTime?      @map("target_accepted_at") @db.Timestamptz(3)
+  targetRefusedAt  DateTime?      @map("target_refused_at") @db.Timestamptz(3)
+  expiresAt        DateTime       @map("expires_at") @db.Timestamptz(3)
+  revokedAt        DateTime?      @map("revoked_at") @db.Timestamptz(3)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  creator Profile   @relation("InvitationCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  pending Account[] @relation("PendingInvitation")
+
+  @@index([createdBy])
+  @@index([expiresAt])
+  @@map("invitation")
+}
+
+/// Ajout seul (DAT-02) : le rôle applicatif n'a ni UPDATE ni DELETE. Sans clé étrangère : le journal
+/// survit à la suppression du compte, pour sa durée de conservation (SEC-33).
+/// PRO-12, PRO-13, PRO-15 : demande de passage, de détachement ou de création d'un compte sous tutelle.
+/// Une seule ouverte par profil (index unique partiel, migration).
+model ProfileTransfer {
+  id                     String            @id @db.Uuid
+  kind                   TransferKind
+  /// Absent seulement pour `WARD` avec un nouveau profil (`CHECK`).
+  profileId              String?           @map("profile_id") @db.Uuid
+  newProfileName         String?           @map("new_profile_name") @db.VarChar(60)
+  fromAccountId          String            @map("from_account_id") @db.Uuid
+  toAccountId            String?           @map("to_account_id") @db.Uuid
+  newEmail               String?           @map("new_email") @db.VarChar(254)
+  /// SHA-256 du jeton de passage (`MOVE`) ou du lien d'installation (`DETACH`, `WARD`).
+  tokenHash              String            @unique @map("token_hash") @db.Char(64)
+  /// Échéance du jeton : 7 jours pour un jeton de passage, 24 heures pour un lien d'installation, renvoyable.
+  tokenExpiresAt         DateTime          @map("token_expires_at") @db.Timestamptz(3)
+  /// PRO-12 : figé à la création.
+  profileConsentRequired Boolean           @map("profile_consent_required")
+  /// PRO-12 : regroupement déclaré par le compte d'origine.
+  regroup                Boolean           @default(false)
+  fromAcceptedAt         DateTime          @map("from_accepted_at") @db.Timestamptz(3)
+  profileAcceptedAt      DateTime?         @map("profile_accepted_at") @db.Timestamptz(3)
+  toAcceptedAt           DateTime?         @map("to_accepted_at") @db.Timestamptz(3)
+  pinChoice              TransferPinChoice @map("pin_choice")
+  newPinHash             String?           @map("new_pin_hash") @db.VarChar(255)
+  /// PRO-12 : dernier accord + 48 heures ; une fois posé, `expiresAt` ne joue plus.
+  executesAt             DateTime?         @map("executes_at") @db.Timestamptz(3)
+  expiresAt              DateTime          @map("expires_at") @db.Timestamptz(3)
+  completedAt            DateTime?         @map("completed_at") @db.Timestamptz(3)
+  cancelledAt            DateTime?         @map("cancelled_at") @db.Timestamptz(3)
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profile     Profile?       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  fromAccount Account        @relation("TransferFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccount   Account?       @relation("TransferTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+  tokens      AccountToken[]
+
+  @@index([fromAccountId])
+  @@index([toAccountId])
+  @@index([executesAt])
+  @@map("profile_transfer")
+}
+
+model SecurityLog {
+  id         String   @id @db.Uuid
+  accountId  String?  @map("account_id") @db.Uuid
+  /// PRO-14 : sans clé étrangère, comme `accountId`.
+  profileId  String?  @map("profile_id") @db.Uuid
+  transferId String?  @map("transfer_id") @db.Uuid
+  event      String   @db.VarChar(64)
+  ip         String   @db.Inet
+  userAgent  String   @map("user_agent") @db.VarChar(512)
+  at         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([accountId, at])
+  @@map("security_log")
+}

@@ -5,7 +5,14 @@ import type { DomainErrorKind } from './domain-error';
  * d'un contenu ; en ajouter un passe par cette liste, en revue. Noms en `snake_case` préfixés
  * `wishlist.`. L'adaptateur ignore à l'exécution un nom hors liste.
  */
-export const COUNTER_NAMES = ['wishlist.domain_errors'] as const;
+export const COUNTER_NAMES = [
+  'wishlist.domain_errors',
+  // AUTH-02 : vérification des fuites sans réponse, mot de passe accepté sans elle.
+  'wishlist.password_breach_check_unavailable',
+  // OBS-02, SEC-32 : refus d'autorisation (session absente, CSRF, profil verrouillé, PIN faux,
+  // ré-authentification trop ancienne, interdit), par `code` stable.
+  'wishlist.authorization_denied',
+] as const;
 export type CounterName = (typeof COUNTER_NAMES)[number];
 
 /**

@@ -5,11 +5,13 @@ import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
 import { ExampleItemRepository } from '../../src/modules/example';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
+import { createAccountWithProfile, type SignedIn, signIn } from '../support/sign-in';
 
 // PostgreSQL et Redis réels. Migrations appliquées au préalable (pnpm db:migrate:deploy).
 
 let app: INestApplication;
 let prisma: PrismaService;
+let user: SignedIn;
 
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -18,6 +20,7 @@ beforeAll(async () => {
   await app.init();
   prisma = app.get(PrismaService);
   await prisma.exampleItem.deleteMany();
+  user = await signIn(app, await createAccountWithProfile(prisma));
 });
 
 afterAll(async () => {
@@ -28,6 +31,7 @@ describe('PrismaExampleItemRepository', () => {
   it('écrit et relit un élément par la route, à travers les quatre couches', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/example-items')
+      .set(user.mutation)
       .send({ title: 'Vélo', priority: 'low' })
       .expect(201);
 
@@ -66,6 +70,9 @@ describe('OBS-06 /health/ready', () => {
   it('signale la base et Redis disponibles', async () => {
     await request(app.getHttpServer())
       .get('/health/ready')
-      .expect(200, { status: 'ok', checks: { database: 'up', redis: 'up' } });
+      .expect(200, {
+        status: 'ok',
+        checks: { database: 'up', redis: 'up', redisEviction: 'up' },
+      });
   });
 });

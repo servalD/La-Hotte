@@ -2,7 +2,7 @@
 
 PWA de listes de souhaits et de cadeaux : plusieurs profils par compte, fiches article extraites par IA, événements, visibilité fine, giftlists secrètes, commentaires, compta des participations, temps réel, hors ligne.
 
-**État : phase 0 (socle) livrée.** La prochaine étape est la phase 1 de `docs/roadmap.md`.
+**État : phase 0 (socle) livrée ; phase 1 en cours (tranches 1 à 6 faites, voir `docs/roadmap.md`).**
 
 ## Où trouver quoi
 
@@ -35,7 +35,7 @@ Node 22, pnpm 10. À la racine :
 
 | Commande                             | Effet                                                                                                                                                                                                                                                  |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `docker compose up -d`               | PostgreSQL 17 et Redis 7 locaux (rôles DAT-03 créés au premier démarrage)                                                                                                                                                                              |
+| `docker compose up -d`               | PostgreSQL 17, Redis 7 (`noeviction`) et Mailpit (`:8025`) locaux (rôles DAT-03 créés au premier démarrage)                                                                                                                                            |
 | `docker compose --profile obs up -d` | Ajoute GlitchTip (`:8000`), OpenObserve (`:5080`), collecteur OTLP (`:4317`, `:4318`) (OBS-44). Pour l'arrêter seule : `docker compose stop glitchtip openobserve otel-collector postgres-obs` (`--profile obs stop` arrête aussi PostgreSQL et Redis) |
 | `pnpm install`                       | Dépendances ; génère aussi le client Prisma                                                                                                                                                                                                            |
 | `pnpm dev`                           | API (`:4000`) et web (`:3000`, qui relaie `/api` vers l'API)                                                                                                                                                                                           |
@@ -85,18 +85,18 @@ Pour économiser les crédits :
 - Planifie en Opus, exécute en Sonnet. Une tâche Sonnet doit se faire avec une règle de spec et un fichier voisin comme modèle ; si elle demande un arbitrage, remonte-la.
 - Une tâche par session ; `/clear` entre deux tâches sans rapport.
 - Donne le chemin exact du fichier de spec plutôt que de laisser explorer.
-- **Ne lance jamais de sous-agent ni de fork de toi-même sans demande explicite de l'utilisateur.** Il travaille par sessions courtes enchaînées avec `/clear` ; les agents de `.claude/agents/` ne servent que quand il les appelle par leur nom.
+- **Ne lance jamais de sous-agent ni de fork de toi-même sans demande explicite de l'utilisateur.** Il travaille par sessions courtes enchaînées avec `/clear` ; les agents de `.claude/agents/` ne servent que quand il les appelle par leur nom. **Seule exception : `security-reviewer`**, voir ci-dessous.
 
 ## Sous-agents
 
-| Agent               | Modèle | Usage                                                                                                                                                 |
-| ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `architect`         | Opus   | Conception d'un module, ADR, modèle de données                                                                                                        |
-| `security-reviewer` | Opus   | **Obligatoire** avant fusion pour tout changement sensible (SEC-40). En fin de tâche sensible, rappelle-le à l'utilisateur ; ne le lance pas toi-même |
-| `spec-writer`       | Opus   | Faire évoluer la spec, détecter les incohérences                                                                                                      |
-| `backend-dev`       | Sonnet | Implémenter un cas d'usage spécifié dans `apps/api`                                                                                                   |
-| `frontend-dev`      | Sonnet | Écrans, composants, animations, hors ligne dans `apps/web`                                                                                            |
-| `test-writer`       | Sonnet | Tests unitaires, d'intégration, de bout en bout                                                                                                       |
+| Agent               | Modèle | Usage                                                                                                                                                                                                                                                                                    |
+| ------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `architect`         | Opus   | Conception d'un module, ADR, modèle de données                                                                                                                                                                                                                                           |
+| `security-reviewer` | Opus   | **Obligatoire** avant fusion pour tout changement sensible (SEC-40). En fin de tâche sensible, lance-le toi-même sur le diff `origin/<branche>..HEAD`, avant l'envoi groupé des commits de la tranche ; **2 cycles scan → corrections au plus**, puis liste à l'utilisateur ce qui reste |
+| `spec-writer`       | Opus   | Faire évoluer la spec, détecter les incohérences                                                                                                                                                                                                                                         |
+| `backend-dev`       | Sonnet | Implémenter un cas d'usage spécifié dans `apps/api`                                                                                                                                                                                                                                      |
+| `frontend-dev`      | Sonnet | Écrans, composants, animations, hors ligne dans `apps/web`                                                                                                                                                                                                                               |
+| `test-writer`       | Sonnet | Tests unitaires, d'intégration, de bout en bout                                                                                                                                                                                                                                          |
 
 ## Skills
 

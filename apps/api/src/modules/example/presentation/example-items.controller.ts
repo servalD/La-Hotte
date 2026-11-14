@@ -7,6 +7,7 @@ import {
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
+import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../identity';
 import { CreateExampleItem, type ExampleViewer, GetExampleItem } from '../application/contract';
 import { CreateExampleItemDto } from './dto/create-example-item.dto';
 import {
@@ -18,15 +19,17 @@ import {
 } from './dto/example-item.view';
 
 /**
- * Lecteur courant.
- * ⚠ Phase 0 : aucun profil n'existe encore, tout lecteur est traité en destinataire (le cas le
- * plus fermé). En phase 1, le profil actif vient de la session par le décorateur prévu (API-11),
- * et en phase 2 c'est `visibility` qui décide de la vue.
+ * Point de vue du profil actif. Le profil vient de la session (API-11) ; l'élément d'exemple n'a
+ * pas de propriétaire, le lecteur est donc traité en destinataire (le cas le plus fermé). Dans un
+ * vrai module, c'est `visibility` qui décide de la vue (phase 2).
  */
-const PHASE0_VIEWER: ExampleViewer = { role: 'recipient' };
+function viewerFor(_profile: ActiveProfileValue): ExampleViewer {
+  return { role: 'recipient' };
+}
 
 /** Contrôleur mince : validation par le DTO, délégation au cas d'usage, mise en forme. */
 @ApiTags('example-items')
+@RequiresProfile()
 @ApiExtraModels(ExampleItemRecipientView, ExampleItemGiverView)
 @Controller('example-items')
 export class ExampleItemsController {
@@ -64,7 +67,10 @@ export class ExampleItemsController {
       },
     },
   })
-  async getExampleItem(@Param('id', new ParseUUIDPipe()) id: string): Promise<ExampleItemView> {
-    return toExampleItemView(await this.getItem.execute({ id, viewer: PHASE0_VIEWER }));
+  async getExampleItem(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<ExampleItemView> {
+    return toExampleItemView(await this.getItem.execute({ id, viewer: viewerFor(profile) }));
   }
 }
