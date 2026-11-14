@@ -35,6 +35,8 @@ Ces termes sont utilisés tels quels dans toute la spec, le code et l'interface.
 | **Compte**              | Identité de connexion : une adresse e-mail, un moyen d'authentification (mot de passe ou Google), éventuellement le TOTP. Un compte porte un rôle plateforme.    |
 | **Profil**              | Une personne. Un compte contient un ou plusieurs profils. Tout ce qui est social (listes, invitations, visibilité, compta) vise des profils, jamais des comptes. |
 | **Profil actif**        | Le profil sous lequel on agit dans la session courante.                                                                                                          |
+| **Passage**             | Changement de compte d'un profil, avec l'accord des deux comptes et du profil. Le **détachement** fait passer un profil dans un nouveau compte ; le **regroupement** emporte le dernier profil d'un compte, qui disparaît. |
+| **Compte sous tutelle** | Compte dont tous les profils sont enfants, rattaché à un **compte tuteur** qui l'a créé et en garde les garde-fous. Il se connecte seul, sans plus de droits qu'un profil enfant. |
 | **Code PIN**            | Code optionnel protégeant l'entrée dans un profil.                                                                                                               |
 | **Lien**                | Relation acceptée entre deux profils de comptes différents.                                                                                                      |
 | **Cercle**              | Pour un profil : les autres profils de son compte et les profils avec lesquels il a un lien.                                                                     |

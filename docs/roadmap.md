@@ -153,7 +153,7 @@ Suites :
 - Revue `security-reviewer` du 2026-11-13 (cycle 1) : B1 à B3 et I1 à I5 corrigés, M1, M2, M4 à M8 aussi. Restent : M3 (`REVOKE` de la migration sauté sans bruit si le rôle applicatif porte un autre nom : à vérifier dans la procédure de déploiement, le test d'intégration DAT-02 le couvre en CI), M9 (pré-session bornée par le seul `Max-Age` du cookie, accepté), M10 (voir le point Vitest ci-dessus).
 - Revue `security-reviewer` du 2026-11-13 (cycle 2) : visa SEC-40 donné. Ses huit points mineurs ont été corrigés à la demande de l'utilisateur : marque posée avant toute lecture en base à la révocation ; révocation limitée au compte de la référence ; refus à la recopie limité au jeton lu (`revokeToken`) ; `GREATEST` et étape 3 perdue écrits dans l'ADR 0014 ; refus CSRF regroupés par (adresse, compte) et règle écrite dans SEC-30 ; déclencheur `profile_account_matches_sessions` ; test des `GET` avec `X-User-Activity` et dépôts des autres modules. Cycle 3 : visa maintenu, aucun point bloquant ni important. Trois points mineurs, à traiter en tranche 2 :
   1. La révocation marque le `tokenHash` reçu avant de vérifier le compte : une route `DELETE /sessions/{id}` qui construirait elle-même un `SessionRef` permettrait de déconnecter la session d'un autre compte. Offrir un seul point d'entrée `revokeOwned(accountId, sessionId)` qui lit le hash par `id` et `account_id`.
-  2. Les déclencheurs `session_active_profile_same_account` et `profile_account_matches_sessions` ne se verrouillent pas mutuellement (théorique : aucun parcours ne déplace un profil). Ajouter `SELECT … FOR SHARE` sur le profil dans le déclencheur de session.
+  2. Les déclencheurs `session_active_profile_same_account` et `profile_account_matches_sessions` ne se verrouillent pas mutuellement (théorique jusqu'à la tranche 6 bis, qui déplace des profils : **à faire dans son lot (a)**). Ajouter `SELECT … FOR SHARE` sur le profil dans le déclencheur de session.
   3. `mark` et `dropCache` ne contrôlent pas le résultat de `exec()` : une commande refusée dans un `MULTI` passe sans erreur. Contrôler `[[err, res]]` et lever `IdentityUnavailableError`.
 - Purge du journal de sécurité après 12 mois (SEC-33) : rôle de purge à définir avec le premier serveur (le rôle applicatif n'a pas `DELETE`).
 - Le compteur `acct-sess:{account_id}` n'expire qu'avec la plus longue durée absolue ; une session expirée y laisse son hash jusqu'à la révocation suivante (nettoyage seulement).
@@ -306,7 +306,45 @@ Suites :
   - Google : `createAccount` puis `consumePendingInvitation` ne sont pas atomiques (le compte reste non vérifié, donc inutilisable, en cas d'incident) ;
   - M4 : formule de l'e-mail d'invitation à relire avec `design:ux-copy` en tranche 7.
 - Choix faits dans les silences, à relire : lien accepté d'office à l'ouverture ; validation par un profil non enfant du compte de l'enfant, exigence figée à la création ; un profil qui cesse d'être enfant perd ses liens en attente ; `INVITE_ONLY` : un compte non vérifié sans invitation (inscrit avant le changement de mode, ou invitation disparue) est supprimé à sa vérification ; la réinitialisation ne vérifie pas un compte en attente d'invitation, ni en `INVITE_ONLY` ; blocage possible seulement parmi les contreparties d'un lien ; le nom d'un enfant bloqué n'est jamais rendu.
-- Tranche 6 bis : voir le tableau (invitation à créer un profil, passage d'un profil entre comptes, comptes d'enfants sous tutelle) ; à spécifier d'abord.
+- Tranche 6 bis : spécifiée le 2026-11-14, voir ci-dessous.
+
+**Tranche 6 bis spécifiée le 2026-11-14** (opus), code à écrire. Règles PRO-10 à PRO-16 et LNK-11 dans `01` (section « Profils entre comptes »), AUTH-08, LNK-01, LNK-06, PRO-09 et RGPD-06 revus, glossaire (« Passage », « Compte sous tutelle »), table `profile_transfer` et colonnes nouvelles dans `12`, routes et codes dans `13`. Décisions de l'utilisateur : l'invitation à créer un profil recueille l'accord et le nom, l'accès suit par les identifiants du compte (aucune nouvelle sorte de session) ; liens créés d'office avec l'ancien compte ; accord de chaque compte et du profil non enfant ; tuteur réduit aux garde-fous. Choix faits dans les silences, à relire :
+
+- le compte d'arrivée est désigné par un **jeton de passage** et doit porter un profil du cercle du profil qui part, sinon refus commun (`TRANSFER_INVALID`) : l'espace Compte ne voit jamais le cercle ;
+- une proposition de profil vers un autre compte n'est utilisable qu'**après** l'acceptation de ce compte (`PROFILE_PROPOSAL_PENDING` avant) ; l'invitant voit le refus ;
+- l'invité peut fixer son PIN et une adresse dès l'ouverture ;
+- **regroupement** = passage du dernier profil, qui supprime le compte d'origine ; refusé à un compte tuteur ;
+- détachement refusé au dernier profil (changer l'adresse du compte suffit) et à un profil enfant ;
+- l'adresse d'un profil est refusée aux enfants, n'est jamais un identifiant ; elle sert seulement à donner son accord ;
+- PIN au passage : voir B1 ci-dessous ; `pin_failures_since_entry` et la notice de réinitialisation suivent le profil ;
+- tutelle levée seulement avec un seul profil, effective à la déclaration d'âge du compte ; un compte sous tutelle ne se supprime pas lui-même ; le tuteur ne se supprime pas tant qu'il a des comptes sous tutelle ;
+- la réinitialisation du mot de passe **demandée par le tuteur** part à l'adresse du tuteur (celle demandée par le compte sous tutelle part à sa propre adresse, AUTH-06) ; le tuteur est averti des changements d'adresse, de mot de passe et de TOTP du compte sous tutelle, et celui-ci de chaque action du tuteur ;
+- avis par e-mail sans nom de profil, comme PIN-03.
+
+Revue `security-reviewer` de la spec du 2026-11-14 (cycle 1) : 4 bloquants, tous traités.
+
+- B1 (VIS-20 : profils réunis après coup, PIN réinitialisable par le compte d'arrivée) : **décision de l'utilisateur**, le PIN est proposé par défaut (garder le même, ou en fixer un ; à l'accord, l'envoi est grisé sans PIN), « aucun PIN » reste possible explicitement, avec un avertissement ; limite écrite dans PIN-06. Ajouté dans les silences : l'avertissement de GFT-08 montré aux créateurs des giftlists concernées.
+- B2 : pour un compte sous tutelle, l'accord du compte est celui du tuteur, au départ et à l'arrivée ; PRO-11 ne vise ni n'émane d'un compte sous tutelle.
+- B3 : exigence d'accord du profil figée à la demande, maintenue 30 jours après un marquage enfant (`child_changed_at`) ; changer le marqueur annule les demandes ; avis avant l'effacement de l'adresse.
+- B4 : **décision de l'utilisateur**, accord du profil refusé pendant 7 jours après une réinitialisation ou désactivation du PIN (`pin_reset_at`, après le cycle 2 : la notice s'efface par PIN-04) ou par une adresse vérifiée depuis moins de 7 jours (`TRANSFER_CONSENT_UNSAFE`), et exécution 48 heures après le dernier accord, annulable par chaque partie.
+- Importants corrigés : compte laissé sans adulte (`GUARDIAN_REQUIRED`), passage vers un compte qui porte un blocage (refus commun), adresse du détachement montrée et confirmée depuis le profil, contrôles avant `inspect`, purge du cache et des push sur les appareils de l'ancien compte, revérification des propositions, jetons du tuteur désarmés à la levée, liens d'office avec le tuteur, passage vers soi-même refusé, **plus de réservation d'adresse** par un détachement.
+- Mineurs corrigés : formule de PRO-16 alignée sur PIN-06, empreinte du déverrouillage liée au compte, regroupement déclaré (`regroup`) et verrous sur l'annulation, `security_log` avec `profile_id` et `transfer_id`, lignes `link.*` et `profile_proposal.*`, AUTH-14 complété, limite de PIN-08 sur les propositions écrite, nom de l'invitant sans session justifié, `INVITATION_TARGET_INVALID`, `INVITE_ONLY` sans effet sur ces créations.
+- Non vérifiable avant le code : ordre des verrous, écritures conditionnelles, déclencheur LNK-03 sur `profile.account_id`, égalité des délais de `TRANSFER_INVALID` et du détachement.
+
+Revue `security-reviewer` de la spec (cycle 2, dernier) : B1, B2, B3 et les importants du cycle 1 confirmés, sauf deux reprises. Corrigés :
+
+- B4 bis : le refus d'accord ne repose plus sur la notice de PIN-05, qu'un changement de PIN par PIN-04 effaçait, mais sur `pin_reset_at` (7 jours) ; le lien d'annulation part aussi à l'adresse précédente si l'actuelle a moins de 7 jours ;
+- I1 : tuteurs limités aux profils reliés par un **lien de tutelle** (`GUARDIANSHIP`), qui ne se rompt ni ne se bloque depuis le compte sous tutelle ; un adulte arrivé plus tard dans le compte tuteur n'est pas tuteur ;
+- I2 : `GUARDIAN_REQUIRED` étendu à la suppression d'un profil et au marquage enfant ;
+- I3 : tous les accords donnés, l'expiration ne joue plus, l'échéance est l'exécution ;
+- I4 : marqueur montré à l'ouverture d'une invitation `PROFILE`, `child_changed_at` posé à la création ;
+- mineurs : échec d'exécution montré comme un retrait d'acceptation, choix de PIN du profil prioritaire, notice de marquage enfant (`child_notice_at`), compte non vérifié remplacé à l'installation et adresse réservée par AUTH-16 tenue pour prise, routes manquantes dans `13` (retrait d'acceptation, annulation, reprise par le tuteur), `TRANSFER_CANCEL` dans `12`, reprise du dernier profil d'un compte sous tutelle = regroupement, déclencheur de session à corriger au lot (a).
+
+Restes, après deux cycles, non revus : ces corrections du cycle 2 elles-mêmes ; avant le code, l'ordre des verrous, les écritures conditionnelles, l'égalité des délais de `TRANSFER_INVALID` et du détachement, et la tâche planifiée d'exécution (sans session, doit tout revérifier). Limite assumée écrite : un détachement qui ne se fait jamais laisse deviner que l'adresse avait un compte.
+
+Marqueurs de non-fuite à ajouter (OBS-26) : jeton de passage, lien d'installation, jeton d'accord, adresse du profil, nom saisi à `POST /invitations/profile/accept`, `new_profile_name`, `new_email`, nouveau PIN.
+
+Découpage proposé pour le code (opus, `security-reviewer` à la fin) : (a) migration et domaine (`profile_transfer`, colonnes, déclencheurs, `isGuardianOf` étendu) ; (b) adresse du profil et invitation `PROFILE` ; (c) passage, regroupement et détachement (PRO-12 à PRO-14, LNK-11) ; (d) compte sous tutelle et pouvoirs du tuteur (PRO-15, PRO-16). Tests de non-fuite d'abord (QA-10), avec les marqueurs ci-dessus.
 - Tranche 7 : pages `/invitations/open` (jeton dans le fragment, `Referrer-Policy: no-referrer`), cercle, liens à valider (`awaitingMyApproval`), blocages, marqueur enfant dans l'espace Compte (ré-authentification), champ `invitationToken` à l'inscription et avant « S'inscrire avec Google ».
 
 Sortie : critères d'acceptation de `01` ; revue `security-reviewer` sans point bloquant.
