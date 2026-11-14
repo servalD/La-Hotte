@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { type ReactNode, type SyntheticEvent, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { goToAuthorization } from '@/features/auth/authorization-url';
 import { authErrorKey } from '@/features/auth/api-errors';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
@@ -57,7 +58,7 @@ function ReauthForm({ onDone }: { onDone: () => void }) {
   function viaGoogle() {
     google.mutate(undefined, {
       onSuccess: (view) => {
-        window.location.assign(view.authorizationUrl);
+        if (!goToAuthorization(view.authorizationUrl)) setError(ta('errors.GOOGLE_UNAVAILABLE'));
       },
       onError: (e) => {
         setError(ta(`errors.${authErrorKey(e)}`));

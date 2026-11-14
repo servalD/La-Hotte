@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { purgeUserData } from '@/lib/session/purge';
 import { Label } from '@/components/ui/label';
 import { Field } from './field';
 import { FormError } from './form-error';
@@ -51,6 +52,7 @@ export function GoogleReturn() {
     if (handled.current || !status) return;
     handled.current = true;
     void (async () => {
+      purgeUserData(queryClient);
       await queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
       await queryClient.invalidateQueries({ queryKey: getGetAccountQueryKey() });
       if (status === 'signed_in') router.replace('/profiles');

@@ -134,6 +134,10 @@ export function TotpSection() {
           codes={codes}
           onDone={() => {
             setCodes(null);
+            // Secret et codes de secours ne restent pas dans l'état des mutations (M1).
+            start.reset();
+            activate.reset();
+            regenerate.reset();
           }}
         />
       ) : enrollment ? (

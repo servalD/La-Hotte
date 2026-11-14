@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { purgeUserData } from '@/lib/session/purge';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@wishlist/api-client';
 import { authErrorKey } from './api-errors';
@@ -41,6 +42,7 @@ export function SecondFactorForm() {
       { data: { code, trustDevice: form.get('trustDevice') === 'on' } },
       {
         onSuccess: (status) => {
+          purgeUserData(queryClient);
           queryClient.setQueryData(getGetSessionQueryKey(), status);
           router.replace('/profiles');
         },

@@ -158,7 +158,9 @@
   },
   "session": {
     "loading": "Chargement",
-    "unreachable": "Le serveur ne répond pas. Vérifiez votre connexion, puis rechargez la page."
+    "unreachable": "Le serveur ne répond pas. Vérifiez votre connexion, puis rechargez la page.",
+    "profileUnreadable": "Impossible de vérifier ce profil. Par prudence, son contenu n’est pas affiché. Vérifiez votre connexion, puis réessayez.",
+    "retry": "Réessayer"
   },
   "nav": {
     "app": "La Hotte",

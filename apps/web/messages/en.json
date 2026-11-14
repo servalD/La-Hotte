@@ -158,7 +158,9 @@
   },
   "session": {
     "loading": "Loading",
-    "unreachable": "The server is not responding. Check your connection, then reload the page."
+    "unreachable": "The server is not responding. Check your connection, then reload the page.",
+    "profileUnreadable": "Unable to check this profile. As a precaution, its content is not shown. Check your connection, then try again.",
+    "retry": "Try again"
   },
   "nav": {
     "app": "La Hotte",

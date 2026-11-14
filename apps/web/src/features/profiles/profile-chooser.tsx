@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { markLaunchHandled } from '@/lib/session/launch';
+import { purgeUserData } from '@/lib/session/purge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PinEntry, PinNotice } from './pin-entry';
 import { ProfileAvatar } from './profile-avatar';
@@ -37,6 +39,9 @@ export function ProfileChooser({ unlockOnly = false }: { unlockOnly?: boolean })
   const pinTarget = asking ?? (unlockOnly ? (profiles.find((p) => p.hasPin) ?? null) : null);
 
   async function entered(selection: ProfileSelectionView) {
+    // Un autre profil vient de devenir actif : rien de l'ancien ne doit rester (OFF-20).
+    purgeUserData(queryClient);
+    if (selection.profileUnlocked) markLaunchHandled();
     await queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
     if (selection.profileUnlocked) {
       if (selection.pinResetNoticeAt || selection.failedPinAttempts > 0) setNotice(selection);
@@ -105,6 +110,7 @@ export function ProfileChooser({ unlockOnly = false }: { unlockOnly?: boolean })
                   { data: { profileId: profile.id } },
                   {
                     onSuccess: () => {
+                      purgeUserData(queryClient);
                       void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
                     },
                   },

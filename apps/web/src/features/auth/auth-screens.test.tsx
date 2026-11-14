@@ -73,10 +73,18 @@ describe('page à jeton dans le fragment (AUTH-15, AUTH-16)', () => {
     window.history.replaceState(null, '', `/auth/verify-email#${token}`);
     wrap(<TokenConfirm kind="verifyEmail" />);
     await userEvent.click(await screen.findByRole('button', { name: 'Confirmer mon adresse' }));
+    // Sans cookie CSRF, le client lit d'abord GET /session (API-21), puis envoie la mutation.
+    const post = () =>
+      fetchMock.mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(post()).toBeDefined();
     });
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(
+      fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toHaveLength(1);
+    const [url, init] = post() as [string, RequestInit];
     expect(url).not.toContain(token);
     expect(init.body).toBe(JSON.stringify({ token }));
     expect(await screen.findByRole('status')).toHaveTextContent('Adresse confirmée');

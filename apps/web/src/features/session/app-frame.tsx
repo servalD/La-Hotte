@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
+import { purgeUserData } from '@/lib/session/purge';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 
@@ -38,6 +39,7 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   function onLock() {
     lock.mutate(undefined, {
       onSuccess: () => {
+        purgeUserData(queryClient);
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() }).then(() => {
           router.replace('/profiles/unlock');
         });

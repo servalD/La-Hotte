@@ -56,23 +56,63 @@ let csrfSource: CsrfSource | null = null;
 /** Remplace la lecture du cookie CSRF (tests, rendu serveur). `null` rétablit la lecture du cookie. */
 export function setCsrfTokenSource(source: CsrfSource | null): void {
   csrfSource = source;
+  bootstrapped = null;
 }
 
 const isProblem = (value: unknown): value is ProblemDetails =>
   typeof value === 'object' && value !== null && 'code' in value && 'status' in value;
 
-export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const headers = new Headers(init.headers);
-  headers.set('Accept', 'application/json');
-  // API-21 : toute mutation porte le jeton CSRF recopié du cookie et signale une action de
-  // l'utilisateur. Une lecture ne pose `X-User-Activity` que si l'appelant le demande (navigation).
-  const method = (init.method ?? 'GET').toUpperCase();
-  if (!SAFE_METHODS.has(method)) {
-    const token = (csrfSource ?? cookieCsrf)();
-    if (token) headers.set('X-CSRF-Token', token);
-    headers.set('X-User-Activity', '1');
+/** Jeton de pré-session rendu par `GET /session` : sans session, il n'existe pas de cookie CSRF. */
+let bootstrapped: string | null = null;
+
+async function bootstrapCsrf(): Promise<string | null> {
+  try {
+    const response = await fetch(`${baseUrl}/api/v1/session`, {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { csrfToken?: unknown };
+    bootstrapped = typeof body.csrfToken === 'string' && body.csrfToken ? body.csrfToken : null;
+  } catch {
+    bootstrapped = null;
   }
-  const response = await fetch(`${baseUrl}${url}`, { ...init, credentials: 'include', headers });
+  return bootstrapped;
+}
+
+/** Jeton à envoyer : le cookie d'une session, sinon celui de la pré-session (API-21). */
+async function currentCsrf(): Promise<string | null> {
+  return (
+    (csrfSource ?? cookieCsrf)() ?? bootstrapped ?? (csrfSource ? null : await bootstrapCsrf())
+  );
+}
+
+export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase();
+  const mutating = !SAFE_METHODS.has(method);
+
+  const send = async (token: string | null): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    headers.set('Accept', 'application/json');
+    // API-21 : toute mutation porte le jeton CSRF et signale une action de l'utilisateur. Une
+    // lecture ne pose `X-User-Activity` que si l'appelant le demande (navigation).
+    if (mutating) {
+      if (token) headers.set('X-CSRF-Token', token);
+      headers.set('X-User-Activity', '1');
+    }
+    return fetch(`${baseUrl}${url}`, { ...init, credentials: 'include', headers });
+  };
+
+  let response = await send(mutating ? await currentCsrf() : null);
+
+  // Jeton périmé (rotation, expiration de la pré-session) : on en redemande un, une seule fois.
+  if (mutating && response.status === 403 && !csrfSource) {
+    const probe = await response.clone().text();
+    if (probe.includes('CSRF_REJECTED')) {
+      bootstrapped = null;
+      response = await send(cookieCsrf() ?? (await bootstrapCsrf()));
+    }
+  }
 
   const text = response.status === 204 ? '' : await response.text();
   const body: unknown = text ? JSON.parse(text) : undefined;

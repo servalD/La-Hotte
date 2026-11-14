@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { purgeUserData } from '@/lib/session/purge';
 import { authErrorKey } from './api-errors';
 import { text } from './form-data';
 import { Field } from './field';
@@ -40,6 +41,8 @@ export function LoginForm() {
       { data: parsed.data },
       {
         onSuccess: (status) => {
+          // Nouvelle identité : le cache d'un compte précédent ne survit pas à la connexion.
+          purgeUserData(queryClient);
           queryClient.setQueryData(getGetSessionQueryKey(), status);
           // AUTH-12 : mot de passe validé, second facteur attendu (écran de la tranche 7b).
           router.replace(status.secondFactorPending ? '/auth/second-factor' : '/');

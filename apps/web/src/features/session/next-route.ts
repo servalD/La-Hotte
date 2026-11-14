@@ -3,6 +3,13 @@ import type { SessionStatusView } from '@wishlist/api-client';
 /** Ce qu'un écran exige de la session : une session, ou une session avec un profil déverrouillé. */
 export type Requirement = 'session' | 'profile';
 
+/** Identité de la session : tout changement impose d'effacer les données du navigateur. */
+export function identityKey(status: SessionStatusView): string {
+  if (!status.authenticated || !status.session) return 'anonymous';
+  const s = status.session;
+  return `${s.id}:${s.activeProfileId ?? 'none'}:${s.profileUnlocked ? 'unlocked' : 'locked'}`;
+}
+
 /**
  * Où envoyer l'utilisateur pour que la session satisfasse l'exigence, ou `null` si elle la
  * satisfait. Le client n'applique aucune règle d'accès : il suit l'état que l'API lui rend (PIN-02).

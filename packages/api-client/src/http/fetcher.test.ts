@@ -71,3 +71,63 @@ describe('Retry-After', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('jeton CSRF sans session (API-21)', () => {
+  const session = (token: string) =>
+    new Response(JSON.stringify({ csrfToken: token, authenticated: false }), { status: 200 });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setCsrfTokenSource(null);
+  });
+
+  it('un navigateur neuf demande GET /session avant la première mutation', async () => {
+    setCsrfTokenSource(null);
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(session('pre-1'))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mock);
+    await apiFetch('/api/v1/auth/login', { method: 'POST', body: '{}' });
+    const first = mock.mock.calls[0] as [string, RequestInit];
+    const second = mock.mock.calls[1] as [string, RequestInit];
+    expect(first[0]).toBe('/api/v1/session');
+    expect(new Headers(second[1].headers).get('X-CSRF-Token')).toBe('pre-1');
+  });
+
+  it('un jeton refusé est redemandé une fois, puis la mutation est rejouée', async () => {
+    setCsrfTokenSource(null);
+    const refused = () =>
+      new Response(JSON.stringify({ code: 'CSRF_REJECTED', status: 403, title: 'x', type: 'x' }), {
+        status: 403,
+      });
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(session('vieux'))
+      .mockResolvedValueOnce(refused())
+      .mockResolvedValueOnce(session('neuf'))
+      .mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mock);
+    await apiFetch('/api/v1/auth/login', { method: 'POST', body: '{}' });
+    expect(mock).toHaveBeenCalledTimes(4);
+    const last = mock.mock.calls[3] as [string, RequestInit];
+    expect(new Headers(last[1].headers).get('X-CSRF-Token')).toBe('neuf');
+  });
+
+  it('ne rejoue pas indéfiniment : un second refus devient une ApiError', async () => {
+    setCsrfTokenSource(null);
+    const refused = () =>
+      new Response(JSON.stringify({ code: 'CSRF_REJECTED', status: 403, title: 'x', type: 'x' }), {
+        status: 403,
+      });
+    const mock = vi
+      .fn()
+      .mockResolvedValueOnce(session('a'))
+      .mockResolvedValueOnce(refused())
+      .mockResolvedValueOnce(session('b'))
+      .mockResolvedValueOnce(refused());
+    vi.stubGlobal('fetch', mock);
+    await expect(apiFetch('/x', { method: 'POST' })).rejects.toBeInstanceOf(ApiError);
+    expect(mock).toHaveBeenCalledTimes(4);
+  });
+});

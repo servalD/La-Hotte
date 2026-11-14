@@ -4,6 +4,7 @@ import { type GoogleRegistrationDto, useStartGoogleSignIn } from '@wishlist/api-
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { goToAuthorization } from './authorization-url';
 import { authErrorKey } from './api-errors';
 import { FormError } from './form-error';
 
@@ -34,7 +35,7 @@ export function GoogleButton({
       { data: body ? { registration: body } : {} },
       {
         onSuccess: (view) => {
-          window.location.assign(view.authorizationUrl);
+          if (!goToAuthorization(view.authorizationUrl)) setError(t('errors.GOOGLE_UNAVAILABLE'));
         },
         onError: (e) => {
           setError(t(`errors.${authErrorKey(e)}`));

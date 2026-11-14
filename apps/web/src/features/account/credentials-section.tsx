@@ -13,6 +13,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { goToAuthorization } from '@/features/auth/authorization-url';
 import { authErrorKey, isPasswordError } from '@/features/auth/api-errors';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
@@ -103,7 +104,7 @@ export function CredentialsSection() {
     setError(null);
     linkGoogle.mutate(undefined, {
       onSuccess: (view) => {
-        window.location.assign(view.authorizationUrl);
+        if (!goToAuthorization(view.authorizationUrl)) setError(ta('errors.GOOGLE_UNAVAILABLE'));
       },
       onError: (e) => {
         fail(e, link);

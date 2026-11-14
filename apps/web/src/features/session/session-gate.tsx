@@ -1,11 +1,13 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useGetSession } from '@wishlist/api-client';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { nextRoute, type Requirement } from './next-route';
+import { purgeUserData } from '@/lib/session/purge';
+import { identityKey, nextRoute, type Requirement } from './next-route';
 
 /**
  * Garde d'écran : suit l'état de session rendu par l'API et redirige. Ce n'est pas une règle
@@ -22,6 +24,17 @@ export function SessionGate({
   const router = useRouter();
   const { data, isPending, isError } = useGetSession({ query: { staleTime: 0 } });
   const target = data ? nextRoute(data, requires) : null;
+  const queryClient = useQueryClient();
+
+  // Filet de sécurité : quelle que soit la cause (session expirée, autre onglet, verrouillage), un
+  // changement d'identité efface les données de l'ancienne (OFF-20, PIN-02).
+  const key = data ? identityKey(data) : null;
+  const previous = useRef<string | null>(null);
+  useEffect(() => {
+    if (key === null) return;
+    if (previous.current !== null && previous.current !== key) purgeUserData(queryClient);
+    previous.current = key;
+  }, [key, queryClient]);
 
   useEffect(() => {
     if (target) router.replace(target);
