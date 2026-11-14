@@ -24,6 +24,7 @@ import {
 import { type FakeOidcProvider, startFakeOidcProvider } from '../support/fake-oidc-provider';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
 import { PRESESSION_COOKIE } from '../../src/modules/identity/presentation/cookies';
+import { RunDueTransfers } from '../../src/modules/identity/application/contract';
 import { createAccountWithProfile, session as sessionHeaders, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
@@ -84,6 +85,8 @@ const linkSecrets: Record<string, string> = {};
 const wardSecrets: Record<string, string> = {};
 /** Secrets de l'adresse d'un profil et de l'invitation à créer un profil (PRO-10, PRO-11). */
 const profileInvitationSecrets: Record<string, string> = {};
+/** Secrets des passages et détachements (PRO-12, PRO-13). */
+const transferSecrets: Record<string, string> = {};
 /** Fournisseur OpenID Connect local, à la place de Google. */
 let provider: FakeOidcProvider | undefined;
 /** E-mails et tâches de fond observables ; aucun appel au service des fuites (réseau). */
@@ -281,6 +284,130 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playLinkScenario(app);
   await playWardScenario(app);
   await playProfileInvitationScenario(app);
+  await playTransferScenario(app);
+}
+
+/**
+ * Passage et détachement (tranche 6 bis, lot c) : jeton de passage dans les corps, nouveau PIN
+ * saisi à l'accord, adresse du détachement porteuse du marqueur, exécution par la tâche planifiée
+ * (SQL brut, sessions, liens). Rien ne doit en sortir.
+ */
+async function playTransferScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const lifecycle = app.get(SessionLifecycle);
+  const fresh = async (account: { accountId: string; profileId: string }) => {
+    const signed = await signIn(app, account);
+    const rotated = await lifecycle.rotate({
+      id: signed.sessionId,
+      accountId: account.accountId,
+      tokenHash: signed.tokenHash,
+    });
+    const s = sessionHeaders(
+      app,
+      rotated.token,
+      rotated.record.tokenHash,
+      signed.sessionId,
+      account.accountId,
+      account.profileId,
+    );
+    return {
+      ...markedHeaders,
+      Cookie: `${s.cookie}; session=${MARKER}`,
+      'X-CSRF-Token': s.csrf,
+      Origin: 'http://localhost:3000',
+    };
+  };
+
+  const origin = await createAccountWithProfile(prisma);
+  const host = await createAccountWithProfile(prisma);
+  const moverId = randomUUID();
+  await prisma.profile.create({
+    data: {
+      id: moverId,
+      accountId: origin.accountId,
+      displayName: `Part ${MARKER}`,
+      accentColor: '#336699',
+      locale: 'fr',
+      currency: 'EUR',
+      timezone: 'Europe/Paris',
+    },
+  });
+  const [a, b] = moverId < host.profileId ? [moverId, host.profileId] : [host.profileId, moverId];
+  await prisma.profileLink.create({
+    data: {
+      id: randomUUID(),
+      profileAId: a,
+      profileBId: b,
+      status: 'ACCEPTED',
+      requestedBy: a,
+      aGuardianRequired: false,
+      bGuardianRequired: false,
+    },
+  });
+
+  const originAs = await fresh(origin);
+  const requested = await http
+    .post(`/api/v1/account/profiles/${moverId}/transfer`)
+    .set(originAs)
+    .send({ kind: 'MOVE' })
+    .expect(201);
+  transferSecrets.transferToken = requested.body.token as string;
+  const moverAs = await fresh({ accountId: origin.accountId, profileId: moverId });
+  pinSecrets.transferPin = String(randomInt(10_000_000, 100_000_000));
+  await http
+    .post('/api/v1/profiles/me/transfer/consent')
+    .set(moverAs)
+    .send({ pinChoice: 'NEW', newPin: pinSecrets.transferPin })
+    .expect(204);
+  const hostAs = await fresh(host);
+  await http
+    .post('/api/v1/account/transfers/inspect')
+    .set(hostAs)
+    .send({ token: transferSecrets.transferToken })
+    .expect(200);
+  await http
+    .post('/api/v1/account/transfers/accept')
+    .set(hostAs)
+    .send({ token: transferSecrets.transferToken })
+    .expect(204);
+  await prisma.profileTransfer.updateMany({
+    where: { profileId: moverId, completedAt: null },
+    data: { executesAt: new Date(Date.now() - 1) },
+  });
+  await app.get(RunDueTransfers).execute();
+
+  // Détachement vers une adresse porteuse du marqueur.
+  const leaverId = randomUUID();
+  await prisma.profile.create({
+    data: {
+      id: leaverId,
+      accountId: origin.accountId,
+      displayName: `Majeur ${MARKER}`,
+      accentColor: '#336699',
+      locale: 'fr',
+      currency: 'EUR',
+      timezone: 'Europe/Paris',
+    },
+  });
+  transferSecrets.detachEmail = `majeur_${MARKER}@example.test`.toLowerCase();
+  await http
+    .post(`/api/v1/account/profiles/${leaverId}/transfer`)
+    .set(await fresh(origin))
+    .send({ kind: 'DETACH', email: transferSecrets.detachEmail })
+    .expect(201);
+  await http
+    .post('/api/v1/profiles/me/transfer/consent')
+    .set(await fresh({ accountId: origin.accountId, profileId: leaverId }))
+    .send({ pinChoice: 'NONE' })
+    .expect(204);
+  await prisma.profileTransfer.updateMany({
+    where: { profileId: leaverId, completedAt: null },
+    data: { executesAt: new Date(Date.now() - 1) },
+  });
+  await app.get(RunDueTransfers).execute();
+  await background.flush();
+  transferSecrets.setupToken = mail.lastToken(transferSecrets.detachEmail) ?? '';
 }
 
 /**
@@ -1215,6 +1342,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       [
         'invitationPin',
         'pin',
+        'transferPin',
         'pinHash',
         'pinStamp',
         'reauthToken',
@@ -1238,7 +1366,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     ]) {
       expect(bodies('traces')).toContain(route);
     }
-    for (const name of ['pin', 'wrongPin', 'resetPin', 'invitationPin']) {
+    for (const name of ['pin', 'wrongPin', 'resetPin', 'invitationPin', 'transferPin']) {
       const pin = pinSecrets[name] ?? '';
       expect(pin).toMatch(/^[0-9]{8}$/);
       const leaked = new RegExp(`(?<!\\d)${pin}(?!\\d)`).test(everything);
@@ -1325,6 +1453,29 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       expect(bodies('traces')).toContain(route);
     }
     for (const [name, secret] of Object.entries(profileInvitationSecrets)) {
+      expect(secret.length).toBeGreaterThanOrEqual(16);
+      expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
+    }
+  });
+
+  it('PRO-12, PRO-13 : jeton de passage, adresse du détachement, lien d’installation absents', () => {
+    expect(Object.keys(transferSecrets).sort()).toEqual(
+      ['detachEmail', 'setupToken', 'transferToken'].sort(),
+    );
+    const everything = [
+      logLines.join(''),
+      output.text(),
+      handedToSdk.join('\n'),
+      records.map((record) => record.body).join('\n'),
+    ].join('\n');
+    for (const route of [
+      '/api/v1/account/profiles/:id/transfer',
+      '/api/v1/profiles/me/transfer/consent',
+      '/api/v1/account/transfers/accept',
+    ]) {
+      expect(bodies('traces')).toContain(route);
+    }
+    for (const [name, secret] of Object.entries(transferSecrets)) {
       expect(secret.length).toBeGreaterThanOrEqual(16);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
     }

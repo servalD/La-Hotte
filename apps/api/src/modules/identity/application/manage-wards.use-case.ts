@@ -32,6 +32,9 @@ import {
   WardReleaseSingleProfileError,
 } from '../domain/ward.errors';
 import { WardRepository } from '../domain/ward.ports';
+import { TransferRepository } from '../domain/transfer.ports';
+import { AgeAttestationRequiredError } from '../domain/transfer.errors';
+import { TransferEffects } from './manage-transfers.use-case';
 import { AccountMailer, type GuardianAction } from './account-mailer';
 import type { ClientInfo } from './client-info';
 import { PasswordPolicy } from './password-policy';
@@ -173,13 +176,51 @@ export class SetupWardAccount {
     private readonly mailer: AccountMailer,
     private readonly background: BackgroundTasks,
     private readonly securityLog: SecurityLog,
+    private readonly transfers: TransferRepository,
+    private readonly effects: TransferEffects,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
 
+  /**
+   * PRO-13 : installation d'un compte détaché. Exige la déclaration d'âge (AUTH-08) ; le
+   * détachement s'exécute dans la même transaction que la création du compte (PRO-14). Une
+   * adresse prise reçoit le refus commun ; un compte non vérifié de même adresse est remplacé.
+   */
+  private async setupDetached(
+    tokenHash: string,
+    input: { readonly password: string; readonly ageAttested?: true; readonly client: ClientInfo },
+  ): Promise<void> {
+    const transfer = await this.transfers.findOpenByToken(tokenHash, 'DETACH', this.clock.now());
+    if (!transfer?.newEmail) throw new AccountSetupInvalidError();
+    if (input.ageAttested !== true) throw new AgeAttestationRequiredError();
+    const passwordHash = await this.passwords.hashNew(input.password);
+    const existing = await this.accounts.findByEmail(transfer.newEmail);
+    if (existing && !existing.emailVerified)
+      await this.removeUnverified.execute(existing.accountId);
+    const result = await this.transfers.execute({
+      transferId: transfer.id,
+      now: this.clock.now(),
+      linkIds: () => this.ids.next(),
+      newAccount: { id: this.ids.next(), email: transfer.newEmail, passwordHash },
+    });
+    if (result.status !== 'completed') {
+      if (result.status === 'email_taken') {
+        const to = transfer.newEmail;
+        this.background.run('transfer.detach_taken', async () => {
+          await this.mailer.send(to, { kind: 'email_taken_notice' });
+        });
+      }
+      throw new AccountSetupInvalidError();
+    }
+    await this.effects.apply(result, transfer.id, input.client);
+  }
+
   async execute(input: {
     readonly token: string;
     readonly password: string;
+    /** AUTH-08 : exigé pour un compte détaché (PRO-13), sans objet pour un compte sous tutelle. */
+    readonly ageAttested?: true;
     readonly client: ClientInfo;
   }): Promise<void> {
     const now = this.clock.now();
@@ -191,7 +232,10 @@ export class SetupWardAccount {
 
     const tokenHash = this.tokens.hash(input.token);
     const setup = await this.wards.findOpenSetup(tokenHash, now);
-    if (!setup) throw new AccountSetupInvalidError();
+    if (!setup) {
+      await this.setupDetached(tokenHash, input);
+      return;
+    }
     // AUTH-02 : mêmes règles qu'à l'inscription (longueur, fuites connues).
     const passwordHash = await this.passwords.hashNew(input.password);
 
@@ -235,6 +279,7 @@ export class SetupWardAccount {
 }
 
 /** PRO-16 : comptes sous la tutelle du compte, métadonnées seulement (PIN-08). */
+
 @Injectable()
 export class ListWards {
   constructor(private readonly wards: WardRepository) {}

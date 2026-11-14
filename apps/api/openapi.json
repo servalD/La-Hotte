@@ -393,6 +393,269 @@
         ]
       }
     },
+    "/api/v1/account/profiles/{id}/transfer": {
+      "post": {
+        "operationId": "requestTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTransferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedTransferView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      },
+      "get": {
+        "operationId": "getAccountProfileTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      },
+      "delete": {
+        "operationId": "cancelAccountProfileTransfer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers": {
+      "get": {
+        "operationId": "listIncomingTransfers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomingTransferListView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers/{id}/acceptance": {
+      "delete": {
+        "operationId": "withdrawTransferAcceptance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers/accept": {
+      "post": {
+        "operationId": "acceptTransfer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/api/v1/account/transfers/inspect": {
+      "post": {
+        "operationId": "inspectTransfer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferPreviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Le jeton dans le corps, jamais dans l'adresse (journaux, historique).",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/account/wards": {
       "post": {
         "operationId": "createWard",
@@ -2163,6 +2426,93 @@
         ]
       }
     },
+    "/api/v1/profiles/me/transfer": {
+      "get": {
+        "operationId": "getOwnTransfer",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnTransferStateView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      },
+      "delete": {
+        "operationId": "refuseOwnTransfer",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/transfer/consent": {
+      "post": {
+        "operationId": "consentOwnTransfer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferConsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
     "/api/v1/session": {
       "get": {
         "operationId": "getSession",
@@ -2325,6 +2675,74 @@
         "summary": "`404` pour une session inconnue comme pour celle d'un autre compte (SEC-04).",
         "tags": [
           "sessions"
+        ]
+      }
+    },
+    "/api/v1/transfers/cancel": {
+      "post": {
+        "operationId": "cancelTransferByEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCancelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/transfers/consent": {
+      "post": {
+        "operationId": "consentTransferByEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferConsentByEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profiles"
         ]
       }
     },
@@ -2564,6 +2982,13 @@
             "minLength": 12,
             "maxLength": 256,
             "format": "password"
+          },
+          "ageAttested": {
+            "type": "boolean",
+            "description": "AUTH-08 : exigé pour un compte détaché (PRO-13) ; sans objet pour un compte sous tutelle.",
+            "enum": [
+              true
+            ]
           }
         },
         "required": [
@@ -2785,6 +3210,30 @@
         },
         "required": [
           "id",
+          "token",
+          "expiresAt"
+        ]
+      },
+      "CreatedTransferView": {
+        "type": "object",
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "token": {
+            "type": "string",
+            "nullable": true,
+            "description": "Passage seulement ; `null` pour un détachement (le lien part à la nouvelle adresse).",
+            "format": "password"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "transferId",
           "token",
           "expiresAt"
         ]
@@ -3125,6 +3574,48 @@
           }
         }
       },
+      "IncomingTransferListView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomingTransferView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "IncomingTransferView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "executesAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "profileName",
+          "accentColor",
+          "executesAt"
+        ]
+      },
       "InvitationListView": {
         "type": "object",
         "properties": {
@@ -3354,6 +3845,95 @@
           "proposal",
           "createdAt",
           "expiresAt"
+        ]
+      },
+      "OwnTransferStateView": {
+        "type": "object",
+        "properties": {
+          "transfer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OwnTransferView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "transfer"
+        ]
+      },
+      "OwnTransferView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "MOVE",
+              "DETACH"
+            ],
+            "type": "string"
+          },
+          "regroup": {
+            "type": "boolean"
+          },
+          "newEmail": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-13 : adresse du nouveau compte, montrée sur l'écran d'accord (I3).",
+            "format": "email"
+          },
+          "profileConsentRequired": {
+            "type": "boolean"
+          },
+          "profileConsented": {
+            "type": "boolean"
+          },
+          "destinationAccepted": {
+            "type": "boolean"
+          },
+          "pinChoice": {
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "executesAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-12 : 48 heures après le dernier accord ; `null` tant qu'il en manque.",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destinationNames": {
+            "description": "Profils du compte d'arrivée que le profil connaît (passage accepté).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "regroup",
+          "newEmail",
+          "profileConsentRequired",
+          "profileConsented",
+          "destinationAccepted",
+          "pinChoice",
+          "executesAt",
+          "expiresAt",
+          "destinationNames"
         ]
       },
       "PasswordResetConfirmDto": {
@@ -3713,6 +4293,49 @@
           "ageAttested"
         ]
       },
+      "RequestTransferDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "MOVE",
+              "DETACH"
+            ],
+            "type": "string"
+          },
+          "regroup": {
+            "type": "boolean",
+            "description": "PRO-12 : regroupement déclaré (dernier profil du compte, qui disparaît).",
+            "default": false
+          },
+          "email": {
+            "type": "string",
+            "description": "PRO-13 : adresse du nouveau compte (détachement seulement).",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "pinChoice": {
+            "description": "Par défaut : garder son PIN s'il en a un, sinon en fixer un.",
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "newPin": {
+            "type": "string",
+            "description": "Nouveau PIN d'un profil dont l'accord n'est pas demandé (enfant).",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "ResetProfilePinDto": {
         "type": "object",
         "properties": {
@@ -3932,6 +4555,183 @@
         "required": [
           "secret",
           "otpauthUri"
+        ]
+      },
+      "TransferCancelDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "TransferConsentByEmailDto": {
+        "type": "object",
+        "properties": {
+          "pinChoice": {
+            "description": "PRO-12 : `KEEP` garder son PIN, `NEW` en fixer un (`newPin`), `NONE` n'en avoir aucun\n(jamais par défaut, efface le PIN existant).",
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "minLength": 43,
+            "maxLength": 43
+          }
+        },
+        "required": [
+          "pinChoice",
+          "token"
+        ]
+      },
+      "TransferConsentDto": {
+        "type": "object",
+        "properties": {
+          "pinChoice": {
+            "description": "PRO-12 : `KEEP` garder son PIN, `NEW` en fixer un (`newPin`), `NONE` n'en avoir aucun\n(jamais par défaut, efface le PIN existant).",
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "newPin": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 8,
+            "pattern": "^[0-9]+$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "pinChoice"
+        ]
+      },
+      "TransferPreviewView": {
+        "type": "object",
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileName": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "isChild": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "transferId",
+          "profileName",
+          "avatar",
+          "accentColor",
+          "isChild"
+        ]
+      },
+      "TransferTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "format": "password"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "TransferView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "MOVE",
+              "DETACH"
+            ],
+            "type": "string"
+          },
+          "regroup": {
+            "type": "boolean"
+          },
+          "newEmail": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-13 : adresse du nouveau compte, montrée sur l'écran d'accord (I3).",
+            "format": "email"
+          },
+          "profileConsentRequired": {
+            "type": "boolean"
+          },
+          "profileConsented": {
+            "type": "boolean"
+          },
+          "destinationAccepted": {
+            "type": "boolean"
+          },
+          "pinChoice": {
+            "enum": [
+              "KEEP",
+              "NEW",
+              "NONE"
+            ],
+            "type": "string"
+          },
+          "executesAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "PRO-12 : 48 heures après le dernier accord ; `null` tant qu'il en manque.",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "regroup",
+          "newEmail",
+          "profileConsentRequired",
+          "profileConsented",
+          "destinationAccepted",
+          "pinChoice",
+          "executesAt",
+          "expiresAt"
         ]
       },
       "TrustedDeviceListView": {

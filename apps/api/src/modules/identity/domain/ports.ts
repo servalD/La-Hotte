@@ -266,6 +266,11 @@ export const SECURITY_EVENTS = [
   'profile_invitation.redeemed',
   'profile_proposal.accepted',
   'profile_proposal.refused',
+  // PRO-12 à PRO-14.
+  'profile.transfer_requested',
+  'profile.transfer_consented',
+  'profile.transfer_completed',
+  'profile.transfer_cancelled',
 ] as const;
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 

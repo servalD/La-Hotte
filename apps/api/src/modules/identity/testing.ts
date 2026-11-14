@@ -56,3 +56,5 @@ export { CircleReader, LinkRepository } from './domain/link.ports';
 export { InMemoryLinkRepository } from './infrastructure/in-memory-links';
 export { WardRepository } from './domain/ward.ports';
 export { InMemoryWardRepository } from './infrastructure/in-memory-wards';
+export { TransferRepository } from './domain/transfer.ports';
+export { InMemoryTransferRepository } from './infrastructure/in-memory-transfers';

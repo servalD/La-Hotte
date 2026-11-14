@@ -131,6 +131,115 @@ export const resetProfilePinBody = zod.object({
     .regex(resetProfilePinBodyNewPinRegExp),
 });
 
+export const requestTransferParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const requestTransferBodyRegroupDefault = false;
+export const requestTransferBodyEmailMax = 254;
+
+export const requestTransferBodyNewPinMin = 4;
+export const requestTransferBodyNewPinMax = 8;
+
+export const requestTransferBodyNewPinRegExp = new RegExp('^[0-9]+$');
+
+export const requestTransferBody = zod.object({
+  kind: zod.enum(['MOVE', 'DETACH']),
+  regroup: zod
+    .boolean()
+    .optional()
+    .describe('PRO-12 : regroupement déclaré (dernier profil du compte, qui disparaît).'),
+  email: zod
+    .email()
+    .max(requestTransferBodyEmailMax)
+    .optional()
+    .describe('PRO-13 : adresse du nouveau compte (détachement seulement).'),
+  pinChoice: zod
+    .enum(['KEEP', 'NEW', 'NONE'])
+    .optional()
+    .describe("Par défaut : garder son PIN s'il en a un, sinon en fixer un."),
+  newPin: zod
+    .string()
+    .min(requestTransferBodyNewPinMin)
+    .max(requestTransferBodyNewPinMax)
+    .regex(requestTransferBodyNewPinRegExp)
+    .optional()
+    .describe("Nouveau PIN d'un profil dont l'accord n'est pas demandé (enfant)."),
+});
+
+export const getAccountProfileTransferParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const getAccountProfileTransferResponse = zod.object({
+  id: zod.uuid(),
+  kind: zod.enum(['MOVE', 'DETACH']),
+  regroup: zod.boolean(),
+  newEmail: zod
+    .email()
+    .nullable()
+    .describe("PRO-13 : adresse du nouveau compte, montrée sur l'écran d'accord (I3)."),
+  profileConsentRequired: zod.boolean(),
+  profileConsented: zod.boolean(),
+  destinationAccepted: zod.boolean(),
+  pinChoice: zod.enum(['KEEP', 'NEW', 'NONE']),
+  executesAt: zod.iso
+    .datetime({})
+    .nullable()
+    .describe("PRO-12 : 48 heures après le dernier accord ; `null` tant qu'il en manque."),
+  expiresAt: zod.iso.datetime({}),
+});
+
+export const cancelAccountProfileTransferParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const listIncomingTransfersResponseItemsItemProfileNameMax = 60;
+
+export const listIncomingTransfersResponseItemsItemAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
+
+export const listIncomingTransfersResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      profileName: zod.string().max(listIncomingTransfersResponseItemsItemProfileNameMax),
+      accentColor: zod.string().regex(listIncomingTransfersResponseItemsItemAccentColorRegExp),
+      executesAt: zod.iso.datetime({}).nullable(),
+    }),
+  ),
+});
+
+export const withdrawTransferAcceptanceParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const acceptTransferBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{22}$');
+
+export const acceptTransferBody = zod.object({
+  token: zod.string().regex(acceptTransferBodyTokenRegExp),
+});
+
+/**
+ * @summary Le jeton dans le corps, jamais dans l'adresse (journaux, historique).
+ */
+export const inspectTransferBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{22}$');
+
+export const inspectTransferBody = zod.object({
+  token: zod.string().regex(inspectTransferBodyTokenRegExp),
+});
+
+export const inspectTransferResponseProfileNameMax = 60;
+
+export const inspectTransferResponseAccentColorRegExp = new RegExp('^#[0-9a-f]{6}$');
+
+export const inspectTransferResponse = zod.object({
+  transferId: zod.uuid(),
+  profileName: zod.string().max(inspectTransferResponseProfileNameMax),
+  avatar: zod.string().nullable(),
+  accentColor: zod.string().regex(inspectTransferResponseAccentColorRegExp),
+  isChild: zod.boolean(),
+});
+
 /**
  * @summary PRO-15 : la réponse est la même que l'adresse ait déjà un compte ou non (AUTH-09).
  */

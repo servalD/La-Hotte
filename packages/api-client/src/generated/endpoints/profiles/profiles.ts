@@ -24,9 +24,13 @@ import type {
 import type {
   EmailDto,
   EmailTokenDto,
+  OwnTransferStateView,
   ProblemDetailsDto,
   ProfileView,
   SetOwnPinDto,
+  TransferCancelDto,
+  TransferConsentByEmailDto,
+  TransferConsentDto,
   UpdateProfileDto,
 } from '../../model';
 
@@ -522,6 +526,412 @@ export const useSetOwnPin = <TError = ErrorType<ProblemDetailsDto>, TContext = u
   TContext
 > => {
   const mutationOptions = getSetOwnPinMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getGetOwnTransferUrl = () => {
+  return `/api/v1/profiles/me/transfer`;
+};
+
+export const getOwnTransfer = async (options?: RequestInit): Promise<OwnTransferStateView> => {
+  return apiFetch<OwnTransferStateView>(getGetOwnTransferUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetOwnTransferQueryKey = () => {
+  return [`/api/v1/profiles/me/transfer`] as const;
+};
+
+export const getGetOwnTransferQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOwnTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnTransfer>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOwnTransferQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnTransfer>>> = ({ signal }) =>
+    getOwnTransfer({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnTransfer>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetOwnTransferQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnTransfer>>>;
+export type GetOwnTransferQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetOwnTransfer<
+  TData = Awaited<ReturnType<typeof getOwnTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnTransfer>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOwnTransfer>>,
+          TError,
+          Awaited<ReturnType<typeof getOwnTransfer>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetOwnTransfer<
+  TData = Awaited<ReturnType<typeof getOwnTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnTransfer>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOwnTransfer>>,
+          TError,
+          Awaited<ReturnType<typeof getOwnTransfer>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetOwnTransfer<
+  TData = Awaited<ReturnType<typeof getOwnTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnTransfer>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetOwnTransfer<
+  TData = Awaited<ReturnType<typeof getOwnTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnTransfer>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetOwnTransferQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getRefuseOwnTransferUrl = () => {
+  return `/api/v1/profiles/me/transfer`;
+};
+
+export const refuseOwnTransfer = async (options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getRefuseOwnTransferUrl(), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getRefuseOwnTransferMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refuseOwnTransfer>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof refuseOwnTransfer>>, TError, void, TContext> => {
+  const mutationKey = ['refuseOwnTransfer'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof refuseOwnTransfer>>, void> = () => {
+    return refuseOwnTransfer(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RefuseOwnTransferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof refuseOwnTransfer>>
+>;
+
+export type RefuseOwnTransferMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRefuseOwnTransfer = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof refuseOwnTransfer>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof refuseOwnTransfer>>, TError, void, TContext> => {
+  const mutationOptions = getRefuseOwnTransferMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getConsentOwnTransferUrl = () => {
+  return `/api/v1/profiles/me/transfer/consent`;
+};
+
+export const consentOwnTransfer = async (
+  transferConsentDto: TransferConsentDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getConsentOwnTransferUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transferConsentDto),
+  });
+};
+
+export const getConsentOwnTransferMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof consentOwnTransfer>>,
+    TError,
+    { data: TransferConsentDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof consentOwnTransfer>>,
+  TError,
+  { data: TransferConsentDto },
+  TContext
+> => {
+  const mutationKey = ['consentOwnTransfer'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof consentOwnTransfer>>,
+    { data: TransferConsentDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return consentOwnTransfer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConsentOwnTransferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof consentOwnTransfer>>
+>;
+export type ConsentOwnTransferMutationBody = TransferConsentDto;
+export type ConsentOwnTransferMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useConsentOwnTransfer = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof consentOwnTransfer>>,
+      TError,
+      { data: TransferConsentDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof consentOwnTransfer>>,
+  TError,
+  { data: TransferConsentDto },
+  TContext
+> => {
+  const mutationOptions = getConsentOwnTransferMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getCancelTransferByEmailUrl = () => {
+  return `/api/v1/transfers/cancel`;
+};
+
+export const cancelTransferByEmail = async (
+  transferCancelDto: TransferCancelDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getCancelTransferByEmailUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transferCancelDto),
+  });
+};
+
+export const getCancelTransferByEmailMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelTransferByEmail>>,
+    TError,
+    { data: TransferCancelDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelTransferByEmail>>,
+  TError,
+  { data: TransferCancelDto },
+  TContext
+> => {
+  const mutationKey = ['cancelTransferByEmail'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelTransferByEmail>>,
+    { data: TransferCancelDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return cancelTransferByEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelTransferByEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelTransferByEmail>>
+>;
+export type CancelTransferByEmailMutationBody = TransferCancelDto;
+export type CancelTransferByEmailMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useCancelTransferByEmail = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof cancelTransferByEmail>>,
+      TError,
+      { data: TransferCancelDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof cancelTransferByEmail>>,
+  TError,
+  { data: TransferCancelDto },
+  TContext
+> => {
+  const mutationOptions = getCancelTransferByEmailMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getConsentTransferByEmailUrl = () => {
+  return `/api/v1/transfers/consent`;
+};
+
+export const consentTransferByEmail = async (
+  transferConsentByEmailDto: TransferConsentByEmailDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getConsentTransferByEmailUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transferConsentByEmailDto),
+  });
+};
+
+export const getConsentTransferByEmailMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof consentTransferByEmail>>,
+    TError,
+    { data: TransferConsentByEmailDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof consentTransferByEmail>>,
+  TError,
+  { data: TransferConsentByEmailDto },
+  TContext
+> => {
+  const mutationKey = ['consentTransferByEmail'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof consentTransferByEmail>>,
+    { data: TransferConsentByEmailDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return consentTransferByEmail(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConsentTransferByEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof consentTransferByEmail>>
+>;
+export type ConsentTransferByEmailMutationBody = TransferConsentByEmailDto;
+export type ConsentTransferByEmailMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useConsentTransferByEmail = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof consentTransferByEmail>>,
+      TError,
+      { data: TransferConsentByEmailDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof consentTransferByEmail>>,
+  TError,
+  { data: TransferConsentByEmailDto },
+  TContext
+> => {
+  const mutationOptions = getConsentTransferByEmailMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

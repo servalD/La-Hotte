@@ -200,3 +200,89 @@ export const setOwnPinBody = zod.object({
     .max(setOwnPinBodyNewPinMax)
     .regex(setOwnPinBodyNewPinRegExp),
 });
+
+export const getOwnTransferResponse = zod.object({
+  transfer: zod
+    .object({
+      id: zod.uuid(),
+      kind: zod.enum(['MOVE', 'DETACH']),
+      regroup: zod.boolean(),
+      newEmail: zod
+        .email()
+        .nullable()
+        .describe("PRO-13 : adresse du nouveau compte, montrée sur l'écran d'accord (I3)."),
+      profileConsentRequired: zod.boolean(),
+      profileConsented: zod.boolean(),
+      destinationAccepted: zod.boolean(),
+      pinChoice: zod.enum(['KEEP', 'NEW', 'NONE']),
+      executesAt: zod.iso
+        .datetime({})
+        .nullable()
+        .describe("PRO-12 : 48 heures après le dernier accord ; `null` tant qu'il en manque."),
+      expiresAt: zod.iso.datetime({}),
+      destinationNames: zod
+        .array(zod.string())
+        .describe("Profils du compte d'arrivée que le profil connaît (passage accepté)."),
+    })
+    .nullable(),
+});
+
+export const consentOwnTransferBodyNewPinMin = 4;
+export const consentOwnTransferBodyNewPinMax = 8;
+
+export const consentOwnTransferBodyNewPinRegExp = new RegExp('^[0-9]+$');
+
+export const consentOwnTransferBody = zod.object({
+  pinChoice: zod
+    .enum(['KEEP', 'NEW', 'NONE'])
+    .describe(
+      "PRO-12 : `KEEP` garder son PIN, `NEW` en fixer un (`newPin`), `NONE` n'en avoir aucun\n(jamais par défaut, efface le PIN existant).",
+    ),
+  newPin: zod
+    .string()
+    .min(consentOwnTransferBodyNewPinMin)
+    .max(consentOwnTransferBodyNewPinMax)
+    .regex(consentOwnTransferBodyNewPinRegExp)
+    .optional(),
+});
+
+export const cancelTransferByEmailBodyTokenMin = 43;
+export const cancelTransferByEmailBodyTokenMax = 43;
+
+export const cancelTransferByEmailBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+export const cancelTransferByEmailBody = zod.object({
+  token: zod
+    .string()
+    .min(cancelTransferByEmailBodyTokenMin)
+    .max(cancelTransferByEmailBodyTokenMax)
+    .regex(cancelTransferByEmailBodyTokenRegExp),
+});
+
+export const consentTransferByEmailBodyNewPinMin = 4;
+export const consentTransferByEmailBodyNewPinMax = 8;
+
+export const consentTransferByEmailBodyNewPinRegExp = new RegExp('^[0-9]+$');
+export const consentTransferByEmailBodyTokenMin = 43;
+export const consentTransferByEmailBodyTokenMax = 43;
+
+export const consentTransferByEmailBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+export const consentTransferByEmailBody = zod.object({
+  pinChoice: zod
+    .enum(['KEEP', 'NEW', 'NONE'])
+    .describe(
+      "PRO-12 : `KEEP` garder son PIN, `NEW` en fixer un (`newPin`), `NONE` n'en avoir aucun\n(jamais par défaut, efface le PIN existant).",
+    ),
+  newPin: zod
+    .string()
+    .min(consentTransferByEmailBodyNewPinMin)
+    .max(consentTransferByEmailBodyNewPinMax)
+    .regex(consentTransferByEmailBodyNewPinRegExp)
+    .optional(),
+  token: zod
+    .string()
+    .min(consentTransferByEmailBodyTokenMin)
+    .max(consentTransferByEmailBodyTokenMax)
+    .regex(consentTransferByEmailBodyTokenRegExp),
+});

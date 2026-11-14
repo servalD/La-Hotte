@@ -29,11 +29,17 @@ import type {
   CreateProfileDto,
   CreateWardDto,
   CreateWardProfileDto,
+  CreatedTransferView,
   CreatedWardProfileView,
+  IncomingTransferListView,
   ProblemDetailsDto,
   ProfileProposalListView,
+  RequestTransferDto,
   ResetProfilePinDto,
   SetChildMarkerDto,
+  TransferPreviewView,
+  TransferTokenDto,
+  TransferView,
   TrustedDeviceListView,
   WardDetailView,
   WardListView,
@@ -1010,6 +1016,659 @@ export const useResetProfilePin = <TError = ErrorType<ProblemDetailsDto>, TConte
   TContext
 > => {
   const mutationOptions = getResetProfilePinMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getRequestTransferUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}/transfer`;
+};
+
+export const requestTransfer = async (
+  id: string,
+  requestTransferDto: RequestTransferDto,
+  options?: RequestInit,
+): Promise<CreatedTransferView> => {
+  return apiFetch<CreatedTransferView>(getRequestTransferUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(requestTransferDto),
+  });
+};
+
+export const getRequestTransferMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestTransfer>>,
+    TError,
+    { id: string; data: RequestTransferDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestTransfer>>,
+  TError,
+  { id: string; data: RequestTransferDto },
+  TContext
+> => {
+  const mutationKey = ['requestTransfer'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestTransfer>>,
+    { id: string; data: RequestTransferDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return requestTransfer(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestTransferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestTransfer>>
+>;
+export type RequestTransferMutationBody = RequestTransferDto;
+export type RequestTransferMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRequestTransfer = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof requestTransfer>>,
+      TError,
+      { id: string; data: RequestTransferDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof requestTransfer>>,
+  TError,
+  { id: string; data: RequestTransferDto },
+  TContext
+> => {
+  const mutationOptions = getRequestTransferMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getGetAccountProfileTransferUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}/transfer`;
+};
+
+export const getAccountProfileTransfer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<TransferView> => {
+  return apiFetch<TransferView>(getGetAccountProfileTransferUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetAccountProfileTransferQueryKey = (id?: string) => {
+  return [`/api/v1/account/profiles/${id}/transfer`] as const;
+};
+
+export const getGetAccountProfileTransferQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountProfileTransfer>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAccountProfileTransferQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountProfileTransfer>>> = ({
+    signal,
+  }) => getAccountProfileTransfer(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAccountProfileTransferQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAccountProfileTransfer>>
+>;
+export type GetAccountProfileTransferQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetAccountProfileTransfer<
+  TData = Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountProfileTransfer>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountProfileTransfer>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetAccountProfileTransfer<
+  TData = Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountProfileTransfer>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountProfileTransfer>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetAccountProfileTransfer<
+  TData = Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountProfileTransfer>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetAccountProfileTransfer<
+  TData = Awaited<ReturnType<typeof getAccountProfileTransfer>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountProfileTransfer>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetAccountProfileTransferQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getCancelAccountProfileTransferUrl = (id: string) => {
+  return `/api/v1/account/profiles/${id}/transfer`;
+};
+
+export const cancelAccountProfileTransfer = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getCancelAccountProfileTransferUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getCancelAccountProfileTransferMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelAccountProfileTransfer>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelAccountProfileTransfer>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['cancelAccountProfileTransfer'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelAccountProfileTransfer>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cancelAccountProfileTransfer(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelAccountProfileTransferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelAccountProfileTransfer>>
+>;
+
+export type CancelAccountProfileTransferMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useCancelAccountProfileTransfer = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof cancelAccountProfileTransfer>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof cancelAccountProfileTransfer>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getCancelAccountProfileTransferMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getListIncomingTransfersUrl = () => {
+  return `/api/v1/account/transfers`;
+};
+
+export const listIncomingTransfers = async (
+  options?: RequestInit,
+): Promise<IncomingTransferListView> => {
+  return apiFetch<IncomingTransferListView>(getListIncomingTransfersUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListIncomingTransfersQueryKey = () => {
+  return [`/api/v1/account/transfers`] as const;
+};
+
+export const getListIncomingTransfersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listIncomingTransfers>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof listIncomingTransfers>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListIncomingTransfersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listIncomingTransfers>>> = ({ signal }) =>
+    listIncomingTransfers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listIncomingTransfers>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListIncomingTransfersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listIncomingTransfers>>
+>;
+export type ListIncomingTransfersQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListIncomingTransfers<
+  TData = Awaited<ReturnType<typeof listIncomingTransfers>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listIncomingTransfers>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listIncomingTransfers>>,
+          TError,
+          Awaited<ReturnType<typeof listIncomingTransfers>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListIncomingTransfers<
+  TData = Awaited<ReturnType<typeof listIncomingTransfers>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listIncomingTransfers>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listIncomingTransfers>>,
+          TError,
+          Awaited<ReturnType<typeof listIncomingTransfers>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListIncomingTransfers<
+  TData = Awaited<ReturnType<typeof listIncomingTransfers>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listIncomingTransfers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListIncomingTransfers<
+  TData = Awaited<ReturnType<typeof listIncomingTransfers>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listIncomingTransfers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListIncomingTransfersQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getWithdrawTransferAcceptanceUrl = (id: string) => {
+  return `/api/v1/account/transfers/${id}/acceptance`;
+};
+
+export const withdrawTransferAcceptance = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getWithdrawTransferAcceptanceUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getWithdrawTransferAcceptanceMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof withdrawTransferAcceptance>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof withdrawTransferAcceptance>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['withdrawTransferAcceptance'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof withdrawTransferAcceptance>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return withdrawTransferAcceptance(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WithdrawTransferAcceptanceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof withdrawTransferAcceptance>>
+>;
+
+export type WithdrawTransferAcceptanceMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useWithdrawTransferAcceptance = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof withdrawTransferAcceptance>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof withdrawTransferAcceptance>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getWithdrawTransferAcceptanceMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getAcceptTransferUrl = () => {
+  return `/api/v1/account/transfers/accept`;
+};
+
+export const acceptTransfer = async (
+  transferTokenDto: TransferTokenDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getAcceptTransferUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transferTokenDto),
+  });
+};
+
+export const getAcceptTransferMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptTransfer>>,
+    TError,
+    { data: TransferTokenDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptTransfer>>,
+  TError,
+  { data: TransferTokenDto },
+  TContext
+> => {
+  const mutationKey = ['acceptTransfer'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptTransfer>>,
+    { data: TransferTokenDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return acceptTransfer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptTransferMutationResult = NonNullable<Awaited<ReturnType<typeof acceptTransfer>>>;
+export type AcceptTransferMutationBody = TransferTokenDto;
+export type AcceptTransferMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useAcceptTransfer = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof acceptTransfer>>,
+      TError,
+      { data: TransferTokenDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof acceptTransfer>>,
+  TError,
+  { data: TransferTokenDto },
+  TContext
+> => {
+  const mutationOptions = getAcceptTransferMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary Le jeton dans le corps, jamais dans l'adresse (journaux, historique).
+ */
+export const getInspectTransferUrl = () => {
+  return `/api/v1/account/transfers/inspect`;
+};
+
+export const inspectTransfer = async (
+  transferTokenDto: TransferTokenDto,
+  options?: RequestInit,
+): Promise<TransferPreviewView> => {
+  return apiFetch<TransferPreviewView>(getInspectTransferUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transferTokenDto),
+  });
+};
+
+export const getInspectTransferMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inspectTransfer>>,
+    TError,
+    { data: TransferTokenDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inspectTransfer>>,
+  TError,
+  { data: TransferTokenDto },
+  TContext
+> => {
+  const mutationKey = ['inspectTransfer'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inspectTransfer>>,
+    { data: TransferTokenDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return inspectTransfer(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InspectTransferMutationResult = NonNullable<
+  Awaited<ReturnType<typeof inspectTransfer>>
+>;
+export type InspectTransferMutationBody = TransferTokenDto;
+export type InspectTransferMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary Le jeton dans le corps, jamais dans l'adresse (journaux, historique).
+ */
+export const useInspectTransfer = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof inspectTransfer>>,
+      TError,
+      { data: TransferTokenDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof inspectTransfer>>,
+  TError,
+  { data: TransferTokenDto },
+  TContext
+> => {
+  const mutationOptions = getInspectTransferMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

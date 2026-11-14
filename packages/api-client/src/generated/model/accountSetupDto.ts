@@ -19,4 +19,6 @@ export interface AccountSetupDto {
    * @maxLength 256
    */
   password: string;
+  /** AUTH-08 : exigé pour un compte détaché (PRO-13) ; sans objet pour un compte sous tutelle. */
+  ageAttested?: boolean;
 }

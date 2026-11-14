@@ -57,6 +57,9 @@ const PUBLIC_ROUTES = [
   // PRO-11 : invitation à créer un profil, ouverte sans compte (jeton dans le corps).
   'POST /api/v1/invitations/profile/inspect',
   'POST /api/v1/invitations/profile/accept',
+  // PRO-12 : accord et annulation par les liens envoyés à l'adresse du profil.
+  'POST /api/v1/transfers/consent',
+  'POST /api/v1/transfers/cancel',
 ];
 /** Seul `GET` autorisé à modifier l'état (API-21). */
 const OIDC_CALLBACK_ROUTES = ['GET /api/v1/auth/google/callback'];

@@ -255,6 +255,11 @@ export class AccountSetupController {
     @Body() body: AccountSetupDto,
     @ClientContext() client: ClientContextValue,
   ): Promise<void> {
-    await this.setupUseCase.execute({ token: body.token, password: body.password, client });
+    await this.setupUseCase.execute({
+      token: body.token,
+      password: body.password,
+      ...(body.ageAttested ? { ageAttested: body.ageAttested } : {}),
+      client,
+    });
   }
 }

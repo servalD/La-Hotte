@@ -154,6 +154,32 @@ import {
 } from './application/manage-wards.use-case';
 import { GuardianNotices } from './application/guardian-notices';
 import {
+  AcceptTransfer,
+  CancelTransferAsOrigin,
+  CancelTransferByEmail,
+  ConsentOwnTransfer,
+  ConsentTransferByEmail,
+  GetAccountProfileTransfer,
+  GetOwnTransfer,
+  InspectTransfer,
+  ListIncomingTransfers,
+  ProfileConsent,
+  RefuseOwnTransfer,
+  RequestTransfer,
+  RunDueTransfers,
+  TransferEffects,
+  WithdrawTransferAcceptance,
+} from './application/manage-transfers.use-case';
+import { TransferRepository } from './domain/transfer.ports';
+import { PrismaTransferRepository } from './infrastructure/prisma-transfer-repository';
+import {
+  AccountProfileTransferController,
+  IncomingTransfersController,
+  OwnTransferController,
+  TransferLinksController,
+} from './presentation/transfers.controller';
+import { TransferScheduler } from './presentation/transfer.scheduler';
+import {
   AcceptProfileInvitation,
   DecideProfileProposal,
   InspectProfileInvitation,
@@ -201,6 +227,10 @@ import {
     ProfileEmailVerificationController,
     ProfileProposalsController,
     ProfileInvitationsController,
+    AccountProfileTransferController,
+    IncomingTransfersController,
+    OwnTransferController,
+    TransferLinksController,
   ],
   providers: [
     ResolveSession,
@@ -279,6 +309,23 @@ import {
     DecideProfileProposal,
     InspectProfileInvitation,
     AcceptProfileInvitation,
+    AcceptTransfer,
+    CancelTransferAsOrigin,
+    CancelTransferByEmail,
+    ConsentOwnTransfer,
+    ConsentTransferByEmail,
+    GetAccountProfileTransfer,
+    GetOwnTransfer,
+    InspectTransfer,
+    ListIncomingTransfers,
+    ProfileConsent,
+    RefuseOwnTransfer,
+    RequestTransfer,
+    RunDueTransfers,
+    TransferEffects,
+    WithdrawTransferAcceptance,
+    TransferScheduler,
+    { provide: TransferRepository, useClass: PrismaTransferRepository },
     { provide: WardRepository, useClass: PrismaWardRepository },
     { provide: LinkRepository, useClass: PrismaLinkRepository },
     { provide: CircleReader, useExisting: LinkRepository },

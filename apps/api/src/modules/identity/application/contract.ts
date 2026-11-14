@@ -125,3 +125,21 @@ export {
   InspectProfileInvitation,
   ListProfileProposals,
 } from './profile-invitations.use-case';
+export {
+  AcceptTransfer,
+  CancelTransferAsOrigin,
+  CancelTransferByEmail,
+  ConsentOwnTransfer,
+  ConsentTransferByEmail,
+  GetAccountProfileTransfer,
+  GetOwnTransfer,
+  InspectTransfer,
+  ListIncomingTransfers,
+  ProfileConsent,
+  RefuseOwnTransfer,
+  RequestTransfer,
+  RunDueTransfers,
+  TransferEffects,
+  WithdrawTransferAcceptance,
+} from './manage-transfers.use-case';
+export type { TransferState } from '../domain/transfer.ports';

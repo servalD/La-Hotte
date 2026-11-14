@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Equals, IsEmail, IsString, Length, Matches, MaxLength } from 'class-validator';
+import { Equals, IsEmail, IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 import {
   DISPLAY_NAME_MAX_LENGTH,
   EMAIL_MAX_LENGTH,
@@ -57,6 +57,12 @@ export class AccountSetupDto {
     format: 'password',
   })
   password!: string;
+
+  /** AUTH-08 : exigé pour un compte détaché (PRO-13) ; sans objet pour un compte sous tutelle. */
+  @IsOptional()
+  @Equals(true)
+  @ApiProperty({ required: false, type: Boolean, enum: [true] })
+  ageAttested?: true;
 }
 
 /** `POST /account/age-attestation` (AUTH-08, PRO-16) : case « J'ai 15 ans ou plus ». */

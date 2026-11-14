@@ -15,6 +15,8 @@ export const EMAIL_LINK_PATHS = {
   profileInvitation: '/invitations/profile',
   accountSetup: '/accounts/setup',
   verifyProfileEmail: '/profiles/verify-email',
+  transferConsent: '/transfers/consent',
+  transferCancel: '/transfers/cancel',
 } as const;
 
 /** PRO-16 : actions du tuteur dont le compte sous tutelle est averti. */
@@ -58,6 +60,10 @@ type MailKind =
   | { readonly kind: 'profile_invitation'; readonly token: string; readonly inviterName: string }
   | { readonly kind: 'ward_setup'; readonly token: string }
   | { readonly kind: 'verify_profile_email'; readonly token: string }
+  | { readonly kind: 'transfer_consent'; readonly token: string }
+  | { readonly kind: 'transfer_cancel'; readonly token: string; readonly executesAt: Date }
+  | { readonly kind: 'detach_setup'; readonly token: string }
+  | { readonly kind: 'transfer_completed' }
   | { readonly kind: 'ward_password_reset'; readonly token: string }
   | { readonly kind: 'guardian_action'; readonly action: GuardianAction }
   | { readonly kind: 'ward_account_changed'; readonly change: WardChange };
@@ -280,6 +286,49 @@ export class AccountMailer {
             'Elle ne sert pas à se connecter : seulement à recevoir les demandes qui concernent ' +
             'votre profil, comme un changement de compte, et à y répondre.\n\n' +
             'Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.' +
+            SIGNATURE,
+        };
+      case 'transfer_consent':
+        // PRO-12 : ni nom de profil ni de compte dans le corps.
+        return {
+          to,
+          subject: 'Votre accord est demandé pour un changement de compte',
+          text:
+            'Le compte qui porte votre profil La Hotte demande à le faire passer dans un autre ' +
+            'compte, ou à vous en donner un à vous.\n\nPour voir la demande et y répondre, ouvrez ' +
+            `ce lien (valable 24 heures) :\n${this.link(EMAIL_LINK_PATHS.transferConsent, mail.token)}\n\n` +
+            'Sans votre accord, rien ne change. Vous pouvez aussi répondre depuis votre profil.' +
+            SIGNATURE,
+        };
+      case 'transfer_cancel':
+        return {
+          to,
+          subject: 'Votre profil va changer de compte',
+          text:
+            'Toutes les parties ont donné leur accord : votre profil La Hotte changera de compte ' +
+            `le ${mail.executesAt.toISOString().slice(0, 16).replace('T', ' à ')} (UTC).\n\n` +
+            'Si vous n’êtes pas d’accord, annulez avant cette date en ouvrant ce lien :\n' +
+            this.link(EMAIL_LINK_PATHS.transferCancel, mail.token) +
+            SIGNATURE,
+        };
+      case 'detach_setup':
+        return {
+          to,
+          subject: 'Votre compte La Hotte est prêt',
+          text:
+            'Un profil La Hotte va recevoir son propre compte, à cette adresse.\n\nPour ' +
+            'déclarer votre âge, choisir votre mot de passe et l’activer, ouvrez ce lien (valable ' +
+            `24 heures) :\n${this.link(EMAIL_LINK_PATHS.accountSetup, mail.token)}\n\n` +
+            'Si vous ne vous attendiez pas à ce message, ignorez-le : rien ne sera créé.' +
+            SIGNATURE,
+        };
+      case 'transfer_completed':
+        return {
+          to,
+          subject: 'Un profil a changé de compte',
+          text:
+            'Un profil vient de changer de compte sur La Hotte, avec l’accord de chacun. Les ' +
+            'appareils où il était ouvert dans l’ancien compte reviennent au choix du profil.' +
             SIGNATURE,
         };
       case 'ward_setup':

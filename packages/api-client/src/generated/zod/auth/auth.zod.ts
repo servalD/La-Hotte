@@ -25,6 +25,12 @@ export const setupAccountBody = zod.object({
     .min(setupAccountBodyPasswordMin)
     .max(setupAccountBodyPasswordMax)
     .describe('AUTH-02 : 12 caractères au moins, sans règle de composition.'),
+  ageAttested: zod
+    .literal(true)
+    .optional()
+    .describe(
+      'AUTH-08 : exigé pour un compte détaché (PRO-13) ; sans objet pour un compte sous tutelle.',
+    ),
 });
 
 /**
