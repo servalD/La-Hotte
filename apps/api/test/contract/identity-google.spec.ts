@@ -5,6 +5,7 @@ import request from 'supertest';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
 import { SecretTokens } from '../../src/modules/identity/domain/ports';
 import {
+  CSRF_COOKIE,
   DEVICE_COOKIE,
   PENDING_COOKIE,
   PRESESSION_COOKIE,
@@ -29,6 +30,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   identity.rateLimiter.reset();
+  identity.eventThrottle.reset();
   identity.google.enabled = true;
   identity.google.unreachable = false;
   identity.settings.registrationMode = 'OPEN';
@@ -51,7 +53,8 @@ function cookieValue(res: request.Response, name: string): string | null {
 }
 
 interface Presession {
-  readonly id: string;
+  /** Changent au départ vers Google (ADR 0015). */
+  id: string;
   readonly headers: Record<string, string>;
 }
 
@@ -77,6 +80,18 @@ async function startLogin(
     .set(pre.headers)
     .send(registration ? { registration } : {})
     .expect(200);
+  // ADR 0015 : le départ tire une pré-session neuve ; le navigateur la porte désormais, avec le
+  // jeton CSRF qui la suit.
+  const id = cookieValue(res, PRESESSION_COOKIE);
+  const csrf = cookieValue(res, CSRF_COOKIE);
+  if (id) {
+    const others = (pre.headers.Cookie ?? '')
+      .split('; ')
+      .filter((c) => c !== '' && !c.startsWith(`${PRESESSION_COOKIE}=`));
+    pre.id = id;
+    pre.headers.Cookie = [`${PRESESSION_COOKIE}=${id}`, ...others].join('; ');
+    if (csrf) pre.headers['X-CSRF-Token'] = csrf;
+  }
   return res.body.authorizationUrl as string;
 }
 
@@ -371,6 +386,26 @@ describe('Retour de Google : protections (ADR 0013, « Retour OIDC »)', () => {
     );
     expect(outcome(res).error).toBe('GOOGLE_REJECTED');
     expect(identity.securityLog.entries.at(-1)?.event).toBe('google.rejected');
+  });
+
+  it('revue SEC-40 de la tranche 4 (I1, C2-M2) : une ligne google.rejected par minute et par (adresse, compte)', async () => {
+    const rejected = (): number =>
+      identity.securityLog.entries.filter((e) => e.event === 'google.rejected').length;
+    const rejectOnce = async (): Promise<void> => {
+      const pre = await presession();
+      const url = await startLogin(pre, REGISTRATION);
+      const state = new URL(url).searchParams.get('state') ?? '';
+      const res = await callback(`state=${state}&error=access_denied`, pre.headers.Cookie ?? '');
+      expect(outcome(res).error).toBe('GOOGLE_REJECTED');
+    };
+    const before = rejected();
+    for (let i = 0; i < 4; i += 1) await rejectOnce();
+    // Quatre refus, même adresse, sans compte : une seule ligne dans la fenêtre.
+    expect(rejected()).toBe(before + 1);
+    // Fenêtre passée : de nouveau une ligne.
+    identity.eventThrottle.reset();
+    await rejectOnce();
+    expect(rejected()).toBe(before + 2);
   });
 
   it('annulation chez Google (error=access_denied) : GOOGLE_REJECTED, rien de créé', async () => {

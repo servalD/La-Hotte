@@ -3,6 +3,7 @@
 // reproduisent la sémantique des adaptateurs réels : cache et lignes séparés, marques de
 // révocation, époque, réhydratation verrouillée.
 import { createHash } from 'node:crypto';
+import { isIP } from 'node:net';
 import type {
   AccountCredentials,
   AccountTokenPurpose,
@@ -68,6 +69,7 @@ import type {
   SessionRecord,
   Unlock,
 } from '../domain/session';
+import { limitedAddress } from './redis-rate-limiter';
 
 interface MemoryAccount {
   role: AccountRole;
@@ -739,9 +741,24 @@ export class InMemoryRateLimiter extends RateLimiter {
   }
 }
 
-/** Toujours le premier : chaque événement est écrit (tests). */
+/**
+ * Comme l'adaptateur Redis (`SET NX PX`) : vrai une seule fois par clé et par fenêtre, horloge
+ * réelle (revue SEC-40 de la tranche 4, C2-M2 : un double qui laisse tout passer ne vérifie pas
+ * la limitation). `reset()` entre les tests : supertest donne la même adresse à toutes les requêtes.
+ */
 export class InMemoryEventThrottle extends EventThrottle {
-  async firstInWindow(): Promise<boolean> {
+  private readonly until = new Map<string, number>();
+
+  reset(): void {
+    this.until.clear();
+  }
+
+  async firstInWindow(parts: readonly string[], windowMs: number): Promise<boolean> {
+    // Comme l'adaptateur : une adresse IPv6 compte pour son /64 (revue SEC-40 de la tranche 8, M4).
+    const key = parts.map((part) => (isIP(part) ? limitedAddress(part) : part)).join('\u0000');
+    const now = Date.now();
+    if ((this.until.get(key) ?? 0) > now) return false;
+    this.until.set(key, now + windowMs);
     return true;
   }
 }

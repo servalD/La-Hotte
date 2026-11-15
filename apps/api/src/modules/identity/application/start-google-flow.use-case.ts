@@ -23,8 +23,6 @@ export type StartGoogleFlowInput =
   | {
       /** Connexion ou inscription, avant session (AUTH-01, AUTH-03). */
       readonly kind: 'login';
-      /** Cookie `__Host-lh_presession`, tel que reçu ; un nouveau est tiré s'il manque. */
-      readonly presessionId: string | null;
       /** AUTH-08 : déclaration d'âge et premier profil, si l'utilisateur s'inscrit. */
       readonly registration: GoogleRegistrationInput | null;
       readonly client: ClientInfo;
@@ -38,7 +36,10 @@ export type StartGoogleFlowInput =
 
 export interface StartedGoogleFlow {
   readonly authorizationUrl: string;
-  /** Identifiant de pré-session tiré ici, à poser dans `__Host-lh_presession` ; sinon `null`. */
+  /**
+   * Connexion : identifiant de pré-session tiré ici, toujours neuf, à poser dans
+   * `__Host-lh_presession` ; `null` pour une association ou une ré-authentification.
+   */
   readonly newPresessionId: string | null;
 }
 
@@ -76,11 +77,10 @@ export class StartGoogleFlow {
     let epoch: number | null = null;
     let newPresessionId: string | null = null;
     if (input.kind === 'login') {
-      const presessionId =
-        input.presessionId && this.tokens.isWellFormed(input.presessionId)
-          ? input.presessionId
-          : (newPresessionId = this.tokens.generate());
-      binding = this.tokens.hash(presessionId);
+      // ADR 0015 : jamais la pré-session reçue, qu'un proche ayant eu l'appareil en main aurait
+      // pu lire ; le retour n'est lié qu'à une pré-session que seul ce navigateur reçoit.
+      newPresessionId = this.tokens.generate();
+      binding = this.tokens.hash(newPresessionId);
     } else {
       accountId = input.session.accountId;
       epoch = await this.checkAccount(accountId, input.kind);

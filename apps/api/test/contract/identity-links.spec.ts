@@ -496,6 +496,13 @@ describe('PUT /account/profiles/{id}/child (PRO-09)', () => {
   });
 });
 
+/** Cookie de pré-session posé par le départ vers Google (ADR 0015). */
+function startedPresession(res: request.Response): string {
+  const raw = res.headers['set-cookie'] as unknown;
+  const cookies = Array.isArray(raw) ? (raw as string[]) : [];
+  return cookies.find((c) => c.startsWith(`${PRESESSION_COOKIE}=`))?.split(';')[0] ?? '';
+}
+
 describe('inscription par invitation (AUTH-09, LNK-08)', () => {
   async function presession(): Promise<Record<string, string>> {
     const res = await http().get('/api/v1/session').expect(200);
@@ -608,9 +615,10 @@ describe('inscription par invitation (AUTH-09, LNK-08)', () => {
       .expect(200);
     const subject = `sub${randomUUID().replaceAll('-', '')}`;
     const query = identity.google.approve(start.body.authorizationUrl as string, { subject });
+    // ADR 0015 : le départ a tiré une pré-session neuve, à laquelle le retour est lié.
     const res = await http()
       .get(`/api/v1/auth/google/callback?${query}`)
-      .set('Cookie', pre.Cookie ?? '');
+      .set('Cookie', startedPresession(start));
     expect(new URL(res.headers.location as string).searchParams.get('status')).toBe('signed_in');
     const circle = await http().get('/api/v1/circle').set({ Cookie: inviter.cookie }).expect(200);
     expect(circle.body.items).toEqual([expect.objectContaining({ displayName: 'Camille' })]);
@@ -627,9 +635,10 @@ describe('inscription par invitation (AUTH-09, LNK-08)', () => {
     const query = identity.google.approve(start.body.authorizationUrl as string, {
       subject: `sub${randomUUID().replaceAll('-', '')}`,
     });
+    // ADR 0015 : le départ a tiré une pré-session neuve, à laquelle le retour est lié.
     const res = await http()
       .get(`/api/v1/auth/google/callback?${query}`)
-      .set('Cookie', pre.Cookie ?? '');
+      .set('Cookie', startedPresession(start));
     expect(new URL(res.headers.location as string).searchParams.get('error')).toBe(
       'INVITATION_REQUIRED',
     );

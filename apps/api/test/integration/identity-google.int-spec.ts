@@ -213,6 +213,11 @@ describe('Inscription par Google de bout en bout (vrai openid-client)', () => {
       })
       .send({ registration: { displayName: 'Camille', ageAttested: true } })
       .expect(200);
+    // ADR 0015 : le départ tire une pré-session neuve, à laquelle le retour est lié.
+    const flowPresession = (started.headers['set-cookie'] as unknown as string[])
+      .find((c) => c.startsWith(`${PRESESSION_COOKIE}=`))
+      ?.split(';')[0];
+    expect(flowPresession).not.toBe(presession);
     const url = started.body.authorizationUrl as string;
     const subject = sub();
     const code = provider.issueCode(url, { sub: subject, email: `${subject}@gmail.test` });
@@ -221,7 +226,7 @@ describe('Inscription par Google de bout en bout (vrai openid-client)', () => {
 
     const res = await http
       .get(`/api/v1/auth/google/callback?${query}`)
-      .set('Cookie', presession ?? '');
+      .set('Cookie', flowPresession ?? '');
     expect(res.status).toBe(303);
     expect(new URL(res.headers.location as string).searchParams.get('status')).toBe('signed_in');
     const cookies = res.headers['set-cookie'] as unknown as string[];
@@ -231,7 +236,7 @@ describe('Inscription par Google de bout en bout (vrai openid-client)', () => {
 
     const replay = await http
       .get(`/api/v1/auth/google/callback?${query}`)
-      .set('Cookie', presession ?? '');
+      .set('Cookie', flowPresession ?? '');
     expect(new URL(replay.headers.location as string).searchParams.get('error')).toBe(
       'GOOGLE_FLOW_INVALID',
     );

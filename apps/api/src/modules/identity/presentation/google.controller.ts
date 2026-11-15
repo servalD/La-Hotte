@@ -23,6 +23,7 @@ import {
   readCookie,
   setPendingCookie,
   setPresessionCookie,
+  setPresessionCookies,
   setSessionCookies,
   UNLOCK_COOKIE,
 } from './cookies';
@@ -76,7 +77,7 @@ export class GoogleController {
   async startGoogleSignIn(
     @Body() body: GoogleStartDto,
     @ClientContext() client: ClientContextValue,
-    @Req() request: Request,
+    @CurrentSession() current: ResolvedSession | null,
     @Res({ passthrough: true }) response: Response,
   ): Promise<GoogleRedirectView> {
     const registration = body.registration
@@ -87,13 +88,18 @@ export class GoogleController {
           invitationToken: body.registration.invitationToken ?? null,
         }
       : null;
-    const started = await this.start.execute({
-      kind: 'login',
-      presessionId: readCookie(request, PRESESSION_COOKIE),
-      registration,
-      client,
-    });
-    if (started.newPresessionId) setPresessionCookie(response, started.newPresessionId);
+    const started = await this.start.execute({ kind: 'login', registration, client });
+    if (started.newPresessionId) {
+      // ADR 0015 : pré-session neuve à chaque départ. Sans session, son jeton CSRF la suit ;
+      // avec une session, le jeton CSRF reste celui de la session.
+      if (current) setPresessionCookie(response, started.newPresessionId);
+      else {
+        setPresessionCookies(response, {
+          presessionId: started.newPresessionId,
+          csrfToken: this.csrf.forPresession(started.newPresessionId),
+        });
+      }
+    }
     return { authorizationUrl: started.authorizationUrl };
   }
 

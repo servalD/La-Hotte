@@ -605,8 +605,14 @@ async function receivableTransfer(
   const check = await deps.limiter.check(subjects, now);
   if (!check.allowed || !check.reservation) throw new RateLimitedError(check.retryAfterMs);
   const transfer = await deps.transfers.findOpenByToken(deps.tokens.hash(input.token), 'MOVE', now);
+  // Une fois accepté par un compte, le jeton ne vaut plus que pour lui : pour tout autre, même
+  // refus qu'un jeton inconnu (revue SEC-40 de la tranche 8, M8).
+  const claimedByOther =
+    transfer !== null && transfer.toAccountId !== null && transfer.toAccountId !== input.accountId;
   const preview =
-    transfer && (await deps.transfers.canReceive(transfer.profileId, input.accountId))
+    transfer &&
+    !claimedByOther &&
+    (await deps.transfers.canReceive(transfer.profileId, input.accountId))
       ? await deps.transfers.preview(transfer.id)
       : null;
   if (!transfer || !preview) {
@@ -698,8 +704,10 @@ export class WithdrawTransferAcceptance {
 
 /**
  * PRO-12, PRO-13 : tâche planifiée. Les passages dont l'échéance est passée s'exécutent (PRO-14) ;
- * les détachements reçoivent leur lien d'installation, sauf adresse déjà prise (la demande est
- * alors close et le titulaire averti). Chaque exécution revérifie tout, sans session.
+ * les détachements reçoivent leur lien d'installation. Adresse déjà prise : le titulaire est
+ * averti, la demande reste ouverte avec un lien jamais envoyé et se clôt à son expiration, comme
+ * pour une adresse libre (PRO-13 ; ne pas la clore plus tôt, l'état visible révélerait l'adresse).
+ * Chaque exécution revérifie tout, sans session.
  */
 @Injectable()
 export class RunDueTransfers {
@@ -774,8 +782,10 @@ export class RunDueTransfers {
       (existing !== null && existing.emailVerified) ||
       (await this.accounts.isEmailReserved(email, null, now));
     if (taken) {
-      // PRO-13 : rien n'est créé ; le titulaire est averti, la demande close.
-      await this.transfers.cancel(transfer.id, now);
+      // PRO-13 : rien n'est créé ; le titulaire est averti. La demande reste ouverte comme pour
+      // une adresse libre, avec un lien que personne ne reçoit, et se clôt à son expiration :
+      // l'état visible du demandeur ne dit pas si l'adresse a un compte (revue SEC-40 de la
+      // tranche 8, I1).
       this.background.run('transfer.detach_taken', async () => {
         await this.mailer.send(email, { kind: 'email_taken_notice' });
       });

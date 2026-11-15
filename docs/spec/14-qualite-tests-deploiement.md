@@ -93,6 +93,7 @@ modules/<module>/
 - **DEP-04** Déploiement : image construite et analysée en CI, migration de base, démarrage, vérification de santé, bascule ; retour arrière par l'image précédente. Les migrations sont compatibles avec la version précédente du code (DAT-07).
 - **DEP-05** Sauvegardes : base complète quotidienne + journaux de transactions en continu, chiffrées, copiées hors du serveur, conservées 30 jours ; images sauvegardées de la même façon. Restauration testée chaque mois (SEC-23).
 - **DEP-06** Objectifs de reprise : perte de données ≤ 15 minutes, remise en service ≤ 4 heures.
+- **DEP-07** Le nom d'hôte de l'application ne sert qu'elle, **sur aucun port** : un cookie `__Host-` ne tient pas compte du port, et un autre service sur le même nom (GlitchTip, OpenObserve, outil d'administration) pourrait lire ou poser la pré-session et la session (ADR 0015). Les services restreints (OBS-27) ont leur propre nom d'hôte.
 
 ## Observabilité
 

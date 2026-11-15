@@ -64,6 +64,8 @@ export interface TestIdentity {
   readonly breaches: InMemoryBreachChecker;
   readonly background: InMemoryBackgroundTasks;
   readonly rateLimiter: InMemoryRateLimiter;
+  /** Limitation des lignes de journal et des avis (une fois par fenêtre) ; `reset()` entre les tests. */
+  readonly eventThrottle: InMemoryEventThrottle;
   readonly settings: StaticIdentitySettings;
   readonly secondFactors: InMemorySecondFactorRepository;
   readonly trustedDevices: InMemoryTrustedDeviceRepository;
@@ -112,6 +114,7 @@ export async function createTestApp(
   const breaches = new InMemoryBreachChecker();
   const background = new InMemoryBackgroundTasks();
   const rateLimiter = new InMemoryRateLimiter();
+  const eventThrottle = new InMemoryEventThrottle();
   const settings = new StaticIdentitySettings();
   const secondFactors = new InMemorySecondFactorRepository(accounts, sessions);
   const trustedDevices = new InMemoryTrustedDeviceRepository(accounts);
@@ -138,7 +141,7 @@ export async function createTestApp(
     .overrideProvider(RateLimiter)
     .useValue(rateLimiter)
     .overrideProvider(EventThrottle)
-    .useValue(new InMemoryEventThrottle())
+    .useValue(eventThrottle)
     .overrideProvider(SecurityLog)
     .useValue(securityLog)
     .overrideProvider(MailSender)
@@ -191,6 +194,7 @@ export async function createTestApp(
     breaches,
     background,
     rateLimiter,
+    eventThrottle,
     settings,
     secondFactors,
     trustedDevices,

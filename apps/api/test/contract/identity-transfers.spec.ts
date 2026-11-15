@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { RunDueTransfers } from '../../src/modules/identity/application/contract';
@@ -505,6 +505,94 @@ describe('accord et annulation par e-mail (PRO-12)', () => {
   });
 });
 
+describe('rejeu des jetons de passage (critères de 01 ; revue SEC-40 de la tranche 8, I5)', () => {
+  /** Jeton inconnu de même forme que le jeton rejoué. */
+  const unknownLike = (token: string): string =>
+    randomBytes(token.length).toString('base64url').slice(0, token.length);
+  const refusal = (res: request.Response) => ({
+    status: res.status,
+    code: res.body.code as unknown,
+  });
+
+  /** Passage `MOVE` du profil, avec une adresse vérifiée depuis 10 jours, accepté par `host`. */
+  async function acceptedMove() {
+    const { mover, host, origin } = await families();
+    const email = `part-${randomUUID()}@lahotte.test`;
+    const profile = identity.accounts.profiles.get(mover.profileId ?? '');
+    if (profile) {
+      profile.email = email;
+      profile.emailVerifiedAt = new Date(Date.now() - 10 * DAY);
+    }
+    const requested = await requestMove(origin, mover.profileId ?? '').expect(201);
+    await identity.background.flush();
+    const consentToken = identity.mail.lastToken(email) ?? '';
+    await http()
+      .post('/api/v1/transfers/consent')
+      .set(await presession())
+      .send({ token: consentToken, pinChoice: 'NONE' })
+      .expect(204);
+    const hostFresh = await reauthenticated(host);
+    await http()
+      .post('/api/v1/account/transfers/accept')
+      .set(hostFresh.mutation)
+      .send({ token: requested.body.token })
+      .expect(204);
+    await identity.background.flush();
+    return { mover, email, consentToken, moveToken: requested.body.token as string };
+  }
+
+  it('lien d’accord par e-mail rejoué : même refus qu’un jeton inconnu', async () => {
+    const { consentToken } = await acceptedMove();
+    const replayed = await http()
+      .post('/api/v1/transfers/consent')
+      .set(await presession())
+      .send({ token: consentToken, pinChoice: 'NONE' });
+    const unknown = await http()
+      .post('/api/v1/transfers/consent')
+      .set(await presession())
+      .send({ token: unknownLike(consentToken), pinChoice: 'NONE' });
+    expect(replayed.status).toBeGreaterThanOrEqual(400);
+    expect(refusal(replayed)).toEqual(refusal(unknown));
+  });
+
+  it('lien d’annulation rejoué : même refus qu’un jeton inconnu', async () => {
+    const { email } = await acceptedMove();
+    const cancel = identity.mail.lastToken(email) ?? '';
+    await http()
+      .post('/api/v1/transfers/cancel')
+      .set(await presession())
+      .send({ token: cancel })
+      .expect(204);
+    const replayed = await http()
+      .post('/api/v1/transfers/cancel')
+      .set(await presession())
+      .send({ token: cancel });
+    const unknown = await http()
+      .post('/api/v1/transfers/cancel')
+      .set(await presession())
+      .send({ token: unknownLike(cancel) });
+    expect(replayed.status).toBeGreaterThanOrEqual(400);
+    expect(refusal(replayed)).toEqual(refusal(unknown));
+  });
+
+  it('jeton de passage déjà accepté, présenté par un autre compte éligible : même refus qu’un jeton inconnu', async () => {
+    const { mover, moveToken } = await acceptedMove();
+    // Un second compte, lui aussi lié au profil qui part : il pourrait recevoir ce passage.
+    const other = await account('Autre');
+    await link(mover, other);
+    const otherFresh = await reauthenticated(other);
+    for (const path of ['/api/v1/account/transfers/accept', '/api/v1/account/transfers/inspect']) {
+      identity.rateLimiter.reset();
+      const replayed = await http().post(path).set(otherFresh.mutation).send({ token: moveToken });
+      const unknown = await http()
+        .post(path)
+        .set(otherFresh.mutation)
+        .send({ token: unknownLike(moveToken) });
+      expect({ path, ...refusal(replayed) }).toEqual({ path, ...refusal(unknown) });
+    }
+  });
+});
+
 describe('revue SEC-40 du code (cycle 1)', () => {
   it('I1 : un détachement au lien expiré est clos, le profil peut redemander', async () => {
     const stayer = await account('Parent');
@@ -536,6 +624,62 @@ describe('revue SEC-40 du code (cycle 1)', () => {
       .set(origin.mutation)
       .send({ kind: 'DETACH', email: `y-${randomUUID()}@lahotte.test` })
       .expect(201);
+  });
+
+  it('revue SEC-40 de la tranche 8 (I1), PRO-13 : adresse prise ou libre — même état visible à 48 heures et après le lien', async () => {
+    const { email: taken } = await (async () => {
+      const owner = await account('Déjà inscrite');
+      return { email: `t-${owner.accountId}@lahotte.test` };
+    })();
+    const states: Record<string, unknown[]> = {};
+    for (const [label, address] of [
+      ['libre', `libre-${randomUUID()}@lahotte.test`],
+      ['prise', taken],
+    ] as const) {
+      const stayer = await account('Parent');
+      const mover = await addProfile(stayer, { displayName: 'Majeur' });
+      const origin = await reauthenticated(stayer);
+      await http()
+        .post(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+        .set(origin.mutation)
+        .send({ kind: 'DETACH', email: address })
+        .expect(201);
+      await http()
+        .post('/api/v1/profiles/me/transfer/consent')
+        .set(mover.mutation)
+        .send({ pinChoice: 'NONE' })
+        .expect(204);
+      // Ce que le demandeur et le profil voient, sans identifiants ni instants.
+      const visible = async (): Promise<unknown> => {
+        const fromAccount = await http()
+          .get(`/api/v1/account/profiles/${mover.profileId ?? ''}/transfer`)
+          .set({ Cookie: origin.cookie });
+        const fromProfile = await http()
+          .get('/api/v1/profiles/me/transfer')
+          .set({ Cookie: mover.cookie });
+        const strip = (value: unknown): string =>
+          JSON.stringify(value ?? null)
+            .replace(/"[0-9a-f-]{36}"/g, '"id"')
+            .replace(/"\d{4}-\d\d-\d\dT[^"]*"/g, '"instant"')
+            .replaceAll(address, 'adresse');
+        return {
+          account: [fromAccount.status, strip(fromAccount.body.transfer ?? fromAccount.body.code)],
+          profile: [fromProfile.status, strip(fromProfile.body.transfer)],
+        };
+      };
+      await runDue(mover.profileId ?? '');
+      const afterDelay = await visible();
+      for (const t of identity.transfers.transfers.values()) {
+        if (t.profileId !== mover.profileId) continue;
+        t.executesAt = new Date(Date.now() - 10_000);
+        t.tokenExpiresAt = new Date(Date.now() - 1);
+      }
+      await app.get(RunDueTransfers).execute();
+      states[label] = [afterDelay, await visible()];
+    }
+    expect(states.prise).toEqual(states.libre);
+    // Le titulaire de l'adresse prise est averti ; aucun lien ne lui parvient.
+    expect(identity.mail.lastToken(taken)).toBeNull();
   });
 
   it('M1 : un regroupement ne se déclare pas pour un détachement', async () => {

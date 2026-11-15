@@ -6,7 +6,7 @@ import { Test } from '@nestjs/testing';
 import * as Sentry from '@sentry/nestjs';
 import request from 'supertest';
 import { generate } from 'otplib';
-import { inject } from 'vitest';
+import { inject, vi } from 'vitest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
 import { LogDestination } from '../../src/platform/logging/logging.module';
@@ -24,7 +24,10 @@ import {
 import { type FakeOidcProvider, startFakeOidcProvider } from '../support/fake-oidc-provider';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
 import { PRESESSION_COOKIE } from '../../src/modules/identity/presentation/cookies';
-import { RunDueTransfers } from '../../src/modules/identity/application/contract';
+import {
+  CompleteGoogleFlow,
+  RunDueTransfers,
+} from '../../src/modules/identity/application/contract';
 import { createAccountWithProfile, session as sessionHeaders, signIn } from '../support/sign-in';
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
@@ -889,6 +892,10 @@ async function playGoogleScenario(app: INestApplication): Promise<void> {
     .set(before)
     .send({ registration: { displayName: googleSecrets.displayName, ageAttested: true } })
     .expect(200);
+  // ADR 0015 : le départ tire une pré-session neuve, à laquelle le retour est lié.
+  const startPresession = cookieOf(started, '__Host-lh_presession');
+  googleSecrets.startPresession = decodeURIComponent(startPresession.split('=')[1] ?? '');
+  before.Cookie = `${startPresession}; session=${MARKER}`;
   const url = new URL(started.body.authorizationUrl as string);
   googleSecrets.state = url.searchParams.get('state') ?? '';
   googleSecrets.nonce = url.searchParams.get('nonce') ?? '';
@@ -906,6 +913,18 @@ async function playGoogleScenario(app: INestApplication): Promise<void> {
     )
     .set(before)
     .expect(303);
+  // Revue SEC-40 de la tranche 4 (M7) : erreur inattendue sur le retour (500, rapport d'erreur),
+  // dont le message reprend la chaîne de requête, comme le ferait une bibliothèque qui cite l'URL.
+  const complete = vi
+    .spyOn(app.get(CompleteGoogleFlow), 'execute')
+    .mockImplementationOnce((input) =>
+      Promise.reject(new Error(`Retour illisible : ${input.callbackQuery}`)),
+    );
+  await http
+    .get(`/api/v1/auth/google/callback?state=${MARKER}&code=${MARKER}&iss=${MARKER}`)
+    .set(before)
+    .expect(500);
+  complete.mockRestore();
   // Retour légitime, avec des paramètres que Google ajoute.
   const signedIn = await http
     .get(
@@ -1182,16 +1201,17 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
   });
 
   it('SentryErrorReporter (OBS-45) : le SDK ne reçoit qu’une copie nettoyée', () => {
-    expect(handedToSdk).toHaveLength(2);
+    expect(handedToSdk).toHaveLength(3);
     expect(findMarker(handedToSdk.join('\n'))).toBeUndefined();
   });
 
   it('événements d’erreur (OBS-25, OBS-28, OBS-45) : un par 5xx, rien de la requête', () => {
     const events = errorEvents();
-    // Une par 5xx, et ce sont bien elles : la route `boom` et la requête SQL refusée. L'exception
-    // principale est la dernière de `values` (les causes la précèdent).
+    // Une par 5xx, et ce sont bien elles : la route `boom`, la requête SQL refusée et le retour
+    // Google en échec (M7). L'exception principale est la dernière de `values` (les causes la
+    // précèdent).
     const mainTypes = events.map((event) => event.exception?.values?.at(-1)?.type).sort();
-    expect(mainTypes).toEqual(['PrismaClientKnownRequestError', 'TypeError']);
+    expect(mainTypes).toEqual(['Error', 'PrismaClientKnownRequestError', 'TypeError']);
     // `beforeSend` reconstruit l'événement en liste blanche : ni requête, ni utilisateur, ni
     // `extra`, ni nom de machine, ni transaction.
     const keys = new Set(events.flatMap((event) => Object.keys(event)));
@@ -1312,6 +1332,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
         'googleSession',
         'nonce',
         'reauthState',
+        'startPresession',
         'state',
         'subject',
       ].sort(),
