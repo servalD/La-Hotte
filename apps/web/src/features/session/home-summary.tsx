@@ -56,6 +56,9 @@ export function HomeSummary() {
       <Card>
         <CardTitle>{t('soon.title')}</CardTitle>
         <CardDescription className="mt-1">{t('soon.body')}</CardDescription>
+        <Button asChild className="mt-3">
+          <Link href="/lists">{t('soon.action')}</Link>
+        </Button>
       </Card>
     </>
   );

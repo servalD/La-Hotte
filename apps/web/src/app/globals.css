@@ -18,6 +18,7 @@
   --color-primary-foreground: var(--ds-color-primary-foreground);
   --color-danger: var(--ds-color-danger);
   --color-danger-foreground: var(--ds-color-danger-foreground);
+  --color-success: var(--ds-color-success);
   --color-state-purchased: var(--ds-color-state-purchased);
   --color-state-received: var(--ds-color-state-received);
   --color-focus-ring: var(--ds-color-focus-ring);
