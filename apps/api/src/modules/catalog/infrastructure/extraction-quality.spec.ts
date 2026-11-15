@@ -56,7 +56,7 @@ describe('Pages figées : mesure de l’extraction par données structurées', (
         `${f.padEnd(15)} ${counts[f].ok}/${counts[f].total} (${Math.round((100 * counts[f].ok) / counts[f].total)} %)`,
     ).join('\n');
     // Affiché par Vitest : le suivi de la qualité (OBS, `14`).
-    console.info(`Extraction structurée, pages figées :\n${report}`);
+    process.stdout.write(`Extraction structurée, pages figées :\n${report}\n`);
     expect(misses).toEqual([]);
   });
 
