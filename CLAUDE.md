@@ -23,6 +23,7 @@ Ne lis que les fichiers de spec utiles à la tâche. Les règles sont numéroté
 ```
 apps/api            NestJS, architecture propre par module   → apps/api/CLAUDE.md
 apps/web            Next.js App Router, PWA                  → apps/web/CLAUDE.md
+apps/fetcher        récupération d'URL et décodage d'images, isolé (EXT-40 à EXT-46, ADR 0016)
 packages/api-client généré depuis openapi.json, ne pas éditer → packages/api-client/CLAUDE.md
 packages/config     tsconfig, eslint, prettier partagés
 ops/observability   collecteur OpenTelemetry, OpenObserve, GlitchTip (ADR 0012)
@@ -53,7 +54,7 @@ Node 22, pnpm 10. À la racine :
 | `pnpm db:migrate:deploy`             | Applique les migrations (CI, production)                                                                                                                                                                                                               |
 | `pnpm format` / `pnpm format:check`  | Prettier                                                                                                                                                                                                                                               |
 
-Première installation : copier `apps/api/.env.example` en `apps/api/.env`.
+Première installation : copier `apps/api/.env.example` en `apps/api/.env`, et `apps/fetcher/.env.example` en `apps/fetcher/.env` (même `FETCHER_TOKEN`).
 
 ## Invariants
 

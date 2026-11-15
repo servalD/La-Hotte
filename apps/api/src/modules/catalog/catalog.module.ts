@@ -7,7 +7,9 @@ import {
   ProductCatalog,
   UpdateProduct,
 } from './application/manage-products.use-case';
+import { PageFetcher } from './domain/page-fetcher.port';
 import { ImageStore, ProductRepository } from './domain/product.ports';
+import { HttpPageFetcher } from './infrastructure/http-page-fetcher';
 import { DiskImageStore } from './infrastructure/disk-image-store';
 import { PrismaProductRepository } from './infrastructure/prisma-product-repository';
 import { ImagesController, ProductsController } from './presentation/products.controller';
@@ -24,6 +26,7 @@ import { ImagesController, ProductsController } from './presentation/products.co
     ProductCatalog,
     { provide: ProductRepository, useClass: PrismaProductRepository },
     { provide: ImageStore, useClass: DiskImageStore },
+    { provide: PageFetcher, useClass: HttpPageFetcher },
   ],
   exports: [ProductCatalog],
 })

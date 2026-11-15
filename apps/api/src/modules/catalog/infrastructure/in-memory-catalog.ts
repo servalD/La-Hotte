@@ -7,6 +7,13 @@ import {
   type ProductPage,
   ProductRepository,
 } from '../domain/product.ports';
+import {
+  type Fetched,
+  type FetchedPage,
+  type FetchFailure,
+  PageFetcher,
+  type StoredReadyImage,
+} from '../domain/page-fetcher.port';
 import { decodeCursor, encodeCursor } from './cursor';
 
 /** Double de test (ports en mémoire) ; `rows` est partagé avec le double des listes. */
@@ -131,5 +138,46 @@ export class InMemoryImageStore extends ImageStore {
 
   get(key: string): Promise<{ bytes: Buffer; contentType: string } | null> {
     return Promise.resolve(this.images.get(key) ?? null);
+  }
+}
+
+/** Double du `fetcher` : pages et images déclarées par les tests, refus par code sinon. */
+export class FakePageFetcher extends PageFetcher {
+  readonly pages = new Map<string, FetchedPage | FetchFailure>();
+  readonly images = new Map<string, FetchFailure | Buffer>();
+  readonly calls: string[] = [];
+  available = true;
+
+  fetchPage(url: string): Promise<Fetched<FetchedPage>> {
+    this.calls.push(`page:${url}`);
+    if (!this.available) return Promise.resolve({ ok: false, failure: 'UNAVAILABLE' });
+    const page = this.pages.get(url) ?? 'FETCH_FAILED';
+    return Promise.resolve(
+      typeof page === 'string' ? { ok: false, failure: page } : { ok: true, ...page },
+    );
+  }
+
+  fetchImage(url: string): Promise<Fetched<StoredReadyImage>> {
+    this.calls.push(`image:${url}`);
+    if (!this.available) return Promise.resolve({ ok: false, failure: 'UNAVAILABLE' });
+    const image = this.images.get(url) ?? 'FETCH_FAILED';
+    return Promise.resolve(
+      typeof image === 'string'
+        ? { ok: false, failure: image }
+        : { ok: true, contentType: 'image/webp', bytes: image },
+    );
+  }
+
+  reencode(bytes: Buffer): Promise<Fetched<StoredReadyImage>> {
+    this.calls.push('reencode');
+    if (!this.available) return Promise.resolve({ ok: false, failure: 'UNAVAILABLE' });
+    if (bytes.toString('latin1', 0, 4) === '<svg') {
+      return Promise.resolve({ ok: false, failure: 'IMAGE_REJECTED' });
+    }
+    return Promise.resolve({
+      ok: true,
+      contentType: 'image/webp',
+      bytes: Buffer.from('RIFFxxxxWEBP'),
+    });
   }
 }

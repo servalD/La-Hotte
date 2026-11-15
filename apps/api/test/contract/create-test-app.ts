@@ -52,9 +52,11 @@ import {
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
 import {
+  FakePageFetcher,
   ImageStore,
   InMemoryImageStore,
   InMemoryProductRepository,
+  PageFetcher,
   ProductRepository,
 } from '../../src/modules/catalog/testing';
 import {
@@ -72,6 +74,7 @@ import {
 export interface TestCatalog {
   readonly products: InMemoryProductRepository;
   readonly images: InMemoryImageStore;
+  readonly fetcher: FakePageFetcher;
   readonly lists: InMemoryListRepository;
   readonly items: InMemoryItemRepository;
   readonly visibilityLog: InMemoryVisibilityLog;
@@ -160,6 +163,7 @@ export async function createTestApp(
   const catalog: TestCatalog = {
     products,
     images: new InMemoryImageStore(),
+    fetcher: new FakePageFetcher(),
     lists: new InMemoryListRepository(visibilityLog),
     items: new InMemoryItemRepository(products, visibilityLog),
     visibilityLog,
@@ -217,6 +221,8 @@ export async function createTestApp(
     .useValue(catalog.products)
     .overrideProvider(ImageStore)
     .useValue(catalog.images)
+    .overrideProvider(PageFetcher)
+    .useValue(catalog.fetcher)
     .overrideProvider(ListRepository)
     .useValue(catalog.lists)
     .overrideProvider(ItemRepository)
