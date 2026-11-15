@@ -51,6 +51,18 @@ import {
 } from '../../src/modules/identity/testing';
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
+import {
+  ImageStore,
+  InMemoryImageStore,
+  InMemoryProductRepository,
+  ProductRepository,
+} from '../../src/modules/catalog/testing';
+
+/** Doubles des modules de la phase 2. */
+export interface TestCatalog {
+  readonly products: InMemoryProductRepository;
+  readonly images: InMemoryImageStore;
+}
 
 export interface TestIdentity {
   readonly sessions: InMemorySessionStore;
@@ -100,6 +112,7 @@ export async function createTestApp(
 ): Promise<{
   app: INestApplication;
   identity: TestIdentity;
+  catalog: TestCatalog;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
@@ -128,6 +141,10 @@ export async function createTestApp(
   // PRO-12, PRO-15 : le double des profils consulte les règles de tutelle des comptes et des liens.
   profileRepository.guardianRules = wards;
   const transfers = new InMemoryTransferRepository(accounts, links, wards, sessions);
+  const catalog: TestCatalog = {
+    products: new InMemoryProductRepository(),
+    images: new InMemoryImageStore(),
+  };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -176,6 +193,10 @@ export async function createTestApp(
     .useValue(wards)
     .overrideProvider(TransferRepository)
     .useValue(transfers)
+    .overrideProvider(ProductRepository)
+    .useValue(catalog.products)
+    .overrideProvider(ImageStore)
+    .useValue(catalog.images)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });
@@ -228,5 +249,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity };
+  return { app, identity, catalog };
 }
