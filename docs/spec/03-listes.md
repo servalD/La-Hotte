@@ -20,6 +20,10 @@ Deux types de listes, une seule mécanique : une liste contient des éléments, 
 - **LST-04** **Retrait et succession.** Un créateur qui quitte la liste doit désigner un responsable parmi les membres. S'il supprime son profil sans l'avoir fait, le contributeur le plus ancien devient responsable ; s'il n'y en a pas, la liste est archivée.
 - **LST-05** Une liste peut être archivée (lecture seule, masquée des vues courantes) puis restaurée. La suppression passe par 30 jours de corbeille.
 - **LST-06** Ordre des éléments : manuel par glisser-déposer, ou tri par priorité, prix, date d'ajout.
+- **LST-07** **Destinataires.** Une wishlist a pour destinataires son créateur ou des profils de son compte (un parent tient la liste de son enfant) ; une giftlist, des profils du cercle de son créateur (LNK-09), jamais lui-même. Le créateur et le responsable changent les destinataires dans les mêmes limites. « Mes envies » (WSH-02) a pour seul destinataire son profil, qui en est créateur, et ne change pas de destinataire.
+- **LST-08** **Membres.** Le créateur et le responsable ajoutent un membre parmi les profils de leur propre cercle (aucune recherche hors du cercle, LNK-04), avec le rôle responsable, contributeur ou lecteur, et le retirent. Un membre qui n'est pas destinataire est un offreur. Un destinataire de giftlist ne peut pas en être membre (GFT-01), en base aussi.
+- **LST-09** **Autorité sans créateur.** Quand le créateur s'est retiré, le plus ancien responsable a tous ses droits, suppression de la liste comprise.
+- **LST-20** **Corbeille.** Une liste supprimée n'est plus visible que de son créateur (ou de l'autorité de LST-09), qui peut la restaurer pendant 30 jours ; elle est ensuite purgée avec ses éléments. « Mes envies » ne se supprime ni ne s'archive.
 
 ## Cycle de vie d'un élément
 
@@ -37,6 +41,8 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - **LST-15** Le destinataire peut déclarer « je l'ai déjà » ou « je n'en veux plus » sur son souhait : l'élément est retiré de la liste active. S'il était réservé, les offreurs concernés sont notifiés.
 - **LST-16** **Ce que voit le destinataire.** Il ne connaît que deux états pour ses souhaits : **neutre** et **reçu** (vert, quand il l'a coché). Il ne voit jamais `RÉSERVÉ` ni `ACHETÉ` (bleu), ni avant ni après l'événement : seuls les participants voient le bleu. Il n'y a pas de « révélation » de l'état.
 - **LST-17** Le destinataire ne peut d'aucune façon savoir qu'un souhait est réservé, même sans savoir par qui. Il n'existe pas d'option pour le montrer. C'est aux offreurs de prévenir le destinataire, s'ils le jugent utile, par le fil public (« ne l'achète pas toi-même ! »).
+- **LST-18** **Reçu.** Seul un destinataire d'une wishlist coche « reçu » sur l'un de ses souhaits, et peut le décocher. Le reçu est porté à part (`received_at`) : l'état réel (`OUVERT`, `RÉSERVÉ`, `ACHETÉ`) n'est jamais écrasé, et la vue offreur montre `REÇU` tant que le reçu est coché. La confirmation de réception d'un cadeau de giftlist vient avec la phase 3.
+- **LST-19** **Retrait.** « Je l'ai déjà » et « je n'en veux plus » (LST-15) retirent l'élément de la liste active pour tous ; le motif est gardé. Un élément retiré n'apparaît plus dans aucune lecture de la liste.
 
 ## Wishlist
 
@@ -48,6 +54,8 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - **WSH-03** Audience par défaut : le cercle du ou des destinataires pour une liste personnelle ; les participants de l'événement pour une liste d'événement.
 - **WSH-04** Un offreur peut **suggérer** un élément sur la wishlist de quelqu'un : la suggestion est visible des autres offreurs, pas du destinataire, et se réserve comme un souhait. C'est la forme légère d'une giftlist.
 - **WSH-05** Sur une liste partagée, aucun des destinataires ne voit les réservations (règle de surprise appliquée à tous).
+- **WSH-06** « Mes envies » est créée à la première lecture des listes du profil, une seule par profil (unicité en base) : pour lui, c'est « d'office ».
+- **WSH-07** Une suggestion (WSH-04) peut être faite par tout offreur qui voit la liste. Elle n'est modifiable et retirable que par son auteur, et n'est jamais montrée à un destinataire, même créateur de la liste.
 
 ## Giftlist
 
@@ -65,6 +73,8 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - **GFT-06** Le créateur invite les offreurs un par un ou par événement. Un destinataire ne peut pas être invité comme offreur de sa propre giftlist.
 - **GFT-07** Une giftlist `CACHÉE` ne doit laisser aucune trace côté destinataire : ni compteur, ni notification, ni résultat de recherche, ni différence de temps de réponse exploitable.
 - **GFT-08** Si un destinataire et un offreur partagent le même compte, l'interface avertit le créateur que le secret dépend du PIN (voir PIN-06).
+- **GFT-09** **Ce que voit le destinataire d'une giftlist révélée.** L'existence seule, par la phrase fixe de GFT-03 : ni titre, ni description, ni créateur, ni membres. Avec un contenu `PARTIEL` ou `COMPLET`, les éléments montrés le sont en vue destinataire, sauf ceux dont la règle l'exclut (VIS-10) ; un élément retiré ou une suggestion ne l'est jamais.
+- **GFT-10** Pour la règle de surprise, chaque destinataire d'une giftlist est destinataire de chacun de ses éléments, quel que soit le destinataire précisé (GFT-02).
 
 ## Valeurs par défaut
 
