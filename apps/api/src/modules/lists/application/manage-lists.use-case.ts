@@ -353,16 +353,17 @@ export class UpdateList {
         : {}),
     };
     const now = this.clock.now();
-    const defaultChanged =
-      input.defaultItemVisibility !== undefined &&
-      input.defaultItemVisibility !== list.defaultItemVisibility;
+    const newDefault =
+      input.defaultItemVisibility !== list.defaultItemVisibility
+        ? input.defaultItemVisibility
+        : undefined;
     const result = await this.lists.update({
       listId: list.id,
       expectedVersion: input.expectedVersion,
       changes,
       now,
       // VIS-14 : la règle par défaut de la liste est tracée comme celle d'un élément.
-      ...(defaultChanged && input.defaultItemVisibility
+      ...(newDefault
         ? {
             log: {
               id: this.ids.next(),
@@ -370,7 +371,7 @@ export class UpdateList {
               itemId: null,
               changedBy: input.viewerId,
               before: { mode: list.defaultItemVisibility, profiles: [] },
-              after: { mode: input.defaultItemVisibility, profiles: [] },
+              after: { mode: newDefault, profiles: [] },
               at: now,
             },
           }
