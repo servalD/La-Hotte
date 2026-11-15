@@ -50,7 +50,7 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 - **VIS-32** Les événements temps réel sont émis par destinataire après passage dans le moteur (voir `06-commentaires-notifications.md`).
 - **VIS-33** Le moteur est couvert par une matrice de tests générée : chaque combinaison (type de liste, rôle, appartenance au compte, règle d'élément, état, avant ou après la date de l'événement) a un résultat attendu écrit.
 - **VIS-34** Une liste ou un élément qu'un profil ne voit pas répond `404`, comme un identifiant inconnu (SEC-04) ; une action interdite sur une liste ou un élément qu'il voit répond `403`.
-- **VIS-35** La vue destinataire d'un souhait est une liste fermée de champs : identifiant, liste, fiche (titre, description, image, vendeur, URL d'origine), quantité, prix unitaire et devise, priorité, note, « plusieurs exemplaires bienvenus », position, caché ou non, reçu et sa date, ajouté par soi ou non. Tout autre champ exige de modifier cette règle et la liste blanche du test de contrat.
+- **VIS-35** La vue destinataire d'un souhait est une liste fermée de champs : identifiant, liste, fiche (titre, description, image, vendeur, URL d'origine), quantité, prix unitaire et devise, priorité, note, « plusieurs exemplaires bienvenus », position, caché ou non, reçu et sa date, ajouté par soi ou non, version (API-17). La version d'un élément ne change jamais pour une écriture d'offreur : réservations, parts et achat vivent dans leurs propres tables, et la date de modification n'est pas montrée. Tout autre champ exige de modifier cette règle et la liste blanche du test de contrat.
 
 ## Matrice de référence
 
