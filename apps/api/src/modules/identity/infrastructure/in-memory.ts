@@ -676,6 +676,11 @@ export class InMemoryRateLimiter extends RateLimiter {
     this.pending.clear();
   }
 
+  /** Simule l'expiration des réservations (10 s) sans toucher aux échecs comptés. */
+  expireReservations(): void {
+    this.pending.clear();
+  }
+
   async check(subjects: readonly RateLimitSubject[], now: Date): Promise<RateLimitCheck> {
     let wait = 0;
     let busy = false;

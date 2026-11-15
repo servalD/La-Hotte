@@ -818,6 +818,44 @@ describe('Ré-authentification par Google (AUTH-14)', () => {
       .expect(401);
   });
 
+  it('AUTH-11, AUTH-14 : une ré-authentification juste mais perdante ne remet aucun compteur à zéro', async () => {
+    const { email, accountId } = await passwordAccount();
+    const sub = subject();
+    const { secret, user } = await enableTotp(
+      await link(await passwordLogin(email, accountId), sub),
+    );
+    await callback(identity.google.approve(await startReauth(user), { subject: sub }), user.cookie);
+    for (let i = 0; i < 4; i += 1) {
+      await http()
+        .post('/api/v1/auth/reauth')
+        .set(user.mutation)
+        .send({ code: '000000' })
+        .expect(401);
+    }
+
+    // La preuve Google est consommée par une requête concurrente entre `find` et `consume`.
+    const consume = vi.spyOn(identity.googleReauthProofs, 'consume').mockResolvedValueOnce(null);
+    await http()
+      .post('/api/v1/auth/reauth')
+      .set(user.mutation)
+      .send({ code: await totp(secret, 1) })
+      .expect(401);
+    consume.mockRestore();
+
+    // Les compteurs tiennent : le 5e échec les bloque, un code juste n'est plus évalué.
+    identity.rateLimiter.expireReservations();
+    await http()
+      .post('/api/v1/auth/reauth')
+      .set(user.mutation)
+      .send({ code: '000000' })
+      .expect(401);
+    await http()
+      .post('/api/v1/auth/reauth')
+      .set(user.mutation)
+      .send({ code: await totp(secret, 1) })
+      .expect(429);
+  });
+
   it('AUTH-14 : la preuve Google ne survit pas au verrouillage', async () => {
     const { email, accountId } = await passwordAccount();
     const sub = subject();

@@ -345,6 +345,35 @@ describe('Connexion avec TOTP (AUTH-07, AUTH-11, AUTH-12, ADR 0013)', () => {
     );
   });
 
+  it('AUTH-11 : une vérification juste mais perdante ne remet pas le compteur à zéro', async () => {
+    const { email, accountId } = await account();
+    const { secret } = await enableTotp(email, accountId);
+    const pending = await loginPending(email);
+    for (let i = 0; i < 4; i += 1) await verify(pending, '000000').expect(401);
+
+    // La pré-authentification est consommée par une autre requête entre `find` et `consume`.
+    const consume = vi.spyOn(identity.pendingSecondFactors, 'consume').mockResolvedValueOnce(null);
+    const lost = await verify(pending, await totp(secret, 1)).expect(401);
+    expect(lost.body.code).toBe('SECOND_FACTOR_EXPIRED');
+    consume.mockRestore();
+
+    // Le compteur tient : le 5e échec le bloque, un code juste n'est plus évalué.
+    identity.rateLimiter.expireReservations();
+    const fresh = await loginPending(email);
+    await verify(fresh, '000000').expect(401);
+    await verify(fresh, await totp(secret, 1)).expect(429);
+  });
+
+  it('AUTH-10 : un code de secours brûlé par une vérification perdante reste journalisé', async () => {
+    const { email, accountId } = await account();
+    const { recoveryCodes } = await enableTotp(email, accountId);
+    const pending = await loginPending(email);
+    const consume = vi.spyOn(identity.pendingSecondFactors, 'consume').mockResolvedValueOnce(null);
+    await verify(pending, recoveryCodes[0] ?? '').expect(401);
+    consume.mockRestore();
+    expect(identity.securityLog.entries.map((e) => e.event)).toContain('recovery.code_used');
+  });
+
   it('code de secours : une fois seulement, avis par e-mail', async () => {
     const { email, accountId } = await account();
     const { recoveryCodes } = await enableTotp(email, accountId);

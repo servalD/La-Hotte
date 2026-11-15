@@ -67,6 +67,7 @@ export class Reauthenticate {
       await this.log(accountId, 'reauth.failed', input.client);
       throw new InvalidCredentialsError();
     }
+    let factorSuccess: (() => Promise<void>) | null = null;
     if (totp) {
       // Le compteur du second facteur n'est réservé qu'une fois le mot de passe validé : un mot de
       // passe faux n'y compte pas (sinon qui tient la session sans le mot de passe retarderait les
@@ -89,15 +90,19 @@ export class Reauthenticate {
         await this.log(accountId, 'totp.failed', input.client);
         throw new InvalidSecondFactorError();
       }
-      await this.limiter.recordSuccess(factor, factorCheck.reservation);
       if (used === 'recovery') await this.log(accountId, 'recovery.code_used', input.client);
+      const { reservation } = factorCheck;
+      factorSuccess = async () => this.limiter.recordSuccess(factor, reservation);
     }
 
-    await this.limiter.recordSuccess(reauth, check.reservation);
     // Une seule ré-authentification par preuve Google, même en concurrence.
     if (input.password === null && !(await this.googleProofs.consume(input.session.id))) {
       throw new InvalidCredentialsError();
     }
+    // Remise à zéro des compteurs seulement après la consommation : une ré-authentification
+    // perdante ne peut pas effacer les échecs (AUTH-11). Sa réservation expire seule.
+    await factorSuccess?.();
+    await this.limiter.recordSuccess(reauth, check.reservation);
     const issued = await this.lifecycle.rotate(input.session);
     await this.log(accountId, 'reauth.succeeded', input.client);
     return issued;

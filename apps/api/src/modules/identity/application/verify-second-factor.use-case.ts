@@ -89,11 +89,13 @@ export class VerifySecondFactor {
       await this.log(accountId, 'totp.failed', input.client);
       throw new InvalidSecondFactorError();
     }
-    await this.limiter.recordSuccess(subjects, check.reservation);
+    // Le code de secours est déjà brûlé : l'audit l'enregistre même si cette vérification perd.
+    if (used === 'recovery') await this.log(accountId, 'recovery.code_used', input.client);
     // Deux vérifications concurrentes justes (code TOTP et code de secours) : une seule session.
     if (!(await this.pending.consume(pendingHash))) throw new SecondFactorExpiredError();
-
-    if (used === 'recovery') await this.log(accountId, 'recovery.code_used', input.client);
+    // Remise à zéro du compteur seulement après la consommation : une vérification perdante ne
+    // peut pas effacer les échecs (AUTH-11). Sa réservation expire seule.
+    await this.limiter.recordSuccess(subjects, check.reservation);
 
     // AUTH-12 : jamais pour un administrateur ou un modérateur (AUTH-13).
     const trusted =
