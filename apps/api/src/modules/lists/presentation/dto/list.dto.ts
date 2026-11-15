@@ -309,3 +309,17 @@ export class WithdrawItemDto {
   @ApiProperty({ enum: WITHDRAWN_REASONS, enumName: 'WithdrawnReason' })
   reason!: (typeof WITHDRAWN_REASONS)[number];
 }
+
+/** `PUT /items/{id}/visibility` (VIS-10, VIS-13) ; `If-Match` : version de l'élément (API-17). */
+export class SetItemRuleDto {
+  @IsIn(VISIBILITY_MODES)
+  @ApiProperty({ enum: VISIBILITY_MODES, enumName: 'VisibilityMode' })
+  mode!: (typeof VISIBILITY_MODES)[number];
+
+  /** Ignoré pour `ALL`. VIS-13 : passer de l'un à l'autre mode conserve la sélection côté client. */
+  @IsArray()
+  @ArrayMaxSize(CUSTOM_AUDIENCE_MAX)
+  @IsUUID('all', { each: true })
+  @ApiProperty({ type: [String], format: 'uuid', maxItems: CUSTOM_AUDIENCE_MAX })
+  profileIds!: string[];
+}

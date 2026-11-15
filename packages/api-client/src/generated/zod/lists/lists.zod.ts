@@ -498,3 +498,29 @@ export const restoreOneListResponse = zod.union([
     content: zod.enum(['NONE', 'PARTIAL', 'FULL']),
   }),
 ]);
+
+/**
+ * @summary VIS-14 : par l'autorité de la liste (VIS-19).
+ */
+export const readVisibilityLogParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const readVisibilityLogResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      itemId: zod.uuid().nullable().describe('Absent : règle par défaut de la liste.'),
+      changedBy: zod.uuid(),
+      before: zod.object({
+        mode: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+        profiles: zod.array(zod.uuid()),
+      }),
+      after: zod.object({
+        mode: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+        profiles: zod.array(zod.uuid()),
+      }),
+      at: zod.iso.datetime({}),
+    }),
+  ),
+});

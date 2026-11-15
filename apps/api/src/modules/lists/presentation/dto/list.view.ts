@@ -204,3 +204,35 @@ export class ItemCollectionView {
 export class CopiedProductView {
   @ApiProperty({ format: 'uuid' }) productId!: string;
 }
+
+/** VIS-10, VIS-12 : la règle d'un élément, lue par qui peut la modifier (VIS-19). */
+export class ItemRuleView {
+  @ApiProperty({ enum: VISIBILITY_MODES, enumName: 'VisibilityMode' })
+  mode!: (typeof VISIBILITY_MODES)[number];
+  @ApiProperty({ type: [String], format: 'uuid' }) profiles!: string[];
+  /** VIS-12 : profils choisis hors de l'audience de la liste ; l'interface propose de les y ajouter. */
+  @ApiProperty({ type: [String], format: 'uuid' }) outsideAudience!: string[];
+  /** Version de l'élément, pour `If-Match`. */
+  @ApiProperty() version!: number;
+}
+
+export class RuleSnapshotView {
+  @ApiProperty({ enum: VISIBILITY_MODES, enumName: 'VisibilityMode' })
+  mode!: (typeof VISIBILITY_MODES)[number];
+  @ApiProperty({ type: [String], format: 'uuid' }) profiles!: string[];
+}
+
+/** VIS-14 : qui, quand, avant, après. */
+export class VisibilityLogEntryView {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  /** Absent : règle par défaut de la liste. */
+  @ApiProperty({ type: String, format: 'uuid', nullable: true }) itemId!: string | null;
+  @ApiProperty({ format: 'uuid' }) changedBy!: string;
+  @ApiProperty({ type: RuleSnapshotView }) before!: RuleSnapshotView;
+  @ApiProperty({ type: RuleSnapshotView }) after!: RuleSnapshotView;
+  @ApiProperty({ format: 'date-time' }) at!: string;
+}
+
+export class VisibilityLogView {
+  @ApiProperty({ type: [VisibilityLogEntryView] }) items!: VisibilityLogEntryView[];
+}

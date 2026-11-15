@@ -38,6 +38,7 @@ import type {
   SetMemberDto,
   UpdateListDto,
   UpdateOneList200,
+  VisibilityLogView,
 } from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
@@ -1163,3 +1164,127 @@ export const useRestoreOneList = <TError = ErrorType<ProblemDetailsDto>, TContex
 
   return useMutation(mutationOptions, queryClient);
 };
+/**
+ * @summary VIS-14 : par l'autorité de la liste (VIS-19).
+ */
+export const getReadVisibilityLogUrl = (id: string) => {
+  return `/api/v1/lists/${id}/visibility-log`;
+};
+
+export const readVisibilityLog = async (
+  id: string,
+  options?: RequestInit,
+): Promise<VisibilityLogView> => {
+  return apiFetch<VisibilityLogView>(getReadVisibilityLogUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getReadVisibilityLogQueryKey = (id?: string) => {
+  return [`/api/v1/lists/${id}/visibility-log`] as const;
+};
+
+export const getReadVisibilityLogQueryOptions = <
+  TData = Awaited<ReturnType<typeof readVisibilityLog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof readVisibilityLog>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getReadVisibilityLogQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof readVisibilityLog>>> = ({ signal }) =>
+    readVisibilityLog(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof readVisibilityLog>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ReadVisibilityLogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof readVisibilityLog>>
+>;
+export type ReadVisibilityLogQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useReadVisibilityLog<
+  TData = Awaited<ReturnType<typeof readVisibilityLog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof readVisibilityLog>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof readVisibilityLog>>,
+          TError,
+          Awaited<ReturnType<typeof readVisibilityLog>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useReadVisibilityLog<
+  TData = Awaited<ReturnType<typeof readVisibilityLog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof readVisibilityLog>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof readVisibilityLog>>,
+          TError,
+          Awaited<ReturnType<typeof readVisibilityLog>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useReadVisibilityLog<
+  TData = Awaited<ReturnType<typeof readVisibilityLog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof readVisibilityLog>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary VIS-14 : par l'autorité de la liste (VIS-19).
+ */
+
+export function useReadVisibilityLog<
+  TData = Awaited<ReturnType<typeof readVisibilityLog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof readVisibilityLog>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getReadVisibilityLogQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}

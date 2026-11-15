@@ -44,6 +44,36 @@ export interface ListChanges {
   readonly customAudience?: readonly { readonly id: string; readonly profileId: string }[];
 }
 
+/** VIS-10 : une règle, telle que le journal la garde (VIS-14). */
+export interface RuleSnapshot {
+  readonly mode: VisibilityMode;
+  readonly profiles: readonly string[];
+}
+
+/** VIS-14 : une ligne du journal, en ajout seul (DAT-02). `itemId` absent : défaut de la liste. */
+export interface RuleLogEntry {
+  readonly id: string;
+  readonly listId: string;
+  readonly itemId: string | null;
+  readonly changedBy: string;
+  readonly before: RuleSnapshot;
+  readonly after: RuleSnapshot;
+  readonly at: Date;
+}
+
+export abstract class VisibilityLogRepository {
+  /** Plus récentes d'abord. */
+  abstract listFor(listId: string, limit: number): Promise<RuleLogEntry[]>;
+}
+
+/**
+ * VIS-16 : profils engagés sur un élément (réservation, participation). Les engagements naissent
+ * avec la compta (phase 5) ; d'ici là, l'adaptateur n'en connaît aucun.
+ */
+export abstract class EngagementReader {
+  abstract engagedProfiles(itemId: string): Promise<string[]>;
+}
+
 export abstract class ListRepository {
   /** WSH-06 : « Mes envies » du profil, créée si elle n'existe pas (sans erreur en concurrence). */
   abstract ensurePersonal(input: {
@@ -74,6 +104,8 @@ export abstract class ListRepository {
     readonly expectedVersion: number;
     readonly changes: ListChanges;
     readonly now: Date;
+    /** VIS-14 : écrit dans la même transaction que le changement de la règle par défaut. */
+    readonly log?: RuleLogEntry;
   }): Promise<ListRecord | 'version' | 'missing'>;
 
   /** LST-08 : ajoute ou change le rôle d'un membre (jamais `CREATOR`). */
@@ -133,6 +165,14 @@ export abstract class ItemRepository {
     readonly changes: ItemChanges;
   }): Promise<ItemRecord | 'version' | 'missing'>;
   abstract delete(itemId: string): Promise<boolean>;
+  /** VIS-10, VIS-14 : remplace la règle ; la ligne du journal (s'il y en a une) dans la même transaction. */
+  abstract setRule(input: {
+    readonly itemId: string;
+    readonly expectedVersion: number;
+    readonly rule: RuleSnapshot;
+    readonly profileRowIds: readonly string[];
+    readonly log: RuleLogEntry | null;
+  }): Promise<ItemRecord | 'version' | 'missing'>;
   /** LST-18 : pose ou retire le reçu, sans toucher à l'état réel. */
   abstract setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null>;
   /** LST-15, LST-19 */

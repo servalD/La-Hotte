@@ -58,10 +58,14 @@ import {
   ProductRepository,
 } from '../../src/modules/catalog/testing';
 import {
+  EngagementReader,
+  InMemoryEngagementReader,
   InMemoryItemRepository,
   InMemoryListRepository,
+  InMemoryVisibilityLog,
   ItemRepository,
   ListRepository,
+  VisibilityLogRepository,
 } from '../../src/modules/lists/testing';
 
 /** Doubles des modules de la phase 2. */
@@ -70,6 +74,8 @@ export interface TestCatalog {
   readonly images: InMemoryImageStore;
   readonly lists: InMemoryListRepository;
   readonly items: InMemoryItemRepository;
+  readonly visibilityLog: InMemoryVisibilityLog;
+  readonly engagements: InMemoryEngagementReader;
 }
 
 export interface TestIdentity {
@@ -150,11 +156,14 @@ export async function createTestApp(
   profileRepository.guardianRules = wards;
   const transfers = new InMemoryTransferRepository(accounts, links, wards, sessions);
   const products = new InMemoryProductRepository();
+  const visibilityLog = new InMemoryVisibilityLog();
   const catalog: TestCatalog = {
     products,
     images: new InMemoryImageStore(),
-    lists: new InMemoryListRepository(),
-    items: new InMemoryItemRepository(products),
+    lists: new InMemoryListRepository(visibilityLog),
+    items: new InMemoryItemRepository(products, visibilityLog),
+    visibilityLog,
+    engagements: new InMemoryEngagementReader(),
   };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -212,6 +221,10 @@ export async function createTestApp(
     .useValue(catalog.lists)
     .overrideProvider(ItemRepository)
     .useValue(catalog.items)
+    .overrideProvider(VisibilityLogRepository)
+    .useValue(catalog.visibilityLog)
+    .overrideProvider(EngagementReader)
+    .useValue(catalog.engagements)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });

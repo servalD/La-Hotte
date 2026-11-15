@@ -25,7 +25,9 @@ import type {
   CopiedProductView,
   GetOneItem200,
   ItemRecipientView,
+  ItemRuleView,
   ProblemDetailsDto,
+  SetItemRuleDto,
   UpdateItemDto,
   UpdateOneItem200,
   WithdrawItemDto,
@@ -539,6 +541,210 @@ export const useUnmarkItemReceived = <TError = ErrorType<ProblemDetailsDto>, TCo
   TContext
 > => {
   const mutationOptions = getUnmarkItemReceivedMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary VIS-19 : par qui peut la modifier ; sinon `403 VISIBILITY_EDIT_FORBIDDEN`.
+ */
+export const getGetItemRuleUrl = (id: string) => {
+  return `/api/v1/items/${id}/visibility`;
+};
+
+export const getItemRule = async (id: string, options?: RequestInit): Promise<ItemRuleView> => {
+  return apiFetch<ItemRuleView>(getGetItemRuleUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetItemRuleQueryKey = (id?: string) => {
+  return [`/api/v1/items/${id}/visibility`] as const;
+};
+
+export const getGetItemRuleQueryOptions = <
+  TData = Awaited<ReturnType<typeof getItemRule>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getItemRule>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetItemRuleQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getItemRule>>> = ({ signal }) =>
+    getItemRule(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getItemRule>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetItemRuleQueryResult = NonNullable<Awaited<ReturnType<typeof getItemRule>>>;
+export type GetItemRuleQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetItemRule<
+  TData = Awaited<ReturnType<typeof getItemRule>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getItemRule>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getItemRule>>,
+          TError,
+          Awaited<ReturnType<typeof getItemRule>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetItemRule<
+  TData = Awaited<ReturnType<typeof getItemRule>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getItemRule>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getItemRule>>,
+          TError,
+          Awaited<ReturnType<typeof getItemRule>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetItemRule<
+  TData = Awaited<ReturnType<typeof getItemRule>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getItemRule>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary VIS-19 : par qui peut la modifier ; sinon `403 VISIBILITY_EDIT_FORBIDDEN`.
+ */
+
+export function useGetItemRule<
+  TData = Awaited<ReturnType<typeof getItemRule>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getItemRule>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetItemRuleQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary VIS-10 à VIS-16, LST-03 ; tracé (VIS-14).
+ */
+export const getSetItemRuleUrl = (id: string) => {
+  return `/api/v1/items/${id}/visibility`;
+};
+
+export const setItemRule = async (
+  id: string,
+  setItemRuleDto: SetItemRuleDto,
+  options?: RequestInit,
+): Promise<ItemRuleView> => {
+  return apiFetch<ItemRuleView>(getSetItemRuleUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setItemRuleDto),
+  });
+};
+
+export const getSetItemRuleMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setItemRule>>,
+    TError,
+    { id: string; data: SetItemRuleDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setItemRule>>,
+  TError,
+  { id: string; data: SetItemRuleDto },
+  TContext
+> => {
+  const mutationKey = ['setItemRule'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setItemRule>>,
+    { id: string; data: SetItemRuleDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return setItemRule(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetItemRuleMutationResult = NonNullable<Awaited<ReturnType<typeof setItemRule>>>;
+export type SetItemRuleMutationBody = SetItemRuleDto;
+export type SetItemRuleMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary VIS-10 à VIS-16, LST-03 ; tracé (VIS-14).
+ */
+export const useSetItemRule = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof setItemRule>>,
+      TError,
+      { id: string; data: SetItemRuleDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof setItemRule>>,
+  TError,
+  { id: string; data: SetItemRuleDto },
+  TContext
+> => {
+  const mutationOptions = getSetItemRuleMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

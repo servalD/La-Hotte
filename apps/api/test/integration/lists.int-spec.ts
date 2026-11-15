@@ -136,6 +136,38 @@ describe('Listes en base (VIS-31)', () => {
     expect((ofTonton.body.items as Body[]).map((l) => l.id)).toContain(papaList);
   });
 
+  it('VIS-10, VIS-14 : règle et journal écrits ensemble ; la règle remplace la précédente', async () => {
+    const marie = await person();
+    const tonton = await person();
+    const mamie = await person();
+    await link(marie, tonton);
+    await link(marie, mamie);
+    const listId = await personal(marie);
+    const itemId = await addItem(marie, listId);
+    await http()
+      .put(`/api/v1/items/${itemId}/visibility`)
+      .set({ ...marie.mutation, 'If-Match': '1' })
+      .send({ mode: 'EXCEPT', profileIds: [tonton.profileId, mamie.profileId] })
+      .expect(200);
+    await http()
+      .put(`/api/v1/items/${itemId}/visibility`)
+      .set({ ...marie.mutation, 'If-Match': '2' })
+      .send({ mode: 'ONLY', profileIds: [mamie.profileId] })
+      .expect(200);
+    const rows = await prisma.itemVisibilityProfile.findMany({ where: { itemId } });
+    expect(rows.map((r) => r.profileId)).toEqual([mamie.profileId]);
+    expect(await itemIds(tonton, listId)).toEqual([]);
+    expect(await itemIds(mamie, listId)).toEqual([itemId]);
+    const log = await http()
+      .get(`/api/v1/lists/${listId}/visibility-log`)
+      .set({ Cookie: marie.cookie })
+      .expect(200);
+    expect((log.body.items as Body[]).map((e) => (e.after as Body).mode)).toEqual([
+      'ONLY',
+      'EXCEPT',
+    ]);
+  });
+
   it('LST-04 : départ du créateur, LST-20 : corbeille, restauration et purge', async () => {
     const papa = await person();
     const tonton = await person();

@@ -30,14 +30,17 @@ import {
   DeleteItem,
   DeleteList,
   GetItem,
+  GetItemRule,
   GetList,
   LeaveList,
   ListItems,
   ListLists,
   ListMembers,
   MarkItemReceived,
+  ReadVisibilityLog,
   RemoveListMember,
   RestoreList,
+  SetItemRule,
   SetListMember,
   UpdateItem,
   UpdateList,
@@ -49,6 +52,7 @@ import {
   ItemsQueryDto,
   LeaveListDto,
   ListsQueryDto,
+  SetItemRuleDto,
   SetMemberDto,
   UpdateItemDto,
   UpdateListDto,
@@ -60,6 +64,7 @@ import {
   ItemCollectionView,
   ItemGiverView,
   ItemRecipientView,
+  ItemRuleView,
   type ItemViewDto,
   LIST_VIEW_SCHEMA,
   ListCollectionView,
@@ -68,6 +73,7 @@ import {
   ListRecipientView,
   ListTeaserRecipientView,
   type ListView,
+  VisibilityLogView,
 } from './dto/list.view';
 import { toItemView, toListView } from './mappers';
 
@@ -101,7 +107,29 @@ export class ListsController {
     private readonly leave: LeaveList,
     private readonly itemsOf: ListItems,
     private readonly addItem: AddItem,
+    private readonly visibilityLog: ReadVisibilityLog,
   ) {}
+
+  /** VIS-14 : par l'autorité de la liste (VIS-19). */
+  @Get(':id/visibility-log')
+  @ApiParam({ name: 'id', ...UUID_PARAM })
+  @ApiOkResponse({ type: VisibilityLogView })
+  async readVisibilityLog(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<VisibilityLogView> {
+    const entries = await this.visibilityLog.execute({ viewerId: profile.id, listId: id });
+    return {
+      items: entries.map((e) => ({
+        id: e.id,
+        itemId: e.itemId,
+        changedBy: e.changedBy,
+        before: { mode: e.before.mode, profiles: [...e.before.profiles] },
+        after: { mode: e.after.mode, profiles: [...e.after.profiles] },
+        at: e.at.toISOString(),
+      })),
+    };
+  }
 
   @Get()
   @ApiOkResponse({ type: ListCollectionView })
@@ -319,7 +347,52 @@ export class ItemsController {
     private readonly received: MarkItemReceived,
     private readonly withdraw: WithdrawItem,
     private readonly copy: CopyItemProduct,
+    private readonly getRule: GetItemRule,
+    private readonly setRule: SetItemRule,
   ) {}
+
+  /** VIS-19 : par qui peut la modifier ; sinon `403 VISIBILITY_EDIT_FORBIDDEN`. */
+  @Get(':id/visibility')
+  @ApiParam({ name: 'id', ...UUID_PARAM })
+  @ApiOkResponse({ type: ItemRuleView })
+  async getItemRule(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<ItemRuleView> {
+    const rule = await this.getRule.execute({ viewerId: profile.id, itemId: id });
+    return {
+      mode: rule.mode,
+      profiles: [...rule.profiles],
+      outsideAudience: [...rule.outsideAudience],
+      version: rule.version,
+    };
+  }
+
+  /** VIS-10 à VIS-16, LST-03 ; tracé (VIS-14). */
+  @Put(':id/visibility')
+  @ApiParam({ name: 'id', ...UUID_PARAM })
+  @ApiHeader({ name: 'If-Match', required: true, description: 'Version de l’élément (API-17).' })
+  @ApiOkResponse({ type: ItemRuleView })
+  async setItemRule(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: SetItemRuleDto,
+    @Headers('if-match') ifMatch: string | undefined,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<ItemRuleView> {
+    const rule = await this.setRule.execute({
+      viewerId: profile.id,
+      itemId: id,
+      expectedVersion: parseIfMatch(ifMatch),
+      mode: body.mode,
+      profileIds: body.profileIds,
+    });
+    return {
+      mode: rule.mode,
+      profiles: [...rule.profiles],
+      outsideAudience: [...rule.outsideAudience],
+      version: rule.version,
+    };
+  }
 
   @Get(':id')
   @ApiParam({ name: 'id', ...UUID_PARAM })

@@ -7,12 +7,39 @@ import {
 } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
+  EngagementReader,
   ItemRepository,
   type ListChanges,
   ListRepository,
   type NewItem,
   type NewList,
+  type RuleLogEntry,
+  type RuleSnapshot,
+  VisibilityLogRepository,
 } from '../domain/list.ports';
+
+/** VIS-14 : journal partagé par les doubles des listes et des éléments. */
+export class InMemoryVisibilityLog extends VisibilityLogRepository {
+  readonly entries: RuleLogEntry[] = [];
+
+  listFor(listId: string, limit: number): Promise<RuleLogEntry[]> {
+    return Promise.resolve(
+      this.entries
+        .filter((entry) => entry.listId === listId)
+        .reverse()
+        .slice(0, limit),
+    );
+  }
+}
+
+/** VIS-16 : engagements posés par les tests (phase 5 : la compta). */
+export class InMemoryEngagementReader extends EngagementReader {
+  readonly engaged = new Map<string, string[]>();
+
+  engagedProfiles(itemId: string): Promise<string[]> {
+    return Promise.resolve(this.engaged.get(itemId) ?? []);
+  }
+}
 
 type StoredList = ListRecord & { creatorProfileId: string | null };
 
@@ -20,6 +47,10 @@ type StoredList = ListRecord & { creatorProfileId: string | null };
 export class InMemoryListRepository extends ListRepository {
   readonly lists = new Map<string, StoredList>();
   private tick = 0;
+
+  constructor(private readonly log: InMemoryVisibilityLog) {
+    super();
+  }
 
   private stamp(): Date {
     this.tick += 1;
@@ -119,10 +150,12 @@ export class InMemoryListRepository extends ListRepository {
     expectedVersion: number;
     changes: ListChanges;
     now: Date;
+    log?: RuleLogEntry;
   }): Promise<ListRecord | 'version' | 'missing'> {
     const row = this.lists.get(input.listId);
     if (!row) return Promise.resolve('missing');
     if (row.version !== input.expectedVersion) return Promise.resolve('version');
+    if (input.log) this.log.entries.push(input.log);
     const { changes } = input;
     const next: StoredList = {
       ...row,
@@ -260,7 +293,10 @@ export class InMemoryItemRepository extends ItemRepository {
   readonly items = new Map<string, StoredItem>();
   private tick = 0;
 
-  constructor(private readonly products: ProductRows) {
+  constructor(
+    private readonly products: ProductRows,
+    private readonly log: InMemoryVisibilityLog,
+  ) {
     super();
   }
 
@@ -297,8 +333,8 @@ export class InMemoryItemRepository extends ItemRepository {
     };
   }
 
-  /** Réglage direct d'une règle (tranche 5 : par le dépôt des règles). */
-  setRule(itemId: string, mode: ItemRecord['visibilityMode'], profiles: readonly string[]): void {
+  /** Réglage direct d'une règle, sans journal (préparation des tests). */
+  forceRule(itemId: string, mode: ItemRecord['visibilityMode'], profiles: readonly string[]): void {
     const row = this.items.get(itemId);
     if (row) this.items.set(itemId, { ...row, visibilityMode: mode, visibilityProfiles: profiles });
   }
@@ -380,6 +416,26 @@ export class InMemoryItemRepository extends ItemRepository {
 
   delete(itemId: string): Promise<boolean> {
     return Promise.resolve(this.items.delete(itemId));
+  }
+
+  setRule(input: {
+    itemId: string;
+    expectedVersion: number;
+    rule: RuleSnapshot;
+    log: RuleLogEntry | null;
+  }): Promise<ItemRecord | 'version' | 'missing'> {
+    const row = this.items.get(input.itemId);
+    if (!row) return Promise.resolve('missing');
+    if (row.version !== input.expectedVersion) return Promise.resolve('version');
+    const next = {
+      ...row,
+      visibilityMode: input.rule.mode,
+      visibilityProfiles: [...input.rule.profiles],
+      version: row.version + 1,
+    };
+    this.items.set(row.id, next);
+    if (input.log) this.log.entries.push(input.log);
+    return Promise.resolve(this.record(next));
   }
 
   setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null> {

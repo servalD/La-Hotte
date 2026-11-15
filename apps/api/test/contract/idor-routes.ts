@@ -23,4 +23,7 @@ export const PHASE2_IDOR_ROUTES: readonly string[] = [
   'DELETE /api/v1/items/:id/received',
   'POST /api/v1/items/:id/withdraw',
   'POST /api/v1/items/:id/copy',
+  'GET /api/v1/items/:id/visibility',
+  'PUT /api/v1/items/:id/visibility',
+  'GET /api/v1/lists/:id/visibility-log',
 ];

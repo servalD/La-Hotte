@@ -36,6 +36,7 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 - **VIS-16** Retirer la visibilité à un profil qui avait réservé ou participé : l'action est bloquée tant que sa réservation existe, avec proposition de le prévenir. On ne laisse pas quelqu'un engagé sur un élément qu'il ne voit plus.
 - **VIS-17** Sur une wishlist partagée, la règle d'un souhait s'applique aussi aux co-destinataires qui ne l'ont pas ajouté ; celui qui l'a ajouté le voit toujours.
 - **VIS-18** Quand le créateur étend le droit de LST-03 au contributeur, celui-ci ne modifie que la règle de ses propres éléments.
+- **VIS-19** Les profils d'une règle se choisissent parmi le cercle de celui qui la modifie et les membres de la liste ; tout autre profil est refusé (`422 VISIBILITY_PROFILE_INVALID`). La règle et ses profils ne sont lus que par ceux qui peuvent la modifier. Le journal de VIS-14 ne porte pas les règles des suggestions, qui n'appartiennent qu'à leur auteur (WSH-07) : il est lu par l'autorité de la liste, qui peut en être destinataire ; il ne lui montre que les éléments qu'il voit, ou supprimés.
 
 ### Niveau 3 — Règle de surprise
 

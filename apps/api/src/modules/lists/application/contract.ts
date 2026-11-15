@@ -33,3 +33,10 @@ export {
   UpdateItem,
   WithdrawItem,
 } from './manage-items.use-case';
+export {
+  GetItemRule,
+  type ItemRuleState,
+  ReadVisibilityLog,
+  SetItemRule,
+} from './manage-rules.use-case';
+export type { RuleLogEntry } from '../domain/list.ports';

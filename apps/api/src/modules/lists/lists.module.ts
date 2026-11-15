@@ -25,10 +25,18 @@ import {
   SetListMember,
   UpdateList,
 } from './application/manage-lists.use-case';
-import { ItemRepository, ListRepository } from './domain/list.ports';
+import { GetItemRule, ReadVisibilityLog, SetItemRule } from './application/manage-rules.use-case';
 import {
+  EngagementReader,
+  ItemRepository,
+  ListRepository,
+  VisibilityLogRepository,
+} from './domain/list.ports';
+import {
+  NoEngagementReader,
   PrismaItemRepository,
   PrismaListRepository,
+  PrismaVisibilityLogRepository,
 } from './infrastructure/prisma-list-repository';
 import { ItemsController, ListsController } from './presentation/lists.controller';
 import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
@@ -59,6 +67,11 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     WithdrawItem,
     CopyItemProduct,
     TrashPurgeScheduler,
+    GetItemRule,
+    SetItemRule,
+    ReadVisibilityLog,
+    { provide: VisibilityLogRepository, useClass: PrismaVisibilityLogRepository },
+    { provide: EngagementReader, useClass: NoEngagementReader },
     { provide: ListRepository, useClass: PrismaListRepository },
     { provide: ItemRepository, useClass: PrismaItemRepository },
   ],

@@ -242,6 +242,58 @@ export const unmarkItemReceivedResponse = zod.object({
 });
 
 /**
+ * @summary VIS-19 : par qui peut la modifier ; sinon `403 VISIBILITY_EDIT_FORBIDDEN`.
+ */
+export const getItemRuleParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const getItemRuleResponse = zod.object({
+  mode: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+  profiles: zod.array(zod.uuid()),
+  outsideAudience: zod
+    .array(zod.uuid())
+    .describe(
+      "VIS-12 : profils choisis hors de l'audience de la liste ; l'interface propose de les y ajouter.",
+    ),
+  version: zod.number().describe("Version de l'élément, pour `If-Match`."),
+});
+
+/**
+ * @summary VIS-10 à VIS-16, LST-03 ; tracé (VIS-14).
+ */
+export const setItemRuleParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const setItemRuleHeader = zod.object({
+  'If-Match': zod.string().describe('Version de l’élément (API-17).'),
+});
+
+export const setItemRuleBodyProfileIdsMax = 100;
+
+export const setItemRuleBody = zod.object({
+  mode: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+  profileIds: zod
+    .array(zod.uuid())
+    .max(setItemRuleBodyProfileIdsMax)
+    .describe(
+      "Ignoré pour `ALL`. VIS-13 : passer de l'un à l'autre mode conserve la sélection côté client.",
+    ),
+});
+
+export const setItemRuleResponse = zod.object({
+  mode: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+  profiles: zod.array(zod.uuid()),
+  outsideAudience: zod
+    .array(zod.uuid())
+    .describe(
+      "VIS-12 : profils choisis hors de l'audience de la liste ; l'interface propose de les y ajouter.",
+    ),
+  version: zod.number().describe("Version de l'élément, pour `If-Match`."),
+});
+
+/**
  * @summary LST-15
  */
 export const withdrawItemParams = zod.object({

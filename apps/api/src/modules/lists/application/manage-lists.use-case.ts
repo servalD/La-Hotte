@@ -352,11 +352,29 @@ export class UpdateList {
           }
         : {}),
     };
+    const now = this.clock.now();
+    const defaultChanged =
+      input.defaultItemVisibility !== undefined &&
+      input.defaultItemVisibility !== list.defaultItemVisibility;
     const result = await this.lists.update({
       listId: list.id,
       expectedVersion: input.expectedVersion,
       changes,
-      now: this.clock.now(),
+      now,
+      // VIS-14 : la règle par défaut de la liste est tracée comme celle d'un élément.
+      ...(defaultChanged && input.defaultItemVisibility
+        ? {
+            log: {
+              id: this.ids.next(),
+              listId: list.id,
+              itemId: null,
+              changedBy: input.viewerId,
+              before: { mode: list.defaultItemVisibility, profiles: [] },
+              after: { mode: input.defaultItemVisibility, profiles: [] },
+              at: now,
+            },
+          }
+        : {}),
     });
     if (result === 'missing') throw new ListNotFoundError();
     if (result === 'version') throw new ListVersionMismatchError();

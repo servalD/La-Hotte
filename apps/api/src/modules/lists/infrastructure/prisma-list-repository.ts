@@ -4,11 +4,15 @@ import { PrismaService } from '../../../platform/prisma/prisma.service';
 import type { ItemCriteria, ItemRecord, ListCandidateCriteria, ListRole } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
+  EngagementReader,
   ItemRepository,
   type ListChanges,
   ListRepository,
   type NewItem,
   type NewList,
+  type RuleLogEntry,
+  type RuleSnapshot,
+  VisibilityLogRepository,
 } from '../domain/list.ports';
 
 const LIST_INCLUDE = {
@@ -39,6 +43,18 @@ function toList(row: ListRow): ListRecord {
     deletedAt: row.deletedAt,
     createdAt: row.createdAt,
     version: row.version,
+  };
+}
+
+function logData(entry: RuleLogEntry): Prisma.VisibilityChangeLogCreateInput {
+  return {
+    id: entry.id,
+    listId: entry.listId,
+    itemId: entry.itemId,
+    changedBy: entry.changedBy,
+    before: { mode: entry.before.mode, profiles: [...entry.before.profiles] },
+    after: { mode: entry.after.mode, profiles: [...entry.after.profiles] },
+    at: entry.at,
   };
 }
 
@@ -177,6 +193,7 @@ export class PrismaListRepository extends ListRepository {
     expectedVersion: number;
     changes: ListChanges;
     now: Date;
+    log?: RuleLogEntry;
   }): Promise<ListRecord | 'version' | 'missing'> {
     const { changes } = input;
     return this.prisma.$transaction(async (tx) => {
@@ -204,6 +221,7 @@ export class PrismaListRepository extends ListRepository {
         const exists = await tx.list.count({ where: { id: input.listId } });
         return exists ? 'version' : 'missing';
       }
+      if (input.log) await tx.visibilityChangeLog.create({ data: logData(input.log) });
       if (changes.recipients) {
         await tx.listRecipient.deleteMany({ where: { listId: input.listId } });
         for (const r of changes.recipients) {
@@ -458,6 +476,36 @@ export class PrismaItemRepository extends ItemRepository {
     return result.count > 0;
   }
 
+  async setRule(input: {
+    itemId: string;
+    expectedVersion: number;
+    rule: RuleSnapshot;
+    profileRowIds: readonly string[];
+    log: RuleLogEntry | null;
+  }): Promise<ItemRecord | 'version' | 'missing'> {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.listItem.updateMany({
+        where: { id: input.itemId, version: input.expectedVersion },
+        data: { visibilityMode: input.rule.mode, version: { increment: 1 } },
+      });
+      if (result.count === 0) {
+        return (await tx.listItem.count({ where: { id: input.itemId } })) ? 'version' : 'missing';
+      }
+      await tx.itemVisibilityProfile.deleteMany({ where: { itemId: input.itemId } });
+      await tx.itemVisibilityProfile.createMany({
+        data: input.rule.profiles.map((profileId, index) => ({
+          id: input.profileRowIds[index] ?? '',
+          itemId: input.itemId,
+          profileId,
+        })),
+      });
+      if (input.log) await tx.visibilityChangeLog.create({ data: logData(input.log) });
+      return toItem(
+        await tx.listItem.findUniqueOrThrow({ where: { id: input.itemId }, include: ITEM_INCLUDE }),
+      );
+    });
+  }
+
   async setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null> {
     const result = await this.prisma.listItem.updateMany({
       where: { id: itemId, status: { not: 'WITHDRAWN' } },
@@ -474,5 +522,42 @@ export class PrismaItemRepository extends ItemRepository {
     });
     if (result.count === 0) return null;
     return this.find(itemId);
+  }
+}
+
+function snapshot(value: Prisma.JsonValue): RuleSnapshot {
+  const raw = (value ?? {}) as { mode?: RuleSnapshot['mode']; profiles?: string[] };
+  return { mode: raw.mode ?? 'ALL', profiles: raw.profiles ?? [] };
+}
+
+@Injectable()
+export class PrismaVisibilityLogRepository extends VisibilityLogRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async listFor(listId: string, limit: number): Promise<RuleLogEntry[]> {
+    const rows = await this.prisma.visibilityChangeLog.findMany({
+      where: { listId },
+      orderBy: [{ at: 'desc' }, { id: 'desc' }],
+      take: limit,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      listId: row.listId,
+      itemId: row.itemId,
+      changedBy: row.changedBy,
+      before: snapshot(row.before),
+      after: snapshot(row.after),
+      at: row.at,
+    }));
+  }
+}
+
+/** VIS-16 : aucun engagement avant la compta (phase 5). */
+@Injectable()
+export class NoEngagementReader extends EngagementReader {
+  engagedProfiles(): Promise<string[]> {
+    return Promise.resolve([]);
   }
 }
