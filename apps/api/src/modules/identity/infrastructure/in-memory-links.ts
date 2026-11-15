@@ -243,6 +243,12 @@ export class InMemoryLinkRepository extends LinkRepository {
     return this.blockedEitherWay(profileId, otherProfileId);
   }
 
+  sameAccount(profileId: string, otherProfileId: string): Promise<boolean> {
+    const a = this.accounts.profiles.get(profileId);
+    const b = this.accounts.profiles.get(otherProfileId);
+    return Promise.resolve(!!a && !!b && a.accountId === b.accountId);
+  }
+
   async createInvitation(input: {
     readonly id: string;
     readonly tokenHash: string;

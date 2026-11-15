@@ -16,6 +16,9 @@ class FakeCircle extends CircleFacts {
     this.calls += 1;
     return Promise.resolve(this.pairs.has(`${a}|${b}`));
   }
+  sameAccount(): Promise<boolean> {
+    return Promise.resolve(false);
+  }
   link(a: string, b: string): void {
     this.pairs.add(`${a}|${b}`).add(`${b}|${a}`);
   }

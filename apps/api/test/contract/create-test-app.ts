@@ -57,11 +57,19 @@ import {
   InMemoryProductRepository,
   ProductRepository,
 } from '../../src/modules/catalog/testing';
+import {
+  InMemoryItemRepository,
+  InMemoryListRepository,
+  ItemRepository,
+  ListRepository,
+} from '../../src/modules/lists/testing';
 
 /** Doubles des modules de la phase 2. */
 export interface TestCatalog {
   readonly products: InMemoryProductRepository;
   readonly images: InMemoryImageStore;
+  readonly lists: InMemoryListRepository;
+  readonly items: InMemoryItemRepository;
 }
 
 export interface TestIdentity {
@@ -141,9 +149,12 @@ export async function createTestApp(
   // PRO-12, PRO-15 : le double des profils consulte les règles de tutelle des comptes et des liens.
   profileRepository.guardianRules = wards;
   const transfers = new InMemoryTransferRepository(accounts, links, wards, sessions);
+  const products = new InMemoryProductRepository();
   const catalog: TestCatalog = {
-    products: new InMemoryProductRepository(),
+    products,
     images: new InMemoryImageStore(),
+    lists: new InMemoryListRepository(),
+    items: new InMemoryItemRepository(products),
   };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -197,6 +208,10 @@ export async function createTestApp(
     .useValue(catalog.products)
     .overrideProvider(ImageStore)
     .useValue(catalog.images)
+    .overrideProvider(ListRepository)
+    .useValue(catalog.lists)
+    .overrideProvider(ItemRepository)
+    .useValue(catalog.items)
     .compile();
 
   const app = moduleRef.createNestApplication({ bufferLogs: true });

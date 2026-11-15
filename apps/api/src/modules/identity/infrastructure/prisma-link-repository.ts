@@ -259,6 +259,14 @@ export class PrismaLinkRepository extends LinkRepository {
     return (await this.membersOf(profileId)).includes(otherProfileId);
   }
 
+  async sameAccount(profileId: string, otherProfileId: string): Promise<boolean> {
+    const rows = await this.prisma.profile.findMany({
+      where: { id: { in: [profileId, otherProfileId] } },
+      select: { accountId: true },
+    });
+    return rows.length === 2 && rows[0]?.accountId === rows[1]?.accountId;
+  }
+
   async isBlockedEitherWay(profileId: string, otherProfileId: string): Promise<boolean> {
     const count = await this.prisma.profileBlock.count({
       where: {

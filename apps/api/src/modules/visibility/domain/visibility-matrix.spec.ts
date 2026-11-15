@@ -224,7 +224,7 @@ function record(c: Case, item: ItemFacts): ItemRecord {
       sourceUrl: null,
     },
     quantity: 1,
-    unitPriceMinor: 1999n,
+    unitPriceMinor: 1999,
     currency: 'EUR',
     priority: 'WANT',
     note: '',

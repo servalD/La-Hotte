@@ -21,7 +21,7 @@ export interface ItemRecord {
   readonly listId: string;
   readonly product: ItemProductRecord;
   readonly quantity: number;
-  readonly unitPriceMinor: bigint | null;
+  readonly unitPriceMinor: number | null;
   readonly currency: string;
   readonly priority: ItemPriority;
   readonly note: string;
@@ -55,7 +55,7 @@ export interface ItemRecipientView {
   readonly listId: string;
   readonly product: ProductPart;
   readonly quantity: number;
-  readonly unitPriceMinor: bigint | null;
+  readonly unitPriceMinor: number | null;
   readonly currency: string;
   readonly priority: ItemPriority;
   readonly note: string;
@@ -80,7 +80,7 @@ export interface ItemGiverView {
   readonly listId: string;
   readonly product: ProductPart;
   readonly quantity: number;
-  readonly unitPriceMinor: bigint | null;
+  readonly unitPriceMinor: number | null;
   readonly currency: string;
   readonly priority: ItemPriority;
   readonly note: string;

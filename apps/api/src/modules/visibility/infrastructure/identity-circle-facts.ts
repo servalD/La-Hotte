@@ -16,4 +16,8 @@ export class IdentityCircleFacts extends CircleFacts {
   inCircle(profileId: string, otherProfileId: string): Promise<boolean> {
     return this.reader.inCircle(profileId, otherProfileId);
   }
+
+  sameAccount(profileId: string, otherProfileId: string): Promise<boolean> {
+    return this.reader.sameAccount(profileId, otherProfileId);
+  }
 }

@@ -5,4 +5,6 @@
 export abstract class CircleFacts {
   abstract membersOf(profileId: string): Promise<string[]>;
   abstract inCircle(profileId: string, otherProfileId: string): Promise<boolean>;
+  /** LST-07 */
+  abstract sameAccount(profileId: string, otherProfileId: string): Promise<boolean>;
 }

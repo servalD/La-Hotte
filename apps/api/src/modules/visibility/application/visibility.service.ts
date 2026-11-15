@@ -39,6 +39,11 @@ export class VisibilityService {
     return this.circle.membersOf(viewerId);
   }
 
+  /** LST-07 : destinataires permis d'une wishlist (lui-même ou un profil de son compte). */
+  sameAccount(profileId: string, otherProfileId: string): Promise<boolean> {
+    return this.circle.sameAccount(profileId, otherProfileId);
+  }
+
   private async inCircleOfAny(viewerId: string, recipients: readonly string[]): Promise<boolean> {
     for (const recipient of recipients) {
       if (await this.circle.inCircle(recipient, viewerId)) return true;

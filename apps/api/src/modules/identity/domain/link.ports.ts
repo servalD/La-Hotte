@@ -24,6 +24,8 @@ export abstract class CircleReader {
   abstract inCircle(profileId: string, otherProfileId: string): Promise<boolean>;
   /** Vrai si l'un des deux a bloqué l'autre. */
   abstract isBlockedEitherWay(profileId: string, otherProfileId: string): Promise<boolean>;
+  /** LST-07 : vrai si les deux profils existent et sont du même compte. */
+  abstract sameAccount(profileId: string, otherProfileId: string): Promise<boolean>;
 }
 
 /** Résultat de l'ouverture d'une invitation (LNK-06, LNK-07). */
