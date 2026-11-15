@@ -26,4 +26,6 @@ export const PHASE2_IDOR_ROUTES: readonly string[] = [
   'GET /api/v1/items/:id/visibility',
   'PUT /api/v1/items/:id/visibility',
   'GET /api/v1/lists/:id/visibility-log',
+  'PUT /api/v1/products/:id/share',
+  'POST /api/v1/directory/:productId/copy',
 ];

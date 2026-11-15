@@ -1,4 +1,10 @@
-import type { ExtractionStatus, Product, ProductFields, ProductSource } from './product';
+import type {
+  ExtractionStatus,
+  Product,
+  ProductFields,
+  ProductSource,
+  ShareLevel,
+} from './product';
 
 export interface NewProduct extends ProductFields {
   readonly id: string;
@@ -45,6 +51,21 @@ export abstract class ProductRepository {
     readonly expectedVersion: number;
     readonly changes: Partial<ProductFields>;
   }): Promise<Product | 'missing' | 'version'>;
+  /** REP-02, REP-08 : niveau de partage ; missing si la fiche n'est pas à lui. */
+  abstract setShareLevel(
+    ownerProfileId: string,
+    productId: string,
+    level: ShareLevel,
+  ): Promise<Product | 'missing'>;
+  /**
+   * REP-03, VIS-40 : fiches publiées au cercle par ces propriétaires, les plus récentes d'abord ;
+   * `query` : recherche plein texte (titre et description, dictionnaire français).
+   */
+  abstract findShared(input: {
+    readonly ownerIds: readonly string[];
+    readonly query: string | null;
+    readonly limit: number;
+  }): Promise<Product[]>;
   /** EXT-06 : n'écrit que sur une fiche encore en `PENDING` ; les champs saisis entre-temps restent. */
   abstract completeExtraction(
     productId: string,

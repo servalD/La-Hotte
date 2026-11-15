@@ -169,6 +169,25 @@ export const updateProductResponse = zod.object({
   version: zod.number().describe('À renvoyer dans `If-Match` (API-17).'),
 });
 
+export const shareProductParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const shareProductBody = zod.object({
+  level: zod.enum(['PRIVATE', 'CIRCLE', 'GLOBAL']),
+  hiddenItemChoice: zod
+    .enum(['MAKE_VISIBLE_TO_ALL'])
+    .describe('REP-06 : « Le rendre visible de tous et le publier ».')
+    .optional()
+    .describe('REP-06 : « Le rendre visible de tous et le publier ».'),
+});
+
+export const shareProductResponse = zod.object({
+  productId: zod.uuid(),
+  shareLevel: zod.enum(['PRIVATE', 'CIRCLE', 'GLOBAL']),
+  version: zod.number(),
+});
+
 /**
  * @summary EXT-10, EXT-11 : photo réencodée sans métadonnées par le fetcher, puis extraction.
  */

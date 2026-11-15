@@ -28,6 +28,8 @@ import type {
   ProblemDetailsDto,
   ProductPageView,
   ProductView,
+  ShareProductDto,
+  SharedProductView,
   UpdateProductDto,
 } from '../../model';
 
@@ -431,6 +433,84 @@ export const useUpdateProduct = <TError = ErrorType<ProblemDetailsDto>, TContext
   TContext
 > => {
   const mutationOptions = getUpdateProductMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getShareProductUrl = (id: string) => {
+  return `/api/v1/products/${id}/share`;
+};
+
+export const shareProduct = async (
+  id: string,
+  shareProductDto: ShareProductDto,
+  options?: RequestInit,
+): Promise<SharedProductView> => {
+  return apiFetch<SharedProductView>(getShareProductUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shareProductDto),
+  });
+};
+
+export const getShareProductMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof shareProduct>>,
+    TError,
+    { id: string; data: ShareProductDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof shareProduct>>,
+  TError,
+  { id: string; data: ShareProductDto },
+  TContext
+> => {
+  const mutationKey = ['shareProduct'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof shareProduct>>,
+    { id: string; data: ShareProductDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return shareProduct(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ShareProductMutationResult = NonNullable<Awaited<ReturnType<typeof shareProduct>>>;
+export type ShareProductMutationBody = ShareProductDto;
+export type ShareProductMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useShareProduct = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof shareProduct>>,
+      TError,
+      { id: string; data: ShareProductDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof shareProduct>>,
+  TError,
+  { id: string; data: ShareProductDto },
+  TContext
+> => {
+  const mutationOptions = getShareProductMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

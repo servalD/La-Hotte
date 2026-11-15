@@ -245,3 +245,39 @@ export function canActAsRecipient(
 export function canReadVisibilityLog(list: ListFacts, viewerId: string): boolean {
   return authorityOf(list) === viewerId;
 }
+
+// --- Répertoire (REP-01 à REP-10, VIS-40) ---
+
+/** Un élément qui référence une fiche partagée, vu du répertoire. */
+export interface ProductReference {
+  readonly rule: ItemRule;
+  /** Destinataires de la liste de l'élément (GFT-10 : tous ceux d'une giftlist). */
+  readonly listRecipients: readonly string[];
+}
+
+/**
+ * REP-03, REP-07, REP-10 : une fiche publiée au cercle se voit d'un profil de ce cercle, sauf s'il
+ * est écarté par la règle d'un élément qui la référence, ou destinataire d'un tel élément : la
+ * publication ne révèle pas ce qu'on lui prépare. Le propriétaire ne se voit pas dans son répertoire.
+ * Le catalogue global attend la phase 7 (REP-09).
+ */
+export function sharedProductVisible(input: {
+  readonly viewerId: string;
+  readonly ownerId: string | null;
+  readonly shareLevel: 'PRIVATE' | 'CIRCLE' | 'GLOBAL';
+  readonly viewerInOwnerCircle: boolean;
+  readonly references: readonly ProductReference[];
+}): boolean {
+  if (input.shareLevel !== 'CIRCLE' || input.ownerId === null) return false;
+  if (input.ownerId === input.viewerId || !input.viewerInOwnerCircle) return false;
+  return input.references.every(
+    (reference) =>
+      !reference.listRecipients.includes(input.viewerId) &&
+      !ruleExcludes(reference.rule, input.viewerId),
+  );
+}
+
+/** REP-06 : publier une fiche référencée par un élément caché exige un choix explicite. */
+export function requiresHiddenItemChoice(references: readonly ProductReference[]): boolean {
+  return references.some((reference) => reference.rule.mode !== 'ALL');
+}

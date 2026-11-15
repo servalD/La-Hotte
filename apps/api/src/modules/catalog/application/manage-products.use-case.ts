@@ -4,6 +4,7 @@ import {
   copyFields,
   type Product,
   type ProductFields,
+  type ShareLevel,
   productFieldsProblem,
 } from '../domain/product';
 import {
@@ -117,6 +118,31 @@ export class ProductCatalog {
     private readonly products: ProductRepository,
     private readonly ids: IdGenerator,
   ) {}
+
+  /** REP-02, REP-08 : le droit (REP-06, REP-09) est vérifié par l'appelant. */
+  async setShareLevel(
+    ownerProfileId: string,
+    productId: string,
+    level: ShareLevel,
+  ): Promise<Product> {
+    const result = await this.products.setShareLevel(ownerProfileId, productId, level);
+    if (result === 'missing') throw new ProductNotFoundError();
+    return result;
+  }
+
+  /** REP-03, VIS-40 : candidates ; `visibility` tranche fiche par fiche. */
+  findShared(input: {
+    readonly ownerIds: readonly string[];
+    readonly query: string | null;
+    readonly limit: number;
+  }): Promise<Product[]> {
+    return this.products.findShared(input);
+  }
+
+  /** Fiche quelconque, pour une décision de `visibility` (répertoire). */
+  findById(productId: string): Promise<Product | null> {
+    return this.products.findById(productId);
+  }
 
   /** Fiche du profil, ou `null` (ART-05). */
   findOwned(ownerProfileId: string, productId: string): Promise<Product | null> {

@@ -6,6 +6,7 @@ import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../doma
 import {
   EngagementReader,
   ItemRepository,
+  type ItemProductReference,
   type ListChanges,
   ListRepository,
   type NewItem,
@@ -506,6 +507,27 @@ export class PrismaItemRepository extends ItemRepository {
     });
   }
 
+  async referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]> {
+    if (productIds.length === 0) return [];
+    const rows = await this.prisma.listItem.findMany({
+      where: { productId: { in: [...productIds] }, status: { not: 'WITHDRAWN' } },
+      select: {
+        id: true,
+        productId: true,
+        version: true,
+        visibilityMode: true,
+        ruleProfiles: { select: { profileId: true } },
+        list: { select: { recipients: { select: { profileId: true } } } },
+      },
+    });
+    return rows.map((row) => ({
+      productId: row.productId,
+      itemId: row.id,
+      version: row.version,
+      rule: { mode: row.visibilityMode, profiles: row.ruleProfiles.map((p) => p.profileId) },
+      listRecipients: row.list.recipients.map((r) => r.profileId),
+    }));
+  }
   async setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null> {
     const result = await this.prisma.listItem.updateMany({
       where: { id: itemId, status: { not: 'WITHDRAWN' } },

@@ -1757,6 +1757,112 @@
         ]
       }
     },
+    "/api/v1/directory": {
+      "get": {
+        "operationId": "searchDirectory",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "circle",
+              "type": "string",
+              "enum": [
+                "circle"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "directory"
+        ]
+      }
+    },
+    "/api/v1/directory/{productId}/copy": {
+      "post": {
+        "operationId": "copyFromDirectory",
+        "parameters": [
+          {
+            "name": "productId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopiedDirectoryProductView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "REP-05 : la copie va dans mes fiches ; je l'ajoute ensuite à ma liste.",
+        "tags": [
+          "directory"
+        ]
+      }
+    },
     "/api/v1/images/{key}": {
       "get": {
         "operationId": "getImage",
@@ -3452,6 +3558,57 @@
         ]
       }
     },
+    "/api/v1/products/{id}/share": {
+      "put": {
+        "operationId": "shareProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedProductView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "products"
+        ]
+      }
+    },
     "/api/v1/products/photo": {
       "post": {
         "operationId": "createProductFromPhoto",
@@ -4571,6 +4728,18 @@
           "items"
         ]
       },
+      "CopiedDirectoryProductView": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "productId"
+        ]
+      },
       "CopiedProductView": {
         "type": "object",
         "properties": {
@@ -4841,6 +5010,70 @@
           "displayName"
         ]
       },
+      "DirectoryEntryView": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "imageKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitPriceMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "merchant": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "sharedBy": {
+            "type": "string",
+            "description": "REP-03 : profil du cercle qui partage (son nom se lit par `GET /circle`).",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "productId",
+          "title",
+          "description",
+          "imageKey",
+          "unitPriceMinor",
+          "currency",
+          "merchant",
+          "sourceUrl",
+          "sharedBy"
+        ]
+      },
+      "DirectoryView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DirectoryEntryView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "EmailDto": {
         "type": "object",
         "properties": {
@@ -4982,6 +5215,13 @@
             "$ref": "#/components/schemas/GoogleRegistrationDto"
           }
         }
+      },
+      "HiddenItemChoice": {
+        "type": "string",
+        "enum": [
+          "MAKE_VISIBLE_TO_ALL"
+        ],
+        "description": "REP-06 : « Le rendre visible de tous et le publier »."
       },
       "IncomingTransferListView": {
         "type": "object",
@@ -6834,12 +7074,59 @@
           "newPin"
         ]
       },
+      "SharedProductView": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shareLevel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShareLevel"
+              }
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "productId",
+          "shareLevel",
+          "version"
+        ]
+      },
       "ShareLevel": {
         "type": "string",
         "enum": [
           "PRIVATE",
           "CIRCLE",
           "GLOBAL"
+        ]
+      },
+      "ShareProductDto": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ShareLevel"
+              }
+            ]
+          },
+          "hiddenItemChoice": {
+            "description": "REP-06 : « Le rendre visible de tous et le publier ».",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/HiddenItemChoice"
+              }
+            ]
+          }
+        },
+        "required": [
+          "level"
         ]
       },
       "TotpActivationView": {

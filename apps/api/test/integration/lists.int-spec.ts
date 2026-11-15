@@ -168,6 +168,47 @@ describe('Listes en base (VIS-31)', () => {
     ]);
   });
 
+  it('VIS-40, REP-10 : recherche plein texte en base ; le destinataire d’un cadeau ne voit pas la fiche', async () => {
+    const papa = await person();
+    const marie = await person();
+    const tonton = await person();
+    await link(papa, marie);
+    await link(papa, tonton);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(papa.mutation)
+      .send({ type: 'GIFTLIST', title: 'x', recipientIds: [marie.profileId] })
+      .expect(201);
+    const product = await http()
+      .post('/api/v1/products')
+      .set(papa.mutation)
+      .send({ title: 'Vélo électrique pliant', description: 'Pour les trajets' })
+      .expect(201);
+    const id = product.body.id as string;
+    await http()
+      .post(`/api/v1/lists/${gift.body.id as string}/items`)
+      .set(papa.mutation)
+      .send({ productId: id })
+      .expect(201);
+    await http()
+      .put(`/api/v1/products/${id}/share`)
+      .set(papa.mutation)
+      .send({ level: 'CIRCLE' })
+      .expect(200);
+    const search = async (user: SignedIn, q: string) =>
+      (
+        (
+          await http()
+            .get(`/api/v1/directory?q=${encodeURIComponent(q)}`)
+            .set({ Cookie: user.cookie })
+        ).body.items as Body[]
+      ).map((e) => e.productId);
+    expect(await search(tonton, 'électriques')).toEqual([id]); // racinisation française
+    expect(await search(tonton, 'trajet')).toEqual([id]);
+    expect(await search(tonton, "'; DROP TABLE product; --")).toEqual([]);
+    expect(await search(marie, 'vélo')).toEqual([]);
+  });
+
   it('LST-04 : départ du créateur, LST-20 : corbeille, restauration et purge', async () => {
     const papa = await person();
     const tonton = await person();

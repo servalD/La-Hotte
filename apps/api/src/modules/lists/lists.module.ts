@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog';
 import { VisibilityModule } from '../visibility';
 import { ListGate } from './application/list-gate';
+import { ProductReferences } from './application/product-references';
 import {
   AddItem,
   CopyItemProduct,
@@ -70,11 +71,12 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     GetItemRule,
     SetItemRule,
     ReadVisibilityLog,
+    ProductReferences,
     { provide: VisibilityLogRepository, useClass: PrismaVisibilityLogRepository },
     { provide: EngagementReader, useClass: NoEngagementReader },
     { provide: ListRepository, useClass: PrismaListRepository },
     { provide: ItemRepository, useClass: PrismaItemRepository },
   ],
-  exports: [ListGate, ItemRepository, ListRepository],
+  exports: [ProductReferences],
 })
 export class ListsModule {}

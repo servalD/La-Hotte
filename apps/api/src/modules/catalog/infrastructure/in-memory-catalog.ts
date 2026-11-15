@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { Product, ProductFields } from '../domain/product';
+import type { Product, ProductFields, ShareLevel } from '../domain/product';
 import {
   type ExtractionOutcome,
   ImageStore,
@@ -91,6 +91,36 @@ export class InMemoryProductRepository extends ProductRepository {
     return Promise.resolve(next);
   }
 
+  setShareLevel(
+    ownerProfileId: string,
+    productId: string,
+    level: ShareLevel,
+  ): Promise<Product | 'missing'> {
+    const row = this.rows.get(productId);
+    if (!row || row.ownerProfileId !== ownerProfileId) return Promise.resolve('missing');
+    const next = { ...row, shareLevel: level, version: row.version + 1 };
+    this.rows.set(productId, next);
+    return Promise.resolve(next);
+  }
+
+  findShared(input: {
+    ownerIds: readonly string[];
+    query: string | null;
+    limit: number;
+  }): Promise<Product[]> {
+    const words = (input.query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+    return Promise.resolve(
+      [...this.rows.values()]
+        .filter(
+          (row) =>
+            row.shareLevel === 'CIRCLE' &&
+            input.ownerIds.includes(row.ownerProfileId) &&
+            words.every((word) => `${row.title} ${row.description}`.toLowerCase().includes(word)),
+        )
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, input.limit),
+    );
+  }
   completeExtraction(productId: string, outcome: ExtractionOutcome): Promise<Product | null> {
     const row = this.rows.get(productId);
     if (!row || row.extractionStatus !== 'PENDING') return Promise.resolve(null);

@@ -256,6 +256,7 @@ export async function createTestApp(
     .compile();
 
   products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
+  catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
   await app.init();

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Product as ProductRow } from '@prisma/client';
 import { PrismaService } from '../../../platform/prisma/prisma.service';
-import type { Product, ProductFields } from '../domain/product';
+import type { Product, ProductFields, ShareLevel } from '../domain/product';
 import {
   type ExtractionOutcome,
   type NewProduct,
@@ -143,6 +143,48 @@ export class PrismaProductRepository extends ProductRepository {
     return result.count === 0 ? 'version' : toProduct(row);
   }
 
+  async setShareLevel(
+    ownerProfileId: string,
+    productId: string,
+    level: ShareLevel,
+  ): Promise<Product | 'missing'> {
+    const result = await this.prisma.product.updateMany({
+      where: { id: productId, ownerProfileId },
+      data: { shareLevel: level, version: { increment: 1 } },
+    });
+    if (result.count === 0) return 'missing';
+    return toProduct(await this.prisma.product.findUniqueOrThrow({ where: { id: productId } }));
+  }
+
+  async findShared(input: {
+    ownerIds: readonly string[];
+    query: string | null;
+    limit: number;
+  }): Promise<Product[]> {
+    if (input.ownerIds.length === 0) return [];
+    const owners = [...input.ownerIds];
+    if (input.query) {
+      // VIS-40 : requête paramétrée, index GIN `product_search_idx` (aucune concaténation).
+      const ids = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM product
+        WHERE share_level = 'CIRCLE'
+          AND owner_profile_id = ANY(${owners}::uuid[])
+          AND to_tsvector('french', title || ' ' || description) @@ plainto_tsquery('french', ${input.query})
+        ORDER BY created_at DESC
+        LIMIT ${input.limit}`;
+      const rows = await this.prisma.product.findMany({
+        where: { id: { in: ids.map((row) => row.id) } },
+        orderBy: [{ createdAt: 'desc' }],
+      });
+      return rows.map(toProduct);
+    }
+    const rows = await this.prisma.product.findMany({
+      where: { shareLevel: 'CIRCLE', ownerProfileId: { in: owners } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: input.limit,
+    });
+    return rows.map(toProduct);
+  }
   async completeExtraction(productId: string, outcome: ExtractionOutcome): Promise<Product | null> {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.product.findUnique({ where: { id: productId } });

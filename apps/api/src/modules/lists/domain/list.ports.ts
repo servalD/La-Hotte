@@ -153,6 +153,15 @@ export interface NewItem {
   readonly shownToRecipient: boolean;
 }
 
+/** Élément qui référence une fiche, vu du répertoire. */
+export interface ItemProductReference {
+  readonly productId: string;
+  readonly itemId: string;
+  readonly version: number;
+  readonly rule: RuleSnapshot;
+  readonly listRecipients: readonly string[];
+}
+
 export abstract class ItemRepository {
   /** VIS-31 : éléments d'une liste filtrés par les critères du moteur, retirés exclus. */
   abstract listItems(listId: string, criteria: ItemCriteria, sort: ItemSort): Promise<ItemRecord[]>;
@@ -173,6 +182,8 @@ export abstract class ItemRepository {
     readonly profileRowIds: readonly string[];
     readonly log: RuleLogEntry | null;
   }): Promise<ItemRecord | 'version' | 'missing'>;
+  /** REP-06, REP-07, REP-10 : éléments non retirés qui référencent ces fiches. */
+  abstract referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]>;
   /** LST-18 : pose ou retire le reçu, sans toucher à l'état réel. */
   abstract setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null>;
   /** LST-15, LST-19 */

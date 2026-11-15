@@ -9,6 +9,7 @@ import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../doma
 import {
   EngagementReader,
   ItemRepository,
+  type ItemProductReference,
   type ListChanges,
   ListRepository,
   type NewItem,
@@ -293,11 +294,28 @@ export class InMemoryItemRepository extends ItemRepository {
   readonly items = new Map<string, StoredItem>();
   private tick = 0;
 
+  /** Destinataires d'une liste, lus dans le double des listes (relié par le banc de test). */
+  recipientsOf: (listId: string) => readonly string[] = () => [];
+
   constructor(
     private readonly products: ProductRows,
     private readonly log: InMemoryVisibilityLog,
   ) {
     super();
+  }
+
+  referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]> {
+    return Promise.resolve(
+      [...this.items.values()]
+        .filter((row) => productIds.includes(row.productId) && row.status !== 'WITHDRAWN')
+        .map((row) => ({
+          productId: row.productId,
+          itemId: row.id,
+          version: row.version,
+          rule: { mode: row.visibilityMode, profiles: row.visibilityProfiles },
+          listRecipients: this.recipientsOf(row.listId),
+        })),
+    );
   }
 
   private record(row: StoredItem): ItemRecord {

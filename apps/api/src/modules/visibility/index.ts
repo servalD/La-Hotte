@@ -36,7 +36,10 @@ export {
   type ItemCriteria,
   itemCriteria,
   type ListAccess,
+  type ProductReference,
+  requiresHiddenItemChoice,
   ruleExcludes,
+  sharedProductVisible,
 } from './domain/rules';
 export {
   type GiverItemStatus,
