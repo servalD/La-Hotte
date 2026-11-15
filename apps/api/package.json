@@ -19,6 +19,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0",
     "@nestjs/common": "^11.1.8",
     "@nestjs/core": "^11.1.8",
     "@nestjs/platform-express": "^11.1.8",
@@ -44,6 +45,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
     "nestjs-pino": "^4.4.1",
+    "node-html-parser": "9.0.7",
     "nodemailer": "10.2.1",
     "openid-client": "6.8.8",
     "otplib": "13.5.0",

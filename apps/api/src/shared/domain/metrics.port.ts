@@ -12,15 +12,20 @@ export const COUNTER_NAMES = [
   // OBS-02, SEC-32 : refus d'autorisation (session absente, CSRF, profil verrouillé, PIN faux,
   // ré-authentification trop ancienne, interdit), par `code` stable.
   'wishlist.authorization_denied',
+  // Tâche 8 de la phase 0 bis : issue d'une extraction (EXT-02), par `code` (source ou échec).
+  'wishlist.extraction_outcome',
 ] as const;
 export type CounterName = (typeof COUNTER_NAMES)[number];
 
 /**
- * Distributions (durée, taille, coût d'extraction). Aucune pour l'instant. **Une valeur mesurée
+ * Distributions (durée, taille, coût d'extraction). **Une valeur mesurée
  * n'est jamais un montant de part ni de participation** : un histogramme exporte sa somme, son
  * minimum et son maximum, donc le montant exact.
  */
-export const HISTOGRAM_NAMES = [] as const;
+export const HISTOGRAM_NAMES = [
+  // OBS-05 : coût de l'extraction par le modèle, en jetons ; `code` = `INPUT` ou `OUTPUT`.
+  'wishlist.extraction_tokens',
+] as const;
 export type HistogramName = (typeof HISTOGRAM_NAMES)[number];
 
 /**

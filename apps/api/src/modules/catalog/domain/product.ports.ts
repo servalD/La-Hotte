@@ -52,11 +52,13 @@ export abstract class ProductRepository {
   ): Promise<Product | null>;
   /** EXT-06 : passe en `FAILED` les extractions commencées avant `before`. */
   abstract failStaleExtractions(before: Date): Promise<number>;
-  /** Fiches d'un profil créées depuis `since`, pour les plafonds de EXT-34. */
+  /** EXT-34 : extractions commencées depuis `since`, par le profil et par tout son compte. */
   abstract countExtractionsSince(input: {
-    readonly profileIds: readonly string[];
-    readonly since: Date;
-  }): Promise<number>;
+    readonly profileId: string;
+    readonly accountId: string;
+    readonly profileSince: Date;
+    readonly accountSince: Date;
+  }): Promise<{ readonly profile: number; readonly account: number }>;
 }
 
 /** EXT-47, ADR 0016 : images réencodées, sous une clé aléatoire de 128 bits. */

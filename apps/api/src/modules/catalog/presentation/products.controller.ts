@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,8 +11,13 @@ import {
   Query,
   Res,
   StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBody,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiHeader,
   ApiOkResponse,
@@ -24,13 +30,27 @@ import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../i
 import { parseIfMatch } from '../../../platform/http/if-match';
 import {
   CreateProduct,
+  CreateProductFromLink,
+  CreateProductFromPhoto,
   GetImage,
+  IMAGE_UPLOAD_MAX_BYTES,
   GetOwnProduct,
   ListOwnProducts,
   type Product,
   UpdateProduct,
 } from '../application/contract';
-import { CreateProductDto, ProductPageQueryDto, UpdateProductDto } from './dto/product.dto';
+import {
+  CreateProductDto,
+  PhotoProductDto,
+  ProductPageQueryDto,
+  UpdateProductDto,
+} from './dto/product.dto';
+
+/** Fichier reçu par `multer` (mémoire seulement, jamais écrit tel quel : EXT-45). */
+interface UploadedPhoto {
+  readonly buffer: Buffer;
+  readonly size: number;
+}
 import { ProductPageView, ProductView } from './dto/product.view';
 
 export function toProductView(product: Product): ProductView {
@@ -64,6 +84,8 @@ export class ProductsController {
     private readonly get: GetOwnProduct,
     private readonly list: ListOwnProducts,
     private readonly update: UpdateProduct,
+    private readonly fromLink: CreateProductFromLink,
+    private readonly fromPhoto: CreateProductFromPhoto,
   ) {}
 
   @Post()
@@ -72,6 +94,23 @@ export class ProductsController {
     @Body() body: CreateProductDto,
     @ActiveProfile() profile: ActiveProfileValue,
   ): Promise<ProductView> {
+    if (body.url !== undefined) {
+      // Par lien : le reste de la fiche vient de l'extraction (EXT-04), pas du corps.
+      const extra = Object.entries(body).filter(
+        ([key, value]) => value !== undefined && key !== 'url' && key !== 'currency',
+      );
+      if (extra.length > 0) {
+        throw new BadRequestException();
+      }
+      const draft = await this.fromLink.execute({
+        ownerProfileId: profile.id,
+        accountId: profile.accountId,
+        url: body.url,
+        currency: body.currency ?? 'EUR',
+      });
+      return toProductView(draft);
+    }
+    if (body.title === undefined) throw new BadRequestException();
     const product = await this.create.execute({
       ownerProfileId: profile.id,
       fields: {
@@ -84,6 +123,38 @@ export class ProductsController {
       },
     });
     return toProductView(product);
+  }
+
+  /** EXT-10, EXT-11 : photo réencodée sans métadonnées par le fetcher, puis extraction. */
+  @Post('photo')
+  @UseInterceptors(
+    FileInterceptor('photo', { limits: { fileSize: IMAGE_UPLOAD_MAX_BYTES, files: 1, fields: 2 } }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['photo'],
+      properties: {
+        photo: { type: 'string', format: 'binary' },
+        currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+      },
+    },
+  })
+  @ApiCreatedResponse({ type: ProductView })
+  async createProductFromPhoto(
+    @UploadedFile() photo: UploadedPhoto | undefined,
+    @Body() body: PhotoProductDto,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<ProductView> {
+    if (!photo || photo.size === 0) throw new BadRequestException();
+    const draft = await this.fromPhoto.execute({
+      ownerProfileId: profile.id,
+      accountId: profile.accountId,
+      photo: photo.buffer,
+      currency: body.currency ?? 'EUR',
+    });
+    return toProductView(draft);
   }
 
   @Get()

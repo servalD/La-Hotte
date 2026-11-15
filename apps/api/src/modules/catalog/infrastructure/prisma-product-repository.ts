@@ -175,14 +175,25 @@ export class PrismaProductRepository extends ProductRepository {
   }
 
   async countExtractionsSince(input: {
-    profileIds: readonly string[];
-    since: Date;
-  }): Promise<number> {
-    return this.prisma.product.count({
-      where: {
-        ownerProfileId: { in: [...input.profileIds] },
-        extractionStartedAt: { gte: input.since },
-      },
-    });
+    profileId: string;
+    accountId: string;
+    profileSince: Date;
+    accountSince: Date;
+  }): Promise<{ profile: number; account: number }> {
+    const [profile, account] = await Promise.all([
+      this.prisma.product.count({
+        where: {
+          ownerProfileId: input.profileId,
+          extractionStartedAt: { gte: input.profileSince },
+        },
+      }),
+      this.prisma.product.count({
+        where: {
+          owner: { accountId: input.accountId },
+          extractionStartedAt: { gte: input.accountSince },
+        },
+      }),
+    ]);
+    return { profile, account };
   }
 }

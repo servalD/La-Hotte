@@ -7,6 +7,8 @@ export const PRODUCT_URL_MAX = 2048;
 /** Un milliard d'unités mineures : au-delà, c'est une erreur de saisie. */
 export const PRICE_MINOR_MAX = 1_000_000_000_00;
 export const CURRENCY_PATTERN = /^[A-Z]{3}$/;
+/** EXT-43 : 10 Mo pour une image. */
+export const IMAGE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 
 export type ProductSource = 'LINK' | 'PHOTO' | 'MANUAL';
 export type ShareLevel = 'PRIVATE' | 'CIRCLE' | 'GLOBAL';

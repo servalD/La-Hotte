@@ -23,6 +23,7 @@ import type {
 
 import type {
   CreateProductDto,
+  CreateProductFromPhotoBody,
   ListOwnProductsParams,
   ProblemDetailsDto,
   ProductPageView,
@@ -430,6 +431,99 @@ export const useUpdateProduct = <TError = ErrorType<ProblemDetailsDto>, TContext
   TContext
 > => {
   const mutationOptions = getUpdateProductMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary EXT-10, EXT-11 : photo réencodée sans métadonnées par le fetcher, puis extraction.
+ */
+export const getCreateProductFromPhotoUrl = () => {
+  return `/api/v1/products/photo`;
+};
+
+export const createProductFromPhoto = async (
+  createProductFromPhotoBody: CreateProductFromPhotoBody,
+  options?: RequestInit,
+): Promise<ProductView> => {
+  const formData = new FormData();
+  formData.append(`photo`, createProductFromPhotoBody.photo);
+  if (createProductFromPhotoBody.currency !== undefined) {
+    formData.append(`currency`, createProductFromPhotoBody.currency);
+  }
+
+  return apiFetch<ProductView>(getCreateProductFromPhotoUrl(), {
+    ...options,
+    method: 'POST',
+    body: formData,
+  });
+};
+
+export const getCreateProductFromPhotoMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProductFromPhoto>>,
+    TError,
+    { data: CreateProductFromPhotoBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProductFromPhoto>>,
+  TError,
+  { data: CreateProductFromPhotoBody },
+  TContext
+> => {
+  const mutationKey = ['createProductFromPhoto'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProductFromPhoto>>,
+    { data: CreateProductFromPhotoBody }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createProductFromPhoto(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProductFromPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProductFromPhoto>>
+>;
+export type CreateProductFromPhotoMutationBody = CreateProductFromPhotoBody;
+export type CreateProductFromPhotoMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary EXT-10, EXT-11 : photo réencodée sans métadonnées par le fetcher, puis extraction.
+ */
+export const useCreateProductFromPhoto = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createProductFromPhoto>>,
+      TError,
+      { data: CreateProductFromPhotoBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createProductFromPhoto>>,
+  TError,
+  { data: CreateProductFromPhotoBody },
+  TContext
+> => {
+  const mutationOptions = getCreateProductFromPhotoMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

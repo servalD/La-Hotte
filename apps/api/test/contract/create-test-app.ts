@@ -52,7 +52,14 @@ import {
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
 import {
+  ExtractionCache,
+  ExtractionQueue,
   FakePageFetcher,
+  FakeProductExtractor,
+  InMemoryExtractionCache,
+  ManualExtractionQueue,
+  ProductExtractor,
+  RunExtraction,
   ImageStore,
   InMemoryImageStore,
   InMemoryProductRepository,
@@ -75,6 +82,11 @@ export interface TestCatalog {
   readonly products: InMemoryProductRepository;
   readonly images: InMemoryImageStore;
   readonly fetcher: FakePageFetcher;
+  readonly extractor: FakeProductExtractor;
+  readonly extractionCache: InMemoryExtractionCache;
+  readonly extractionQueue: ManualExtractionQueue;
+  /** Exécute les extractions en file (EXT-06), comme le ferait la file du processus. */
+  runExtractions(): Promise<void>;
   readonly lists: InMemoryListRepository;
   readonly items: InMemoryItemRepository;
   readonly visibilityLog: InMemoryVisibilityLog;
@@ -164,6 +176,10 @@ export async function createTestApp(
     products,
     images: new InMemoryImageStore(),
     fetcher: new FakePageFetcher(),
+    extractor: new FakeProductExtractor(),
+    extractionCache: new InMemoryExtractionCache(),
+    extractionQueue: new ManualExtractionQueue(),
+    runExtractions: () => catalog.extractionQueue.drain(app.get(RunExtraction)),
     lists: new InMemoryListRepository(visibilityLog),
     items: new InMemoryItemRepository(products, visibilityLog),
     visibilityLog,
@@ -223,6 +239,12 @@ export async function createTestApp(
     .useValue(catalog.images)
     .overrideProvider(PageFetcher)
     .useValue(catalog.fetcher)
+    .overrideProvider(ProductExtractor)
+    .useValue(catalog.extractor)
+    .overrideProvider(ExtractionCache)
+    .useValue(catalog.extractionCache)
+    .overrideProvider(ExtractionQueue)
+    .useValue(catalog.extractionQueue)
     .overrideProvider(ListRepository)
     .useValue(catalog.lists)
     .overrideProvider(ItemRepository)
@@ -233,6 +255,7 @@ export async function createTestApp(
     .useValue(catalog.engagements)
     .compile();
 
+  products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
   await app.init();

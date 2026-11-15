@@ -22,7 +22,11 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve) => server.close(() => { resolve(); }));
+  await new Promise<void>((resolve) =>
+    server.close(() => {
+      resolve();
+    }),
+  );
 });
 
 function client(env: Partial<Env>): HttpPageFetcher {

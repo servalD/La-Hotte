@@ -7,7 +7,25 @@ import {
   ProductCatalog,
   UpdateProduct,
 } from './application/manage-products.use-case';
+import {
+  CreateProductFromLink,
+  CreateProductFromPhoto,
+  FailStaleExtractions,
+  RunExtraction,
+} from './application/extract-product.use-case';
+import {
+  ExtractionCache,
+  ExtractionQueue,
+  PageAnalyzer,
+  ProductExtractor,
+} from './domain/extraction.ports';
 import { PageFetcher } from './domain/page-fetcher.port';
+import { ClaudeProductExtractor } from './infrastructure/claude-product-extractor';
+import {
+  InProcessExtractionQueue,
+  PrismaExtractionCache,
+} from './infrastructure/extraction-adapters';
+import { HtmlPageAnalyzer } from './infrastructure/html-page-analyzer';
 import { ImageStore, ProductRepository } from './domain/product.ports';
 import { HttpPageFetcher } from './infrastructure/http-page-fetcher';
 import { DiskImageStore } from './infrastructure/disk-image-store';
@@ -27,6 +45,14 @@ import { ImagesController, ProductsController } from './presentation/products.co
     { provide: ProductRepository, useClass: PrismaProductRepository },
     { provide: ImageStore, useClass: DiskImageStore },
     { provide: PageFetcher, useClass: HttpPageFetcher },
+    CreateProductFromLink,
+    CreateProductFromPhoto,
+    RunExtraction,
+    FailStaleExtractions,
+    { provide: PageAnalyzer, useClass: HtmlPageAnalyzer },
+    { provide: ProductExtractor, useClass: ClaudeProductExtractor },
+    { provide: ExtractionCache, useClass: PrismaExtractionCache },
+    { provide: ExtractionQueue, useClass: InProcessExtractionQueue },
   ],
   exports: [ProductCatalog],
 })

@@ -31,6 +31,7 @@ export * from './createInvitationDtoKind';
 export * from './createListDto';
 export * from './createNewList201';
 export * from './createProductDto';
+export * from './createProductFromPhotoBody';
 export * from './createProfileDto';
 export * from './createWardDto';
 export * from './createWardProfileDto';

@@ -24,13 +24,24 @@ import {
 
 const URL_OPTIONS = { protocols: ['http', 'https'], require_protocol: true };
 
-/** `POST /products` : saisie à la main (EXT-20) ; seul le titre est obligatoire. */
+/**
+ * `POST /products` : par lien (`url` seul, EXT-01) ou à la main (EXT-20, seul le titre est
+ * obligatoire). L'un ou l'autre, jamais les deux.
+ */
 export class CreateProductDto {
+  /** EXT-01 : la fiche brouillon naît en `PENDING` et se complète (EXT-06). */
+  @IsOptional()
+  @IsUrl(URL_OPTIONS)
+  @MaxLength(PRODUCT_URL_MAX)
+  @ApiProperty({ required: false, format: 'uri', maxLength: PRODUCT_URL_MAX })
+  url?: string;
+
+  @IsOptional()
   @IsString()
   @Length(1, PRODUCT_TITLE_MAX)
   @Matches(/\S/)
-  @ApiProperty({ minLength: 1, maxLength: PRODUCT_TITLE_MAX })
-  title!: string;
+  @ApiProperty({ required: false, minLength: 1, maxLength: PRODUCT_TITLE_MAX })
+  title?: string;
 
   @IsOptional()
   @IsString()
@@ -150,4 +161,12 @@ export class ProductPageQueryDto {
   @Max(50)
   @ApiProperty({ required: false, minimum: 1, maximum: 50, default: 50 })
   limit?: number;
+}
+
+/** `POST /products/photo` : la devise des prix lus sur la photo (EUR par défaut). */
+export class PhotoProductDto {
+  @IsOptional()
+  @Matches(/^[A-Z]{3}$/)
+  @ApiProperty({ required: false, pattern: '^[A-Z]{3}$' })
+  currency?: string;
 }

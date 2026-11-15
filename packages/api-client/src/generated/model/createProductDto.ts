@@ -8,11 +8,16 @@
 
 export interface CreateProductDto {
   /**
+   * EXT-01 : la fiche brouillon naît en `PENDING` et se complète (EXT-06).
+   * @maxLength 2048
+   */
+  url?: string;
+  /**
    * @minLength 1
    * @maxLength 200
    * @pattern \S
    */
-  title: string;
+  title?: string;
   /** @maxLength 2000 */
   description?: string;
   /**

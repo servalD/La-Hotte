@@ -14,3 +14,5 @@ export {
   ListOwnProducts,
   UpdateProduct,
 } from './manage-products.use-case';
+export { CreateProductFromLink, CreateProductFromPhoto } from './extract-product.use-case';
+export { IMAGE_UPLOAD_MAX_BYTES } from '../domain/product';

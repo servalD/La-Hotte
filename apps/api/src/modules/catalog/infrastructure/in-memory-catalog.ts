@@ -7,6 +7,15 @@ import {
   type ProductPage,
   ProductRepository,
 } from '../domain/product.ports';
+import type { ExtractionCandidate } from '../domain/extraction';
+import {
+  type CachedExtraction,
+  ExtractionCache,
+  type ExtractionJob,
+  ExtractionQueue,
+  type ModelOutcome,
+  ProductExtractor,
+} from '../domain/extraction.ports';
 import {
   type Fetched,
   type FetchedPage,
@@ -115,18 +124,30 @@ export class InMemoryProductRepository extends ProductRepository {
     return Promise.resolve(count);
   }
 
-  countExtractionsSince(input: { profileIds: readonly string[]; since: Date }): Promise<number> {
-    return Promise.resolve(
-      [...this.rows.values()].filter(
+  /** Compte d'un profil, fourni par le banc de test (identité en mémoire). */
+  accountOf: (profileId: string) => string | undefined = () => undefined;
+
+  countExtractionsSince(input: {
+    profileId: string;
+    accountId: string;
+    profileSince: Date;
+    accountSince: Date;
+  }): Promise<{ profile: number; account: number }> {
+    const rows = [...this.rows.values()].filter((row) => row.extractionStartedAt !== null);
+    return Promise.resolve({
+      profile: rows.filter(
         (row) =>
-          input.profileIds.includes(row.ownerProfileId) &&
-          row.extractionStartedAt !== null &&
-          row.extractionStartedAt >= input.since,
+          row.ownerProfileId === input.profileId &&
+          (row.extractionStartedAt ?? new Date(0)) >= input.profileSince,
       ).length,
-    );
+      account: rows.filter(
+        (row) =>
+          this.accountOf(row.ownerProfileId) === input.accountId &&
+          (row.extractionStartedAt ?? new Date(0)) >= input.accountSince,
+      ).length,
+    });
   }
 }
-
 export class InMemoryImageStore extends ImageStore {
   readonly images = new Map<string, { bytes: Buffer; contentType: string }>();
 
@@ -179,5 +200,74 @@ export class FakePageFetcher extends PageFetcher {
       contentType: 'image/webp',
       bytes: Buffer.from('RIFFxxxxWEBP'),
     });
+  }
+}
+
+/** Double du modèle : réponses déclarées par les tests ; garde le texte reçu (EXT-33). */
+export class FakeProductExtractor extends ProductExtractor {
+  readonly received: string[] = [];
+  photos = 0;
+  next: ModelOutcome = { status: 'unavailable' };
+
+  fromPageText(text: string): Promise<ModelOutcome> {
+    this.received.push(text);
+    return Promise.resolve(this.next);
+  }
+
+  fromPhoto(): Promise<ModelOutcome> {
+    this.photos += 1;
+    return Promise.resolve(this.next);
+  }
+
+  static answer(candidate: Partial<ExtractionCandidate>): ModelOutcome {
+    return {
+      status: 'ok',
+      usage: { inputTokens: 1000, outputTokens: 100 },
+      candidate: {
+        title: null,
+        description: null,
+        price: null,
+        currency: null,
+        merchant: null,
+        imageUrl: null,
+        lowConfidence: [],
+        ...candidate,
+      },
+    };
+  }
+}
+
+export class InMemoryExtractionCache extends ExtractionCache {
+  readonly entries = new Map<string, { value: CachedExtraction; expiresAt: Date }>();
+
+  get(normalizedUrl: string, now: Date): Promise<CachedExtraction | null> {
+    const entry = this.entries.get(normalizedUrl);
+    return Promise.resolve(entry && entry.expiresAt > now ? entry.value : null);
+  }
+
+  put(input: { normalizedUrl: string; value: CachedExtraction; expiresAt: Date }): Promise<void> {
+    this.entries.set(input.normalizedUrl, { value: input.value, expiresAt: input.expiresAt });
+    return Promise.resolve();
+  }
+}
+
+/** File manuelle : les tests déclenchent les extractions par `drain(run)`. */
+export class ManualExtractionQueue extends ExtractionQueue {
+  readonly jobs: ExtractionJob[] = [];
+
+  enqueue(job: ExtractionJob): void {
+    this.jobs.push(job);
+  }
+
+  async drain(run: {
+    link(productId: string, url: string): Promise<void>;
+    photo(productId: string, imageKey: string): Promise<void>;
+  }): Promise<void> {
+    while (this.jobs.length > 0) {
+      const job = this.jobs.shift();
+      if (!job) break;
+      if (job.kind === 'link') await run.link(job.productId, job.url);
+      else await run.photo(job.productId, job.imageKey);
+    }
   }
 }

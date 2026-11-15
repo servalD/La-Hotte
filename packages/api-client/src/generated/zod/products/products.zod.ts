@@ -7,6 +7,8 @@
  */
 import * as zod from 'zod';
 
+export const createProductBodyUrlMax = 2048;
+
 export const createProductBodyTitleMax = 200;
 
 export const createProductBodyTitleRegExp = new RegExp('\\S');
@@ -21,7 +23,17 @@ export const createProductBodyMerchantMax = 120;
 export const createProductBodySourceUrlMax = 2048;
 
 export const createProductBody = zod.object({
-  title: zod.string().min(1).max(createProductBodyTitleMax).regex(createProductBodyTitleRegExp),
+  url: zod
+    .url()
+    .max(createProductBodyUrlMax)
+    .optional()
+    .describe('EXT-01 : la fiche brouillon naît en `PENDING` et se complète (EXT-06).'),
+  title: zod
+    .string()
+    .min(1)
+    .max(createProductBodyTitleMax)
+    .regex(createProductBodyTitleRegExp)
+    .optional(),
   description: zod.string().max(createProductBodyDescriptionMax).optional(),
   unitPriceMinor: zod
     .number()
@@ -155,4 +167,14 @@ export const updateProductResponse = zod.object({
   priceCheckedAt: zod.iso.datetime({}).nullable(),
   createdAt: zod.iso.datetime({}),
   version: zod.number().describe('À renvoyer dans `If-Match` (API-17).'),
+});
+
+/**
+ * @summary EXT-10, EXT-11 : photo réencodée sans métadonnées par le fetcher, puis extraction.
+ */
+export const createProductFromPhotoBodyCurrencyRegExp = new RegExp('^[A-Z]{3}$');
+
+export const createProductFromPhotoBody = zod.object({
+  photo: zod.instanceof(File),
+  currency: zod.string().regex(createProductFromPhotoBodyCurrencyRegExp).optional(),
 });
