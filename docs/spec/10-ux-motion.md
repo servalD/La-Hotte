@@ -17,14 +17,14 @@ Le produit a beaucoup de règles ; l'utilisateur ne doit en voir aucune tant qu'
 
 ## Parcours clés
 
-| Parcours | Gestes | Détail |
-|---|---|---|
-| Ajouter un souhait depuis un site | 2 | Partager → Wishlist ; valider la fiche |
-| Répondre à une invitation et avoir une liste | 3 | Ouvrir l'invitation ; « Je participe » ; valider les souhaits repris |
-| Offrir un souhait en entier | 1 | « Je l'offre » (annulable) |
-| Participer à un cadeau commun | 3 | « Participer » ; choisir montant ou pourcentage ; valider |
-| Cacher un souhait à quelqu'un | 3 | Options ; « Qui voit ça ? » ; cocher la personne |
-| Pointer un remboursement | 1 | Cocher la part dans le panier |
+| Parcours                                     | Gestes | Détail                                                               |
+| -------------------------------------------- | ------ | -------------------------------------------------------------------- |
+| Ajouter un souhait depuis un site            | 2      | Partager → Wishlist ; valider la fiche                               |
+| Répondre à une invitation et avoir une liste | 3      | Ouvrir l'invitation ; « Je participe » ; valider les souhaits repris |
+| Offrir un souhait en entier                  | 1      | « Je l'offre » (annulable)                                           |
+| Participer à un cadeau commun                | 3      | « Participer » ; choisir montant ou pourcentage ; valider            |
+| Cacher un souhait à quelqu'un                | 3      | Options ; « Qui voit ça ? » ; cocher la personne                     |
+| Pointer un remboursement                     | 1      | Cocher la part dans le panier                                        |
 
 ## Navigation
 
@@ -63,21 +63,21 @@ Le mouvement sert à trois choses : **situer** (d'où vient cet écran), **confi
 
 ### Moments animés
 
-| Moment | Animation | Rôle |
-|---|---|---|
-| Ouverture d'un élément | La carte s'agrandit jusqu'à devenir la page (élément partagé) | Situer |
-| Fiche en cours d'analyse | Squelette scintillant, puis les champs se posent un à un (image, titre, prix) | Montrer que l'IA travaille, puis qu'elle a fini |
-| « Je l'offre » | Le bouton se transforme en état « Réservé », un ruban se noue sur la carte | Confirmer |
-| Participation ajoutée | Le montant « vole » vers la vue latérale, la jauge de budget avance, le total s'incrémente chiffre par chiffre | Relier l'action à son effet sur le budget |
-| Jauge de financement | Remplissage fluide ; à 100 %, bref éclat | Confirmer |
-| Achat coché | Coche dessinée, la ligne passe au bleu et glisse dans « Achetés » | Confirmer et situer |
-| Part réglée | Coche, la ligne se replie | Confirmer |
-| Réception confirmée | Côté destinataire : la carte passe au vert, confettis discrets. Côté offreurs : passage du bleu au vert | Célébrer |
-| Nouveau commentaire en direct | Glisse depuis le bas, surbrillance qui s'estompe | Attirer l'œil |
-| Élément mis à jour par quelqu'un d'autre | Halo bref sur le champ modifié | Attirer l'œil |
-| Réorganisation de liste | Les éléments s'écartent sous le doigt, ressort au lâcher | Geste direct |
-| Changement de profil | Fondu enchaîné aux couleurs du profil | Situer, marquer le changement de contexte |
-| Tiroirs et panneaux | Suivent le doigt, se referment par glissement | Geste direct |
+| Moment                                   | Animation                                                                                                      | Rôle                                            |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Ouverture d'un élément                   | La carte s'agrandit jusqu'à devenir la page (élément partagé)                                                  | Situer                                          |
+| Fiche en cours d'analyse                 | Squelette scintillant, puis les champs se posent un à un (image, titre, prix)                                  | Montrer que l'IA travaille, puis qu'elle a fini |
+| « Je l'offre »                           | Le bouton se transforme en état « Réservé », un ruban se noue sur la carte                                     | Confirmer                                       |
+| Participation ajoutée                    | Le montant « vole » vers la vue latérale, la jauge de budget avance, le total s'incrémente chiffre par chiffre | Relier l'action à son effet sur le budget       |
+| Jauge de financement                     | Remplissage fluide ; à 100 %, bref éclat                                                                       | Confirmer                                       |
+| Achat coché                              | Coche dessinée, la ligne passe au bleu et glisse dans « Achetés »                                              | Confirmer et situer                             |
+| Part réglée                              | Coche, la ligne se replie                                                                                      | Confirmer                                       |
+| Réception confirmée                      | Côté destinataire : la carte passe au vert, confettis discrets. Côté offreurs : passage du bleu au vert        | Célébrer                                        |
+| Nouveau commentaire en direct            | Glisse depuis le bas, surbrillance qui s'estompe                                                               | Attirer l'œil                                   |
+| Élément mis à jour par quelqu'un d'autre | Halo bref sur le champ modifié                                                                                 | Attirer l'œil                                   |
+| Réorganisation de liste                  | Les éléments s'écartent sous le doigt, ressort au lâcher                                                       | Geste direct                                    |
+| Changement de profil                     | Fondu enchaîné aux couleurs du profil                                                                          | Situer, marquer le changement de contexte       |
+| Tiroirs et panneaux                      | Suivent le doigt, se referment par glissement                                                                  | Geste direct                                    |
 
 ### Mise en œuvre
 

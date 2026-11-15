@@ -19,12 +19,15 @@ export interface ProblemDetails {
 }
 
 export const STATUS_BY_DOMAIN_KIND: Record<DomainErrorKind, number> = {
+  unauthenticated: 401,
   not_found: 404,
   forbidden: 403,
   conflict: 409,
   precondition_failed: 412,
   business_rule: 422,
   locked: 423,
+  rate_limited: 429,
+  unavailable: 503,
 };
 
 /** Titres génériques par statut ; le `code` porte la précision. */

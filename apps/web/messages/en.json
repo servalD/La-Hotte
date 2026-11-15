@@ -10,27 +10,710 @@
     "dark": "Dark",
     "system": "Match device"
   },
-  "foundation": {
-    "title": "Foundation check",
-    "description": "This page checks that the interface talks to the API through the generated client. It will go away with the first real screens.",
-    "whoSees": "Who sees this? Nobody but you: it’s a test.",
-    "titleLabel": "Wish title",
-    "titleHint": "Between 1 and 120 characters.",
-    "priorityLabel": "Priority",
-    "priority": {
-      "low": "Low",
-      "normal": "Normal",
-      "high": "High"
+  "auth": {
+    "fields": {
+      "email": "Email address",
+      "password": "Password",
+      "newPassword": "Password",
+      "displayName": "Name of your first profile"
     },
-    "submit": "Add",
-    "submitting": "Adding…",
-    "created": "Added: “{title}”, {priority} priority.",
-    "reloaded": "Read back from the API: {view} view.",
+    "links": {
+      "forgot": "Forgot your password?",
+      "register": "Create an account",
+      "login": "Back to sign in"
+    },
+    "login": {
+      "title": "Sign in",
+      "who": "Nobody else sees what you type here.",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "google": "Continue with Google"
+    },
+    "register": {
+      "title": "Create an account",
+      "who": "Your address is only used to sign you in and write to you; it is never shown to others.",
+      "passwordHint": "At least 12 characters. An easy-to-remember phrase makes a good password.",
+      "displayNameHint": "People in your circle will see this name. You can change it later.",
+      "ageAttestation": "I am 15 or older.",
+      "submit": "Create my account",
+      "submitting": "Creating…",
+      "sentTitle": "Almost done: check your inbox.",
+      "sentBody": "If {email} can receive an account, a verification link has just been sent to it. It stays valid for a limited time.",
+      "google": "Create my account with Google"
+    },
+    "forgot": {
+      "title": "Forgot your password",
+      "who": "We write to the account’s address, without saying whether it exists.",
+      "submit": "Send the link",
+      "submitting": "Sending…",
+      "sentTitle": "Sent, if the account exists.",
+      "sentBody": "Open the link in the email to choose a new password. All open sessions will be closed."
+    },
+    "reset": {
+      "title": "New password",
+      "who": "Only you see this field. All your open sessions will be closed.",
+      "submit": "Change password",
+      "submitting": "Changing…",
+      "done": "Password changed.",
+      "doneHint": "You can sign in again with the new one."
+    },
+    "verifyEmail": {
+      "title": "Confirm your address",
+      "who": "This confirmation shows nothing to anyone.",
+      "confirm": "Confirm my address",
+      "confirming": "Confirming…",
+      "done": "Address confirmed. You can sign in.",
+      "notYou": "You did not create this account or do not know its password?",
+      "notYouLink": "Reset it."
+    },
+    "cancelEmailChange": {
+      "title": "Cancel the address change",
+      "who": "You are receiving this because this address was the account’s.",
+      "confirm": "Cancel the change",
+      "confirming": "Cancelling…",
+      "done": "Change cancelled.",
+      "doneHint": "As a precaution, all sessions of the account were closed. If it was not you, change your password too."
+    },
     "errors": {
-      "titleRequired": "Give this wish a title.",
-      "titleTooLong": "120 characters at most.",
-      "network": "The API isn’t responding. Check it’s running, then try again.",
-      "generic": "That didn’t work ({code}). Try again in a moment."
+      "emailRequired": "Enter the account’s email address.",
+      "emailInvalid": "This address does not look valid.",
+      "passwordRequired": "Enter your password.",
+      "displayNameInvalid": "Give a name of 1 to 60 characters.",
+      "INVALID_CREDENTIALS": "Incorrect address or password.",
+      "EMAIL_NOT_VERIFIED": "This address is not confirmed yet. Open the link sent by email.",
+      "ACCOUNT_SUSPENDED": "This account is suspended.",
+      "RATE_LIMITED": "Too many attempts. Wait a few minutes before trying again.",
+      "PASSWORD_BREACHED": "This password appears in known leaks. Choose another one.",
+      "PASSWORD_LENGTH": "At least 12 characters.",
+      "AGE_ATTESTATION_REQUIRED": "Tick the box to confirm your age.",
+      "INVITATION_REQUIRED": "Sign-up is by invitation only for now.",
+      "INVITATION_INVALID": "This invitation is no longer valid.",
+      "TOKEN_INVALID": "This link is no longer valid. Ask for a new one.",
+      "SERVICE_UNAVAILABLE": "The service is briefly unavailable. Try again in a moment.",
+      "TOTP_ENROLLMENT_REQUIRED": "This account must first enable a second factor.",
+      "network": "The server is not responding. Check your connection, then try again.",
+      "generic": "That did not work. Try again in a moment.",
+      "pinFormat": "The PIN has 4 to 8 digits.",
+      "REAUTH_REQUIRED": "First confirm that it is you.",
+      "INVALID_SECOND_FACTOR": "This code is not right.",
+      "TOTP_ALREADY_ENABLED": "The second factor is already enabled.",
+      "TOTP_NOT_ENABLED": "The second factor is not enabled.",
+      "TOTP_ENROLLMENT_MISSING": "The setup expired. Start again.",
+      "TOTP_MANDATORY": "This account has a role that requires the second factor: it cannot disable it.",
+      "LAST_PROFILE": "The last profile of an account cannot be deleted.",
+      "PROFILE_LIMIT_REACHED": "An account cannot have more than 10 profiles. Delete one to create another.",
+      "PIN_NOT_SET": "This profile has no PIN.",
+      "CURRENT_PIN_REQUIRED": "Enter the current PIN.",
+      "PIN_INVALID": "This PIN is not right.",
+      "PIN_RATE_LIMITED": "Too many attempts. Wait before trying again.",
+      "EMAIL_TOO_RECENT": "This address was just changed. Wait before changing it again.",
+      "VERSION_MISMATCH": "This item was changed elsewhere. Reload the page.",
+      "CHILD_EMAIL_FORBIDDEN": "A child profile has no email address.",
+      "LINK_NOT_FOUND": "This link no longer exists.",
+      "BLOCK_SELF": "You cannot block yourself.",
+      "INVITATION_LIMIT_REACHED": "You have reached the number of open invitations. Withdraw one.",
+      "INVITATION_TARGET_INVALID": "This account cannot host a profile.",
+      "PROFILE_INVITATION_FORBIDDEN": "Your profile cannot invite someone to create a profile.",
+      "PROFILE_PROPOSAL_PENDING": "A proposal is already pending.",
+      "GOOGLE_ALREADY_LINKED": "A Google account is already linked.",
+      "GOOGLE_NOT_LINKED": "No Google account is linked.",
+      "GOOGLE_UNAVAILABLE": "Google is not responding. Try again in a moment.",
+      "GOOGLE_IDENTITY_TAKEN": "This Google account is already linked to another account.",
+      "PROFILE_NOT_FOUND": "This profile no longer exists.",
+      "SESSION_NOT_FOUND": "This session no longer exists.",
+      "TRUSTED_DEVICE_NOT_FOUND": "This device no longer exists.",
+      "TRANSFER_INVALID": "This token is not accepted.",
+      "TRANSFER_CONSENT_UNSAFE": "For your safety, consent is refused for 7 days after a PIN or profile address change.",
+      "TRANSFER_PENDING": "A request is already in progress for this profile.",
+      "TRANSFER_PIN_CHOICE_INVALID": "This PIN choice is not possible.",
+      "DETACH_CHILD_FORBIDDEN": "A child profile cannot be detached.",
+      "DETACH_EMAIL_REQUIRED": "Enter the new account’s address.",
+      "UNDECLARED_REGROUP": "This move would delete the account: declare the regrouping.",
+      "HAS_WARDS": "This account is a guardian: it cannot be deleted or regrouped.",
+      "GUARDIAN_REQUIRED": "This change would leave an account without an adult.",
+      "WARD_CHILD_ONLY": "A ward account only holds child profiles.",
+      "WARD_NOT_FOUND": "This ward account does not exist.",
+      "WARD_RELEASE_NOT_REQUESTED": "Your guardian has not asked to lift the guardianship.",
+      "WARD_RELEASE_SINGLE_PROFILE": "Guardianship can only be lifted for an account with a single profile.",
+      "ACCOUNT_SETUP_INVALID": "This setup link is no longer valid.",
+      "INVALID_PROFILE": "This profile is not valid for this action.",
+      "LINK_SAME_ACCOUNT": "Both profiles are in the same account.",
+      "PROFILE_LOCKED": "This profile is locked. Enter its PIN."
+    },
+    "verifyProfileEmail": {
+      "title": "Confirm the profile address",
+      "who": "This confirmation shows nothing to anyone.",
+      "confirm": "Confirm the address",
+      "confirming": "Confirming…",
+      "done": "Profile address confirmed."
+    },
+    "cancelTransfer": {
+      "title": "Cancel the account change",
+      "who": "You are receiving this because your profile was about to change account.",
+      "confirm": "Cancel the change",
+      "confirming": "Cancelling…",
+      "done": "Change cancelled.",
+      "doneHint": "Your profile stays in its current account."
     }
+  },
+  "session": {
+    "loading": "Loading",
+    "unreachable": "The server is not responding. Check your connection, then reload the page.",
+    "profileUnreadable": "Unable to check this profile. As a precaution, its content is not shown. Check your connection, then try again.",
+    "retry": "Try again"
+  },
+  "nav": {
+    "app": "La Hotte",
+    "label": "Main navigation",
+    "home": "Home",
+    "circle": "Circle",
+    "invitations": "Invitations",
+    "settings": "Profile settings",
+    "switchProfile": "Switch profile",
+    "lock": "Lock",
+    "signOut": "Sign out",
+    "profiles": "Profiles",
+    "account": "Account",
+    "accountProfiles": "Manage profiles",
+    "security": "Security",
+    "wards": "Wards"
+  },
+  "home": {
+    "hello": "Hello {name}",
+    "who": "Only you can see this screen.",
+    "noPin": {
+      "title": "This profile has no PIN",
+      "body": "Without a PIN, anyone who opens this account can enter this profile. A PIN mostly protects surprises between profiles of the same account.",
+      "action": "Add a PIN"
+    },
+    "waiting": {
+      "title": "{count, plural, one {A link is waiting for your approval} other {# links are waiting for your approval}}",
+      "action": "See the circle"
+    },
+    "soon": {
+      "title": "Your lists are coming soon",
+      "body": "Items, lists and events will arrive in the next versions."
+    },
+    "transfer": {
+      "title": "An account change request concerns you",
+      "body": "Your profile is about to change account. Read the request: you can refuse it at any time before it runs.",
+      "action": "Read the request"
+    }
+  },
+  "secondFactor": {
+    "title": "Second factor",
+    "who": "Enter the code from your authenticator app, or a recovery code. Nobody else sees this field.",
+    "code": "Code",
+    "codeHint": "Six digits, or a recovery code.",
+    "codeInvalid": "Enter a code of 6 to 32 characters.",
+    "wrongCode": "This code is not right. It changes every 30 seconds: enter the one shown now.",
+    "expired": "The 5-minute window has passed. Sign in again with your password.",
+    "trustDevice": "Trust this device for 30 days",
+    "submit": "Verify",
+    "submitting": "Verifying…"
+  },
+  "profiles": {
+    "title": "Who is looking?",
+    "who": "Choose the profile to open. A protected profile asks for its PIN.",
+    "unlockTitle": "Profile locked",
+    "unlockWho": "Enter the PIN to reopen this profile.",
+    "loadError": "Unable to load the profiles. Reload the page.",
+    "protected": "Protected by a PIN"
+  },
+  "pin": {
+    "label": "PIN",
+    "who": "PIN of the profile “{name}”. Nobody else sees what you type.",
+    "format": "The PIN has 4 to 8 digits.",
+    "submit": "Open the profile",
+    "submitting": "Checking…",
+    "cancel": "Cancel",
+    "wait": "Too many attempts. Try again in {seconds} s.",
+    "errors": {
+      "PIN_INVALID": "This PIN is not right.",
+      "PIN_RATE_LIMITED": "Too many attempts. Wait before trying again.",
+      "PROFILE_NOT_FOUND": "This profile no longer exists.",
+      "network": "The server is not responding. Try again.",
+      "generic": "That did not work. Try again in a moment."
+    },
+    "notice": {
+      "title": "Good to know before you enter",
+      "reset": "This profile’s PIN was reset or disabled from the Account space on {date}.",
+      "failed": "{count, plural, one {One wrong PIN was entered} other {# wrong PINs were entered}} since your last visit to this profile.",
+      "advice": "If it was not you, change the account password and set a new PIN.",
+      "continue": "Understood, enter"
+    }
+  },
+  "reauth": {
+    "title": "Confirm it is you",
+    "who": "This action is sensitive. Nobody else sees what you type.",
+    "code": "Second-factor code",
+    "codeHint": "Code from the app, or a recovery code.",
+    "confirm": "Confirm",
+    "viaGoogle": "Confirm with Google",
+    "wrong": "Wrong password or code."
+  },
+  "totp": {
+    "title": "Second factor (TOTP)",
+    "who": "A 6-digit code, renewed every 30 seconds by an authenticator app, is added to your password.",
+    "disabled": "The second factor is not enabled.",
+    "enabled": "{count, plural, =0 {Enabled. No recovery codes left: generate new ones.} one {Enabled. One recovery code is still valid.} other {Enabled. # recovery codes are still valid.}}",
+    "enable": "Enable the second factor",
+    "regenerate": "Regenerate recovery codes",
+    "disable": "Disable",
+    "codeFormat": "Enter the 6 digits shown by the app.",
+    "wrongCode": "This code is not right.",
+    "enroll": {
+      "step1": "Scan this QR code with your authenticator app.",
+      "secretLabel": "Secret key",
+      "manual": "This key is secret: do not share it with anyone.",
+      "codeLabel": "Code shown by the app",
+      "codeHint": "Six digits.",
+      "activate": "Enable",
+      "cancel": "Cancel",
+      "qrLabel": "Second-factor setup QR code",
+      "orKey": "No camera? Type this key into the app by hand:"
+    },
+    "codes": {
+      "title": "Recovery codes",
+      "once": "Keep them somewhere safe: they will never be shown again. Each works once, if you lose your app.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "print": "Print",
+      "saved": "I have kept them"
+    }
+  },
+  "credentials": {
+    "title": "Email, password and Google",
+    "who": "Only you can see these settings.",
+    "currentEmail": "Current address:",
+    "unverified": "unconfirmed",
+    "newEmail": "New email address",
+    "emailHint": "A confirmation link goes to the new address; the old one is warned and can cancel.",
+    "changeEmail": "Change the address",
+    "emailSent": "A confirmation link has just been sent.",
+    "newPassword": "New password",
+    "setPassword": "Password",
+    "passwordHint": "At least 12 characters. Other sessions will be closed.",
+    "changePassword": "Change the password",
+    "createPassword": "Create a password",
+    "passwordChanged": "Password changed.",
+    "google": {
+      "title": "Google",
+      "linked": "This account can sign in with Google.",
+      "notLinked": "Link Google to sign in without a password.",
+      "link": "Link Google",
+      "unlink": "Unlink Google"
+    }
+  },
+  "devices": {
+    "unknownDevice": "Unknown device",
+    "thisDevice": "This device",
+    "lastSeen": "Last activity: {date}",
+    "sessions": {
+      "title": "Open sessions",
+      "who": "The devices signed in to this account. Only you see them.",
+      "revoke": "Close"
+    },
+    "trusted": {
+      "title": "Trusted devices",
+      "who": "These devices skip the second factor for 30 days.",
+      "none": "No trusted devices.",
+      "until": "Valid until {date}",
+      "revoke": "Remove"
+    }
+  },
+  "accountProfiles": {
+    "title": "Account profiles",
+    "who": "The Account space only shows management information: never a wish, a reservation or a comment.",
+    "child": "Child profile",
+    "adult": "Adult profile",
+    "hasPin": "protected by a PIN",
+    "noPin": "no PIN",
+    "setPin": "Set a PIN",
+    "resetPin": "Reset the PIN",
+    "disablePin": "Disable the PIN",
+    "disablePinTitle": "Disable the PIN of “{name}”?",
+    "disablePinBody": "The profile will be told on its next visit. Without a PIN, anyone who opens this account can enter it.",
+    "newPin": "New PIN",
+    "newPinHint": "4 to 8 digits. The profile will be warned of the reset.",
+    "confirmPin": "Save the PIN",
+    "markChild": "Mark as a child",
+    "markAdult": "Remove the child marker",
+    "delete": "Delete",
+    "deleteTitle": "Delete the profile “{name}”?",
+    "deleteBody": "The profile will be permanently deleted. The last profile of an account cannot be deleted.",
+    "cancel": "Cancel",
+    "create": {
+      "title": "Create a profile",
+      "name": "Profile name",
+      "child": "This profile is a child’s",
+      "submit": "Create the profile"
+    },
+    "changeAccount": "Change account"
+  },
+  "accountPage": {
+    "title": "Account",
+    "who": "Your account is shared by all your profiles. These settings appear in no profile."
+  },
+  "securityPage": {
+    "title": "Security",
+    "who": "Second factor, sessions and devices of this account. Only you see them."
+  },
+  "proposals": {
+    "title": "Invitations to create a profile",
+    "who": "Accepting adds a profile to this account. Declining does not tell the inviter why.",
+    "body": "{name} offers you a profile in this account.",
+    "bodyChild": "{name} offers you a child profile in this account.",
+    "expires": "Valid until {date}",
+    "accept": "Accept",
+    "refuse": "Decline"
+  },
+  "settings": {
+    "title": "Profile settings",
+    "who": "Your circle sees your name and the birthday you enter. The language and the PIN are visible only to you.",
+    "displayName": "Display name",
+    "displayNameHint": "People in your circle see it.",
+    "birthday": "Birthday (optional)",
+    "birthdayHint": "Day and month are enough; the year is optional.",
+    "birthdayInvalid": "Enter a day (1 to 31) and a month (1 to 12), or leave empty.",
+    "day": "Day",
+    "month": "Month",
+    "year": "Year",
+    "language": "Language",
+    "languages": {
+      "fr": "Français",
+      "en": "English"
+    },
+    "relock": {
+      "label": "Ask for the PIN again",
+      "NEVER": "Never",
+      "IDLE_15": "After 15 minutes of inactivity",
+      "EVERY_OPEN": "Every time the app opens"
+    },
+    "currentPin": "Current PIN",
+    "currentPinHint": "Needed to ask for the PIN less often.",
+    "currentPinNeeded": "Enter your current PIN to relax this setting.",
+    "stale": "This profile was changed elsewhere. The up-to-date values are shown: review, then save again.",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Settings saved.",
+    "notices": {
+      "pinReset": "This profile’s PIN was reset or disabled from the Account space on {date}.",
+      "pinResetAdvice": "If it was not you, change the account password. This notice stays until you set a new PIN.",
+      "child": "This profile’s “child profile” marker was changed from the Account space.",
+      "read": "I have read it"
+    },
+    "pin": {
+      "title": "Profile PIN",
+      "who": "The PIN protects this profile from the other profiles of the account. Only you know it.",
+      "current": "Current PIN",
+      "new": "New PIN",
+      "hint": "4 to 8 digits.",
+      "set": "Set the PIN",
+      "change": "Change the PIN",
+      "done": "PIN saved."
+    },
+    "email": {
+      "title": "Profile email address",
+      "who": "Optional, never used to sign in nor searched. Only you see it; it is used to give your consent to a move or a detachment.",
+      "current": "Current address: {email}",
+      "label": "Email address",
+      "set": "Save the address",
+      "clear": "Remove the address",
+      "sent": "A verification link has just been sent to this address."
+    }
+  },
+  "circle": {
+    "title": "Circle",
+    "who": "People in your circle can see what you show them. A block is never revealed to the blocked person.",
+    "hiddenName": "Hidden name",
+    "cancel": "Cancel",
+    "guardianOf": "you approve for {child}",
+    "status": {
+      "accepted": "Link accepted",
+      "pending": "Pending",
+      "awaitingGuardian": "Awaiting parental approval"
+    },
+    "approve": {
+      "title": "Links to approve",
+      "who": "You approve a link for a child profile. Nothing opens before your consent.",
+      "body": "{child} has a link with {other}.",
+      "bodyGeneric": "A link is waiting for your consent.",
+      "accept": "Approve",
+      "refuse": "Decline",
+      "refuseTitle": "Decline this link?",
+      "refuseBody": "The link will be deleted."
+    },
+    "links": {
+      "title": "Links",
+      "who": "Your links with profiles of other accounts.",
+      "none": "No links yet. Invite someone from the Invitations screen.",
+      "remove": "Break the link",
+      "removeTitle": "Break this link?",
+      "removeBody": "Access tied to this link is removed on the next request."
+    },
+    "own": {
+      "title": "In your account",
+      "who": "The other profiles of your account are part of your circle."
+    },
+    "block": {
+      "action": "Block",
+      "title": "Block this profile?",
+      "body": "The link is deleted and no invitation or visibility is possible between you. The person is not told."
+    },
+    "blocks": {
+      "title": "Blocked profiles",
+      "who": "Lifting a block does not restore the link.",
+      "none": "No blocked profiles.",
+      "lift": "Lift the block"
+    }
+  },
+  "invitations": {
+    "title": "Invitations",
+    "who": "An invitation is a single-use link, valid for a few days.",
+    "cancel": "Cancel",
+    "kinds": {
+      "LINK": "Invite to my circle",
+      "PROFILE": "Invite to create a profile"
+    },
+    "new": {
+      "title": "New invitation",
+      "whoLink": "The person who opens the link sees your name and can join your circle.",
+      "whoProfile": "The person who opens the link creates a profile in the chosen account; that account must accept it.",
+      "kind": "Invitation type",
+      "email": "Email address (optional)",
+      "emailHint": "If you enter it, the link is sent to it; otherwise you get the link to pass on.",
+      "target": "Account that will host the profile",
+      "targetMine": "My account",
+      "targetOther": "{name}’s account",
+      "child": "The profile to create is a child’s",
+      "submit": "Create the invitation",
+      "creating": "Creating…"
+    },
+    "created": {
+      "title": "Invitation created",
+      "once": "This link will not be shown again. It expires on {date}.",
+      "copy": "Copy the link",
+      "copied": "Link copied"
+    },
+    "open": {
+      "title": "Open invitations",
+      "none": "No open invitations.",
+      "pending": "proposal pending",
+      "accepted": "proposal accepted",
+      "refused": "proposal declined",
+      "expires": "Valid until {date}",
+      "revoke": "Withdraw",
+      "revokeTitle": "Withdraw this invitation?",
+      "revokeBody": "The link will stop working."
+    }
+  },
+  "open": {
+    "loading": "Checking the link…",
+    "invalid": "This link is no longer valid. Ask the person who sent it for a new one.",
+    "signInFirst": "Sign in, or create an account, to open this invitation.",
+    "reopen": "Once signed in, reopen the link you received.",
+    "someone": "Someone",
+    "linkBody": "{name} invites you to join their circle. Each of you will see what the other chooses to show.",
+    "accept": "Join the circle",
+    "linked": "Done: you are in the same circle.",
+    "linkedPendingGuardian": "The link is waiting for a parent’s approval. Nothing opens before.",
+    "toCircle": "See the circle",
+    "profileBody": "{name} offers you a profile in their account.",
+    "profileBodyChild": "{name} offers you a child profile in their account.",
+    "profileName": "Profile name",
+    "profilePin": "PIN (optional)",
+    "profilePinHint": "4 to 8 digits. You can add it later.",
+    "profileEmail": "Profile email address (optional)",
+    "profileEmailHint": "It is only used to receive a move or detachment request.",
+    "profileSubmit": "Propose this profile",
+    "profileSent": "Proposal sent: the account holder still has to accept it."
+  },
+  "pages": {
+    "invitationOpen": {
+      "title": "Invitation",
+      "who": "This link is single-use."
+    },
+    "invitationProfile": {
+      "title": "Invitation to create a profile",
+      "who": "This link is single-use."
+    },
+    "accountSetup": {
+      "title": "Set up your account",
+      "who": "Choose a password: only you will know it."
+    },
+    "transferConsent": {
+      "title": "Your consent",
+      "who": "Your profile is changing account. This consent is seen only by you and the account holder."
+    }
+  },
+  "setup": {
+    "submit": "Set up the account",
+    "done": "Account set up. You can sign in."
+  },
+  "transfers": {
+    "consent": {
+      "pinChoice": "What happens to this profile’s PIN?",
+      "choices": {
+        "KEEP": "Keep my PIN",
+        "NEW": "Set a new one",
+        "NONE": "Have no PIN"
+      },
+      "noneWarning": "Without a PIN, anyone who opens the destination account can enter this profile and see its surprises.",
+      "newPin": "New PIN",
+      "submit": "Give my consent",
+      "done": "Consent recorded. The change happens after a 48-hour safety delay."
+    }
+  },
+  "google": {
+    "title": "Back from Google",
+    "who": "Google only confirms your email address; neither your name nor your photo is requested.",
+    "working": "One moment…",
+    "restart": "Start again from the Account space: the confirmation of less than 10 minutes has expired.",
+    "registrationNeeded": "No account exists for this address. To create one, give the name of your first profile and your age.",
+    "registerWithGoogle": "Create my account with Google",
+    "codeNeeded": "Google recognised you. Enter your second-factor code to finish.",
+    "code": "Second-factor code",
+    "confirm": "Confirm",
+    "errors": {
+      "GOOGLE_LINK_REQUIRED": "An account already exists with this address. Sign in with your password, then link Google from the Account space.",
+      "GOOGLE_EMAIL_UNVERIFIED": "Google did not confirm this email address. Use another way to sign in.",
+      "GOOGLE_EMAIL_UNAVAILABLE": "This address cannot be used.",
+      "GOOGLE_FLOW_INVALID": "The process expired or came from another browser. Start again.",
+      "GOOGLE_IDENTITY_MISMATCH": "This is not the linked Google account. Start again with the right one.",
+      "GOOGLE_IDENTITY_TAKEN": "This Google account is already linked to another account.",
+      "GOOGLE_ALREADY_LINKED": "A Google account is already linked.",
+      "GOOGLE_NOT_LINKED": "No Google account is linked.",
+      "GOOGLE_REJECTED": "Google refused the sign-in. Start again or choose another way.",
+      "GOOGLE_UNAVAILABLE": "Google is not responding. Try again in a moment.",
+      "INVITATION_REQUIRED": "Sign-up is by invitation only for now.",
+      "ACCOUNT_SUSPENDED": "This account is suspended.",
+      "REAUTH_REQUIRED": "The confirmation is too old.",
+      "TOTP_ENROLLMENT_REQUIRED": "This account must first enable a second factor.",
+      "generic": "That did not work. Go back to sign in and try again."
+    }
+  },
+  "transferPanel": {
+    "title": "Change account",
+    "who": "The profile keeps everything that references it. You give the origin account’s consent; the profile and the destination account give theirs, then the change happens 48 hours after the last consent. Anyone can cancel before then.",
+    "kind": "Type of change",
+    "kinds": {
+      "MOVE": "Move to an existing account",
+      "DETACH": "Create a new account for this profile"
+    },
+    "email": "New account address",
+    "emailHint": "The profile will see it on its consent screen. A setup link will be sent there.",
+    "regroup": "This is the last profile of this account: the account will be deleted when the move happens (regrouping).",
+    "pinChoice": "What happens to the profile’s PIN?",
+    "pin": {
+      "KEEP": "Keep the same PIN",
+      "NEW": "Set a new one",
+      "NONE": "No PIN"
+    },
+    "noneWarning": "Between profiles of the same account, a surprise stays secret only through the PIN: without one, the other profiles of the destination account could see what this profile prepares for them.",
+    "newPin": "New PIN",
+    "submit": "Request the change",
+    "token": {
+      "once": "Pass this token to the holder of the destination account. It will not be shown again and is valid for 7 days.",
+      "copy": "Copy the token",
+      "copied": "Token copied"
+    },
+    "current": {
+      "title": "Request in progress",
+      "move": "Move to another account in progress.",
+      "detach": "Detachment into a new account in progress.",
+      "profileOk": "The profile has given its consent.",
+      "profileWaiting": "The profile has not yet given its consent.",
+      "profileNotRequired": "The profile’s consent is not required.",
+      "destinationOk": "The destination account has accepted.",
+      "destinationWaiting": "The destination account has not accepted yet.",
+      "executes": "The change will happen on {date}.",
+      "expires": "The request expires on {date} if it is not complete.",
+      "cancel": "Cancel the request"
+    }
+  },
+  "incoming": {
+    "title": "Receive a profile",
+    "who": "Another account wants to hand you a profile. You only receive one from an account where a profile is in the leaving profile’s circle.",
+    "token": "Move token",
+    "tokenHint": "The token you were given (43 characters).",
+    "tokenInvalid": "This token does not have the right shape.",
+    "refused": "This token is not accepted. We do not say why.",
+    "open": "Open the token",
+    "preview": "This profile would join your account, with everything that references it.",
+    "previewChild": "This child profile would join your account, with everything that references it.",
+    "pinWarning": "Between profiles of the same account, a surprise stays secret only through the profile’s PIN. A profile without a PIN lets the other profiles of the account see what it prepares.",
+    "accept": "Accept this profile",
+    "cancel": "Cancel",
+    "executes": "Arrival planned on {date}",
+    "waitingProfile": "Waiting for the profile’s consent",
+    "withdraw": "Withdraw my consent"
+  },
+  "ownTransfer": {
+    "title": "Account change request",
+    "detach": "Your profile will become a separate account, at the address {email}. Check it: if it is not yours, refuse.",
+    "move": "Your profile will move to the account that contains: {names}.",
+    "unknownAccount": "an account from your circle",
+    "regroup": "This profile is the last of its current account: that account will be deleted when it moves.",
+    "executes": "The change will happen on {date}.",
+    "expires": "The request expires on {date} if it is not complete.",
+    "cancelAnytime": "You, the origin account or the destination account can cancel until it runs.",
+    "pinChoice": "What happens to your PIN in the new account?",
+    "pin": {
+      "KEEP": "Keep my PIN",
+      "NEW": "Set a new one",
+      "NONE": "Have no PIN"
+    },
+    "noneWarning": "Without a PIN, anyone who opens the destination account can enter this profile and see its surprises.",
+    "newPin": "New PIN",
+    "consent": "Give my consent",
+    "refuse": "Refuse",
+    "consented": "You have given your consent.",
+    "cancel": "Withdraw my consent and cancel"
+  },
+  "wards": {
+    "title": "Wards",
+    "who": "A ward account belongs to a child who lives elsewhere and signs in alone. You keep safeguards, never access to its content: each action asks you to confirm it is you, and the child is told.",
+    "none": "No ward accounts.",
+    "manage": "Manage",
+    "hide": "Collapse",
+    "detailWho": "You only see this account’s address, profiles and sessions.",
+    "unknownDevice": "Unknown device",
+    "sessions": "{count, plural, =0 {No open sessions} one {One open session} other {# open sessions}}",
+    "revoke": "Close its sessions",
+    "reset": "Reset its password",
+    "resetTitle": "Reset this child’s password?",
+    "resetBody": "A link is sent to your address, and all its sessions are closed. The child is told.",
+    "release": "Lift the guardianship",
+    "releaseTitle": "Lift the guardianship?",
+    "releaseBody": "Only possible if it has a single profile. It takes effect when the child declares their age from their Account space.",
+    "releasePending": "Release requested: it takes effect when the child declares their age.",
+    "cancel": "Cancel",
+    "addProfile": "Add a child profile",
+    "addProfileHint": "The name of the profile to create in this account.",
+    "addProfileSubmit": "Add the profile",
+    "nameInvalid": "Give a name of 1 to 60 characters.",
+    "guardianRequired": "Tick the box to declare your parental authority.",
+    "done": {
+      "sessions": "Sessions closed.",
+      "reset": "Reset link sent to your address.",
+      "release": "Release requested.",
+      "profile": "Profile added."
+    },
+    "create": {
+      "title": "Create a ward account",
+      "who": "A setup link is sent to the address given; whoever opens it chooses a password.",
+      "email": "Email address of the child’s account",
+      "profileName": "Name of the child profile",
+      "guardian": "I declare that I have parental authority over this child.",
+      "submit": "Create the account",
+      "sent": "Account created: a setup link has just been sent."
+    }
+  },
+  "release": {
+    "title": "End of guardianship",
+    "who": "If your guardian has asked to lift the guardianship, declare your age to become independent. Otherwise, do nothing here.",
+    "submit": "Declare my age",
+    "done": "Done: this account is now independent."
   }
 }

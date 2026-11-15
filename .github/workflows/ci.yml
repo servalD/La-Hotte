@@ -83,6 +83,15 @@ jobs:
       REDIS_URL: redis://localhost:6379
       WEB_ORIGIN: http://localhost:3000
       NODE_ENV: test
+      # Secrets de session propres à la CI (ADR 0013), sans valeur ailleurs.
+      CSRF_SECRET: ci-only-csrf-secret-0123456789abcdef
+      KEY_HMAC_SECRET: ci-only-key-hmac-secret-0123456789abcdef
+      # « ci-only-secret-encryption-key-00 » en base64 (SEC-22), refusée en production.
+      SECRET_ENCRYPTION_KEYS: 0:Y2ktb25seS1zZWNyZXQtZW5jcnlwdGlvbi1rZXktMDA=
+      REGISTRATION_MODE: OPEN
+      # Aucun e-mail n'est envoyé par les tests d'intégration : adresse injoignable.
+      SMTP_URL: smtp://127.0.0.1:1
+      MAIL_FROM: noreply@lahotte.test
     steps:
       - uses: actions/checkout@v4
         with:

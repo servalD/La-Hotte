@@ -7,7 +7,8 @@ import { activeTraceIds } from '../telemetry/correlation';
 import { scrubError } from '../telemetry/scrub';
 
 const REQUEST_ID_HEADER = 'x-request-id';
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
+/** Identifiant de requête reçu : UUID seulement (sinon un texte libre du client irait aux journaux). */
+const REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Destination des journaux : la sortie standard, comme pino par défaut. Jeton remplaçable en
@@ -40,7 +41,7 @@ export function serializeLoggedRequest(value: { id?: unknown; method?: unknown }
 }
 
 /**
- * OBS-21 : gabarit de la route atteinte (`/api/v1/example-items/:id`), posé par Express une fois
+ * OBS-21 : gabarit de la route atteinte (`/api/v1/links/:id`), posé par Express une fois
  * la route trouvée. pino-http sérialise `req` au début de la requête, avant le routage ; ses
  * `customProps` sont réévaluées à la fin : la ligne de fin de requête porte donc `route`. Sans
  * route trouvée (404), aucun chemin n'est écrit.

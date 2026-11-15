@@ -77,13 +77,13 @@ modules/<module>/
 
 | Service          | Rôle                                                                                                                                                                                  | Exposition          |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `caddy`          | Proxy inverse, TLS automatique, en-têtes de sécurité                                                                                                                                  | 80, 443             |
+| `caddy`          | Proxy inverse, TLS automatique, en-têtes de sécurité. Route `/api/*` **directement** vers `api`, sans passer par `web` (adresse du client pour la limitation, ADR 0013)               | 80, 443             |
 | `web`            | Next.js                                                                                                                                                                               | interne             |
 | `api`            | NestJS (REST + WebSocket)                                                                                                                                                             | interne             |
 | `worker`         | Files BullMQ : notifications, e-mails, rappels                                                                                                                                        | interne             |
 | `fetcher`        | Récupération d'URL et d'images, **réseau isolé**, sortie filtrée (EXT-44)                                                                                                             | aucune entrée       |
 | `postgres`       | Données                                                                                                                                                                               | interne             |
-| `redis`          | Sessions, files, pub/sub                                                                                                                                                              | interne             |
+| `redis`          | Sessions, files, pub/sub. `maxmemory-policy noeviction` obligatoire : une marque de révocation évincée rouvrirait une session (ADR 0013)                                              | interne             |
 | `otel-collector` | Reçoit l'OTLP des services, nettoie, exporte vers OpenObserve (OBS-11)                                                                                                                | interne             |
 | `openobserve`    | Journaux, métriques, traces (OBS-02, OBS-03)                                                                                                                                          | restreinte (OBS-27) |
 | `glitchtip`      | Erreurs (OBS-04). Un seul processus sert le HTTP et consomme la file : il n'y a plus de worker séparé depuis GlitchTip 7 (ADR 0012). Valkey/Redis est facultatif et n'est pas déployé | restreinte (OBS-27) |
@@ -93,6 +93,7 @@ modules/<module>/
 - **DEP-04** Déploiement : image construite et analysée en CI, migration de base, démarrage, vérification de santé, bascule ; retour arrière par l'image précédente. Les migrations sont compatibles avec la version précédente du code (DAT-07).
 - **DEP-05** Sauvegardes : base complète quotidienne + journaux de transactions en continu, chiffrées, copiées hors du serveur, conservées 30 jours ; images sauvegardées de la même façon. Restauration testée chaque mois (SEC-23).
 - **DEP-06** Objectifs de reprise : perte de données ≤ 15 minutes, remise en service ≤ 4 heures.
+- **DEP-07** Le nom d'hôte de l'application ne sert qu'elle, **sur aucun port** : un cookie `__Host-` ne tient pas compte du port, et un autre service sur le même nom (GlitchTip, OpenObserve, outil d'administration) pourrait lire ou poser la pré-session et la session (ADR 0015). Les services restreints (OBS-27) ont leur propre nom d'hôte.
 
 ## Observabilité
 
@@ -187,6 +188,7 @@ C'est ici que le produit diffère : un rapport d'erreur est un canal de sortie c
 - Une branche qui importe Prisma depuis un dossier `domain` échoue en CI.
 - Une branche qui modifie un DTO sans régénérer le client échoue en CI.
 - Une restauration complète a été faite en préproduction avant la mise en production.
+- La politique `maxmemory-policy noeviction` est constatée sur le Redis cible avant la mise en production (`CONFIG GET`, ou console du fournisseur quand la commande est refusée) : `/health/ready` ne la vérifie pas si `CONFIG` est interdit (ADR 0013).
 
 ## Questions ouvertes
 

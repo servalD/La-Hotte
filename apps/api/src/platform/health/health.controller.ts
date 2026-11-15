@@ -1,6 +1,7 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { Public } from '../../modules/identity';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
@@ -27,6 +28,7 @@ async function probe(run: () => Promise<unknown>): Promise<CheckState> {
 
 /** OBS-06. Hors du préfixe /api/v1 et du contrat : destiné à l'orchestrateur, pas au client. */
 @ApiExcludeController()
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(
@@ -40,15 +42,22 @@ export class HealthController {
   }
 
   @Get('ready')
-  async ready(
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<{ status: 'ok' | 'unavailable'; checks: Record<'database' | 'redis', CheckState> }> {
-    const [database, redis] = await Promise.all([
+  async ready(@Res({ passthrough: true }) res: Response): Promise<{
+    status: 'ok' | 'unavailable';
+    checks: Record<'database' | 'redis' | 'redisEviction', CheckState>;
+  }> {
+    const [database, redis, redisEviction] = await Promise.all([
       probe(() => this.prisma.$queryRaw`SELECT 1`),
       probe(() => this.redis.ping()),
+      // ADR 0013 : une marque de révocation ou un compteur évincés rouvriraient une faille.
+      probe(async () => {
+        // `null` : commande refusée par un Redis géré, vérifiée au déploiement (ADR 0013).
+        const policy = await this.redis.evictionPolicy();
+        if (policy !== null && policy !== 'noeviction') throw new Error('eviction');
+      }),
     ]);
-    const ok = database === 'up' && redis === 'up';
+    const ok = database === 'up' && redis === 'up' && redisEviction === 'up';
     res.status(ok ? 200 : 503);
-    return { status: ok ? 'ok' : 'unavailable', checks: { database, redis } };
+    return { status: ok ? 'ok' : 'unavailable', checks: { database, redis, redisEviction } };
   }
 }

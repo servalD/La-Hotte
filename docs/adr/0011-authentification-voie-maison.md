@@ -16,20 +16,20 @@ Le plan de la phase 1 (`docs/roadmap.md`, tranches 1 à 7) reste celui de la voi
 
 ## Résultats de l'essai
 
-| Critère | Résultat |
-|---|---|
-| Contrat d'API (API-01) | Réalisable : nos contrôleurs et DTO appellent `auth.api.*`. Mais les routes ne sont pas des DTO NestJS et il faut tout de même écrire une quinzaine de contrôleurs |
-| Architecture à ports (QA-03) | Réalisable, mais les ports resteraient minces et la bibliothèque porterait l'essentiel du comportement |
-| État de profil en session | Réussi : profil actif, profils déverrouillés, date de ré-authentification lus et écrits |
-| Révocation immédiate (AUTH-05) | Réussie, cache de cookie désactivé |
-| UUID v7, noms en snake_case | Réussi pour `user`, `session`, `account` ; `twoFactor` et `verification` demandent un mapping de plus |
-| Argon2id, mots de passe compromis, anti-énumération à l'inscription, CSRF | Réussis |
-| Rejeu d'un code TOTP (AUTH-11) | **Échec** : le même code a été accepté deux fois. Correctif possible par un hook global écrit par nous |
-| Jeton de session haché en base (ADR 0003) | **Échec** : stocké en clair. Piste : sessions dans Redis seul avec clés hachées par nous |
-| Codes de secours hachés (SEC-22) | **Écart** : chiffrés, non hachés |
-| Délai croissant de la limitation (AUTH-07) | **Écart** : fenêtre fixe |
-| Appareil de confiance révocable (AUTH-12) | **Écart** : cookie signé sans état, aucun appareil révocable côté serveur |
-| Vocabulaire et modèle | `user` y désigne notre `account` et `account` notre `auth_identity` ; le mot de passe y vit dans `auth_identity`, la spec le place sur `account` |
+| Critère                                                                   | Résultat                                                                                                                                                           |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contrat d'API (API-01)                                                    | Réalisable : nos contrôleurs et DTO appellent `auth.api.*`. Mais les routes ne sont pas des DTO NestJS et il faut tout de même écrire une quinzaine de contrôleurs |
+| Architecture à ports (QA-03)                                              | Réalisable, mais les ports resteraient minces et la bibliothèque porterait l'essentiel du comportement                                                             |
+| État de profil en session                                                 | Réussi : profil actif, profils déverrouillés, date de ré-authentification lus et écrits                                                                            |
+| Révocation immédiate (AUTH-05)                                            | Réussie, cache de cookie désactivé                                                                                                                                 |
+| UUID v7, noms en snake_case                                               | Réussi pour `user`, `session`, `account` ; `twoFactor` et `verification` demandent un mapping de plus                                                              |
+| Argon2id, mots de passe compromis, anti-énumération à l'inscription, CSRF | Réussis                                                                                                                                                            |
+| Rejeu d'un code TOTP (AUTH-11)                                            | **Échec** : le même code a été accepté deux fois. Correctif possible par un hook global écrit par nous                                                             |
+| Jeton de session haché en base (ADR 0003)                                 | **Échec** : stocké en clair. Piste : sessions dans Redis seul avec clés hachées par nous                                                                           |
+| Codes de secours hachés (SEC-22)                                          | **Écart** : chiffrés, non hachés                                                                                                                                   |
+| Délai croissant de la limitation (AUTH-07)                                | **Écart** : fenêtre fixe                                                                                                                                           |
+| Appareil de confiance révocable (AUTH-12)                                 | **Écart** : cookie signé sans état, aucun appareil révocable côté serveur                                                                                          |
+| Vocabulaire et modèle                                                     | `user` y désigne notre `account` et `account` notre `auth_identity` ; le mot de passe y vit dans `auth_identity`, la spec le place sur `account`                   |
 
 ## Raisons
 

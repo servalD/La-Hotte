@@ -20,16 +20,16 @@ L'application s'ouvre et reste utilisable sans réseau, s'installe comme une app
 
 - **OFF-10** Actions possibles hors ligne, mises en file :
 
-| Action | Hors ligne | Remarque |
-|---|---|---|
-| Ajouter, modifier, retirer un élément de ma liste | ✔ | Un lien collé est analysé à la reconnexion |
-| Commenter | ✔ | Affiché « en attente d'envoi » |
-| Réserver, participer | ✔ en attente | Affiché « à confirmer », voir OFF-13 |
-| Cocher Acheté, marquer une part réglée | ✔ | Cas d'usage : en magasin sans réseau |
-| Confirmer une réception | ✔ | |
-| Modifier une règle de visibilité | ✘ | Doit être effectif immédiatement |
-| Inviter, créer un lien, publier au répertoire | ✘ | |
-| Tout ce qui touche au compte, au PIN, à la sécurité | ✘ | |
+| Action                                              | Hors ligne   | Remarque                                   |
+| --------------------------------------------------- | ------------ | ------------------------------------------ |
+| Ajouter, modifier, retirer un élément de ma liste   | ✔            | Un lien collé est analysé à la reconnexion |
+| Commenter                                           | ✔            | Affiché « en attente d'envoi »             |
+| Réserver, participer                                | ✔ en attente | Affiché « à confirmer », voir OFF-13       |
+| Cocher Acheté, marquer une part réglée              | ✔            | Cas d'usage : en magasin sans réseau       |
+| Confirmer une réception                             | ✔            |                                            |
+| Modifier une règle de visibilité                    | ✘            | Doit être effectif immédiatement           |
+| Inviter, créer un lien, publier au répertoire       | ✘            |                                            |
+| Tout ce qui touche au compte, au PIN, à la sécurité | ✘            |                                            |
 
 - **OFF-11** Chaque action en file porte une clé d'idempotence, l'identifiant du profil qui l'a faite, et la version de la ressource qu'elle modifie.
 - **OFF-12** À la reconnexion, la file est rejouée dans l'ordre. Le serveur répond pour chaque action : acceptée, refusée (droit perdu, ressource supprimée), ou en conflit (version dépassée).

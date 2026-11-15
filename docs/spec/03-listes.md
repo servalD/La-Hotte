@@ -9,12 +9,12 @@ Deux types de listes, une seule mécanique : une liste contient des éléments, 
 - **LST-01** Une liste a : titre, description facultative, type (`WISHLIST` ou `GIFTLIST`), un ou plusieurs destinataires, un événement de rattachement facultatif, une visibilité par défaut pour ses nouveaux éléments.
 - **LST-02** Rôles sur une liste :
 
-| Rôle | Peut |
-|---|---|
-| **Créateur** | Tout, y compris supprimer la liste, gérer les membres, déléguer des droits. |
-| **Responsable** | Comme le créateur, sauf supprimer la liste. Désigné par le créateur ; devient l'autorité si le créateur se retire. |
-| **Contributeur** | Ajouter, modifier et retirer ses propres éléments. |
-| **Lecteur** | Voir, commenter, réserver, participer (selon les règles de visibilité). |
+| Rôle             | Peut                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Créateur**     | Tout, y compris supprimer la liste, gérer les membres, déléguer des droits.                                        |
+| **Responsable**  | Comme le créateur, sauf supprimer la liste. Désigné par le créateur ; devient l'autorité si le créateur se retire. |
+| **Contributeur** | Ajouter, modifier et retirer ses propres éléments.                                                                 |
+| **Lecteur**      | Voir, commenter, réserver, participer (selon les règles de visibilité).                                            |
 
 - **LST-03** **Modification des règles de visibilité.** Par défaut, seul le créateur peut modifier la règle de visibilité d'un élément (liste blanche ou liste noire) et celle par défaut de la liste. S'il s'est retiré, ce droit revient au responsable. Le créateur peut étendre ce droit au rôle responsable ou contributeur, liste par liste. La modification est possible à tout moment et prend effet immédiatement.
 - **LST-04** **Retrait et succession.** Un créateur qui quitte la liste doit désigner un responsable parmi les membres. S'il supprime son profil sans l'avoir fait, le contributeur le plus ancien devient responsable ; s'il n'y en a pas, la liste est archivée.
@@ -55,10 +55,10 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - **GFT-02** Une giftlist peut viser plusieurs profils destinataires à la fois (cadeau commun pour un couple, pour les grands-parents). Chaque élément peut préciser à qui il est destiné, sinon il est destiné à tous.
 - **GFT-03** Exposition aux destinataires, deux réglages indépendants :
 
-| Réglage | Valeurs | Défaut |
-|---|---|---|
+| Réglage       | Valeurs                                                                                                                     | Défaut   |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- | -------- |
 | **Existence** | `CACHÉE` : rien n'apparaît chez le destinataire. `RÉVÉLÉE` : il voit « une liste de cadeaux est en préparation pour vous ». | `CACHÉE` |
-| **Contenu** | `AUCUN`, `PARTIEL` (seuls les éléments cochés « montrer »), `COMPLET` | `AUCUN` |
+| **Contenu**   | `AUCUN`, `PARTIEL` (seuls les éléments cochés « montrer »), `COMPLET`                                                       | `AUCUN`  |
 
 - **GFT-04** `Contenu` autre que `AUCUN` impose `Existence = RÉVÉLÉE`. L'interface règle la cohérence d'elle-même.
 - **GFT-05** Même en contenu `COMPLET`, le destinataire ne voit jamais qui participe, les montants des parts ni le fil des offreurs.
@@ -68,13 +68,13 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 
 ## Valeurs par défaut
 
-| Réglage | Défaut |
-|---|---|
-| Visibilité d'un nouvel élément | `TOUS` (toute l'audience de la liste) |
-| Qui modifie les règles de visibilité | Le créateur seul |
-| Giftlist | Existence cachée, contenu masqué |
-| Quantité | 1 |
-| Priorité | `envie` |
+| Réglage                              | Défaut                                |
+| ------------------------------------ | ------------------------------------- |
+| Visibilité d'un nouvel élément       | `TOUS` (toute l'audience de la liste) |
+| Qui modifie les règles de visibilité | Le créateur seul                      |
+| Giftlist                             | Existence cachée, contenu masqué      |
+| Quantité                             | 1                                     |
+| Priorité                             | `envie`                               |
 
 ## Critères d'acceptation
 

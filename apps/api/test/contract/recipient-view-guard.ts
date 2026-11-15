@@ -25,12 +25,9 @@ export interface RecipientViewRule {
   schemas: readonly string[];
 }
 
-export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {
-  ExampleItemRecipientView: {
-    fields: ['view', 'id', 'title', 'priority'],
-    schemas: ['ExampleItemRecipientViewView', 'ExamplePriority'],
-  },
-};
+// Aucune vue destinataire n'existe avant la phase 2 : toute vue `*RecipientView` qui apparaît dans
+// openapi.json fait échouer le test tant qu'elle n'est pas déclarée ici, champ par champ.
+export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {};
 
 /** Second filet : vocabulaire d'offreur, quel que soit l'endroit où il apparaît. */
 const GIVER_WORDS =

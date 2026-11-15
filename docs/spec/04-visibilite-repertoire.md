@@ -21,11 +21,11 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 
 - **VIS-10** Un seul champ, trois valeurs :
 
-| Valeur | Sens | Usage |
-|---|---|---|
-| `TOUS` | Toute l'audience de la liste | Défaut |
-| `SEULEMENT` + profils | Liste blanche | « Seulement mamie et tonton » |
-| `TOUS SAUF` + profils | Liste noire | « Tout le monde sauf mon frère » |
+| Valeur                | Sens                         | Usage                            |
+| --------------------- | ---------------------------- | -------------------------------- |
+| `TOUS`                | Toute l'audience de la liste | Défaut                           |
+| `SEULEMENT` + profils | Liste blanche                | « Seulement mamie et tonton »    |
+| `TOUS SAUF` + profils | Liste noire                  | « Tout le monde sauf mon frère » |
 
 - **VIS-11** Un élément dont la règle n'est pas `TOUS` est dit **caché** et porte un pictogramme visible de ceux qui peuvent le voir.
 - **VIS-12** La règle ne peut que restreindre l'audience de la liste, jamais l'élargir. Un profil en liste blanche qui n'est pas dans l'audience ne voit pas l'élément ; l'interface le signale au moment de la saisie et propose d'ajouter ce profil à l'audience.
@@ -49,14 +49,14 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 
 ## Matrice de référence
 
-| Qui regarde | Souhait `TOUS` | Souhait caché, autorisé | Souhait caché, exclu | Réservations et parts | Fil des offreurs |
-|---|---|---|---|---|---|
-| Destinataire | Oui | Oui | Oui (c'est le sien) | **Non** | **Non** |
-| Offreur dans l'audience | Oui | Oui | **Non** | Oui | Oui |
-| Offreur du même compte que le destinataire | Oui | Oui | **Non** | Oui | Oui |
-| Profil hors audience | Non | Non | Non | Non | Non |
-| Destinataire d'une giftlist cachée | Rien, pas même l'existence | | | | |
-| Administrateur | Non (voir `11-admin-rbac.md`) | Non | Non | Non | Non |
+| Qui regarde                                | Souhait `TOUS`                | Souhait caché, autorisé | Souhait caché, exclu | Réservations et parts | Fil des offreurs |
+| ------------------------------------------ | ----------------------------- | ----------------------- | -------------------- | --------------------- | ---------------- |
+| Destinataire                               | Oui                           | Oui                     | Oui (c'est le sien)  | **Non**               | **Non**          |
+| Offreur dans l'audience                    | Oui                           | Oui                     | **Non**              | Oui                   | Oui              |
+| Offreur du même compte que le destinataire | Oui                           | Oui                     | **Non**              | Oui                   | Oui              |
+| Profil hors audience                       | Non                           | Non                     | Non                  | Non                   | Non              |
+| Destinataire d'une giftlist cachée         | Rien, pas même l'existence    |                         |                      |                       |                  |
+| Administrateur                             | Non (voir `11-admin-rbac.md`) | Non                     | Non                  | Non                   | Non              |
 
 ## Répertoire
 
@@ -68,11 +68,13 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 - **REP-06** **Publication d'un élément caché.** Si la fiche qu'on veut publier est référencée par un élément caché, une fenêtre de confirmation s'ouvre :
 
   > Cet article est caché à certaines personnes. Le publier pourrait leur donner une idée de ce que vous préparez.
+  >
   > - **Le rendre visible de tous** et le publier dans le répertoire
   > - **Le partager seulement à certaines personnes** (ouvre le sélecteur VIS-13)
   > - Annuler
 
   Le premier choix repasse l'élément en `TOUS` et publie la fiche. Le second ne publie pas la fiche et modifie seulement la règle de l'élément.
+
 - **REP-07** Une fiche publiée au cercle n'apparaît pas aux profils exclus par la règle d'un élément qui la référence. Le moteur de visibilité tranche au plus restrictif.
 - **REP-08** Dépublier est immédiat. Les copies déjà faites par d'autres restent.
 

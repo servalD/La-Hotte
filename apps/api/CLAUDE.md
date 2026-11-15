@@ -34,13 +34,13 @@ src/instrument.ts      Sentry et OpenTelemetry, chargé par `node --import` avan
 
 `domain` et `application` n'importent jamais `platform` : ils passent par un port. La règle `architecture/layers` (`packages/config/eslint/rules/architecture.mjs`) vérifie tout cela ; les fichiers de test en sont exemptés.
 
-### Module type : `src/modules/example`
+### Module type
 
-Modèle à copier pour un nouveau module (phase 0, à retirer quand un vrai module l'aura remplacé) :
+Forme d'un module, à suivre pour un nouveau (le module `identity` en est l'exemple réel ; le module d'essai de la phase 0 est retiré) :
 
 | Fichier                                 | Rôle                                                                                                                 |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `domain/example-item.ts`                | Entité pure : `create` (règles) et `restore` (relecture)                                                             |
+| `domain/<entité>.ts`                    | Entité pure : `create` (règles) et `restore` (relecture)                                                             |
 | `domain/*.errors.ts`                    | `DomainError` avec `kind` (→ statut HTTP) et `code` stable                                                           |
 | `domain/*.repository.ts`                | Port en classe abstraite (sert de jeton d'injection)                                                                 |
 | `domain/*-projection.ts`                | Vues destinataire / offreur construites champ par champ. **Dans un vrai module, ce choix appartient à `visibility`** |
@@ -49,9 +49,17 @@ Modèle à copier pour un nouveau module (phase 0, à retirer quand un vrai modu
 | `presentation/`                         | Contrôleur mince, DTO `*.dto.ts`, vues `*.view.ts` (suffixes lus par le plugin Swagger)                              |
 | `index.ts`                              | Surface publique                                                                                                     |
 
-Réponse polymorphe : `@ApiExtraModels` + `oneOf` avec `discriminator` sur `view` (voir `getExampleItem`). L'`operationId` est le nom de la méthode du contrôleur et devient le nom du hook (`useGetExampleItem`) : le choisir unique et parlant (un doublon fait échouer l'émission).
+Réponse polymorphe : `@ApiExtraModels` + `oneOf` avec `discriminator` sur `view`. L'`operationId` est le nom de la méthode du contrôleur et devient le nom du hook (par exemple `useGetOwnProfile`) : le choisir unique et parlant (un doublon fait échouer l'émission).
 
-Le lecteur y est figé en destinataire (`PHASE0_VIEWER`) faute de session : la phase 1 le remplace par le décorateur de profil actif.
+Le contrôleur reçoit le profil actif par `@ActiveProfile()` ; faute de propriétaire, le lecteur y reste traité en destinataire.
+
+### Session et gardes : `src/modules/identity` (ADR 0013)
+
+Une garde globale (`IdentityGuardChain`) enchaîne session, CSRF, profil et ré-authentification. **Toute route porte exactement une marque** : `@Public()` (liste explicite, figée par `test/contract/identity-session.spec.ts`), `@AccountScope()` (espace Compte, métadonnées seulement) ou `@RequiresProfile()` (profil actif déverrouillé). Ajouter `@RequiresRecentReauth()` pour AUTH-14. Paramètres : `@CurrentSession()`, `@ActiveProfile()`, `@ClientContext()` (adresse retenue par `trust proxy`). Un module importe ces décorateurs depuis `modules/identity`.
+
+Les autres modules n'en importent que `modules/identity` (décorateurs, `CheckSessionAccess`, `IdentityEvents`) : ni le magasin de sessions ni le cycle de vie. Les jetons des ports et les doubles en mémoire sont dans `modules/identity/testing`, réservé aux tests.
+
+Tests : `createTestApp()` remplace les ports d'`identity` par leurs doubles en mémoire et fournit `identity.signIn({ pin, relock, withProfile })` ; les tâches de fond (e-mails, inscription) ne s'exécutent qu'à `identity.background.flush()`, le dernier jeton envoyé se lit par `identity.mail.lastToken(adresse)`, et `identity.rateLimiter.reset()` vide les compteurs (toutes les requêtes de supertest ont la même adresse), `identity.eventThrottle.reset()` les limitations « une fois par fenêtre » (lignes de journal, avertissements) ; balayages de sécurité sur toutes les routes (CSRF, sans session, profil verrouillé, IDOR) dans `test/contract/identity-security.spec.ts` : une route à paramètre nouvelle s'ajoute à sa table IDOR ; second facteur : `identity.secondFactors` (secrets chiffrés, `lastSteps`, codes de secours hachés), `identity.trustedDevices`, `identity.pendingSecondFactors.expireAll()` ; codes TOTP des tests par `generate` d'`otplib` ; `test/support/sign-in.ts` ouvre une session réelle (`createAccountWithProfile` puis `signIn`) pour l'intégration et la non-fuite. Une mutation porte `user.mutation` (cookie, `X-CSRF-Token`, `Origin`), une lecture `Cookie: user.cookie`.
 
 ## Ajouter un cas d'usage
 
@@ -87,7 +95,7 @@ Base : la CLI Prisma utilise `DATABASE_MIGRATION_URL` (propriétaire) ; l'applic
 
 - Domaine et cas d'usage : Vitest, ports en mémoire, sans base.
 - Dépôts et transactions : PostgreSQL et Redis réels en conteneurs.
-- Chaque route : nominal, non connecté, interdit, validation. Modèle : `test/contract/example-items.spec.ts` et `createTestApp()`.
+- Chaque route : nominal, non connecté, interdit, validation. Modèle : `test/contract/identity-profiles.spec.ts` et `createTestApp()`.
 - `test/contract/openapi-schema.spec.ts` refuse tout champ d'offreur dans un schéma `*RecipientView` d'`openapi.json`.
 - `test/leak/` (OBS-26) : toute nouvelle sortie de télémétrie (span, métrique, journal, rapport d'erreur) y ajoute un scénario avec marqueur ; une nouvelle barrière de `scrub` se vérifie en la retirant et en constatant que le test échoue.
 - Chaque test cite l'identifiant de la règle qu'il vérifie.
