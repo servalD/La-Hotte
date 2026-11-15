@@ -187,6 +187,7 @@ C'est ici que le produit diffère : un rapport d'erreur est un canal de sortie c
 - Une branche qui importe Prisma depuis un dossier `domain` échoue en CI.
 - Une branche qui modifie un DTO sans régénérer le client échoue en CI.
 - Une restauration complète a été faite en préproduction avant la mise en production.
+- La politique `maxmemory-policy noeviction` est constatée sur le Redis cible avant la mise en production (`CONFIG GET`, ou console du fournisseur quand la commande est refusée) : `/health/ready` ne la vérifie pas si `CONFIG` est interdit (ADR 0013).
 
 ## Questions ouvertes
 

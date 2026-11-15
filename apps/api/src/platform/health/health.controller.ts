@@ -51,7 +51,9 @@ export class HealthController {
       probe(() => this.redis.ping()),
       // ADR 0013 : une marque de révocation ou un compteur évincés rouvriraient une faille.
       probe(async () => {
-        if ((await this.redis.evictionPolicy()) !== 'noeviction') throw new Error('eviction');
+        // `null` : commande refusée par un Redis géré, vérifiée au déploiement (ADR 0013).
+        const policy = await this.redis.evictionPolicy();
+        if (policy !== null && policy !== 'noeviction') throw new Error('eviction');
       }),
     ]);
     const ok = database === 'up' && redis === 'up' && redisEviction === 'up';

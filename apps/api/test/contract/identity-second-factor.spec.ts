@@ -7,6 +7,7 @@ import {
   PENDING_COOKIE,
   PRESESSION_COOKIE,
   SESSION_COOKIE,
+  UNLOCK_COOKIE,
 } from '../../src/modules/identity/presentation/cookies';
 import { session as sessionHeaders, type SignedIn, WEB_ORIGIN } from '../support/sign-in';
 import { createTestApp, type TestIdentity } from './create-test-app';
@@ -482,6 +483,8 @@ describe('Appareils de confiance (AUTH-12)', () => {
       .expect(204);
     expect(setCookie(revoked, SESSION_COOKIE)).toMatch(/Expires=Thu, 01 Jan 1970/);
     expect(setCookie(revoked, DEVICE_COOKIE)).toMatch(/Expires=Thu, 01 Jan 1970/);
+    // Le cookie de déverrouillage est posé en Strict : l'effacement doit l'être aussi (PIN-07).
+    expect(setCookie(revoked, UNLOCK_COOKIE)).toMatch(/SameSite=Strict/);
     await http().get('/api/v1/account').set('Cookie', user.cookie).expect(401);
     expect(identity.securityLog.entries.map((e) => e.event)).toContain('device.revoked');
 

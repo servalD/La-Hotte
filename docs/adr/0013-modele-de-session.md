@@ -40,7 +40,7 @@ Cet ADR a été relu par `security-reviewer` le 2026-11-13 avant tout code ; ses
 - Lecture : `MGET sess:{h} sess-revoked:{h}` en un aller-retour, puis `acct-epoch:{account_id}`. Marque présente, époque différente ou durée absolue dépassée → refus. Cache absent → lecture de la ligne de session et du compte en base (compte `ACTIVE`, même époque), puis **réhydratation atomique** par un script Lua qui n'écrit `sess:{h}` que si `sess-revoked:{h}` est absente.
 - Ensemble `acct-sess:{account_id}` : aide à la révocation, jamais la référence. « Révoquer toutes les autres sessions » (AUTH-05) part des lignes de PostgreSQL ; l'ensemble Redis ne sert qu'à purger le cache.
 - Redis ne contient ni e-mail, ni nom, ni adresse IP en clair : identifiants, horodatages et drapeaux ; les clés dérivées d'un e-mail ou d'une adresse IP sont des HMAC à clé serveur (`KEY_HMAC_SECRET`), pas des hachages simples qu'un dictionnaire renverserait.
-- Redis tourne avec `maxmemory-policy noeviction` : une marque de révocation ou un compteur évincés rouvriraient une faille (BullMQ l'exige de toute façon). Vérifié par `/health/ready` (`CONFIG GET`, disponible sur notre Redis auto-hébergé ; avec un Redis géré qui l'interdit, la vérification passe dans la procédure de déploiement).
+- Redis tourne avec `maxmemory-policy noeviction` : une marque de révocation ou un compteur évincés rouvriraient une faille (BullMQ l'exige de toute façon). Vérifié par `/health/ready` (`CONFIG GET`, disponible sur notre Redis auto-hébergé ; si un Redis géré refuse la commande, la sonde ne tombe pas : la vérification est un critère d'acceptation de la spec 14, avant la mise en production).
 
 ### Révocation
 

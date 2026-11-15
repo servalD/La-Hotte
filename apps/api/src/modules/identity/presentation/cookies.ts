@@ -122,5 +122,5 @@ export function clearUnlockCookie(response: Response): void {
 
 export function clearSessionCookies(response: Response): void {
   response.clearCookie(SESSION_COOKIE, { ...HOST_COOKIE, httpOnly: true });
-  response.clearCookie(UNLOCK_COOKIE, { ...HOST_COOKIE, httpOnly: true });
+  clearUnlockCookie(response);
 }
