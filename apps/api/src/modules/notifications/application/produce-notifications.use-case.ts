@@ -55,7 +55,11 @@ export class ProduceNotifications {
       if (enabled.length === 0) continue;
       const now = this.clock.now();
       let due: Date | null = null;
-      if (enabled.includes('PUSH')) {
+      // NOT-19 : un compte partagé avec un destinataire de la liste ne reçoit pas de push.
+      if (
+        enabled.includes('PUSH') &&
+        !(await this.subjects.sharesAccountWithRecipient(request.subject, profileId))
+      ) {
         const settings = await this.preferences.settings(profileId);
         const timezone = (await this.people.timezoneOf(profileId)) ?? 'UTC';
         due = pushDueAt(now, settings, timezone);

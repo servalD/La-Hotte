@@ -81,6 +81,12 @@ export class DeliverPushes {
       if (!channelEnabled(overrides, notification.category, 'PUSH')) continue;
       const summary = await this.subjects.describe(notification.subject, notification.profileId);
       if (!summary) continue;
+      // NOT-19, revérifié à l'envoi : les destinataires ont pu changer depuis la production.
+      if (
+        await this.subjects.sharesAccountWithRecipient(notification.subject, notification.profileId)
+      ) {
+        continue;
+      }
       const names = await this.people.names([notification.profileId]);
       const profileName = names.get(notification.profileId) ?? '';
       for (const device of await this.subscriptions.devicesOf(notification.profileId)) {
@@ -148,7 +154,12 @@ export class SendDigests {
       let count = 0;
       for (const row of await this.digests.unreadSince(candidate.profileId, since, 200)) {
         if (!channelEnabled(overrides, row.category, 'EMAIL')) continue;
-        if (await this.subjects.describe(row.subject, candidate.profileId)) count += 1;
+        if (!(await this.subjects.describe(row.subject, candidate.profileId))) continue;
+        // NOT-19 : la boîte du compte est partagée avec un destinataire de la liste.
+        if (await this.subjects.sharesAccountWithRecipient(row.subject, candidate.profileId)) {
+          continue;
+        }
+        count += 1;
       }
       if (count === 0) continue;
       const entries = byAccount.get(candidate.accountId) ?? [];

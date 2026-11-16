@@ -103,6 +103,12 @@ export class ItemAccessReader {
     };
   }
 
+  /** NOT-19 : destinataires de la liste de l'élément (lus pour un profil qui le voit déjà). */
+  async recipientsOf(itemId: string): Promise<readonly string[]> {
+    const loaded = await this.load(itemId);
+    return loaded ? loaded.list.recipients : [];
+  }
+
   /** RT-09 : accès d'un profil à une liste (salon `list:{id}`). */
   async listAccess(viewerId: string, listId: string): Promise<ListAccess['kind']> {
     const list = await this.lists.find(listId);

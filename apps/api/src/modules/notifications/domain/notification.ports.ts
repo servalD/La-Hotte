@@ -166,6 +166,14 @@ export abstract class NotificationSubjects {
     subject: NotificationSubject,
     profileIds: readonly string[],
   ): Promise<Set<string>>;
+  /**
+   * NOT-19 : vrai si le sujet est un élément dont la liste a un destinataire, autre que ce profil,
+   * du même compte que lui : la notification reste dans l'application.
+   */
+  abstract sharesAccountWithRecipient(
+    subject: NotificationSubject,
+    profileId: string,
+  ): Promise<boolean>;
   /** `null` si le profil ne lit plus le sujet. */
   abstract describe(
     subject: NotificationSubject,

@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import type { SignedIn } from '../support/sign-in';
+import { randomUUID } from 'node:crypto';
+import { signIn, type SignedIn } from '../support/sign-in';
 import { createTestApp, type TestConversations, type TestIdentity } from './create-test-app';
 
 // Web Push et résumé e-mail (NOT-06, NOT-07, NOT-08, NOT-14 à NOT-17).
@@ -180,6 +181,91 @@ describe('NOT-06, NOT-07 : texte d’une push', () => {
     await comment(paul, itemId, 'PUBLIC');
     await conversations.deliverPushes();
     expect(conversations.pushSender.sent).toEqual([]);
+  });
+});
+
+describe('NOT-19 (revue SEC-40, N1) : compte partagé avec un destinataire', () => {
+  it('Léa écrit sur sa giftlist révélée : Paul, du même compte, n’a ni push ni résumé ; un offreur d’un autre compte, si', async () => {
+    const org = await person('Org');
+    const lea = await person('Léa');
+    // Paul : profil du compte de Léa, même appareil.
+    const paulId = randomUUID();
+    identity.profiles.set({
+      profileId: paulId,
+      accountId: lea.accountId,
+      hasPin: false,
+      relock: 'IDLE_15',
+    });
+    const paul = await signIn(app, { accountId: lea.accountId, profileId: paulId });
+    await http()
+      .put('/api/v1/notification-preferences')
+      .set(paul.mutation)
+      .send({
+        channels: [],
+        quietEnabled: false,
+        quietStart: 0,
+        quietEnd: 0,
+        digest: 'DAILY',
+        sharePresence: true,
+      })
+      .expect(200);
+    await link(org, lea);
+    await link(org, paul);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(org.mutation)
+      .send({
+        type: 'GIFTLIST',
+        title: 'Pour Léa',
+        recipientIds: [lea.profileId],
+        giftExistence: 'REVEALED',
+        giftContent: 'FULL',
+      })
+      .expect(201);
+    const listId = gift.body.id as string;
+    await http()
+      .put(`/api/v1/lists/${listId}/members/${paulId}`)
+      .set(org.mutation)
+      .send({ role: 'CONTRIBUTOR' })
+      .expect(204);
+    const product = await http()
+      .post('/api/v1/products')
+      .set(org.mutation)
+      .send({ title: 'Lampe' })
+      .expect(201);
+    const item = await http()
+      .post(`/api/v1/lists/${listId}/items`)
+      .set(org.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(201);
+    const itemId = item.body.id as string;
+    await conversations.settle();
+    await http().put(`/api/v1/items/${itemId}/follow`).set(paul.mutation).expect(204);
+    await subscribe(paul, 'https://fcm.googleapis.com/fcm/send/paul').expect(204);
+    await subscribe(org, 'https://fcm.googleapis.com/fcm/send/org').expect(204);
+
+    await http()
+      .post(`/api/v1/items/${itemId}/comments`)
+      .set(lea.mutation)
+      .send({ thread: 'PUBLIC', body: 'Merci !', mentionIds: [paulId] })
+      .expect(201);
+    await conversations.settle();
+    // Dans l'application, Paul est bien notifié ; aucune push ni aucun résumé ne le trahit.
+    expect(conversations.notifications.forProfile(paulId).map((n) => n.type)).toEqual([
+      'comment.mention',
+    ]);
+    await conversations.deliverPushes();
+    const endpoints = conversations.pushSender.sent.map((s) => s.endpoint);
+    expect(endpoints).not.toContain('https://fcm.googleapis.com/fcm/send/paul');
+    // Contre-épreuve : l'organisateur, d'un autre compte, reçoit sa push.
+    expect(endpoints).toContain('https://fcm.googleapis.com/fcm/send/org');
+    await conversations.sendDigests();
+    const forLeaAccount = conversations.delivery.digests.filter(
+      (d) => d.accountId === lea.accountId,
+    );
+    expect(
+      forLeaAccount.flatMap((d) => d.entries).some((e) => e.count > 0 && e.profileName !== 'Léa'),
+    ).toBe(false);
   });
 });
 

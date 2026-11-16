@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ProductCatalog } from '../../catalog';
 import { EventAccessReader } from '../../events';
 import { ItemAccessReader } from '../../lists';
-import { threadLevel } from '../../visibility';
+import { threadLevel, VisibilityService } from '../../visibility';
 import type { NotificationSubject } from '../domain/notification';
 import { NotificationSubjects, type SubjectSummary } from '../domain/notification.ports';
 
@@ -16,6 +16,7 @@ export class EngineNotificationSubjects extends NotificationSubjects {
     private readonly items: ItemAccessReader,
     private readonly events: EventAccessReader,
     private readonly products: ProductCatalog,
+    private readonly visibility: VisibilityService,
   ) {
     super();
   }
@@ -42,6 +43,19 @@ export class EngineNotificationSubjects extends NotificationSubjects {
       case 'self':
         return new Set(profileIds);
     }
+  }
+
+  async sharesAccountWithRecipient(
+    subject: NotificationSubject,
+    profileId: string,
+  ): Promise<boolean> {
+    if (subject.kind !== 'item') return false;
+    for (const recipient of await this.items.recipientsOf(subject.itemId)) {
+      if (recipient !== profileId && (await this.visibility.sameAccount(recipient, profileId))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async describe(subject: NotificationSubject, profileId: string): Promise<SubjectSummary | null> {

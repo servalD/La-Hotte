@@ -4,6 +4,7 @@ import { ConversationsModule } from '../conversations';
 import { EventsModule } from '../events';
 import { IdentityModule } from '../identity';
 import { ListsModule } from '../lists';
+import { VisibilityModule } from '../visibility';
 import { ProduceNotifications } from './application/produce-notifications.use-case';
 import { PurgeNotifications } from './application/purge-notifications.use-case';
 import {
@@ -50,7 +51,14 @@ import { NotificationsController } from './presentation/notifications.controller
 
 /** Module `notifications` : production par candidat, centre, préférences (06, ADR 0018). */
 @Module({
-  imports: [IdentityModule, ListsModule, EventsModule, CatalogModule, ConversationsModule],
+  imports: [
+    IdentityModule,
+    ListsModule,
+    EventsModule,
+    CatalogModule,
+    ConversationsModule,
+    VisibilityModule,
+  ],
   controllers: [NotificationsController, PushController],
   providers: [
     ProduceNotifications,
