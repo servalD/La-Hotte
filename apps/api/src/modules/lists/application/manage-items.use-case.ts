@@ -25,7 +25,7 @@ import {
   ListVersionMismatchError,
 } from '../domain/list.errors';
 import { ItemRepository } from '../domain/list.ports';
-import { ListGate } from './list-gate';
+import { type GatedItem, ListGate } from './list-gate';
 
 /** GET /lists/{id}/items : filtré en base (VIS-31), puis élément par élément (VIS-30). */
 @Injectable()
@@ -175,7 +175,13 @@ export class UpdateItem {
     const result = await this.items.update({
       itemId: gated.item.id,
       expectedVersion: input.expectedVersion,
-      changes,
+      changes:
+        changes.position !== undefined && gated.access.kind !== 'giver'
+          ? {
+              ...changes,
+              position: await this.reorderAsRecipient(gated, changes.position, input.viewerId),
+            }
+          : changes,
     });
     if (result === 'missing') throw new ItemNotFoundError();
     if (result === 'version') throw new ListVersionMismatchError();
@@ -186,6 +192,44 @@ export class UpdateItem {
     );
     if (!view) throw new ItemNotFoundError();
     return view;
+  }
+
+  /**
+   * VIS-35 (revue SEC-40, R1) : pour un destinataire, la position demandée est un rang parmi les
+   * éléments qu'il voit. Les places que ces éléments occupent sont redistribuées entre eux ; les
+   * éléments qu'il ne voit pas gardent la leur. Rend la place réelle de l'élément déplacé.
+   */
+  private async reorderAsRecipient(
+    gated: GatedItem,
+    rank: number,
+    viewerId: string,
+  ): Promise<number> {
+    const criteria = itemCriteria(gated.access, viewerId);
+    const visible = criteria
+      ? (await this.items.listItems(gated.list.id, criteria, 'position')).filter(
+          (row) => itemAccess(gated.access, itemFactsOf(row), viewerId) !== 'none',
+        )
+      : [];
+    const slots = visible.map((row) => row.position).sort((a, b) => a - b);
+    const others = visible.filter((row) => row.id !== gated.item.id);
+    const at = Math.min(Math.max(rank, 0), others.length);
+    const order = [...others.slice(0, at), gated.item, ...others.slice(at)];
+    let own = gated.item.position;
+    for (const [index, row] of order.entries()) {
+      const slot = slots[index] ?? row.position;
+      if (row.id === gated.item.id) {
+        own = slot;
+        continue;
+      }
+      if (row.position === slot) continue;
+      const moved = await this.items.update({
+        itemId: row.id,
+        expectedVersion: row.version,
+        changes: { position: slot },
+      });
+      if (moved === 'missing' || moved === 'version') throw new ListVersionMismatchError();
+    }
+    return own;
   }
 }
 

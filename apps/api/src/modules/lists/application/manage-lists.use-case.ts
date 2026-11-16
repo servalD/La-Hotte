@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Clock, IdGenerator } from '../../../shared/domain';
+import { ProductCatalog } from '../../catalog';
 import {
   type AddRight,
   addRight,
@@ -42,7 +43,7 @@ import {
   RecipientNotAllowedError,
   SuccessorRequiredError,
 } from '../domain/list.errors';
-import { type ListChanges, ListRepository } from '../domain/list.ports';
+import { ItemRepository, type ListChanges, ListRepository } from '../domain/list.ports';
 import { type GatedList, ListGate } from './list-gate';
 
 /** Ce que le profil peut faire sur la liste (rendu au client pour l'interface ; le serveur revérifie). */
@@ -263,6 +264,8 @@ export interface UpdateListInput {
 export class UpdateList {
   constructor(
     private readonly lists: ListRepository,
+    private readonly items: ItemRepository,
+    private readonly catalog: ProductCatalog,
     private readonly gate: ListGate,
     private readonly visibility: VisibilityService,
     private readonly ids: IdGenerator,
@@ -408,6 +411,16 @@ export class UpdateList {
           profileId,
           role: 'CONTRIBUTOR',
         });
+      }
+    }
+    // REP-10 (revue SEC-40, R2) : un destinataire ajouté ne voit pas disparaître de son répertoire
+    // une fiche publiée que la liste référence : l'élément passe sur une copie privée.
+    if (input.recipientIds && input.recipientIds.some((id) => !list.recipients.includes(id))) {
+      for (const { itemId, productId } of await this.items.productsOfList(list.id)) {
+        const product = await this.catalog.findById(productId);
+        if (!product || product.shareLevel === 'PRIVATE' || !product.ownerProfileId) continue;
+        const copy = await this.catalog.copy(product.id, product.ownerProfileId);
+        await this.items.repointProduct(itemId, copy.id);
       }
     }
     const fresh = await this.gate.list(input.viewerId, list.id);

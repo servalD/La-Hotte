@@ -304,6 +304,20 @@ export class InMemoryItemRepository extends ItemRepository {
     super();
   }
 
+  productsOfList(listId: string): Promise<{ itemId: string; productId: string }[]> {
+    return Promise.resolve(
+      [...this.items.values()]
+        .filter((row) => row.listId === listId)
+        .map((row) => ({ itemId: row.id, productId: row.productId })),
+    );
+  }
+
+  repointProduct(itemId: string, productId: string): Promise<void> {
+    const row = this.items.get(itemId);
+    if (row) this.items.set(itemId, { ...row, productId });
+    return Promise.resolve();
+  }
+
   referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]> {
     return Promise.resolve(
       [...this.items.values()]

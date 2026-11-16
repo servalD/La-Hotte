@@ -182,6 +182,10 @@ export abstract class ItemRepository {
     readonly profileRowIds: readonly string[];
     readonly log: RuleLogEntry | null;
   }): Promise<ItemRecord | 'version' | 'missing'>;
+  /** REP-10 : fiche de chaque élément d'une liste. */
+  abstract productsOfList(listId: string): Promise<{ itemId: string; productId: string }[]>;
+  /** REP-10 : l'élément référence désormais cette fiche (copie privée). */
+  abstract repointProduct(itemId: string, productId: string): Promise<void>;
   /** REP-06, REP-07, REP-10 : éléments non retirés qui référencent ces fiches. */
   abstract referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]>;
   /** LST-18 : pose ou retire le reçu, sans toucher à l'état réel. */

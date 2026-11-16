@@ -507,6 +507,18 @@ export class PrismaItemRepository extends ItemRepository {
     });
   }
 
+  async productsOfList(listId: string): Promise<{ itemId: string; productId: string }[]> {
+    const rows = await this.prisma.listItem.findMany({
+      where: { listId },
+      select: { id: true, productId: true },
+    });
+    return rows.map((row) => ({ itemId: row.id, productId: row.productId }));
+  }
+
+  async repointProduct(itemId: string, productId: string): Promise<void> {
+    await this.prisma.listItem.update({ where: { id: itemId }, data: { productId } });
+  }
+
   async referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]> {
     if (productIds.length === 0) return [];
     const rows = await this.prisma.listItem.findMany({

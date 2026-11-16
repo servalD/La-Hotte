@@ -571,4 +571,81 @@ describe('Revue SEC-40 de la phase 2 : non-régressions', () => {
     const after = await http().get('/api/v1/directory').set({ Cookie: marie.cookie });
     expect(after.body.items).toEqual(before.body.items);
   });
+
+  it('R1 : réordonner par rang ne révèle pas les trous de position ; l’élément caché garde sa place', async () => {
+    const marie = await person();
+    const tonton = await person();
+    await link(marie, tonton);
+    const lists = await http().get('/api/v1/lists').set({ Cookie: marie.cookie });
+    const listId = (lists.body.items as Body[]).find((l) => l.personal)!.id as string;
+    const add = async (user: SignedIn, title: string) => {
+      const p = await http().post('/api/v1/products').set(user.mutation).send({ title });
+      const res = await http()
+        .post(`/api/v1/lists/${listId}/items`)
+        .set(user.mutation)
+        .send({ productId: p.body.id })
+        .expect(201);
+      return res.body.id as string;
+    };
+    const a = await add(marie, 'A');
+    const suggestion = await add(tonton, 'S');
+    const c = await add(marie, 'C');
+    const order = async () =>
+      (
+        (await http().get(`/api/v1/lists/${listId}/items`).set({ Cookie: marie.cookie })).body
+          .items as Body[]
+      ).map((i) => i.id);
+    const move = async (position: number) => {
+      const current = await http().get(`/api/v1/items/${a}`).set({ Cookie: marie.cookie });
+      await http()
+        .patch(`/api/v1/items/${a}`)
+        .set({ ...marie.mutation, 'If-Match': String(current.body.version) })
+        .send({ position })
+        .expect(200);
+      return order();
+    };
+    // La sonde de la revue (positions 1, 2, 3) donne la même réponse à chaque fois.
+    expect(await move(1)).toEqual([c, a]);
+    expect(await move(2)).toEqual([c, a]);
+    expect(await move(3)).toEqual([c, a]);
+    expect(await move(0)).toEqual([a, c]);
+    expect(catalog.items.items.get(suggestion)?.position).toBe(1);
+  });
+
+  it('R2 : un destinataire ajouté après coup ne voit pas disparaître une fiche publiée de son répertoire', async () => {
+    const papa = await person();
+    const marie = await person();
+    const paul = await person();
+    await link(papa, marie);
+    await link(papa, paul);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(papa.mutation)
+      .send({ type: 'GIFTLIST', title: 'x', recipientIds: [marie.profileId] })
+      .expect(201);
+    const p = await http().post('/api/v1/products').set(papa.mutation).send({ title: 'Casque' });
+    const productId = p.body.id as string;
+    await http()
+      .post(`/api/v1/lists/${gift.body.id as string}/items`)
+      .set(papa.mutation)
+      .send({ productId })
+      .expect(201);
+    await http()
+      .put(`/api/v1/products/${productId}/share`)
+      .set(papa.mutation)
+      .send({ level: 'CIRCLE' })
+      .expect(200);
+    const before = await http().get('/api/v1/directory').set({ Cookie: paul.cookie });
+    expect((before.body.items as Body[]).map((e) => e.productId)).toContain(productId);
+    const current = await http()
+      .get(`/api/v1/lists/${gift.body.id as string}`)
+      .set({ Cookie: papa.cookie });
+    await http()
+      .patch(`/api/v1/lists/${gift.body.id as string}`)
+      .set({ ...papa.mutation, 'If-Match': String(current.body.version) })
+      .send({ recipientIds: [marie.profileId, paul.profileId] })
+      .expect(200);
+    const after = await http().get('/api/v1/directory').set({ Cookie: paul.cookie });
+    expect(after.body.items).toEqual(before.body.items);
+  });
 });
