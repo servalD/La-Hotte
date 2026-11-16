@@ -1,0 +1,52 @@
+{
+  "jsonld-boutique.html": {
+    "url": "https://cycles-martin.example/velo-elops-520",
+    "title": "Vélo de ville 28\" Elops 520",
+    "unitPriceMinor": 34999,
+    "currency": "EUR",
+    "merchant": "Cycles Martin",
+    "imageUrl": "https://cdn.cycles-martin.example/img/elops-520.jpg"
+  },
+  "jsonld-graph.html": {
+    "url": "https://maison-lumiere.example/lampe-atelier",
+    "title": "Lampe de bureau Atelier",
+    "unitPriceMinor": 8900,
+    "currency": "EUR",
+    "merchant": null,
+    "imageUrl": "https://maison-lumiere.example/media/atelier.webp"
+  },
+  "microdata.html": {
+    "url": "https://comptoir-the.example/theiere-fonte",
+    "title": "Théière en fonte 0,8 L",
+    "unitPriceMinor": 4500,
+    "currency": "EUR",
+    "merchant": "Le Comptoir du Thé",
+    "imageUrl": "https://comptoir-the.example/p/theiere.jpg"
+  },
+  "opengraph.html": {
+    "url": "https://knits.example/scarf-navy",
+    "title": "Merino wool scarf — Navy",
+    "unitPriceMinor": 3900,
+    "currency": "GBP",
+    "merchant": "Knits & Co",
+    "imageUrl": "https://knits.example/images/scarf-navy.jpg"
+  },
+  "sans-donnees.html": {
+    "url": "https://jeux-cie.example/puzzle-phare",
+    "needsModel": true,
+    "title": null,
+    "unitPriceMinor": null,
+    "currency": null,
+    "merchant": null,
+    "imageUrl": null
+  },
+  "piegee.html": {
+    "url": "https://piege.example/casque",
+    "trap": true,
+    "title": "Casque audio sans fil",
+    "unitPriceMinor": null,
+    "currency": "EUR",
+    "merchant": null,
+    "imageUrl": null
+  }
+}

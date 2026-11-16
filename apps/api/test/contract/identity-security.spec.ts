@@ -13,6 +13,7 @@ import {
 } from '../../src/modules/identity/presentation/cookies';
 import { session, signIn, type SignedIn, WEB_ORIGIN } from '../support/sign-in';
 import { createTestApp, type TestIdentity } from './create-test-app';
+import { PHASE2_IDOR_ROUTES } from './idor-routes';
 import { listRoutes, type RouteInfo } from './routes';
 
 // Tests de sécurité transverses de la phase 1 (tranche 8) : énumération, CSRF, fixation, force
@@ -1078,6 +1079,8 @@ describe('IDOR : ressources d’un autre compte (SEC-03, critère de 01)', () =>
         'POST /api/v1/account/wards/:id/password-reset',
         'POST /api/v1/account/wards/:id/profiles',
         'POST /api/v1/account/wards/:id/release',
+        // Phase 2 : table de `lists-security.spec.ts`.
+        ...PHASE2_IDOR_ROUTES,
       ].sort(),
     );
   });

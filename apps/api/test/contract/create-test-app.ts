@@ -51,6 +51,47 @@ import {
 } from '../../src/modules/identity/testing';
 import type { PinRelock } from '../../src/modules/identity/domain/session';
 import { type SignedIn, signIn } from '../support/sign-in';
+import {
+  ExtractionCache,
+  ExtractionQueue,
+  FakePageFetcher,
+  FakeProductExtractor,
+  InMemoryExtractionCache,
+  ManualExtractionQueue,
+  ProductExtractor,
+  RunExtraction,
+  ImageStore,
+  InMemoryImageStore,
+  InMemoryProductRepository,
+  PageFetcher,
+  ProductRepository,
+} from '../../src/modules/catalog/testing';
+import {
+  EngagementReader,
+  InMemoryEngagementReader,
+  InMemoryItemRepository,
+  InMemoryListRepository,
+  InMemoryVisibilityLog,
+  ItemRepository,
+  ListRepository,
+  VisibilityLogRepository,
+} from '../../src/modules/lists/testing';
+
+/** Doubles des modules de la phase 2. */
+export interface TestCatalog {
+  readonly products: InMemoryProductRepository;
+  readonly images: InMemoryImageStore;
+  readonly fetcher: FakePageFetcher;
+  readonly extractor: FakeProductExtractor;
+  readonly extractionCache: InMemoryExtractionCache;
+  readonly extractionQueue: ManualExtractionQueue;
+  /** Exécute les extractions en file (EXT-06), comme le ferait la file du processus. */
+  runExtractions(): Promise<void>;
+  readonly lists: InMemoryListRepository;
+  readonly items: InMemoryItemRepository;
+  readonly visibilityLog: InMemoryVisibilityLog;
+  readonly engagements: InMemoryEngagementReader;
+}
 
 export interface TestIdentity {
   readonly sessions: InMemorySessionStore;
@@ -100,6 +141,7 @@ export async function createTestApp(
 ): Promise<{
   app: INestApplication;
   identity: TestIdentity;
+  catalog: TestCatalog;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
@@ -128,6 +170,21 @@ export async function createTestApp(
   // PRO-12, PRO-15 : le double des profils consulte les règles de tutelle des comptes et des liens.
   profileRepository.guardianRules = wards;
   const transfers = new InMemoryTransferRepository(accounts, links, wards, sessions);
+  const products = new InMemoryProductRepository();
+  const visibilityLog = new InMemoryVisibilityLog();
+  const catalog: TestCatalog = {
+    products,
+    images: new InMemoryImageStore(),
+    fetcher: new FakePageFetcher(),
+    extractor: new FakeProductExtractor(),
+    extractionCache: new InMemoryExtractionCache(),
+    extractionQueue: new ManualExtractionQueue(),
+    runExtractions: () => catalog.extractionQueue.drain(app.get(RunExtraction)),
+    lists: new InMemoryListRepository(visibilityLog),
+    items: new InMemoryItemRepository(products, visibilityLog),
+    visibilityLog,
+    engagements: new InMemoryEngagementReader(),
+  };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -176,8 +233,30 @@ export async function createTestApp(
     .useValue(wards)
     .overrideProvider(TransferRepository)
     .useValue(transfers)
+    .overrideProvider(ProductRepository)
+    .useValue(catalog.products)
+    .overrideProvider(ImageStore)
+    .useValue(catalog.images)
+    .overrideProvider(PageFetcher)
+    .useValue(catalog.fetcher)
+    .overrideProvider(ProductExtractor)
+    .useValue(catalog.extractor)
+    .overrideProvider(ExtractionCache)
+    .useValue(catalog.extractionCache)
+    .overrideProvider(ExtractionQueue)
+    .useValue(catalog.extractionQueue)
+    .overrideProvider(ListRepository)
+    .useValue(catalog.lists)
+    .overrideProvider(ItemRepository)
+    .useValue(catalog.items)
+    .overrideProvider(VisibilityLogRepository)
+    .useValue(catalog.visibilityLog)
+    .overrideProvider(EngagementReader)
+    .useValue(catalog.engagements)
     .compile();
 
+  products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
+  catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
   await app.init();
@@ -228,5 +307,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity };
+  return { app, identity, catalog };
 }

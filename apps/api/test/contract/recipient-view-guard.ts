@@ -25,9 +25,67 @@ export interface RecipientViewRule {
   schemas: readonly string[];
 }
 
-// Aucune vue destinataire n'existe avant la phase 2 : toute vue `*RecipientView` qui apparaît dans
-// openapi.json fait échouer le test tant qu'elle n'est pas déclarée ici, champ par champ.
-export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {};
+// Toute vue `*RecipientView` qui apparaît dans openapi.json fait échouer le test tant qu'elle n'est
+// pas déclarée ici, champ par champ (VIS-35 pour l'élément).
+const LIST_SCHEMAS = [
+  'ListPermissionsView',
+  'AddRight',
+  'ListRole',
+  'ListAudience',
+  'VisibilityMode',
+  'VisibilityEditRole',
+];
+
+export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {
+  // Phase 2 : wishlist vue par l'un de ses destinataires (VIS-20, LST-16).
+  ListRecipientView: {
+    fields: [
+      'view',
+      'id',
+      'title',
+      'description',
+      'personal',
+      'recipients',
+      'myRole',
+      'audience',
+      'customAudience',
+      'defaultItemVisibility',
+      'visibilityEditRole',
+      'archivedAt',
+      'deletedAt',
+      'createdAt',
+      'version',
+      'permissions',
+    ],
+    schemas: LIST_SCHEMAS,
+  },
+  // GFT-09 : l'existence seule, et si du contenu est montré.
+  ListTeaserRecipientView: {
+    fields: ['view', 'id', 'content'],
+    schemas: ['GiftContent'],
+  },
+  // VIS-35 : liste fermée.
+  ItemRecipientView: {
+    fields: [
+      'view',
+      'id',
+      'listId',
+      'product',
+      'quantity',
+      'unitPriceMinor',
+      'currency',
+      'priority',
+      'note',
+      'manyWelcome',
+      'hidden',
+      'received',
+      'receivedAt',
+      'mine',
+      'version',
+    ],
+    schemas: ['ItemProductView', 'ItemPriority'],
+  },
+};
 
 /** Second filet : vocabulaire d'offreur, quel que soit l'endroit où il apparaît. */
 const GIVER_WORDS =

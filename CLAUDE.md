@@ -2,7 +2,7 @@
 
 PWA de listes de souhaits et de cadeaux : plusieurs profils par compte, fiches article extraites par IA, événements, visibilité fine, giftlists secrètes, commentaires, compta des participations, temps réel, hors ligne.
 
-**État : phase 0 (socle) livrée ; phase 1 : tranches 1 à 8 faites (visa SEC-40 de la tranche 8 accordé le 2026-11-15), avec des restes notés dans `docs/roadmap.md`.**
+**État : phase 0 (socle) livrée ; phase 1 livrée (visa SEC-40 du 2026-11-15) ; phase 2 : tranches 1 à 11 faites le 2026-11-15, visa SEC-40 accordé, points résiduels R1 et R2 corrigés ; restes notés dans `docs/roadmap.md`.**
 
 ## Où trouver quoi
 
@@ -23,6 +23,7 @@ Ne lis que les fichiers de spec utiles à la tâche. Les règles sont numéroté
 ```
 apps/api            NestJS, architecture propre par module   → apps/api/CLAUDE.md
 apps/web            Next.js App Router, PWA                  → apps/web/CLAUDE.md
+apps/fetcher        récupération d'URL et décodage d'images, isolé (EXT-40 à EXT-46, ADR 0016)
 packages/api-client généré depuis openapi.json, ne pas éditer → packages/api-client/CLAUDE.md
 packages/config     tsconfig, eslint, prettier partagés
 ops/observability   collecteur OpenTelemetry, OpenObserve, GlitchTip (ADR 0012)
@@ -53,7 +54,7 @@ Node 22, pnpm 10. À la racine :
 | `pnpm db:migrate:deploy`             | Applique les migrations (CI, production)                                                                                                                                                                                                               |
 | `pnpm format` / `pnpm format:check`  | Prettier                                                                                                                                                                                                                                               |
 
-Première installation : copier `apps/api/.env.example` en `apps/api/.env`.
+Première installation : copier `apps/api/.env.example` en `apps/api/.env`, et `apps/fetcher/.env.example` en `apps/fetcher/.env` (même `FETCHER_TOKEN`).
 
 ## Invariants
 

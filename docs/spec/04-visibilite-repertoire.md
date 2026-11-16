@@ -16,6 +16,7 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 
 - **VIS-01** Audience possible : `MEMBRES` (seulement les membres de la liste), `CERCLE` (cercle des destinataires), `ÉVÉNEMENT` (participants de l'événement de rattachement), ou une sélection explicite de profils.
 - **VIS-02** Défauts : wishlist personnelle = `CERCLE` ; wishlist d'événement = `ÉVÉNEMENT` ; giftlist = `MEMBRES`.
+- **VIS-03** Les membres d'une liste sont toujours dans son audience, et les destinataires d'une wishlist aussi. `CERCLE` = les cercles réunis des destinataires (LNK-09, blocages exclus) ; `ÉVÉNEMENT` = les membres seuls tant que les événements n'existent pas (phase 3) ; sélection explicite = les membres et les profils choisis. Un destinataire de giftlist n'est jamais dans l'audience, même choisi (VIS-21).
 
 ### Niveau 2 — Règle de l'élément
 
@@ -33,6 +34,9 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 - **VIS-14** Qui peut modifier la règle : voir LST-03. Chaque modification est tracée (qui, quand, ancienne et nouvelle valeur), consultable par le créateur.
 - **VIS-15** Un nouveau profil rejoignant l'audience voit les éléments en `TOUS` et `TOUS SAUF`, pas ceux en `SEULEMENT`. C'est la différence pratique entre les deux modes, expliquée dans l'interface en une ligne.
 - **VIS-16** Retirer la visibilité à un profil qui avait réservé ou participé : l'action est bloquée tant que sa réservation existe, avec proposition de le prévenir. On ne laisse pas quelqu'un engagé sur un élément qu'il ne voit plus.
+- **VIS-17** Sur une wishlist partagée, la règle d'un souhait s'applique aussi aux co-destinataires qui ne l'ont pas ajouté ; celui qui l'a ajouté le voit toujours.
+- **VIS-18** Quand le créateur étend le droit de LST-03 au contributeur, celui-ci ne modifie que la règle de ses propres éléments.
+- **VIS-19** Les profils d'une règle se choisissent parmi le cercle de celui qui la modifie et les membres de la liste ; tout autre profil est refusé (`422 VISIBILITY_PROFILE_INVALID`). La règle et ses profils ne sont lus que par ceux qui peuvent la modifier. Le journal de VIS-14 ne porte pas les règles des suggestions, qui n'appartiennent qu'à leur auteur (WSH-07) : il est lu par l'autorité de la liste, qui peut en être destinataire ; une entrée n'est montrée que si ni la règle d'avant ni celle d'après n'écartent le lecteur (sauf s'il en est l'auteur), et, pour un élément supprimé, seulement si le lecteur n'en est pas destinataire ou si l'auteur du changement l'est aussi : le journal ne raconte pas l'activité des offreurs (VIS-20).
 
 ### Niveau 3 — Règle de surprise
 
@@ -46,6 +50,8 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 - **VIS-31** Le filtrage se fait dans la requête de base de données quand c'est possible, pas après chargement. Les champs interdits sont **absents** de la réponse, pas vides ni masqués.
 - **VIS-32** Les événements temps réel sont émis par destinataire après passage dans le moteur (voir `06-commentaires-notifications.md`).
 - **VIS-33** Le moteur est couvert par une matrice de tests générée : chaque combinaison (type de liste, rôle, appartenance au compte, règle d'élément, état, avant ou après la date de l'événement) a un résultat attendu écrit.
+- **VIS-34** Une liste ou un élément qu'un profil ne voit pas répond `404`, comme un identifiant inconnu (SEC-04) ; une action interdite sur une liste ou un élément qu'il voit répond `403`.
+- **VIS-35** La vue destinataire d'un souhait est une liste fermée de champs : identifiant, liste, fiche (titre, description, image, vendeur, URL d'origine), quantité, prix unitaire et devise, priorité, note, « plusieurs exemplaires bienvenus », caché ou non, reçu et sa date, ajouté par soi ou non, version (API-17). La version d'un élément ne change jamais pour une écriture d'offreur : réservations, parts et achat vivent dans leurs propres tables, et la date de modification n'est pas montrée. La position brute n'est pas montrée au destinataire : ses trous trahiraient les suggestions et les cadeaux non montrés ; l'ordre des éléments rendus suffit. Pour la même raison, la position qu'envoie un destinataire pour réordonner est un rang parmi les éléments qu'il voit : le serveur redistribue entre eux les places qu'ils occupent, sans toucher aux autres. Un changement de règle par un responsable fait bouger la version : c'est la gestion de la liste, déjà visible par la mention « caché », non un engagement. Tout autre champ exige de modifier cette règle et la liste blanche du test de contrat.
 
 ## Matrice de référence
 
@@ -77,6 +83,8 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 
 - **REP-07** Une fiche publiée au cercle n'apparaît pas aux profils exclus par la règle d'un élément qui la référence. Le moteur de visibilité tranche au plus restrictif.
 - **REP-08** Dépublier est immédiat. Les copies déjà faites par d'autres restent.
+- **REP-09** Le catalogue global ouvre avec la modération (phase 7) : d'ici là, `PUT /products/{id}/share` refuse `GLOBAL` (`422 GLOBAL_CATALOG_UNAVAILABLE`).
+- **REP-10** Une fiche publiée n'apparaît jamais, dans le répertoire ni dans la recherche, à un profil destinataire d'un élément qui la référence (cadeau d'une giftlist, suggestion sur sa wishlist) : la publication ne révèle pas ce qu'on lui prépare. Avec REP-07, le moteur écarte donc les exclus et les destinataires de tout élément qui référence la fiche. Pour qu'une fiche déjà publiée ne disparaisse pas du répertoire d'un destinataire (ce serait une trace, GFT-07), l'ajouter à une liste dont un autre profil est destinataire crée d'office une copie privée (ART-04), que l'élément référence ; de même, ajouter un destinataire à une liste fait passer sur une copie privée les éléments qui référencent une fiche publiée.
 
 ## Recherche
 

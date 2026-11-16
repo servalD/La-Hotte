@@ -176,7 +176,9 @@
     "account": "Account",
     "accountProfiles": "Manage profiles",
     "security": "Security",
-    "wards": "Wards"
+    "wards": "Wards",
+    "lists": "Lists",
+    "directory": "Directory"
   },
   "home": {
     "hello": "Hello {name}",
@@ -191,8 +193,9 @@
       "action": "See the circle"
     },
     "soon": {
-      "title": "Your lists are coming soon",
-      "body": "Items, lists and events will arrive in the next versions."
+      "title": "Your lists",
+      "body": "“My wishes” and your other lists are waiting for you.",
+      "action": "See my lists"
     },
     "transfer": {
       "title": "An account change request concerns you",
@@ -715,5 +718,254 @@
     "who": "If your guardian has asked to lift the guardianship, declare your age to become independent. Otherwise, do nothing here.",
     "submit": "Declare my age",
     "done": "Done: this account is now independent."
+  },
+  "lists": {
+    "title": "Lists",
+    "who": "Here are your lists and the ones shown to you.",
+    "loading": "Loading lists…",
+    "empty": "No lists here yet.",
+    "scope": {
+      "label": "Show",
+      "active": "Current",
+      "archived": "Archived",
+      "trash": "Bin"
+    },
+    "trashHint": "A deleted list stays in the bin for 30 days, then disappears.",
+    "personal": "My wishes",
+    "wishlist": "Wishlist",
+    "giftlist": "Gift list",
+    "teaser": "A gift list is being prepared for you.",
+    "open": "Open",
+    "restore": "Restore",
+    "create": {
+      "action": "New list",
+      "title": "New list",
+      "type": "List type",
+      "wishlist": "Wishlist: what I would like to receive",
+      "giftlist": "Gift list: what we are preparing for someone",
+      "name": "Title",
+      "description": "Description (optional)",
+      "recipients": "For whom?",
+      "recipientsWishlist": "You, or a profile of your account.",
+      "recipientsGiftlist": "One or more profiles from your circle. They will see nothing unless you decide so.",
+      "me": "Me",
+      "whoWishlist": "Your circle will see this list.",
+      "whoGiftlist": "Only the members you invite will see this list. Its recipients will not.",
+      "submit": "Create list",
+      "cancel": "Cancel"
+    },
+    "audience": {
+      "MEMBERS": "Visible to list members",
+      "CIRCLE": "Visible to the recipients’ circle",
+      "EVENT": "Visible to event participants",
+      "CUSTOM": "Visible to chosen people"
+    },
+    "role": {
+      "CREATOR": "Creator",
+      "OWNER": "Manager",
+      "CONTRIBUTOR": "Contributor",
+      "READER": "Reader"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "network": "Cannot connect. Check your network.",
+      "LIST_NOT_FOUND": "This list does not exist or is not shown to you.",
+      "ITEM_NOT_FOUND": "This item does not exist or is not shown to you.",
+      "LIST_ACTION_FORBIDDEN": "You cannot do this on this list.",
+      "VISIBILITY_EDIT_FORBIDDEN": "You cannot change who sees this item.",
+      "RECIPIENT_NOT_ALLOWED": "This profile cannot be a recipient of this list.",
+      "MEMBER_NOT_ALLOWED": "This profile cannot be a member of this list.",
+      "SUCCESSOR_REQUIRED": "First choose a manager among the members.",
+      "PERSONAL_LIST_LOCKED": "“My wishes” cannot be deleted, archived or left.",
+      "GIFT_SETTINGS_INCONSISTENT": "To show gifts, first reveal that the list exists.",
+      "VISIBILITY_ENGAGED_PROFILE": "Someone has committed to this item: let them know before hiding it from them.",
+      "VISIBILITY_PROFILE_INVALID": "This profile cannot be part of this choice.",
+      "VERSION_MISMATCH": "Someone changed this in the meantime. Reload the page.",
+      "PRODUCT_NOT_FOUND": "This product does not exist or is not shown to you.",
+      "HIDDEN_ITEM_REQUIRES_CHOICE": "This item is hidden from some people: choose how to publish it.",
+      "GLOBAL_CATALOG_UNAVAILABLE": "The public catalogue is not available yet.",
+      "EXTRACTION_RATE_LIMITED": "You added many items at once. Try again later, or fill in the product by hand.",
+      "IMAGE_REJECTED": "This image cannot be used. Try a JPEG or PNG photo.",
+      "FETCHER_UNAVAILABLE": "Photo analysis is unavailable right now. Fill in the product by hand.",
+      "PRODUCT_URL_INVALID": "This link is not a web address.",
+      "ITEM_INVALID": "Some item information is not valid.",
+      "LIST_INVALID": "Some list information is not valid."
+    }
+  },
+  "list": {
+    "loading": "Loading list…",
+    "back": "All lists",
+    "recipients": "For {names}",
+    "archived": "Archived list: read only.",
+    "deleted": "List in the bin.",
+    "noItems": "No items yet.",
+    "sort": {
+      "label": "Sort by",
+      "position": "Chosen order",
+      "priority": "Priority",
+      "price": "Price",
+      "added": "Date added"
+    },
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "delete": "Delete list",
+    "deleteTitle": "Delete this list?",
+    "deleteBody": "It stays in your bin for 30 days, then disappears with its items.",
+    "leave": "Leave list",
+    "leaveTitle": "Leave this list?",
+    "leaveBody": "You will no longer see it unless invited again.",
+    "leaveSuccessor": "Before leaving, choose a manager among the members.",
+    "cancel": "Cancel",
+    "members": {
+      "title": "Members",
+      "who": "Members see the list; recipients of a gift list are never members.",
+      "add": "Add a member",
+      "choose": "Choose from your circle",
+      "role": "Role",
+      "remove": "Remove",
+      "none": "Nobody else yet."
+    },
+    "gift": {
+      "title": "What the recipient sees",
+      "existence": "List existence",
+      "HIDDEN": "Hidden: nothing appears for the recipient",
+      "REVEALED": "Revealed: they see a list is being prepared for them",
+      "content": "Content shown",
+      "NONE": "No gifts",
+      "PARTIAL": "Only gifts marked “show”",
+      "FULL": "All gifts",
+      "never": "They never see who contributes, the amounts, or the givers’ thread.",
+      "sharedAccount": "A recipient shares an account with a giver: the secret depends on their profile PIN."
+    }
+  },
+  "item": {
+    "priority": {
+      "WANT": "Would like",
+      "LOVE": "Would love",
+      "MUST": "Must have"
+    },
+    "status": {
+      "OPEN": "Open",
+      "RESERVED": "Reserved",
+      "PURCHASED": "Bought (assumed received)",
+      "RECEIVED": "Received"
+    },
+    "received": "Received",
+    "markReceived": "I received it",
+    "unmarkReceived": "Not received yet",
+    "suggestion": "Suggestion: hidden from the recipient",
+    "hidden": "Hidden from some people",
+    "manyWelcome": "Several welcome",
+    "quantity": "Quantity: {count}",
+    "total": "Total: {amount}",
+    "freePrice": "Any amount",
+    "openSource": "See on the website",
+    "whoSees": "Who sees this?",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "copy": "Copy to my products",
+    "copied": "Product copied to your products.",
+    "delete": "Remove from list",
+    "deleteTitle": "Remove this item?",
+    "deleteBody": "It disappears from the list for everyone.",
+    "withdraw": {
+      "action": "I don’t want it anymore",
+      "title": "Remove this wish?",
+      "alreadyHave": "I already have it",
+      "noLonger": "I don’t want it anymore",
+      "body": "The wish leaves the list."
+    },
+    "fields": {
+      "quantity": "Quantity",
+      "priority": "Priority",
+      "note": "Note (size, colour, variant)",
+      "price": "Unit price",
+      "manyWelcome": "Several welcome",
+      "shown": "Show to the recipient"
+    }
+  },
+  "whoSees": {
+    "title": "Who sees this?",
+    "everyone": "The whole list audience",
+    "only": "Only them",
+    "except": "Everyone but them",
+    "modeLabel": "Rule",
+    "pick": "People",
+    "hintOnly": "Someone added to the list later will not see this item.",
+    "hintExcept": "Someone added to the list later will see this item.",
+    "outside": "Some chosen people do not see the list, so they will not see the item either. Add them to the list so they can.",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "add": {
+    "title": "Add a wish",
+    "titleGift": "Add a gift",
+    "titleSuggestion": "Suggest a gift",
+    "suggestionWho": "Your suggestion is seen by the other givers, never by the recipient.",
+    "who": "Visible to the list audience, following its default rule.",
+    "byLink": "By link",
+    "byPhoto": "By photo",
+    "byHand": "By hand",
+    "url": "Product link",
+    "urlHint": "The product fills itself in; you check it before adding it.",
+    "photo": "Photo of the item, its label or the receipt",
+    "photoHint": "Location and device data are removed from the photo.",
+    "name": "Title",
+    "price": "Price (optional)",
+    "priceHint": "Without a price, everyone contributes what they want.",
+    "submit": "Continue",
+    "adding": "Sending…"
+  },
+  "draft": {
+    "title": "Product",
+    "who": "Only you can see this product until you publish it.",
+    "pending": "Reading the page…",
+    "failed": "This website does not let us read the page. Fill in the product, the link is kept.",
+    "truncated": "Page partially read.",
+    "uncertain": "Please check: {fields}",
+    "fieldNames": {
+      "title": "title",
+      "description": "description",
+      "price": "price",
+      "currency": "currency",
+      "merchant": "seller",
+      "image": "image"
+    },
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "price": "Unit price",
+      "currency": "Currency",
+      "merchant": "Seller",
+      "sourceUrl": "Original link"
+    },
+    "save": "Save product",
+    "saved": "Product saved.",
+    "addToList": "Add to the list",
+    "added": "Added to the list.",
+    "share": {
+      "title": "Sharing in the directory",
+      "PRIVATE": "Private: only you see it",
+      "CIRCLE": "Your circle sees it in the directory",
+      "publish": "Publish to my circle",
+      "unpublish": "Stop publishing",
+      "hiddenTitle": "Publish a hidden item?",
+      "hiddenBody": "This item is hidden from some people. Publishing it could give them an idea of what you are preparing.",
+      "makeAll": "Make it visible to everyone and publish it",
+      "someOnly": "Share it only with some people",
+      "someOnlyHint": "Open the item in its list and choose “Who sees this?”.",
+      "cancel": "Cancel"
+    }
+  },
+  "directory": {
+    "title": "Directory",
+    "who": "Products your circle chose to share. Nothing here says which list they are in.",
+    "search": "Search",
+    "searchPlaceholder": "Bike, lamp, book…",
+    "empty": "Nothing to show yet.",
+    "sharedBy": "Shared by {name}",
+    "add": "Add to My wishes",
+    "added": "Added to “My wishes”."
   }
 }

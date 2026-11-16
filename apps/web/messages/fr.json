@@ -176,7 +176,9 @@
     "account": "Compte",
     "accountProfiles": "Gérer les profils",
     "security": "Sécurité",
-    "wards": "Comptes sous tutelle"
+    "wards": "Comptes sous tutelle",
+    "lists": "Listes",
+    "directory": "Répertoire"
   },
   "home": {
     "hello": "Bonjour {name}",
@@ -191,8 +193,9 @@
       "action": "Voir le cercle"
     },
     "soon": {
-      "title": "Vos listes arrivent bientôt",
-      "body": "Les articles, les listes et les événements viendront dans les prochaines versions."
+      "title": "Vos listes",
+      "body": "« Mes envies » et vos autres listes vous attendent.",
+      "action": "Voir mes listes"
     },
     "transfer": {
       "title": "Une demande de changement de compte vous concerne",
@@ -715,5 +718,254 @@
     "who": "Si votre tuteur a demandé la levée de la tutelle, déclarez votre âge pour devenir autonome. Sinon, ne faites rien ici.",
     "submit": "Déclarer mon âge",
     "done": "C’est fait : ce compte est désormais autonome."
+  },
+  "lists": {
+    "title": "Listes",
+    "who": "Vous voyez ici vos listes et celles qu’on vous montre.",
+    "loading": "Chargement des listes…",
+    "empty": "Aucune liste ici pour l’instant.",
+    "scope": {
+      "label": "Afficher",
+      "active": "En cours",
+      "archived": "Archivées",
+      "trash": "Corbeille"
+    },
+    "trashHint": "Une liste supprimée reste 30 jours dans la corbeille, puis disparaît.",
+    "personal": "Mes envies",
+    "wishlist": "Wishlist",
+    "giftlist": "Giftlist",
+    "teaser": "Une liste de cadeaux est en préparation pour vous.",
+    "open": "Ouvrir",
+    "restore": "Restaurer",
+    "create": {
+      "action": "Nouvelle liste",
+      "title": "Nouvelle liste",
+      "type": "Type de liste",
+      "wishlist": "Wishlist : ce que j’aimerais recevoir",
+      "giftlist": "Giftlist : ce que nous préparons pour quelqu’un",
+      "name": "Titre",
+      "description": "Description (facultative)",
+      "recipients": "Pour qui ?",
+      "recipientsWishlist": "Vous, ou un profil de votre compte.",
+      "recipientsGiftlist": "Un ou plusieurs profils de votre cercle. Ils ne verront rien tant que vous ne le décidez pas.",
+      "me": "Moi",
+      "whoWishlist": "Votre cercle verra cette liste.",
+      "whoGiftlist": "Seuls les membres que vous inviterez verront cette liste. Ses destinataires ne la verront pas.",
+      "submit": "Créer la liste",
+      "cancel": "Annuler"
+    },
+    "audience": {
+      "MEMBERS": "Visible des membres de la liste",
+      "CIRCLE": "Visible du cercle des destinataires",
+      "EVENT": "Visible des participants de l’événement",
+      "CUSTOM": "Visible des personnes choisies"
+    },
+    "role": {
+      "CREATOR": "Créateur",
+      "OWNER": "Responsable",
+      "CONTRIBUTOR": "Contributeur",
+      "READER": "Lecteur"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau.",
+      "LIST_NOT_FOUND": "Cette liste n’existe pas ou ne vous est pas montrée.",
+      "ITEM_NOT_FOUND": "Cet élément n’existe pas ou ne vous est pas montré.",
+      "LIST_ACTION_FORBIDDEN": "Vous ne pouvez pas faire cela sur cette liste.",
+      "VISIBILITY_EDIT_FORBIDDEN": "Vous ne pouvez pas changer qui voit cet élément.",
+      "RECIPIENT_NOT_ALLOWED": "Ce profil ne peut pas être destinataire de cette liste.",
+      "MEMBER_NOT_ALLOWED": "Ce profil ne peut pas être membre de cette liste.",
+      "SUCCESSOR_REQUIRED": "Choisissez d’abord un responsable parmi les membres.",
+      "PERSONAL_LIST_LOCKED": "« Mes envies » ne se supprime, ne s’archive ni ne se quitte.",
+      "GIFT_SETTINGS_INCONSISTENT": "Pour montrer des cadeaux, révélez d’abord l’existence de la liste.",
+      "VISIBILITY_ENGAGED_PROFILE": "Quelqu’un s’est engagé sur cet élément : prévenez-le avant de le lui cacher.",
+      "VISIBILITY_PROFILE_INVALID": "Ce profil ne peut pas figurer dans ce choix.",
+      "VERSION_MISMATCH": "Quelqu’un a modifié ceci entre-temps. Rechargez la page.",
+      "PRODUCT_NOT_FOUND": "Cette fiche n’existe pas ou ne vous est pas montrée.",
+      "HIDDEN_ITEM_REQUIRES_CHOICE": "Cet article est caché à certaines personnes : choisissez comment le publier.",
+      "GLOBAL_CATALOG_UNAVAILABLE": "Le catalogue ouvert à tous n’est pas encore disponible.",
+      "EXTRACTION_RATE_LIMITED": "Vous avez ajouté beaucoup d’articles d’un coup. Réessayez plus tard, ou saisissez la fiche à la main.",
+      "IMAGE_REJECTED": "Cette image ne peut pas être utilisée. Essayez une photo JPEG ou PNG.",
+      "FETCHER_UNAVAILABLE": "L’analyse des photos est indisponible pour le moment. Saisissez la fiche à la main.",
+      "PRODUCT_URL_INVALID": "Ce lien n’est pas une adresse web.",
+      "ITEM_INVALID": "Une information de l’élément n’est pas valable.",
+      "LIST_INVALID": "Une information de la liste n’est pas valable."
+    }
+  },
+  "list": {
+    "loading": "Chargement de la liste…",
+    "back": "Toutes les listes",
+    "recipients": "Pour {names}",
+    "archived": "Liste archivée : lecture seule.",
+    "deleted": "Liste à la corbeille.",
+    "noItems": "Aucun élément pour l’instant.",
+    "sort": {
+      "label": "Trier par",
+      "position": "Ordre choisi",
+      "priority": "Priorité",
+      "price": "Prix",
+      "added": "Date d’ajout"
+    },
+    "archive": "Archiver",
+    "unarchive": "Désarchiver",
+    "delete": "Supprimer la liste",
+    "deleteTitle": "Supprimer cette liste ?",
+    "deleteBody": "Elle reste 30 jours dans votre corbeille, puis disparaît avec ses éléments.",
+    "leave": "Quitter la liste",
+    "leaveTitle": "Quitter cette liste ?",
+    "leaveBody": "Vous ne la verrez plus, sauf si on vous y invite de nouveau.",
+    "leaveSuccessor": "Avant de partir, désignez un responsable parmi les membres.",
+    "cancel": "Annuler",
+    "members": {
+      "title": "Membres",
+      "who": "Les membres voient la liste ; les destinataires d’une giftlist n’en sont jamais membres.",
+      "add": "Ajouter un membre",
+      "choose": "Choisir dans votre cercle",
+      "role": "Rôle",
+      "remove": "Retirer",
+      "none": "Personne d’autre pour l’instant."
+    },
+    "gift": {
+      "title": "Ce que voit le destinataire",
+      "existence": "Existence de la liste",
+      "HIDDEN": "Cachée : rien n’apparaît chez le destinataire",
+      "REVEALED": "Révélée : il voit qu’une liste se prépare pour lui",
+      "content": "Contenu montré",
+      "NONE": "Aucun cadeau",
+      "PARTIAL": "Seulement les cadeaux cochés « montrer »",
+      "FULL": "Tous les cadeaux",
+      "never": "Il ne voit jamais qui participe, ni les montants, ni le fil des offreurs.",
+      "sharedAccount": "Un destinataire partage un compte avec un offreur : le secret dépend du PIN de son profil."
+    }
+  },
+  "item": {
+    "priority": {
+      "WANT": "Envie",
+      "LOVE": "J’adorerais",
+      "MUST": "Indispensable"
+    },
+    "status": {
+      "OPEN": "Ouvert",
+      "RESERVED": "Réservé",
+      "PURCHASED": "Acheté (supposé reçu)",
+      "RECEIVED": "Reçu"
+    },
+    "received": "Reçu",
+    "markReceived": "Je l’ai reçu",
+    "unmarkReceived": "Pas encore reçu",
+    "suggestion": "Suggestion : invisible du destinataire",
+    "hidden": "Caché à certaines personnes",
+    "manyWelcome": "Plusieurs exemplaires bienvenus",
+    "quantity": "Quantité : {count}",
+    "total": "Total : {amount}",
+    "freePrice": "Prix libre",
+    "openSource": "Voir sur le site",
+    "whoSees": "Qui voit ça ?",
+    "edit": "Modifier",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "copy": "Copier dans mes fiches",
+    "copied": "Fiche copiée dans vos fiches.",
+    "delete": "Retirer de la liste",
+    "deleteTitle": "Retirer cet élément ?",
+    "deleteBody": "Il disparaît de la liste pour tout le monde.",
+    "withdraw": {
+      "action": "Je ne le veux plus",
+      "title": "Retirer ce souhait ?",
+      "alreadyHave": "Je l’ai déjà",
+      "noLonger": "Je n’en veux plus",
+      "body": "Le souhait quitte la liste."
+    },
+    "fields": {
+      "quantity": "Quantité",
+      "priority": "Priorité",
+      "note": "Note (taille, couleur, variante)",
+      "price": "Prix unitaire",
+      "manyWelcome": "Plusieurs exemplaires bienvenus",
+      "shown": "Montrer au destinataire"
+    }
+  },
+  "whoSees": {
+    "title": "Qui voit ça ?",
+    "everyone": "Toute l’audience de la liste",
+    "only": "Seulement eux",
+    "except": "Tous sauf eux",
+    "modeLabel": "Règle",
+    "pick": "Personnes",
+    "hintOnly": "Une personne ajoutée plus tard à la liste ne verra pas cet élément.",
+    "hintExcept": "Une personne ajoutée plus tard à la liste verra cet élément.",
+    "outside": "Certaines personnes choisies ne voient pas la liste : elles ne verront pas non plus l’élément. Ajoutez-les à la liste pour qu’elles le voient.",
+    "save": "Enregistrer",
+    "cancel": "Annuler"
+  },
+  "add": {
+    "title": "Ajouter un souhait",
+    "titleGift": "Ajouter un cadeau",
+    "titleSuggestion": "Suggérer un cadeau",
+    "suggestionWho": "Votre suggestion sera vue des autres offreurs, jamais du destinataire.",
+    "who": "Visible de l’audience de la liste, selon sa règle par défaut.",
+    "byLink": "Par lien",
+    "byPhoto": "Par photo",
+    "byHand": "À la main",
+    "url": "Lien de l’article",
+    "urlHint": "La fiche se remplit seule ; vous la vérifiez avant de l’ajouter.",
+    "photo": "Photo de l’article, de l’étiquette ou du ticket",
+    "photoHint": "La position et l’appareil sont retirés de la photo.",
+    "name": "Titre",
+    "price": "Prix (facultatif)",
+    "priceHint": "Sans prix, chacun participe du montant qu’il veut.",
+    "submit": "Continuer",
+    "adding": "Envoi…"
+  },
+  "draft": {
+    "title": "Fiche article",
+    "who": "Cette fiche n’est visible que par vous, tant que vous ne la publiez pas.",
+    "pending": "Analyse en cours…",
+    "failed": "Ce site ne nous laisse pas lire la page. Complétez la fiche, le lien est gardé.",
+    "truncated": "Page partiellement analysée.",
+    "uncertain": "À vérifier : {fields}",
+    "fieldNames": {
+      "title": "titre",
+      "description": "description",
+      "price": "prix",
+      "currency": "devise",
+      "merchant": "vendeur",
+      "image": "image"
+    },
+    "fields": {
+      "title": "Titre",
+      "description": "Description",
+      "price": "Prix unitaire",
+      "currency": "Devise",
+      "merchant": "Vendeur",
+      "sourceUrl": "Lien d’origine"
+    },
+    "save": "Enregistrer la fiche",
+    "saved": "Fiche enregistrée.",
+    "addToList": "Ajouter à la liste",
+    "added": "Ajouté à la liste.",
+    "share": {
+      "title": "Partage dans le répertoire",
+      "PRIVATE": "Privée : vous seul la voyez",
+      "CIRCLE": "Votre cercle la voit dans le répertoire",
+      "publish": "Publier dans mon cercle",
+      "unpublish": "Ne plus publier",
+      "hiddenTitle": "Publier un article caché ?",
+      "hiddenBody": "Cet article est caché à certaines personnes. Le publier pourrait leur donner une idée de ce que vous préparez.",
+      "makeAll": "Le rendre visible de tous et le publier",
+      "someOnly": "Le partager seulement à certaines personnes",
+      "someOnlyHint": "Ouvrez l’élément dans sa liste et choisissez « Qui voit ça ? ».",
+      "cancel": "Annuler"
+    }
+  },
+  "directory": {
+    "title": "Répertoire",
+    "who": "Les fiches que votre cercle a choisi de partager. Rien n’y dit dans quelle liste elles figurent.",
+    "search": "Rechercher",
+    "searchPlaceholder": "Vélo, lampe, livre…",
+    "empty": "Rien à afficher pour l’instant.",
+    "sharedBy": "Partagée par {name}",
+    "add": "Ajouter à Mes envies",
+    "added": "Ajouté à « Mes envies »."
   }
 }

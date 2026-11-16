@@ -287,6 +287,7 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playWardScenario(app);
   await playProfileInvitationScenario(app);
   await playTransferScenario(app);
+  await playCatalogScenario(app);
 }
 
 /**
@@ -1520,3 +1521,91 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     expect(findMarker(records.map((record) => record.body).join('\n'))).toBeUndefined();
   });
 });
+
+/**
+ * Phase 2 (tranche 11) : fiches, listes, éléments, règles, répertoire, extraction. Titres, notes,
+ * descriptions, URL d'article et montants portent le marqueur ; l'extraction par lien s'exécute dans
+ * la file du processus (fetcher absent : `UNAVAILABLE`, compté par code seulement).
+ */
+async function playCatalogScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const owner = await createAccountWithProfile(prisma);
+  const friend = await createAccountWithProfile(prisma);
+  const [a, b] = [owner.profileId, friend.profileId].sort();
+  await prisma.profileLink.create({
+    data: {
+      id: randomUUID(),
+      profileAId: a!,
+      profileBId: b!,
+      status: 'ACCEPTED',
+      requestedBy: a!,
+      aGuardianRequired: false,
+      bGuardianRequired: false,
+    },
+  });
+  const headersOf = async (account: { accountId: string; profileId: string }) => {
+    const signed = await signIn(app, account);
+    return {
+      ...markedHeaders,
+      Cookie: `${signed.cookie}; session=${MARKER}`,
+      'X-CSRF-Token': signed.csrf,
+      Origin: 'http://localhost:3000',
+    };
+  };
+  const me = await headersOf(owner);
+  const them = await headersOf(friend);
+
+  const product = await http
+    .post('/api/v1/products')
+    .set(me)
+    .send({
+      title: `Vélo ${MARKER}`,
+      description: `Pour ${MARKER}`,
+      merchant: `Boutique ${MARKER}`,
+      sourceUrl: `https://boutique.example/velo?ref=${MARKER}`,
+      unitPriceMinor: AMOUNT_MARKER,
+    })
+    .expect(201);
+  const productId = product.body.id as string;
+  await http
+    .post('/api/v1/products')
+    .set(me)
+    .send({ url: `https://boutique.example/${MARKER}?utm_source=${MARKER}` })
+    .expect(201);
+
+  const list = await http
+    .post('/api/v1/lists')
+    .set(me)
+    .send({ type: 'WISHLIST', title: `Liste ${MARKER}`, description: `Noël ${MARKER}` })
+    .expect(201);
+  const listId = list.body.id as string;
+  const item = await http
+    .post(`/api/v1/lists/${listId}/items`)
+    .set(me)
+    .send({ productId, note: `Taille ${MARKER}`, unitPriceMinor: AMOUNT_MARKER })
+    .expect(201);
+  const itemId = item.body.id as string;
+  await http
+    .put(`/api/v1/items/${itemId}/visibility`)
+    .set({ ...me, 'If-Match': '1' })
+    .send({ mode: 'EXCEPT', profileIds: [friend.profileId] })
+    .expect(200);
+  await http.get(`/api/v1/lists/${listId}/items`).set(me).expect(200);
+  await http.get(`/api/v1/lists/${listId}/visibility-log`).set(me).expect(200);
+  // Refus : élément caché à l'ami (404), liste inconnue, règle par un autre (403).
+  await http.get(`/api/v1/items/${itemId}`).set(them).expect(404);
+  await http.get(`/api/v1/lists/${randomUUID()}?q=${MARKER}`).set(them).expect(404);
+  await http
+    .put(`/api/v1/products/${productId}/share`)
+    .set(me)
+    .send({ level: 'CIRCLE' })
+    .expect(422);
+  await http
+    .put(`/api/v1/products/${productId}/share`)
+    .set(me)
+    .send({ level: 'CIRCLE', hiddenItemChoice: 'MAKE_VISIBLE_TO_ALL' })
+    .expect(200);
+  await http.get(`/api/v1/directory?q=${MARKER}`).set(them).expect(200);
+  await http.post(`/api/v1/directory/${productId}/copy`).set(them).expect(201);
+}

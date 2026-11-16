@@ -45,6 +45,15 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1).max(255).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).max(255).optional(),
   GOOGLE_OIDC_ISSUER: z.url().default('https://accounts.google.com'),
+  // EXT-47, ADR 0016 : dossier des images réencodées (hors du dépôt, sauvegardé en production).
+  IMAGE_STORAGE_DIR: z.string().min(1).default('var/images'),
+  // EXT-44, EXT-46 : service de récupération isolé, joint par un jeton partagé. Facultatif : sans
+  // lui, l'ajout par lien ne lit pas la page et l'ajout par photo répond `503`.
+  FETCHER_URL: z.url().optional(),
+  FETCHER_TOKEN: z.string().min(32).optional(),
+  // EXT-30 : extraction par modèle. Facultative : sans clé, seules les données structurées servent.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  EXTRACTION_MODEL: z.string().min(1).max(64).default('claude-haiku-5-5'),
   ...telemetryEnvShape,
 });
 
@@ -89,6 +98,10 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
     (result.data.GOOGLE_CLIENT_SECRET === undefined)
   ) {
     throw new Error('Configuration invalide : GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET');
+  }
+  // EXT-46 : l'adresse du fetcher et son jeton vont ensemble.
+  if ((result.data.FETCHER_URL === undefined) !== (result.data.FETCHER_TOKEN === undefined)) {
+    throw new Error('Configuration invalide : FETCHER_URL, FETCHER_TOKEN');
   }
   if (result.data.NODE_ENV === 'production') {
     const invalid = productionProblems(source, result.data);

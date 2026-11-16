@@ -10,6 +10,8 @@ Créer une fiche article complète à partir d'un lien, d'une photo ou d'une sai
 - **ART-02** Une fiche appartient au profil qui l'a créée. Elle est privée par défaut (voir `04-visibilite-repertoire.md` pour le répertoire).
 - **ART-03** Une fiche est réutilisable : plusieurs éléments de listes différentes peuvent la référencer. Modifier la fiche met à jour l'affichage partout, sauf le prix, qui est **copié sur l'élément** au moment de l'ajout (un changement de prix ne doit pas modifier des parts déjà calculées).
 - **ART-04** Copier un élément depuis la liste de quelqu'un d'autre crée une **nouvelle fiche** appartenant au copieur (copie des champs, pas de lien vers l'original) : supprimer l'original n'affecte pas la copie, et la copie ne révèle rien de la liste d'origine.
+- **ART-05** Par `/products`, seul le propriétaire lit et modifie sa fiche (`404` pour tout autre profil, SEC-04). Les autres la voient à travers un élément qu'ils voient, ou le répertoire.
+- **ART-06** Le prix copié sur l'élément (ART-03) se modifie sur l'élément, par ceux qui peuvent le modifier ; modifier le prix de la fiche ne change aucun élément existant.
 
 ## Élément de liste (rappel des champs chiffrés)
 
@@ -30,6 +32,8 @@ Créer une fiche article complète à partir d'un lien, d'une photo ou d'une sai
 - **EXT-03** L'image est téléchargée, vérifiée, redimensionnée et stockée chez nous. On n'affiche jamais une image servie par le site marchand (suivi des utilisateurs, liens morts).
 - **EXT-04** Le résultat est un **brouillon** que l'utilisateur valide. Les champs incertains sont signalés. Rien n'est ajouté à une liste sans validation, sauf réglage « ajout direct » activé par l'utilisateur.
 - **EXT-05** En cas d'échec (site qui bloque les robots, page derrière connexion, délai dépassé), la fiche reste en brouillon avec l'URL conservée, et l'utilisateur complète à la main. Message : « Ce site ne nous laisse pas lire la page. Complétez la fiche, le lien est gardé. »
+- **EXT-06** L'extraction est asynchrone : `POST /products` rend aussitôt la fiche en `PENDING`, que le client relit jusqu'à `DONE` ou `FAILED` (le temps réel de EXT-01 vient avec la phase 4). Une extraction en cours depuis plus de 2 minutes (arrêt du serveur) passe en `FAILED` au balayage suivant : un brouillon n'est jamais bloqué.
+- **EXT-07** Le brouillon porte la liste de ses champs incertains et la mention de troncature (EXT-34), lisibles de son seul propriétaire. L'« ajout direct » de EXT-04 viendra avec les réglages du profil ; d'ici là, toute fiche extraite passe par le brouillon.
 
 ### Par photo
 
@@ -47,7 +51,7 @@ Créer une fiche article complète à partir d'un lien, d'une photo ou d'une sai
 - **EXT-32** Si le modèle refuse ou renvoie une sortie invalide, on applique EXT-05. Pas de nouvelle tentative automatique au-delà d'une.
 - **EXT-33** Aucune donnée personnelle n'est envoyée au modèle : ni nom de profil, ni nom de liste, ni identifiant.
 - **EXT-34** Plafonds : 30 extractions par profil et par heure, 200 par compte et par jour. Texte de page tronqué à une taille fixe après nettoyage, avec mention « page partiellement analysée » si la troncature a eu lieu.
-- **EXT-35** Cache par URL normalisée pendant 24 heures : une même page n'est analysée qu'une fois, quel que soit le profil. Le cache ne contient que des données publiques de la page.
+- **EXT-35** Cache par URL normalisée pendant 24 heures : une même page n'est analysée qu'une fois, quel que soit le profil. Le cache ne contient que des données publiques de la page. Un succès de cache recopie l'image sous une clé neuve : la clé d'un autre profil ne trahit pas qu'il a ajouté le même lien. Le texte de la page ne peut pas refermer la balise qui l'encadre dans le message au modèle.
 
 ## Sécurité de la récupération d'URL
 
@@ -59,6 +63,8 @@ La récupération d'une URL fournie par un utilisateur est la surface d'attaque 
 - **EXT-43** Délai total de 10 secondes, 5 Mo au plus pour la page, 10 Mo pour l'image, types de contenu attendus uniquement.
 - **EXT-44** Le service de récupération tourne dans un conteneur isolé, sans accès à la base de données ni au réseau interne, avec une sortie Internet filtrée.
 - **EXT-45** Les images sont redécodées et réencodées (jamais stockées telles quelles) ; le SVG est refusé.
+- **EXT-46** Le décodage des images, photos des utilisateurs comprises (EXT-11), se fait dans le `fetcher` : une faille d'un décodeur reste dans le conteneur isolé. Le `fetcher` n'accepte que les appels de l'API, authentifiés par un jeton partagé.
+- **EXT-47** Une image stockée a une clé aléatoire de 128 bits ; elle n'est servie qu'à un profil actif (`GET /images/{key}`), avec `Cache-Control: private`. La clé n'est rendue qu'à ceux qui voient la fiche.
 
 ## Critères d'acceptation
 

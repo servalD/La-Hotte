@@ -1,0 +1,24 @@
+{
+  "name": "@wishlist/fetcher",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env --enable-source-maps dist/main.js",
+    "start": "node --enable-source-maps dist/main.js",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@wishlist/config": "workspace:*",
+    "eslint": "^9.39.1",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
