@@ -8,6 +8,7 @@ export {
   type ItemActivity,
   type ItemChanged,
   type ListChanged,
+  type NotificationCreated,
   type ProductExtracted,
 } from './app-events.port';
 export { Clock } from './clock.port';

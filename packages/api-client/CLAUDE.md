@@ -18,7 +18,7 @@ Une modification manuelle sera écrasée et fait échouer la CI.
 
 ## `src/realtime/` (écrit à la main)
 
-Schémas Zod des événements WebSocket, partagés par l'API et le web. Un schéma par type d'événement, enveloppe commune `{ type, id, seq, at, data }`.
+Schémas Zod des événements WebSocket, partagés par l'API et le web. Un schéma par type d'événement, enveloppe commune `{ type, room, at, data, seq? }` (API-32) ; `data` ne porte que des identifiants (RT-08), `seq` seulement sur `notification.created`. `parseRealtimeEvent` ignore un type inconnu ou une forme non conforme.
 
 Les événements destinés à un salon public ne contiennent aucun champ d'offreur : deux schémas distincts plutôt que des champs facultatifs.
 

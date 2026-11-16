@@ -198,6 +198,7 @@ import {
   VerifyProfileEmail,
 } from './application/profile-email.use-case';
 import { NoticingSecurityLog } from './application/noticing-security-log';
+import { SocketAuthenticator } from './presentation/socket-authenticator';
 import { WardRepository } from './domain/ward.ports';
 import { PrismaWardRepository } from './infrastructure/prisma-ward-repository';
 import {
@@ -343,6 +344,7 @@ import {
     { provide: EventThrottle, useClass: RedisEventThrottle },
     { provide: SecurityLogStore, useClass: PrismaSecurityLog },
     { provide: SecurityLog, useClass: NoticingSecurityLog },
+    SocketAuthenticator,
     { provide: MailSender, useClass: SmtpMailSender },
     { provide: ProfileLockPolicies, useClass: PrismaProfileLockPolicies },
     { provide: IdentityEvents, useClass: InProcessIdentityEvents },
@@ -364,6 +366,12 @@ import {
     { provide: APP_GUARD, useClass: IdentityGuardChain },
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
-  exports: [CheckSessionAccess, IdentityEvents, CircleReader, EventInvitationNotices],
+  exports: [
+    CheckSessionAccess,
+    IdentityEvents,
+    CircleReader,
+    EventInvitationNotices,
+    SocketAuthenticator,
+  ],
 })
 export class IdentityModule {}
