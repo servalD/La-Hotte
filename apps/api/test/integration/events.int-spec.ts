@@ -96,6 +96,62 @@ describe('Événements en base (ADR 0017)', { timeout: 30_000 }, () => {
     ).toBe(0);
   });
 
+  it('EVT-07, EVT-17 (R1, R3) : retiré, ses liens révoqués ; membre d’une liste rattachée, pas honoré', async () => {
+    const org = await person();
+    const ex = await person();
+    const other = await person();
+    await link(org, ex);
+    await link(org, other);
+    const id = (
+      await http()
+        .post('/api/v1/events')
+        .set(org.mutation)
+        .send({
+          title: 'Les 40 ans',
+          date: '2027-06-01',
+          type: 'BIRTHDAY',
+          isSurprise: true,
+          honoreeIds: [other.profileId],
+        })
+        .expect(201)
+    ).body.id as string;
+    await http()
+      .post(`/api/v1/events/${id}/participants`)
+      .set(org.mutation)
+      .send({ profileIds: [ex.profileId] })
+      .expect(200);
+    await http().put(`/api/v1/events/${id}/rsvp`).set(ex.mutation).send({ rsvp: 'YES' });
+    await http()
+      .put(`/api/v1/events/${id}/organizers/${ex.profileId!}`)
+      .set(org.mutation)
+      .expect(204);
+    await http().post(`/api/v1/events/${id}/links`).set(ex.mutation).send({}).expect(201);
+    await http()
+      .post('/api/v1/lists')
+      .set(ex.mutation)
+      .send({ type: 'GIFTLIST', title: 'Pour O', recipientIds: [other.profileId], eventId: id })
+      .expect(201);
+    await http()
+      .delete(`/api/v1/events/${id}/participants/${ex.profileId!}`)
+      .set(org.mutation)
+      .expect(204);
+    expect(
+      await prisma.invitation.count({
+        where: { kind: 'EVENT', targetId: id, createdBy: ex.profileId!, revokedAt: null },
+      }),
+    ).toBe(0);
+    await http()
+      .post(`/api/v1/events/${id}/honorees`)
+      .set(org.mutation)
+      .send({ profileIds: [ex.profileId] })
+      .expect(422);
+    expect(
+      await prisma.eventSurpriseRecipient.count({
+        where: { eventId: id, profileId: ex.profileId! },
+      }),
+    ).toBe(0);
+  });
+
   it('EVT-16 : inscription par lien, un usage consommé, idempotente', async () => {
     const org = await person();
     const guest = await person();

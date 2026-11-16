@@ -19,7 +19,6 @@ import {
 } from '../domain/event.errors';
 import {
   EventInvitationMail,
-  EventLinkRepository,
   EventNotifier,
   EventPeople,
   EventRepository,
@@ -70,7 +69,6 @@ export class InviteParticipants {
 export class RemoveParticipant {
   constructor(
     private readonly events: EventRepository,
-    private readonly links: EventLinkRepository,
     private readonly gate: EventGate,
     private readonly clock: Clock,
   ) {}
@@ -80,8 +78,8 @@ export class RemoveParticipant {
     if (!canRemoveParticipant(gated.facts, gated.access, input.profileId)) {
       throw new EventActionForbiddenError();
     }
-    await this.events.removeParticipant(input.eventId, input.profileId);
-    await this.links.revokeCreatedBy(input.eventId, input.profileId, this.clock.now());
+    // R3 : retrait et révocation de ses liens dans une même transaction.
+    await this.events.removeParticipant(input.eventId, input.profileId, this.clock.now());
   }
 }
 
@@ -91,6 +89,7 @@ export class NameOrganizer {
   constructor(
     private readonly events: EventRepository,
     private readonly gate: EventGate,
+    private readonly clock: Clock,
   ) {}
 
   async execute(input: { viewerId: string; eventId: string; profileId: string }): Promise<void> {
@@ -98,7 +97,7 @@ export class NameOrganizer {
     if (!canNameOrganizer(gated.facts, gated.access, input.profileId)) {
       throw new EventActionForbiddenError();
     }
-    await this.events.setRole(input.eventId, input.profileId, 'ORGANIZER');
+    await this.events.setRole(input.eventId, input.profileId, 'ORGANIZER', this.clock.now());
   }
 }
 
@@ -107,7 +106,6 @@ export class NameOrganizer {
 export class RevokeOrganizer {
   constructor(
     private readonly events: EventRepository,
-    private readonly links: EventLinkRepository,
     private readonly gate: EventGate,
     private readonly clock: Clock,
   ) {}
@@ -117,8 +115,8 @@ export class RevokeOrganizer {
     if (!canRevokeOrganizer(gated.facts, input.viewerId, input.profileId)) {
       throw new EventActionForbiddenError();
     }
-    await this.events.setRole(input.eventId, input.profileId, 'PARTICIPANT');
-    await this.links.revokeCreatedBy(input.eventId, input.profileId, this.clock.now());
+    // R3 : le rôle et la révocation de ses liens dans une même transaction.
+    await this.events.setRole(input.eventId, input.profileId, 'PARTICIPANT', this.clock.now());
   }
 }
 
@@ -161,7 +159,9 @@ export class AddHonorees {
       invitedBy: input.viewerId,
       rows: input.profileIds.map((profileId) => ({ id: this.ids.next(), profileId })),
     });
-    if (result === 'conflict') throw new EventProfileNotAllowedError();
+    // EVT-07 (R1) : `list_member`, il verrait disparaître une liste rattachée dont il est membre.
+    // Même refus que les autres : l'organisateur ne voit pas forcément cette liste.
+    if (result !== 'ok') throw new EventProfileNotAllowedError();
     if (!event.isSurprise) {
       this.mail.notifyInvited(input.profileIds.filter((id) => !byId.has(id)));
     }

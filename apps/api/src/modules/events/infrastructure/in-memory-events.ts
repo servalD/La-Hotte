@@ -35,6 +35,10 @@ export class InMemoryEventRepository extends EventRepository {
   detachLists: (eventId: string, archiveAt: Date | null) => void = () => undefined;
   /** EVT-34, EVT-39 : révocation des liens (relié au double des liens). */
   revokeLinks: (eventId: string, at: Date) => void = () => undefined;
+  /** EVT-06, EVT-17 (R3) : révocation des liens d'un auteur (relié au double des liens). */
+  revokeLinksOf: (eventId: string, profileId: string, at: Date) => void = () => undefined;
+  /** EVT-07 (R1) : profils membres d'une liste rattachée ou destinataires d'une wishlist rattachée. */
+  tiedToLists: (eventId: string, profileIds: readonly string[]) => boolean = () => false;
 
   private record(row: StoredEvent): EventRecord {
     const { surprise: _surprise, participants, ...rest } = row;
@@ -155,11 +159,12 @@ export class InMemoryEventRepository extends EventRepository {
     return Promise.resolve({ added });
   }
 
-  removeParticipant(eventId: string, profileId: string): Promise<boolean> {
+  removeParticipant(eventId: string, profileId: string, at: Date): Promise<boolean> {
     const row = this.events.get(eventId);
     if (!row) return Promise.resolve(false);
     const before = row.participants.length;
     row.participants = row.participants.filter((p) => p.profileId !== profileId);
+    this.revokeLinksOf(eventId, profileId, at);
     return Promise.resolve(row.participants.length < before);
   }
 
@@ -179,7 +184,8 @@ export class InMemoryEventRepository extends EventRepository {
     return Promise.resolve(found);
   }
 
-  setRole(eventId: string, profileId: string, role: EventRole): Promise<boolean> {
+  setRole(eventId: string, profileId: string, role: EventRole, at: Date): Promise<boolean> {
+    if (role === 'PARTICIPANT') this.revokeLinksOf(eventId, profileId, at);
     return this.patch(eventId, profileId, { role });
   }
 
@@ -192,11 +198,12 @@ export class InMemoryEventRepository extends EventRepository {
     surprise: boolean;
     invitedBy: string;
     rows: readonly { id: string; profileId: string }[];
-  }): Promise<'ok' | 'conflict'> {
+  }): Promise<'ok' | 'conflict' | 'list_member'> {
     const row = this.events.get(input.eventId);
     if (!row) return Promise.resolve('ok');
     const ids = input.rows.map((r) => r.profileId);
     if (input.surprise) {
+      if (this.tiedToLists(input.eventId, ids)) return Promise.resolve('list_member');
       if (row.participants.some((p) => ids.includes(p.profileId))) {
         return Promise.resolve('conflict');
       }

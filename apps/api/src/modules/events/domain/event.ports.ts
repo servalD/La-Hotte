@@ -66,11 +66,14 @@ export abstract class EventRepository {
     readonly rows: readonly { readonly id: string; readonly profileId: string }[];
   }): Promise<{ readonly added: readonly string[] } | 'surprise_honoree'>;
 
-  /** EVT-17 */
-  abstract removeParticipant(eventId: string, profileId: string): Promise<boolean>;
+  /** EVT-17 : retrait et révocation des liens qu'il avait créés, une transaction (R3). */
+  abstract removeParticipant(eventId: string, profileId: string, at: Date): Promise<boolean>;
 
-  /** EVT-06 */
-  abstract setRole(eventId: string, profileId: string, role: EventRole): Promise<boolean>;
+  /**
+   * EVT-06 : passé à `PARTICIPANT`, les liens qu'il avait créés sont révoqués dans la même
+   * transaction (EVT-17, R3).
+   */
+  abstract setRole(eventId: string, profileId: string, role: EventRole, at: Date): Promise<boolean>;
 
   /** EVT-13 */
   abstract setRsvp(eventId: string, profileId: string, rsvp: Rsvp, at: Date): Promise<boolean>;
@@ -78,14 +81,15 @@ export abstract class EventRepository {
   /**
    * EVT-07 : honorés ajoutés. Hors surprise, une ligne de participant marquée (ou la marque posée
    * sur une ligne existante) ; en surprise, la table à part. `conflict` si un honoré de surprise
-   * est participant ; rien n'est écrit.
+   * est participant ; `list_member` si, en surprise, l'un d'eux est membre d'une liste rattachée ou
+   * destinataire d'une wishlist rattachée (EVT-07, R1) ; rien n'est écrit.
    */
   abstract addHonorees(input: {
     readonly eventId: string;
     readonly surprise: boolean;
     readonly invitedBy: string;
     readonly rows: readonly { readonly id: string; readonly profileId: string }[];
-  }): Promise<'ok' | 'conflict'>;
+  }): Promise<'ok' | 'conflict' | 'list_member'>;
 
   /** EVT-07 : honorés d'une surprise ; lu seulement après un accès accordé (ADR 0017). */
   abstract surpriseRecipients(eventId: string): Promise<string[]>;

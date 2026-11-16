@@ -317,6 +317,16 @@ export async function createTestApp(
   events.events.revokeLinks = (eventId, at) => {
     events.links.revokeAll(eventId, at);
   };
+  events.events.revokeLinksOf = (eventId, profileId, at) => {
+    void events.links.revokeCreatedBy(eventId, profileId, at);
+  };
+  events.events.tiedToLists = (eventId, profileIds) =>
+    [...catalog.lists.lists.values()].some(
+      (list) =>
+        list.event?.id === eventId &&
+        (list.members.some((m) => profileIds.includes(m.profileId)) ||
+          (list.type === 'WISHLIST' && list.recipients.some((r) => profileIds.includes(r)))),
+    );
   events.events.detachLists = (eventId, archiveAt) => {
     for (const [id, list] of catalog.lists.lists) {
       if (list.event?.id !== eventId) continue;

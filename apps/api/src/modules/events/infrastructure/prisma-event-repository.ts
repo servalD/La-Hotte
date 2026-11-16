@@ -242,19 +242,34 @@ export class PrismaEventRepository extends EventRepository {
     }
   }
 
-  async removeParticipant(eventId: string, profileId: string): Promise<boolean> {
-    const { count } = await this.prisma.eventParticipant.deleteMany({
-      where: { eventId, profileId },
-    });
-    return count > 0;
+  async removeParticipant(eventId: string, profileId: string, at: Date): Promise<boolean> {
+    // EVT-17 (revue SEC-40, R3) : retrait et révocation de ses liens dans une même transaction.
+    const [removed] = await this.prisma.$transaction([
+      this.prisma.eventParticipant.deleteMany({ where: { eventId, profileId } }),
+      this.revokeLinksOf(eventId, profileId, at),
+    ]);
+    return removed.count > 0;
   }
 
-  async setRole(eventId: string, profileId: string, role: EventRole): Promise<boolean> {
-    const { count } = await this.prisma.eventParticipant.updateMany({
+  async setRole(eventId: string, profileId: string, role: EventRole, at: Date): Promise<boolean> {
+    const update = this.prisma.eventParticipant.updateMany({
       where: { eventId, profileId },
       data: { role },
     });
-    return count > 0;
+    if (role === 'ORGANIZER') return (await update).count > 0;
+    // EVT-06, EVT-17 (R3) : perdre le rôle révoque ses liens, dans la même transaction.
+    const [changed] = await this.prisma.$transaction([
+      update,
+      this.revokeLinksOf(eventId, profileId, at),
+    ]);
+    return changed.count > 0;
+  }
+
+  private revokeLinksOf(eventId: string, profileId: string, at: Date) {
+    return this.prisma.invitation.updateMany({
+      where: { kind: 'EVENT', targetId: eventId, createdBy: profileId, revokedAt: null },
+      data: { revokedAt: at },
+    });
   }
 
   async setRsvp(eventId: string, profileId: string, rsvp: Rsvp, at: Date): Promise<boolean> {
@@ -270,9 +285,26 @@ export class PrismaEventRepository extends EventRepository {
     surprise: boolean;
     invitedBy: string;
     rows: readonly { id: string; profileId: string }[];
-  }): Promise<'ok' | 'conflict'> {
+  }): Promise<'ok' | 'conflict' | 'list_member'> {
     try {
-      await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async (tx) => {
+        if (input.surprise) {
+          // Même verrou que les déclencheurs de l'ADR 0017 et que le rattachement.
+          await tx.$queryRaw`SELECT 1 FROM "event" WHERE "id" = ${input.eventId}::uuid FOR NO KEY UPDATE`;
+          // EVT-07 (revue SEC-40, R1) : un membre d'une liste rattachée, ou le destinataire d'une
+          // wishlist rattachée, verrait cette liste disparaître en devenant honoré.
+          const profileIds = input.rows.map((row) => row.profileId);
+          const tied = await tx.list.count({
+            where: {
+              eventId: input.eventId,
+              OR: [
+                { members: { some: { profileId: { in: profileIds } } } },
+                { type: 'WISHLIST', recipients: { some: { profileId: { in: profileIds } } } },
+              ],
+            },
+          });
+          if (tied > 0) return 'list_member' as const;
+        }
         for (const row of input.rows) {
           if (input.surprise) {
             await tx.eventSurpriseRecipient.upsert({
@@ -294,8 +326,8 @@ export class PrismaEventRepository extends EventRepository {
             });
           }
         }
+        return 'ok' as const;
       });
-      return 'ok';
     } catch (error) {
       if (isCheckViolation(error)) return 'conflict';
       throw error;
