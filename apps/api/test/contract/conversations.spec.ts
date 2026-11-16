@@ -2,11 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { SignedIn } from '../support/sign-in';
-import {
-  createTestApp,
-  type TestConversations,
-  type TestIdentity,
-} from './create-test-app';
+import { createTestApp, type TestConversations, type TestIdentity } from './create-test-app';
 
 // Fils d'un élément (06, COM-01 à COM-17, NOT-13), API montée, ports en mémoire.
 

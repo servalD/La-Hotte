@@ -10,6 +10,8 @@ import {
   EventRepository,
   type NewEvent,
   type ProfileSettings,
+  type ReminderCandidate,
+  type ReminderKind,
 } from '../domain/event.ports';
 
 const EVENT_INCLUDE = {
@@ -365,6 +367,37 @@ export class PrismaEventRepository extends EventRepository {
       where: { id: eventId, status: 'UPCOMING' },
       data: { status: 'DONE', version: { increment: 1 } },
     });
+  }
+
+  async reminderCandidates(fromDay: string, toDay: string): Promise<ReminderCandidate[]> {
+    const rows = await this.prisma.event.findMany({
+      where: {
+        status: 'UPCOMING',
+        date: { gte: dayDate(fromDay), lte: dayDate(toDay) },
+        OR: [{ reminder14At: null }, { reminder3At: null }, { dayAfterAt: null }],
+      },
+      include: EVENT_INCLUDE,
+      take: 500,
+    });
+    return rows.map((row) => ({
+      event: toEvent(row),
+      sent: {
+        reminder14: row.reminder14At !== null,
+        reminder3: row.reminder3At !== null,
+        dayAfter: row.dayAfterAt !== null,
+      },
+    }));
+  }
+
+  async claimReminder(eventId: string, kind: ReminderKind, at: Date): Promise<boolean> {
+    const column = { reminder14: 'reminder14At', reminder3: 'reminder3At', dayAfter: 'dayAfterAt' }[
+      kind
+    ] as 'reminder14At' | 'reminder3At' | 'dayAfterAt';
+    const { count } = await this.prisma.event.updateMany({
+      where: { id: eventId, [column]: null },
+      data: { [column]: at },
+    });
+    return count === 1;
   }
 }
 

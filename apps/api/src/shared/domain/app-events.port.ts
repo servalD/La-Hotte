@@ -70,8 +70,22 @@ export interface ProductExtracted {
   readonly ownerId: string;
 }
 
+/** NOT-10 : notification écrite pour un profil (salon `profile:{id}`, API-33). */
+export interface NotificationCreated {
+  readonly type: 'notification.created';
+  readonly profileId: string;
+  readonly notificationId: string;
+  readonly seq: number;
+}
+
 export type AppEvent =
-  ItemChanged | ListChanged | CommentChanged | EventChanged | EventNotice | ProductExtracted;
+  | ItemChanged
+  | ListChanged
+  | CommentChanged
+  | EventChanged
+  | EventNotice
+  | ProductExtracted
+  | NotificationCreated;
 
 export type AppEventListener = (event: AppEvent) => Promise<void> | void;
 

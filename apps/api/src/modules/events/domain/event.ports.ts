@@ -101,6 +101,22 @@ export abstract class EventRepository {
   abstract upcomingBefore(day: string): Promise<EventRecord[]>;
 
   abstract markDone(eventId: string): Promise<void>;
+
+  /**
+   * EVT-13, EVT-32 : événements à venir dont la date est entre `fromDay` et `toDay` (candidats
+   * larges, revérifiés dans leur fuseau), avec l'état de leurs rappels.
+   */
+  abstract reminderCandidates(fromDay: string, toDay: string): Promise<ReminderCandidate[]>;
+
+  /** Pose la marque d'un rappel s'il ne l'avait pas ; faux s'il l'avait (une seule instance l'envoie). */
+  abstract claimReminder(eventId: string, kind: ReminderKind, at: Date): Promise<boolean>;
+}
+
+export type ReminderKind = 'reminder14' | 'reminder3' | 'dayAfter';
+
+export interface ReminderCandidate {
+  readonly event: EventRecord;
+  readonly sent: Readonly<Record<ReminderKind, boolean>>;
 }
 
 export interface EventLinkRecord {

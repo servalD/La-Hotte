@@ -12,6 +12,8 @@ import {
   EventRepository,
   type NewEvent,
   type ProfileSettings,
+  type ReminderCandidate,
+  type ReminderKind,
   ResponseFloor,
 } from '../domain/event.ports';
 
@@ -254,6 +256,34 @@ export class InMemoryEventRepository extends EventRepository {
     const row = this.events.get(eventId);
     if (row?.status === 'UPCOMING') this.events.set(eventId, { ...row, status: 'DONE' });
     return Promise.resolve();
+  }
+
+  readonly reminders = new Map<string, Set<ReminderKind>>();
+
+  reminderCandidates(fromDay: string, toDay: string): Promise<ReminderCandidate[]> {
+    return Promise.resolve(
+      [...this.events.values()]
+        .filter((row) => row.status === 'UPCOMING' && row.date >= fromDay && row.date <= toDay)
+        .map((row) => {
+          const sent = this.reminders.get(row.id) ?? new Set<ReminderKind>();
+          return {
+            event: this.record(row),
+            sent: {
+              reminder14: sent.has('reminder14'),
+              reminder3: sent.has('reminder3'),
+              dayAfter: sent.has('dayAfter'),
+            },
+          };
+        }),
+    );
+  }
+
+  claimReminder(eventId: string, kind: ReminderKind): Promise<boolean> {
+    const sent = this.reminders.get(eventId) ?? new Set<ReminderKind>();
+    if (sent.has(kind)) return Promise.resolve(false);
+    sent.add(kind);
+    this.reminders.set(eventId, sent);
+    return Promise.resolve(true);
   }
 
   /** Préparation des tests : déplace la date ou le statut d'un événement. */

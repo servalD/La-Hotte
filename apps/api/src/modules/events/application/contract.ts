@@ -39,3 +39,4 @@ export {
   RedeemEventLink,
   RevokeEventLink,
 } from './manage-event-links.use-case';
+export { SendEventReminders } from './send-event-reminders.use-case';

@@ -74,6 +74,7 @@ import {
   RateLimiter,
   SecretTokens,
   SecurityLog,
+  SecurityLogStore,
   SessionStore,
 } from './domain/ports';
 import {
@@ -196,6 +197,7 @@ import {
   SetOwnEmail,
   VerifyProfileEmail,
 } from './application/profile-email.use-case';
+import { NoticingSecurityLog } from './application/noticing-security-log';
 import { WardRepository } from './domain/ward.ports';
 import { PrismaWardRepository } from './infrastructure/prisma-ward-repository';
 import {
@@ -339,7 +341,8 @@ import {
     { provide: CsrfTokens, useClass: HmacCsrfTokens },
     { provide: RateLimiter, useClass: RedisRateLimiter },
     { provide: EventThrottle, useClass: RedisEventThrottle },
-    { provide: SecurityLog, useClass: PrismaSecurityLog },
+    { provide: SecurityLogStore, useClass: PrismaSecurityLog },
+    { provide: SecurityLog, useClass: NoticingSecurityLog },
     { provide: MailSender, useClass: SmtpMailSender },
     { provide: ProfileLockPolicies, useClass: PrismaProfileLockPolicies },
     { provide: IdentityEvents, useClass: InProcessIdentityEvents },

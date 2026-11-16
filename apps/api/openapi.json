@@ -4942,6 +4942,195 @@
         ]
       }
     },
+    "/api/v1/notification-preferences": {
+      "get": {
+        "operationId": "getNotificationPreferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "operationId": "updateNotificationPreferences",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "NOT-04, NOT-14, NOT-17, RT-11",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "parameters": [
+          {
+            "name": "beforeSeq",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read": {
+      "post": {
+        "operationId": "markNotificationsRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "NOT-18",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "countUnreadNotifications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "VIS-22",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/products": {
       "post": {
         "operationId": "createProduct",
@@ -5722,6 +5911,48 @@
         ]
       }
     },
+    "/api/v1/sync": {
+      "get": {
+        "operationId": "syncSince",
+        "parameters": [
+          {
+            "name": "since",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "RT-12",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/v1/transfers/cancel": {
       "post": {
         "operationId": "cancelTransferByEmail",
@@ -6386,6 +6617,65 @@
           "itemIds"
         ]
       },
+      "ChannelPreferenceDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationCategory"
+              }
+            ]
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationChannel"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "category",
+          "channel",
+          "enabled"
+        ]
+      },
+      "ChannelStateView": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationCategory"
+              }
+            ]
+          },
+          "channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationChannel"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "NOT-04 : la sécurité ne se désactive pas."
+          }
+        },
+        "required": [
+          "category",
+          "channel",
+          "enabled",
+          "locked"
+        ]
+      },
       "CircleMemberView": {
         "type": "object",
         "properties": {
@@ -7038,6 +7328,14 @@
         },
         "required": [
           "displayName"
+        ]
+      },
+      "DigestFrequency": {
+        "type": "string",
+        "enum": [
+          "DAILY",
+          "WEEKLY",
+          "OFF"
         ]
       },
       "DirectoryEntryView": {
@@ -8887,6 +9185,23 @@
           "password"
         ]
       },
+      "MarkReadDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "upToSeq": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
       "MemberRoleChoice": {
         "type": "string",
         "enum": [
@@ -8907,6 +9222,190 @@
         },
         "required": [
           "newPassword"
+        ]
+      },
+      "NotificationCategory": {
+        "type": "string",
+        "enum": [
+          "INVITATIONS",
+          "LINKS",
+          "COMMENTS",
+          "MENTIONS",
+          "GIFTS",
+          "ITEMS",
+          "EVENTS",
+          "EXTRACTION",
+          "SECURITY"
+        ]
+      },
+      "NotificationChannel": {
+        "type": "string",
+        "enum": [
+          "IN_APP",
+          "PUSH",
+          "EMAIL"
+        ]
+      },
+      "NotificationPageView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationView"
+            }
+          },
+          "nextBeforeSeq": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextBeforeSeq"
+        ]
+      },
+      "NotificationPreferencesView": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelStateView"
+            }
+          },
+          "quietEnabled": {
+            "type": "boolean"
+          },
+          "quietStart": {
+            "type": "number"
+          },
+          "quietEnd": {
+            "type": "number"
+          },
+          "digest": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DigestFrequency"
+              }
+            ]
+          },
+          "sharePresence": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "channels",
+          "quietEnabled",
+          "quietStart",
+          "quietEnd",
+          "digest",
+          "sharePresence"
+        ]
+      },
+      "NotificationType": {
+        "type": "string",
+        "enum": [
+          "comment.created",
+          "comment.mention",
+          "event.invited",
+          "event.cancelled",
+          "event.reminder",
+          "event.day_after",
+          "product.extracted",
+          "security.pin_reset",
+          "security.login",
+          "security.totp_enabled",
+          "security.totp_disabled"
+        ]
+      },
+      "NotificationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "seq": {
+            "type": "number"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationType"
+              }
+            ]
+          },
+          "category": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationCategory"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "context": {
+            "type": "string",
+            "nullable": true
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "thread": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentThread"
+              }
+            ]
+          },
+          "listId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "commentId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "actorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "type",
+          "category",
+          "title",
+          "context",
+          "itemId",
+          "thread",
+          "listId",
+          "eventId",
+          "commentId",
+          "actorName",
+          "read",
+          "createdAt"
         ]
       },
       "OpenInvitationView": {
@@ -9919,6 +10418,28 @@
           "level"
         ]
       },
+      "SyncView": {
+        "type": "object",
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationView"
+            }
+          },
+          "lastSeq": {
+            "type": "number"
+          },
+          "reset": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notifications",
+          "lastSeq",
+          "reset"
+        ]
+      },
       "ThreadCountView": {
         "type": "object",
         "properties": {
@@ -10231,6 +10752,19 @@
           "current"
         ]
       },
+      "UnreadCountView": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 99
+          }
+        },
+        "required": [
+          "count"
+        ]
+      },
       "UpdateEventDto": {
         "type": "object",
         "properties": {
@@ -10386,6 +10920,50 @@
             "description": "LST-05"
           }
         }
+      },
+      "UpdatePreferencesDto": {
+        "type": "object",
+        "properties": {
+          "channels": {
+            "maxItems": 27,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChannelPreferenceDto"
+            }
+          },
+          "quietEnabled": {
+            "type": "boolean"
+          },
+          "quietStart": {
+            "type": "number",
+            "description": "Minutes depuis minuit, heure locale du profil.",
+            "minimum": 0,
+            "maximum": 1439
+          },
+          "quietEnd": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1439
+          },
+          "digest": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DigestFrequency"
+              }
+            ]
+          },
+          "sharePresence": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "channels",
+          "quietEnabled",
+          "quietStart",
+          "quietEnd",
+          "digest",
+          "sharePresence"
+        ]
       },
       "UpdateProductDto": {
         "type": "object",

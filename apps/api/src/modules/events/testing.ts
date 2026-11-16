@@ -13,3 +13,4 @@ export {
   RecordingResponseFloor,
 } from './infrastructure/in-memory-events';
 export { CompleteEvents } from './application/manage-events.use-case';
+export { SendEventReminders } from './application/send-event-reminders.use-case';

@@ -396,7 +396,7 @@ describe('Giftlist cachée indiscernable (GFT-07, critère de 03)', () => {
       expect.arrayContaining(['/api/v1/lists', '/api/v1/directory', '/api/v1/products']),
     );
     const strip = (body: unknown) =>
-      JSON.parse(JSON.stringify(body).replace(/"requestId":"[^"]*"/g, '""')) as unknown;
+      JSON.parse(JSON.stringify(body).replace(/"requestId":"[^"]*"/g, '"requestId":""')) as unknown;
     const read = async () =>
       Promise.all(
         reads.map(async (path) =>

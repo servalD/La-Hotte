@@ -40,7 +40,7 @@ import {
   ProfileRepository,
   RateLimiter,
   SecondFactorRepository,
-  SecurityLog,
+  SecurityLogStore,
   SessionStore,
   StaticIdentitySettings,
   TrustedDeviceRepository,
@@ -88,6 +88,7 @@ import {
   InMemoryEventRepository,
   RecordingResponseFloor,
   ResponseFloor,
+  SendEventReminders,
 } from '../../src/modules/events/testing';
 import {
   CommentRepository,
@@ -97,6 +98,14 @@ import {
   InMemoryConversationPeople,
   InMemoryFollowRepository,
 } from '../../src/modules/conversations/testing';
+import {
+  InMemoryNotificationPeople,
+  InMemoryNotificationRepository,
+  InMemoryPreferenceRepository,
+  NotificationPeople,
+  NotificationRepository,
+  PreferenceRepository,
+} from '../../src/modules/notifications/testing';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 
 /** Doubles du module `conversations` (phase 4). */
@@ -104,6 +113,9 @@ export interface TestConversations {
   readonly comments: InMemoryCommentRepository;
   readonly follows: InMemoryFollowRepository;
   readonly people: InMemoryConversationPeople;
+  readonly notifications: InMemoryNotificationRepository;
+  readonly preferences: InMemoryPreferenceRepository;
+  readonly notificationPeople: InMemoryNotificationPeople;
   /** Attend la livraison des événements de domaine (ADR 0018). */
   settle(): Promise<void>;
 }
@@ -117,6 +129,8 @@ export interface TestEvents {
   readonly floor: RecordingResponseFloor;
   /** EVT-33 : exécute la tâche planifiée. */
   complete(): Promise<number>;
+  /** EVT-13, EVT-32 : exécute la tâche des rappels. */
+  remind(): Promise<number>;
 }
 
 /** Doubles des modules de la phase 2. */
@@ -239,11 +253,15 @@ export async function createTestApp(
     people: new InMemoryEventPeople(),
     floor: new RecordingResponseFloor(),
     complete: () => app.get(CompleteEvents).execute(),
+    remind: () => app.get(SendEventReminders).execute(),
   };
   const conversations: TestConversations = {
     comments: new InMemoryCommentRepository(),
     follows: new InMemoryFollowRepository(),
     people: new InMemoryConversationPeople(),
+    notifications: new InMemoryNotificationRepository(),
+    preferences: new InMemoryPreferenceRepository(),
+    notificationPeople: new InMemoryNotificationPeople(),
     settle: () => app.get(InProcessAppEvents).drain(),
   };
   const moduleRef = await Test.createTestingModule({
@@ -260,7 +278,7 @@ export async function createTestApp(
     .useValue(rateLimiter)
     .overrideProvider(EventThrottle)
     .useValue(eventThrottle)
-    .overrideProvider(SecurityLog)
+    .overrideProvider(SecurityLogStore)
     .useValue(securityLog)
     .overrideProvider(MailSender)
     .useValue(mail)
@@ -330,6 +348,12 @@ export async function createTestApp(
     .useValue(conversations.follows)
     .overrideProvider(ConversationPeople)
     .useValue(conversations.people)
+    .overrideProvider(NotificationRepository)
+    .useValue(conversations.notifications)
+    .overrideProvider(PreferenceRepository)
+    .useValue(conversations.preferences)
+    .overrideProvider(NotificationPeople)
+    .useValue(conversations.notificationPeople)
     .compile();
 
   // Doubles des événements reliés à ceux d'`identity` et des listes.
@@ -346,6 +370,9 @@ export async function createTestApp(
   };
   events.events.cardOf = cardOf;
   conversations.people.cardOf = cardOf;
+  conversations.notificationPeople.nameOf = (id) => accounts.profiles.get(id)?.displayName ?? null;
+  conversations.notificationPeople.accountProfiles = (accountId) =>
+    [...accounts.profiles.values()].filter((p) => p.accountId === accountId).map((p) => p.id);
   events.events.revokeLinks = (eventId, at) => {
     events.links.revokeAll(eventId, at);
   };

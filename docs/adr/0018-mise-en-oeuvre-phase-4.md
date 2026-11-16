@@ -23,7 +23,7 @@ La phase 4 ajoute trois canaux de sortie (fils de commentaires, notifications, t
 ### Notifications
 
 - Une notification est écrite pour un profil après passage par le moteur (NOT-10) et revérifiée à chaque lecture (NOT-11) : elle ne garde que des identifiants, et ses titres sont relus à l'affichage. Une notification devenue invisible n'est jamais supprimée, elle est seulement tue (elle reviendrait si le sujet redevenait visible, comme une liste).
-- `seq` est tiré d'un compteur par profil (`notification_counter`, `UPDATE … RETURNING` dans la transaction de l'insertion) : strictement croissant, sans trou visible pour le profil.
+- `seq` est tiré d'un compteur par profil (`notification_counter`) dans la même instruction SQL que l'insertion (`WITH … INSERT … ON CONFLICT … RETURNING`, puis `INSERT … SELECT`) : atomique, strictement croissant, sans trou. Une transaction interactive saturait le pool de connexions en rafale (essai d'intégration).
 - Push et résumé sont des **sorties différées** : la notification porte `push_due_at` (fin des heures calmes, ou tout de suite) ; une tâche planifiée du processus lit les push dues par `FOR UPDATE SKIP LOCKED`, revérifie l'accès, puis envoie. Plusieurs instances peuvent la lancer sans double envoi. Le résumé passe toutes les heures et envoie au plus un message par compte et par période due (NOT-17).
 - Pas encore de service `worker` ni de BullMQ : comme la purge de la corbeille et la clôture des événements, ces tâches tournent dans l'API. Le worker naîtra quand une file aura besoin de reprise sur panne ou de débit (phase 7 au plus tard).
 
