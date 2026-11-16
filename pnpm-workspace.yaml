@@ -14,6 +14,9 @@ onlyBuiltDependencies:
 # Next.js épingle un postcss vulnérable (GHSA-r28c-9q8g-f849, GHSA-6g55-p6wh-862q, GHSA-fxqj-rqcc-2cmp).
 overrides:
   postcss: '>=8.5.23'
+  # Next tire sharp ^0.34 (facultatif, pour next/image, que l'application n'utilise pas) : vulnérable
+  # (GHSA-f88m-g3jw-g9cj, GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w). Même version que le fetcher.
+  sharp: '0.35.5'
 
 auditConfig:
   # Exception datée (revue de sécurité de la phase 0, à lever au plus tard le 2027-02-12) :
