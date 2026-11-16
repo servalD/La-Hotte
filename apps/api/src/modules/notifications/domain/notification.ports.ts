@@ -1,5 +1,7 @@
+import type { PushDevice, PushPayload } from './push';
 import type {
   ChannelPreference,
+  DigestFrequency,
   NotificationCategory,
   NotificationRecord,
   NotificationSettings,
@@ -62,6 +64,84 @@ export abstract class NotificationPeople {
   abstract profilesOfAccount(accountId: string): Promise<string[]>;
   /** Nom de l'auteur d'un geste, montré seulement avec un sujet que le lecteur voit. */
   abstract names(profileIds: readonly string[]): Promise<Map<string, string>>;
+}
+
+/** NOT-15, NOT-16 : appareils abonnés. */
+export abstract class PushSubscriptionRepository {
+  /**
+   * Abonne l'appareil (un point de terminaison) pour ce profil et cette session ; un appareil
+   * repris par une autre session perd ses profils précédents. `limit` si le profil a déjà 10
+   * appareils.
+   */
+  abstract register(input: {
+    readonly id: string;
+    readonly sessionId: string;
+    readonly profileId: string;
+    readonly endpoint: string;
+    readonly p256dh: string;
+    readonly auth: string;
+    readonly showDetails: boolean;
+  }): Promise<'ok' | 'limit'>;
+  /** Retire le profil de l'appareil de cette session ; l'appareil disparaît sans profil. */
+  abstract unregister(input: {
+    readonly sessionId: string;
+    readonly profileId: string;
+    readonly endpoint: string;
+  }): Promise<void>;
+  /** Faux si l'appareil n'est pas à cette session ou n'a pas ce profil. */
+  abstract setDetails(input: {
+    readonly sessionId: string;
+    readonly profileId: string;
+    readonly endpoint: string;
+    readonly showDetails: boolean;
+  }): Promise<boolean>;
+  abstract devicesOf(profileId: string): Promise<PushDevice[]>;
+  abstract remove(subscriptionId: string): Promise<void>;
+  /**
+   * NOT-14 : réclame jusqu'à `limit` notifications non lues dont la push est due, en posant
+   * `push_sent_at` (une seule instance les envoie).
+   */
+  abstract claimDue(now: Date, limit: number): Promise<NotificationRecord[]>;
+}
+
+export abstract class PushSender {
+  /** VAPID configuré ? */
+  abstract enabled(): boolean;
+  abstract publicKey(): string | null;
+  /** `gone` : l'appareil s'est désabonné (404, 410), l'abonnement est à supprimer. */
+  abstract send(device: PushDevice, payload: PushPayload): Promise<'ok' | 'gone' | 'error'>;
+}
+
+/** Ce que les sorties hors application doivent savoir des sessions et des comptes (`identity`). */
+export abstract class DeliveryGateway {
+  /** NOT-15 : la session de l'appareil vit encore. */
+  abstract sessionAlive(sessionId: string): Promise<boolean>;
+  /** NOT-17 : un message au compte. */
+  abstract sendDigest(
+    accountId: string,
+    entries: readonly { readonly profileName: string; readonly count: number }[],
+  ): Promise<boolean>;
+}
+
+/** NOT-17 : profils dont un résumé peut être dû, et le moment de leur dernier résumé. */
+export interface DigestCandidate {
+  readonly profileId: string;
+  readonly accountId: string;
+  readonly profileName: string;
+  readonly digest: DigestFrequency;
+  readonly lastDigestAt: Date | null;
+}
+
+export abstract class DigestRepository {
+  /** Profils qui ont une notification non lue née depuis `since`. */
+  abstract candidates(since: Date): Promise<DigestCandidate[]>;
+  /** Non lues nées depuis `since`, les plus récentes d'abord. */
+  abstract unreadSince(
+    profileId: string,
+    since: Date,
+    limit: number,
+  ): Promise<NotificationRecord[]>;
+  abstract markDigested(profileId: string, at: Date): Promise<void>;
 }
 
 /** Titres d'un sujet relus à l'affichage (NOT-11). */

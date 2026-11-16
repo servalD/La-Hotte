@@ -33,4 +33,6 @@ export { CircleReader } from './domain/link.ports';
 
 /** EVT-15 : e-mail neutre aux comptes des profils invités à un événement. */
 export { EventInvitationNotices } from './application/event-invitation-notices';
+/** NOT-15, NOT-17 : résumé e-mail au compte ; session encore vivante avant une push. */
+export { CheckSessionAlive, DigestMailer } from './application/digest-mailer';
 export { type IdentityEvent, IdentityEvents, type IdentityEventListener } from './domain/ports';

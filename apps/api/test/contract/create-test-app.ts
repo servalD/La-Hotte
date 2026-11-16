@@ -105,6 +105,16 @@ import {
   NotificationPeople,
   NotificationRepository,
   PreferenceRepository,
+  DeliverPushes,
+  DeliveryGateway,
+  DigestRepository,
+  InMemoryDeliveryGateway,
+  InMemoryDigestRepository,
+  InMemoryPushSubscriptionRepository,
+  PushSender,
+  PushSubscriptionRepository,
+  RecordingPushSender,
+  SendDigests,
 } from '../../src/modules/notifications/testing';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 
@@ -116,6 +126,14 @@ export interface TestConversations {
   readonly notifications: InMemoryNotificationRepository;
   readonly preferences: InMemoryPreferenceRepository;
   readonly notificationPeople: InMemoryNotificationPeople;
+  readonly push: InMemoryPushSubscriptionRepository;
+  readonly pushSender: RecordingPushSender;
+  readonly delivery: InMemoryDeliveryGateway;
+  readonly digests: InMemoryDigestRepository;
+  /** NOT-15 : exécute la tâche des push dues. */
+  deliverPushes(): Promise<number>;
+  /** NOT-17 : exécute la tâche des résumés. */
+  sendDigests(): Promise<number>;
   /** Attend la livraison des événements de domaine (ADR 0018). */
   settle(): Promise<void>;
 }
@@ -255,13 +273,21 @@ export async function createTestApp(
     complete: () => app.get(CompleteEvents).execute(),
     remind: () => app.get(SendEventReminders).execute(),
   };
+  const notificationRows = new InMemoryNotificationRepository();
+  const notificationPrefs = new InMemoryPreferenceRepository();
   const conversations: TestConversations = {
     comments: new InMemoryCommentRepository(),
     follows: new InMemoryFollowRepository(),
     people: new InMemoryConversationPeople(),
-    notifications: new InMemoryNotificationRepository(),
-    preferences: new InMemoryPreferenceRepository(),
+    notifications: notificationRows,
+    preferences: notificationPrefs,
     notificationPeople: new InMemoryNotificationPeople(),
+    push: new InMemoryPushSubscriptionRepository(notificationRows),
+    pushSender: new RecordingPushSender(),
+    delivery: new InMemoryDeliveryGateway(),
+    digests: new InMemoryDigestRepository(notificationRows, notificationPrefs),
+    deliverPushes: () => app.get(DeliverPushes).execute(),
+    sendDigests: () => app.get(SendDigests).execute(),
     settle: () => app.get(InProcessAppEvents).drain(),
   };
   const moduleRef = await Test.createTestingModule({
@@ -354,6 +380,14 @@ export async function createTestApp(
     .useValue(conversations.preferences)
     .overrideProvider(NotificationPeople)
     .useValue(conversations.notificationPeople)
+    .overrideProvider(PushSubscriptionRepository)
+    .useValue(conversations.push)
+    .overrideProvider(PushSender)
+    .useValue(conversations.pushSender)
+    .overrideProvider(DeliveryGateway)
+    .useValue(conversations.delivery)
+    .overrideProvider(DigestRepository)
+    .useValue(conversations.digests)
     .compile();
 
   // Doubles des événements reliés à ceux d'`identity` et des listes.
@@ -371,6 +405,10 @@ export async function createTestApp(
   events.events.cardOf = cardOf;
   conversations.people.cardOf = cardOf;
   conversations.notificationPeople.nameOf = (id) => accounts.profiles.get(id)?.displayName ?? null;
+  conversations.digests.profile = (id) => {
+    const p = accounts.profiles.get(id);
+    return p ? { accountId: p.accountId, name: p.displayName } : null;
+  };
   conversations.notificationPeople.accountProfiles = (accountId) =>
     [...accounts.profiles.values()].filter((p) => p.accountId === accountId).map((p) => p.id);
   events.events.revokeLinks = (eventId, at) => {

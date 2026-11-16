@@ -5,11 +5,17 @@ import {
   type NotificationSettings,
 } from '../domain/notification';
 import {
+  DeliveryGateway,
+  type DigestCandidate,
+  DigestRepository,
   type NewNotification,
   NotificationPeople,
   NotificationRepository,
   PreferenceRepository,
+  PushSender,
+  PushSubscriptionRepository,
 } from '../domain/notification.ports';
+import { PUSH_DEVICES_PER_PROFILE, type PushDevice, type PushPayload } from '../domain/push';
 
 export class InMemoryNotificationRepository extends NotificationRepository {
   readonly rows = new Map<string, NotificationRecord>();
@@ -150,5 +156,200 @@ export class InMemoryNotificationPeople extends NotificationPeople {
       if (name) out.set(id, name);
     }
     return Promise.resolve(out);
+  }
+}
+
+/** NOT-15 : appareils, et réclamation des push dues dans le double des notifications. */
+export class InMemoryPushSubscriptionRepository extends PushSubscriptionRepository {
+  readonly devices = new Map<
+    string,
+    { id: string; sessionId: string; endpoint: string; p256dh: string; auth: string }
+  >();
+  readonly links = new Map<
+    string,
+    { subscriptionId: string; profileId: string; showDetails: boolean }
+  >();
+
+  constructor(private readonly notifications: InMemoryNotificationRepository) {
+    super();
+  }
+
+  register(input: {
+    id: string;
+    sessionId: string;
+    profileId: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    showDetails: boolean;
+  }): Promise<'ok' | 'limit'> {
+    const existing = [...this.devices.values()].find((d) => d.endpoint === input.endpoint);
+    const others = [...this.links.values()].filter(
+      (l) => l.profileId === input.profileId && l.subscriptionId !== existing?.id,
+    );
+    if (others.length >= PUSH_DEVICES_PER_PROFILE) return Promise.resolve('limit');
+    const id = existing?.id ?? input.id;
+    if (existing && existing.sessionId !== input.sessionId) {
+      for (const [key, link] of this.links) if (link.subscriptionId === id) this.links.delete(key);
+    }
+    this.devices.set(id, {
+      id,
+      sessionId: input.sessionId,
+      endpoint: input.endpoint,
+      p256dh: input.p256dh,
+      auth: input.auth,
+    });
+    this.links.set(`${id}|${input.profileId}`, {
+      subscriptionId: id,
+      profileId: input.profileId,
+      showDetails: input.showDetails,
+    });
+    return Promise.resolve('ok');
+  }
+
+  unregister(input: { sessionId: string; profileId: string; endpoint: string }): Promise<void> {
+    const device = [...this.devices.values()].find((d) => d.endpoint === input.endpoint);
+    if (!device || device.sessionId !== input.sessionId) return Promise.resolve();
+    this.links.delete(`${device.id}|${input.profileId}`);
+    if (![...this.links.values()].some((l) => l.subscriptionId === device.id)) {
+      this.devices.delete(device.id);
+    }
+    return Promise.resolve();
+  }
+
+  setDetails(input: {
+    sessionId: string;
+    profileId: string;
+    endpoint: string;
+    showDetails: boolean;
+  }): Promise<boolean> {
+    const device = [...this.devices.values()].find((d) => d.endpoint === input.endpoint);
+    const link = device ? this.links.get(`${device.id}|${input.profileId}`) : undefined;
+    if (!device || !link || device.sessionId !== input.sessionId) return Promise.resolve(false);
+    this.links.set(`${device.id}|${input.profileId}`, { ...link, showDetails: input.showDetails });
+    return Promise.resolve(true);
+  }
+
+  devicesOf(profileId: string): Promise<PushDevice[]> {
+    return Promise.resolve(
+      [...this.links.values()]
+        .filter((l) => l.profileId === profileId)
+        .flatMap((l) => {
+          const d = this.devices.get(l.subscriptionId);
+          return d
+            ? [
+                {
+                  subscriptionId: d.id,
+                  sessionId: d.sessionId,
+                  endpoint: d.endpoint,
+                  p256dh: d.p256dh,
+                  auth: d.auth,
+                  showDetails: l.showDetails,
+                },
+              ]
+            : [];
+        }),
+    );
+  }
+
+  remove(subscriptionId: string): Promise<void> {
+    this.devices.delete(subscriptionId);
+    for (const [key, link] of this.links)
+      if (link.subscriptionId === subscriptionId) this.links.delete(key);
+    return Promise.resolve();
+  }
+
+  claimDue(now: Date, limit: number): Promise<NotificationRecord[]> {
+    const due = [...this.notifications.rows.values()]
+      .filter((r) => r.pushDueAt && r.pushDueAt <= now && !r.pushSentAt && !r.readAt)
+      .slice(0, limit);
+    for (const row of due) this.notifications.rows.set(row.id, { ...row, pushSentAt: now });
+    return Promise.resolve(due);
+  }
+}
+
+/** Push envoyées, en mémoire ; `gone` simule un appareil désabonné. */
+export class RecordingPushSender extends PushSender {
+  readonly sent: { endpoint: string; payload: PushPayload }[] = [];
+  readonly gone = new Set<string>();
+  configured = true;
+
+  enabled(): boolean {
+    return this.configured;
+  }
+
+  publicKey(): string | null {
+    return this.configured ? 'B'.repeat(87) : null;
+  }
+
+  send(device: PushDevice, payload: PushPayload): Promise<'ok' | 'gone' | 'error'> {
+    if (this.gone.has(device.endpoint)) return Promise.resolve('gone');
+    this.sent.push({ endpoint: device.endpoint, payload });
+    return Promise.resolve('ok');
+  }
+}
+
+export class InMemoryDeliveryGateway extends DeliveryGateway {
+  alive: (sessionId: string) => boolean = () => true;
+  readonly digests: { accountId: string; entries: { profileName: string; count: number }[] }[] = [];
+
+  sessionAlive(sessionId: string): Promise<boolean> {
+    return Promise.resolve(this.alive(sessionId));
+  }
+
+  sendDigest(
+    accountId: string,
+    entries: readonly { profileName: string; count: number }[],
+  ): Promise<boolean> {
+    this.digests.push({ accountId, entries: [...entries] });
+    return Promise.resolve(true);
+  }
+}
+
+export class InMemoryDigestRepository extends DigestRepository {
+  readonly digested = new Map<string, Date>();
+  profile: (profileId: string) => { accountId: string; name: string } | null = () => null;
+
+  constructor(
+    private readonly notifications: InMemoryNotificationRepository,
+    private readonly preferences: InMemoryPreferenceRepository,
+  ) {
+    super();
+  }
+
+  async candidates(since: Date): Promise<DigestCandidate[]> {
+    const ids = new Set(
+      [...this.notifications.rows.values()]
+        .filter((r) => !r.readAt && r.createdAt >= since)
+        .map((r) => r.profileId),
+    );
+    const out: DigestCandidate[] = [];
+    for (const profileId of ids) {
+      const who = this.profile(profileId);
+      if (!who) continue;
+      const settings = await this.preferences.settings(profileId);
+      out.push({
+        profileId,
+        accountId: who.accountId,
+        profileName: who.name,
+        digest: settings.digest,
+        lastDigestAt: this.digested.get(profileId) ?? null,
+      });
+    }
+    return out;
+  }
+
+  unreadSince(profileId: string, since: Date, limit: number): Promise<NotificationRecord[]> {
+    return Promise.resolve(
+      this.notifications
+        .forProfile(profileId)
+        .filter((r) => !r.readAt && r.createdAt >= since)
+        .slice(0, limit),
+    );
+  }
+
+  markDigested(profileId: string, at: Date): Promise<void> {
+    this.digested.set(profileId, at);
+    return Promise.resolve();
   }
 }

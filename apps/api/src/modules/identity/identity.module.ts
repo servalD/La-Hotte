@@ -197,6 +197,7 @@ import {
   SetOwnEmail,
   VerifyProfileEmail,
 } from './application/profile-email.use-case';
+import { CheckSessionAlive, DigestMailer } from './application/digest-mailer';
 import { NoticingSecurityLog } from './application/noticing-security-log';
 import { SocketAuthenticator } from './presentation/socket-authenticator';
 import { WardRepository } from './domain/ward.ports';
@@ -345,6 +346,8 @@ import {
     { provide: SecurityLogStore, useClass: PrismaSecurityLog },
     { provide: SecurityLog, useClass: NoticingSecurityLog },
     SocketAuthenticator,
+    DigestMailer,
+    CheckSessionAlive,
     { provide: MailSender, useClass: SmtpMailSender },
     { provide: ProfileLockPolicies, useClass: PrismaProfileLockPolicies },
     { provide: IdentityEvents, useClass: InProcessIdentityEvents },
@@ -372,6 +375,8 @@ import {
     CircleReader,
     EventInvitationNotices,
     SocketAuthenticator,
+    DigestMailer,
+    CheckSessionAlive,
   ],
 })
 export class IdentityModule {}

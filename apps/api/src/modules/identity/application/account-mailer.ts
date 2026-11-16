@@ -57,6 +57,11 @@ type MailKind =
   | { readonly kind: 'google_unlinked' }
   | { readonly kind: 'pin_attempts' }
   | { readonly kind: 'event_invitation' }
+  /** NOT-17 : nombre de notifications non lues par profil du compte. */
+  | {
+      readonly kind: 'digest';
+      readonly entries: readonly { readonly profileName: string; readonly count: number }[];
+    }
   | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string }
   | { readonly kind: 'profile_invitation'; readonly token: string; readonly inviterName: string }
   | { readonly kind: 'ward_setup'; readonly token: string }
@@ -274,6 +279,23 @@ export class AccountMailer {
           text:
             'Un profil de votre compte La Hotte a reçu une invitation à un événement.\n\n' +
             'Ouvrez l’application et choisissez ce profil pour la voir et y répondre.' +
+            SIGNATURE,
+        };
+      case 'digest':
+        // NOT-08, NOT-17 : boîte partagée ; les seuls noms sont ceux des profils du compte, avec un
+        // nombre ; ni titre, ni catégorie, ni nom d'article, de liste, d'événement ou de personne.
+        return {
+          to,
+          subject: 'Du nouveau sur La Hotte',
+          text:
+            'Des notifications attendent sur votre compte La Hotte :\n\n' +
+            mail.entries
+              .map(
+                (e) =>
+                  `- ${cleanName(e.profileName)} : ${String(e.count)} non lue${e.count > 1 ? 's' : ''}`,
+              )
+              .join('\n') +
+            `\n\nOuvrez l’application et choisissez le profil pour les voir :\n${this.settings.webOrigin}/notifications` +
             SIGNATURE,
         };
       case 'link_invitation':

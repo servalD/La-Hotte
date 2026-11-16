@@ -180,6 +180,38 @@ export const countUnreadNotificationsResponse = zod.object({
     .max(countUnreadNotificationsResponseCountMax),
 });
 
+export const subscribePushBodyEndpointMax = 1024;
+
+export const subscribePushBodyKeysP256dhMax = 100;
+
+export const subscribePushBodyKeysAuthMax = 32;
+
+export const subscribePushBody = zod.object({
+  endpoint: zod.url().max(subscribePushBodyEndpointMax),
+  keys: zod.object({
+    p256dh: zod.string().max(subscribePushBodyKeysP256dhMax),
+    auth: zod.string().max(subscribePushBodyKeysAuthMax),
+  }),
+  showDetails: zod.boolean().optional(),
+});
+
+export const setPushDetailsBodyEndpointMax = 1024;
+
+export const setPushDetailsBody = zod.object({
+  endpoint: zod.url().max(setPushDetailsBodyEndpointMax),
+  showDetails: zod.boolean(),
+});
+
+export const getPushKeyResponse = zod.object({
+  publicKey: zod.string().nullable(),
+});
+
+export const unsubscribePushBodyEndpointMax = 1024;
+
+export const unsubscribePushBody = zod.object({
+  endpoint: zod.url().max(unsubscribePushBodyEndpointMax),
+});
+
 /**
  * @summary RT-12
  */

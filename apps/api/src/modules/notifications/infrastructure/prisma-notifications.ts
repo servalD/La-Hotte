@@ -27,7 +27,7 @@ function subjectOf(row: Row): NotificationSubject {
   return { kind: 'self' };
 }
 
-function toRecord(row: Row): NotificationRecord {
+export function notificationRecord(row: Row): NotificationRecord {
   return {
     id: row.id,
     profileId: row.profileId,
@@ -76,7 +76,7 @@ export class PrismaNotificationRepository extends NotificationRepository {
         ${n.actorId}::uuid, ${data}::jsonb, ${n.pushDueAt}, ${n.at}
       FROM "counter"`;
     const row = await this.prisma.notification.findUniqueOrThrow({ where: { id: n.id } });
-    return toRecord(row);
+    return notificationRecord(row);
   }
 
   async page(profileId: string, beforeSeq: number | null, limit: number) {
@@ -89,7 +89,7 @@ export class PrismaNotificationRepository extends NotificationRepository {
       orderBy: { seq: 'desc' },
       take: limit,
     });
-    return rows.map(toRecord);
+    return rows.map(notificationRecord);
   }
 
   async after(profileId: string, afterSeq: number, limit: number) {
@@ -98,7 +98,7 @@ export class PrismaNotificationRepository extends NotificationRepository {
       orderBy: { seq: 'asc' },
       take: limit,
     });
-    return rows.map(toRecord);
+    return rows.map(notificationRecord);
   }
 
   async lastSeq(profileId: string): Promise<number> {
@@ -121,7 +121,7 @@ export class PrismaNotificationRepository extends NotificationRepository {
       orderBy: { seq: 'desc' },
       take: limit,
     });
-    return rows.map(toRecord);
+    return rows.map(notificationRecord);
   }
 
   async markRead(
