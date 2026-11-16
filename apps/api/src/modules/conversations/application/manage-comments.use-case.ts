@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AppEvents, Clock, IdGenerator, type ItemActivity } from '../../../shared/domain';
 import { type ItemAccessContext, ItemAccessReader } from '../../lists';
-import { type Thread, threadLevel } from '../../visibility';
+import { type Thread, threadLevel, VisibilityService } from '../../visibility';
 import {
   canDeleteComment,
   canEditComment,
@@ -82,23 +82,19 @@ async function threadOf(
 }
 
 /**
- * COM-13 : les mentions retenues sont celles des profils qui lisent le fil ; les autres sont
- * ignorées sans erreur (la réponse n'apprend rien de la règle de l'élément).
+ * COM-13 (revue SEC-40, B1) : les mentions sont celles que l'auteur a choisies dans son propre
+ * cercle (LNK-09), montrées telles quelles, que le mentionné lise le fil ou non : ni la réponse ni
+ * la relecture ne disent qui lit le fil. Seule la notification passe par le moteur (NOT-10).
  */
 async function allowedMentions(
-  reader: ItemAccessReader,
-  itemId: string,
-  thread: Thread,
+  visibility: VisibilityService,
   authorId: string,
   mentionIds: readonly string[],
 ): Promise<string[]> {
   const wanted = [...new Set(mentionIds)].filter((id) => id !== authorId);
   if (wanted.length === 0) return [];
-  const readers = await reader.forViewers(wanted, itemId);
-  return wanted.filter((id) => {
-    const context = readers.get(id);
-    return context !== undefined && threadLevel(context.threads, thread) !== 'none';
-  });
+  const circle = new Set(await visibility.circleOf(authorId));
+  return wanted.filter((id) => circle.has(id));
 }
 
 /** Vues d'un lot de messages, cartes et réactions lues en une fois. */
@@ -238,6 +234,7 @@ export class PostComment {
     private readonly events: AppEvents,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly visibility: VisibilityService,
   ) {}
 
   async execute(input: {
@@ -258,13 +255,7 @@ export class PostComment {
     if (body === null || input.mentionIds.length > COMMENT_MENTIONS_MAX) {
       throw new CommentInvalidError();
     }
-    const mentionIds = await allowedMentions(
-      this.reader,
-      input.itemId,
-      input.thread,
-      input.viewerId,
-      input.mentionIds,
-    );
+    const mentionIds = await allowedMentions(this.visibility, input.viewerId, input.mentionIds);
     const created = await this.comments.create({
       id: this.ids.next(),
       itemId: input.itemId,
@@ -318,6 +309,7 @@ export class EditComment {
     private readonly views: CommentViews,
     private readonly events: AppEvents,
     private readonly clock: Clock,
+    private readonly visibility: VisibilityService,
   ) {}
 
   async execute(input: {
@@ -341,13 +333,7 @@ export class EditComment {
     if (body === null || input.mentionIds.length > COMMENT_MENTIONS_MAX) {
       throw new CommentInvalidError();
     }
-    const mentionIds = await allowedMentions(
-      this.reader,
-      comment.itemId,
-      comment.thread,
-      input.viewerId,
-      input.mentionIds,
-    );
+    const mentionIds = await allowedMentions(this.visibility, input.viewerId, input.mentionIds);
     const edited = await this.comments.edit({
       commentId: comment.id,
       body,

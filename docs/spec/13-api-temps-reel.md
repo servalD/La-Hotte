@@ -75,7 +75,7 @@ DTO NestJS (classes + validation)
 | `access.revoked`                                                 | `profile:{id}`                            | `room` : salon quitté, à purger du cache (RT-07)   |
 | `event.updated`, `rsvp.changed`                                  | `event:{id}`                              | `eventId`                                          |
 
-- **API-36** Messages du client : `subscribe { room }` et `unsubscribe { room }`, `presence { itemId, present }`, `typing { itemId }`. Toute autre forme est ignorée ; un client qui en envoie plus de 20 par seconde est déconnecté.
+- **API-36** Messages du client : `subscribe { room }` et `unsubscribe { room }`, `presence { itemId, present }`, `typing { itemId }`. Toute autre forme est ignorée ; un client qui en envoie plus de 20 par seconde est déconnecté. Une session ouvre 8 connexions au plus ; au-delà, la poignée de main est refusée (revue SEC-40 de la phase 4, M7). Une session dont le profil n'est plus déverrouillé ne s'abonne plus à rien (M1).
 - **API-34** Le client ne fait **aucune** mutation par WebSocket, sauf `typing` et `presence`. Toutes les écritures passent par l'API REST, où s'appliquent validation, idempotence et autorisation.
 - **API-35** Plusieurs instances de l'API : adaptateur Redis de Socket.IO. L'émission se fait après validation de la transaction en base (pas d'événement pour une écriture annulée).
 

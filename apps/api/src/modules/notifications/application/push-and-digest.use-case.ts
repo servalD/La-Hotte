@@ -139,13 +139,17 @@ export class SendDigests {
         continue;
       }
       const since = candidate.lastDigestAt ?? new Date(now.getTime() - period);
+      // Revue SEC-40, M5 : réclamé en base d'après le dernier résumé lu ; une autre instance qui
+      // l'a déjà pris l'emporte, et ce profil n'est pas compté deux fois.
+      if (!(await this.digests.claimDigest(candidate.profileId, candidate.lastDigestAt, now))) {
+        continue;
+      }
       const overrides = await this.preferences.overrides(candidate.profileId);
       let count = 0;
       for (const row of await this.digests.unreadSince(candidate.profileId, since, 200)) {
         if (!channelEnabled(overrides, row.category, 'EMAIL')) continue;
         if (await this.subjects.describe(row.subject, candidate.profileId)) count += 1;
       }
-      await this.digests.markDigested(candidate.profileId, now);
       if (count === 0) continue;
       const entries = byAccount.get(candidate.accountId) ?? [];
       entries.push({ profileId: candidate.profileId, profileName: candidate.profileName, count });

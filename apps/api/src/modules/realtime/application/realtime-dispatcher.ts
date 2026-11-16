@@ -53,7 +53,7 @@ export class RealtimeDispatcher {
   }
 
   /** Session encore valable pour ce profil ; sinon la socket est fermée (ADR 0013). */
-  private async alive(socket: SocketHandle): Promise<boolean> {
+  async alive(socket: SocketHandle): Promise<boolean> {
     if (await this.sessions.execute(socket.sessionId, socket.profileId)) return true;
     socket.disconnect();
     return false;
@@ -194,11 +194,39 @@ export class RealtimeDispatcher {
   }
 
   /**
+   * RT-10 (revue SEC-40, I1) : revérifications regroupées ; une seule en cours, au plus une autre
+   * en attente qui couvre toutes les demandes arrivées entre-temps. `profileIds` restreint aux
+   * sockets de ces profils (changement de cercle) ; absent, toutes les sockets.
+   */
+  private running: Promise<void> | null = null;
+  private queued: { all: boolean; profiles: Set<string> } | null = null;
+
+  recheckAll(profileIds?: readonly string[]): Promise<void> {
+    const next = this.queued ?? { all: false, profiles: new Set<string>() };
+    if (profileIds) for (const id of profileIds) next.profiles.add(id);
+    else next.all = true;
+    this.queued = next;
+    if (!this.running) {
+      this.running = (async () => {
+        while (this.queued) {
+          const scope = this.queued;
+          this.queued = null;
+          await this.recheck(scope.all ? null : scope.profiles);
+        }
+      })().finally(() => {
+        this.running = null;
+      });
+    }
+    return this.running;
+  }
+
+  /**
    * RT-07, RT-10 : chaque socket quitte les salons qu'elle ne peut plus lire et en reçoit l'avis
    * (`access.revoked`) ; une session morte est fermée.
    */
-  async recheckAll(): Promise<void> {
+  private async recheck(profiles: ReadonlySet<string> | null): Promise<void> {
     for (const socket of await this.sockets.allSockets()) {
+      if (profiles && !profiles.has(socket.profileId)) continue;
       if (!(await this.alive(socket))) continue;
       for (const name of socket.rooms) {
         const room = parseRoom(name);

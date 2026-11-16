@@ -44,7 +44,8 @@ export class RealtimeSubscriber implements OnModuleInit, OnModuleDestroy {
             case 'session.profile_changed':
               return this.dispatcher.closeSession(event.sessionId);
             case 'circle.changed':
-              return this.dispatcher.recheckAll();
+              // RT-10 : seules les sockets des profils dont le cercle a changé.
+              return this.dispatcher.recheckAll(event.profileIds);
             default:
               return Promise.resolve();
           }

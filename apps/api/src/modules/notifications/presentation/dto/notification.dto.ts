@@ -25,11 +25,13 @@ export const NOTIFICATION_TYPE_VALUES = Object.keys(
 
 /** NOT-18, API-15 : pagination par numéro de séquence. */
 export class NotificationsQueryDto {
-  @ApiPropertyOptional({ minimum: 1 })
+  @ApiPropertyOptional({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  // Revue SEC-40, M6 : au-delà, PostgreSQL refuserait l'entier (500).
+  @Max(Number.MAX_SAFE_INTEGER)
   beforeSeq?: number;
 
   @ApiPropertyOptional({ minimum: 1, maximum: 50 })
@@ -50,19 +52,23 @@ export class MarkReadDto {
   @IsUUID('all', { each: true })
   ids?: string[];
 
-  @ApiPropertyOptional({ minimum: 0 })
+  @ApiPropertyOptional({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })
   @IsOptional()
   @IsInt()
   @Min(0)
+  // Revue SEC-40, M6 : au-delà, PostgreSQL refuserait l'entier (500).
+  @Max(Number.MAX_SAFE_INTEGER)
   upToSeq?: number;
 }
 
 /** RT-12 */
 export class SyncQueryDto {
-  @ApiProperty({ minimum: 0 })
+  @ApiProperty({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  // Revue SEC-40, M6 : au-delà, PostgreSQL refuserait l'entier (500).
+  @Max(Number.MAX_SAFE_INTEGER)
   since!: number;
 }
 

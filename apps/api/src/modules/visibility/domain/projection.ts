@@ -96,7 +96,11 @@ export interface ItemRecipientView {
   readonly mine: boolean;
   /** EVT-27 : reporté vers une autre liste, son propre geste. */
   readonly carriedForward: boolean;
-  /** Ne bouge jamais pour une écriture d'offreur (réservation, part : autres tables). */
+  /**
+   * Ne bouge pas pour une réservation ni une part (autres tables). Sur une giftlist, une
+   * modification par un offreur d'un élément montré l'incrémente (revue SEC-40 de la phase 4, M2,
+   * accepté : le destinataire voit déjà le contenu changé).
+   */
   readonly version: number;
 }
 

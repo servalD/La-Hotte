@@ -104,10 +104,12 @@ export const updateNotificationPreferencesResponse = zod.object({
   sharePresence: zod.boolean(),
 });
 
+export const listNotificationsQueryBeforeSeqMax = 9007199254740991;
+
 export const listNotificationsQueryLimitMax = 50;
 
 export const listNotificationsQueryParams = zod.object({
-  beforeSeq: zod.number().min(1).optional(),
+  beforeSeq: zod.number().min(1).max(listNotificationsQueryBeforeSeqMax).optional(),
   limit: zod.number().min(1).max(listNotificationsQueryLimitMax).optional(),
 });
 
@@ -161,10 +163,15 @@ export const listNotificationsResponse = zod.object({
 export const markNotificationsReadBodyIdsMax = 200;
 
 export const markNotificationsReadBodyUpToSeqMin = 0;
+export const markNotificationsReadBodyUpToSeqMax = 9007199254740991;
 
 export const markNotificationsReadBody = zod.object({
   ids: zod.array(zod.uuid()).max(markNotificationsReadBodyIdsMax).optional(),
-  upToSeq: zod.number().min(markNotificationsReadBodyUpToSeqMin).optional(),
+  upToSeq: zod
+    .number()
+    .min(markNotificationsReadBodyUpToSeqMin)
+    .max(markNotificationsReadBodyUpToSeqMax)
+    .optional(),
 });
 
 /**
@@ -216,9 +223,10 @@ export const unsubscribePushBody = zod.object({
  * @summary RT-12
  */
 export const syncSinceQuerySinceMin = 0;
+export const syncSinceQuerySinceMax = 9007199254740991;
 
 export const syncSinceQueryParams = zod.object({
-  since: zod.number().min(syncSinceQuerySinceMin),
+  since: zod.number().min(syncSinceQuerySinceMin).max(syncSinceQuerySinceMax),
 });
 
 export const syncSinceResponse = zod.object({

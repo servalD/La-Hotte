@@ -183,20 +183,63 @@ describe('COM-12 : fil Public fermé quand aucun destinataire ne voit l’élém
 });
 
 describe('COM-13 : texte et mentions', () => {
-  it('texte vide refusé ; mention d’un profil qui ne lit pas le fil ignorée sans erreur', async () => {
-    const { lea, paul, itemId } = await wishlistWorld();
+  it('texte vide refusé ; mention hors du cercle de l’auteur ignorée', async () => {
+    const { paul, outsider, itemId } = await wishlistWorld();
     const blank = await post(paul, itemId, 'GIVERS', { body: '   ' }).expect(422);
     expect(blank.body.code).toBe('COMMENT_INVALID');
     const res = await post(paul, itemId, 'GIVERS', {
-      body: '@Léa ne verra rien',
-      mentionIds: [lea.profileId, randomUUID()],
+      body: 'Hors cercle',
+      mentionIds: [outsider.profileId, randomUUID()],
     }).expect(201);
     expect(res.body.mentions).toEqual([]);
-    const pub = await post(paul, itemId, 'PUBLIC', {
-      body: 'Dis-nous ta taille',
-      mentionIds: [lea.profileId],
+  });
+
+  it('B1 (revue SEC-40) : les mentions ne disent jamais qui lit le fil, par aucune réponse', async () => {
+    // Léa, destinataire d'une giftlist révélée, mentionne deux proches : Paul, qui prépare la
+    // giftlist, et Marc, qui n'en est pas. POST, PATCH et GET les rendent à l'identique.
+    const org = await person();
+    const lea = await person();
+    const marc = await person();
+    await link(org, lea);
+    await link(lea, marc);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(org.mutation)
+      .send({
+        type: 'GIFTLIST',
+        title: 'Pour Léa',
+        recipientIds: [lea.profileId],
+        giftExistence: 'REVEALED',
+        giftContent: 'FULL',
+      })
+      .expect(201);
+    const itemId = await addItem(org, gift.body.id as string);
+    const ids = (r: { body: Body }) => (r.body.mentions as Body[]).map((m) => m.id).sort();
+    const both = [org.profileId, marc.profileId].sort();
+    const created = await post(lea, itemId, 'PUBLIC', {
+      body: 'Coucou',
+      mentionIds: [org.profileId, marc.profileId],
     }).expect(201);
-    expect((pub.body.mentions as Body[]).map((m) => m.id)).toEqual([lea.profileId]);
+    expect(ids(created)).toEqual(both);
+    const edited = await http()
+      .patch(`/api/v1/comments/${created.body.id as string}`)
+      .set(lea.mutation)
+      .send({ body: 'Coucou !', mentionIds: [marc.profileId, org.profileId] })
+      .expect(200);
+    expect(ids(edited)).toEqual(both);
+    const listed = await http()
+      .get(`/api/v1/items/${itemId}/comments?thread=PUBLIC`)
+      .set({ Cookie: lea.cookie })
+      .expect(200);
+    expect(((listed.body.items as Body[])[0]!.mentions as Body[]).map((m) => m.id).sort()).toEqual(
+      both,
+    );
+    // Seule la notification passe par le moteur : Marc, qui ne voit pas l'élément, n'en a pas.
+    await conversations.settle();
+    expect(conversations.notifications.forProfile(marc.profileId!)).toEqual([]);
+    expect(conversations.notifications.forProfile(org.profileId!).map((n) => n.type)).toContain(
+      'comment.mention',
+    );
   });
 });
 

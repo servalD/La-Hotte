@@ -175,12 +175,15 @@ export class PrismaDigestRepository extends DigestRepository {
     return rows.map(notificationRecord);
   }
 
-  async markDigested(profileId: string, at: Date): Promise<void> {
-    await this.prisma.notificationSettings.upsert({
-      where: { profileId },
-      create: { profileId, lastDigestAt: at },
-      update: { lastDigestAt: at },
-    });
+  async claimDigest(profileId: string, expected: Date | null, at: Date): Promise<boolean> {
+    // Une instruction : la ligne de réglages est créée au besoin, puis mise à jour seulement si
+    // le dernier résumé est encore celui qu'on a lu.
+    const claimed = await this.prisma.$executeRaw`
+      INSERT INTO "notification_settings" ("profile_id", "last_digest_at", "updated_at")
+      VALUES (${profileId}::uuid, ${at}, ${at})
+      ON CONFLICT ("profile_id") DO UPDATE SET "last_digest_at" = ${at}, "updated_at" = ${at}
+      WHERE "notification_settings"."last_digest_at" IS NOT DISTINCT FROM ${expected}::timestamptz`;
+    return claimed === 1;
   }
 }
 

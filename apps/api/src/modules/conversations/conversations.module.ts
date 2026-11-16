@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ListsModule } from '../lists';
+import { VisibilityModule } from '../visibility';
 import {
   CommentViews,
   DeleteComment,
@@ -26,7 +27,7 @@ import { ItemActivitySubscriber } from './presentation/item-activity.subscriber'
 
 /** Module `conversations` : fils, messages, activité, réactions, suivi (06). Accès par `visibility`. */
 @Module({
-  imports: [ListsModule],
+  imports: [ListsModule, VisibilityModule],
   controllers: [CommentsController],
   providers: [
     CommentViews,

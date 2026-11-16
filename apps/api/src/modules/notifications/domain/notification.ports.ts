@@ -141,7 +141,11 @@ export abstract class DigestRepository {
     since: Date,
     limit: number,
   ): Promise<NotificationRecord[]>;
-  abstract markDigested(profileId: string, at: Date): Promise<void>;
+  /**
+   * NOT-17 : pose `last_digest_at = at` seulement s'il vaut encore `expected` ; faux si une autre
+   * instance l'a déjà fait (un seul résumé par période).
+   */
+  abstract claimDigest(profileId: string, expected: Date | null, at: Date): Promise<boolean>;
 }
 
 /** Titres d'un sujet relus à l'affichage (NOT-11). */

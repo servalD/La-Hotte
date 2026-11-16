@@ -348,8 +348,11 @@ export class InMemoryDigestRepository extends DigestRepository {
     );
   }
 
-  markDigested(profileId: string, at: Date): Promise<void> {
+  claimDigest(profileId: string, expected: Date | null, at: Date): Promise<boolean> {
+    if ((this.digested.get(profileId) ?? null)?.getTime() !== expected?.getTime()) {
+      return Promise.resolve(false);
+    }
     this.digested.set(profileId, at);
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
 }

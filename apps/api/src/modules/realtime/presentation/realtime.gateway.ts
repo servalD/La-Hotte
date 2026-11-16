@@ -15,6 +15,7 @@ import { Metrics } from '../../../shared/domain';
 import { SocketAuthenticator, type SocketIdentity } from '../../identity';
 import {
   CLIENT_MESSAGES_PER_SECOND,
+  SOCKETS_PER_SESSION,
   parseRoom,
   RealtimeDispatcher,
   roomName,
@@ -79,8 +80,30 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnMo
       client.disconnect(true);
       return;
     }
+    // API-36 (revue SEC-40, M7) : sockets par session plafonnées ; la limite de messages par
+    // seconde ne se contourne pas en ouvrant des connexions.
+    const open = (await this.registry.allSockets()).filter(
+      (s) => s.sessionId === identity.sessionId,
+    );
+    if (open.length >= SOCKETS_PER_SESSION) {
+      this.metrics.increment('wishlist.realtime_denied', { code: 'TOO_MANY_SOCKETS' });
+      client.disconnect(true);
+      return;
+    }
     dataOf(client).identity = identity;
     await client.join(`profile:${identity.profileId}`);
+    // RT-11 (M4) : en partant, la socket dit son départ aux salons d'offreurs où elle était.
+    client.on('disconnecting', () => {
+      const handle = this.registry.handle(client);
+      if (!handle) return;
+      for (const name of client.rooms) {
+        const room = parseRoom(name);
+        if (room?.kind !== 'item' || room.thread !== 'GIVERS') continue;
+        void this.dispatcher
+          .presence(handle, { itemId: room.id, kind: 'presence', present: false })
+          .catch(() => undefined);
+      }
+    });
   }
 
   /** API-36 : au-delà de 20 messages par seconde, la socket est fermée. */
@@ -106,6 +129,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnMo
     if (!identity || this.throttled(client)) return { ok: false };
     const room = parseRoom((body as { room?: unknown } | null)?.room);
     if (!room) return { ok: false };
+    // Revue SEC-40, M1 : un profil reverrouillé (inactivité) n'interroge plus rien.
+    const handle = this.registry.handle(client);
+    if (!handle || !(await this.dispatcher.alive(handle))) return { ok: false };
     if (await this.dispatcher.canJoin(identity.profileId, room)) {
       await client.join(roomName(room));
       return { ok: true };

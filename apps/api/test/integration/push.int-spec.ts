@@ -5,6 +5,7 @@ import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
 import {
+  DigestRepository,
   NotificationRepository,
   PushSubscriptionRepository,
 } from '../../src/modules/notifications/testing';
@@ -62,6 +63,19 @@ describe('Push en base', { timeout: 30_000 }, () => {
     const mine = [...a, ...b].filter((n) => n.profileId === user.profileId);
     expect(mine).toHaveLength(10);
     expect(new Set(mine.map((n) => n.id)).size).toBe(10);
+  });
+
+  it('NOT-17 (revue SEC-40, M5) : un résumé n’est réclamé qu’une fois par période', async () => {
+    const user = await person();
+    const digests = app.get(DigestRepository);
+    const at = new Date();
+    const claims = await Promise.all([
+      digests.claimDigest(user.profileId!, null, at),
+      digests.claimDigest(user.profileId!, null, at),
+    ]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await digests.claimDigest(user.profileId!, null, new Date())).toBe(false);
+    expect(await digests.claimDigest(user.profileId!, at, new Date())).toBe(true);
   });
 
   it('NOT-15 : un appareil repris par une autre session perd ses profils ; supprimé avec elle', async () => {

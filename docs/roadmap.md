@@ -588,6 +588,32 @@ Dépendances : 0 ; 1 → 2 → 3 → 4 → 5 → 6 ; les écrans (7) suivent les
 
 Sortie : aucun événement d'offreur dans les trames d'un destinataire, sur tous les salons.
 
+**Tranches 0 à 8 faites le 2026-11-16** (opus), d'affilée. Modules `conversations`, `notifications`, `realtime` ; bus de domaine (ADR 0018) ; fils dans le moteur (matrice générée des fils, 100 % des branches) ; écrans des fils, centre de notifications et préférences, client temps réel. 873 tests unitaires et de contrat dans l'API (dont des tests à deux et trois clients Socket.IO), 181 d'intégration, 133 dans le web ; test OBS-26 vert avec le scénario des échanges ; toutes les lectures d'un destinataire identiques avant et après la préparation entre offreurs.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- les trames ne portent que des identifiants ; `seq` n'existe que pour les notifications, les autres messages ne sont pas rejoués (RT-12, API-32 revu) ;
+- `item.removed` n'est envoyé qu'à l'auteur du geste : l'élément n'a plus de faits pour juger qui le voyait ; les autres le voient disparaître à la relecture ;
+- `list.updated` n'est jamais envoyé à l'aperçu d'une giftlist révélée ;
+- une notification devenue invisible est tue, jamais supprimée ;
+- `seq` tiré d'un compteur par profil dans la même instruction SQL que l'insertion (une transaction interactive saturait le pool en rafale) ;
+- les avis de sécurité naissent d'un journal de sécurité qui publie après écriture (`SecurityLogStore` enveloppé) ; une nouvelle connexion avertit tous les profils du compte ;
+- les rappels d'événements (J-14, J-3, lendemain) sont réclamés en base par colonne (`reminder_14_at`…), une seule instance les envoie ;
+- un appareil push repris par une autre session perd ses profils précédents ;
+- push et résumé : tâches dans le processus, réclamation par `FOR UPDATE SKIP LOCKED` ; pas encore de `worker`.
+
+Restes :
+
+- **Abonnement push côté web** : l'API est prête (`/push-subscriptions`), mais le navigateur a besoin du service worker, qui naît en phase 6. D'ici là, aucune push n'est demandée par l'interface.
+- Image jointe d'un message (COM-05) : phase 6, avec le service worker et le cache.
+- Signalement d'un commentaire (COM-10) : avec la modération, en phase 7.
+- Rappels « réglables par l'organisateur » (EVT-13) : seuls J-14 et J-3 existent.
+- Demandes de lien (`LINKS`) : catégorie prête, aucun producteur tant que `POST /links` n'existe pas.
+- Notifications liées aux engagements (rejoindre, achat, parts, souhait réservé retiré, avis de reprise EVT-26, alerte EVT-34) : port d'engagements vide jusqu'à la phase 5.
+- Adaptateur Redis de Socket.IO non exercé par les tests (désactivé en test) : à vérifier à deux instances avant la mise en production.
+- Parcours Playwright des écrans de la phase et relecture `design:ux-copy` : non faits, comme pour les phases 2 et 3.
+- Test OBS-26 : un échec isolé observé une fois sur trois sur le scénario de détachement (PRO-13, jeton d'installation non capturé), sans lien apparent avec la phase ; à surveiller.
+
 ## Phase 5 — Compta
 
 Spec : `07`.

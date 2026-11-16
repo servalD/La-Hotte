@@ -234,6 +234,60 @@ describe('RT-03, RT-08, critères de 06 : destinataire et offreurs', () => {
     expect(marcClient.frames.some((f) => f.data.profileId === lea.profileId)).toBe(false);
   });
 
+  it('M8 (revue SEC-40) : giftlist révélée, gestes d’offreur sans trame au destinataire', async () => {
+    const org = await person();
+    const lea = await person();
+    await link(org, lea);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(org.mutation)
+      .send({
+        type: 'GIFTLIST',
+        title: 'Pour Léa',
+        recipientIds: [lea.profileId],
+        giftExistence: 'REVEALED',
+        giftContent: 'FULL',
+      })
+      .expect(201);
+    const listId = gift.body.id as string;
+    const product = await http()
+      .post('/api/v1/products')
+      .set(org.mutation)
+      .send({ title: 'Lampe', unitPriceMinor: 1000, currency: 'EUR' })
+      .expect(201);
+    const item = await http()
+      .post(`/api/v1/lists/${listId}/items`)
+      .set(org.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(201);
+    const itemId = item.body.id as string;
+    await settle();
+    const leaClient = await connect(lea);
+    expect(await leaClient.subscribe(`list:${listId}`)).toBe(true);
+    expect(await leaClient.subscribe(`item:${itemId}:public`)).toBe(true);
+    // Destinataire prévu : champ d'offreur ; position : idem ; modification sans effet : rien.
+    let version = item.body.version as number;
+    for (const change of [{ intendedRecipientId: lea.profileId }, { position: 5 }, { note: '' }]) {
+      const res = await http()
+        .patch(`/api/v1/items/${itemId}`)
+        .set({ ...org.mutation, 'If-Match': String(version) })
+        .send(change)
+        .expect(200);
+      version = res.body.version as number;
+    }
+    // Prix changé par un offreur : activité au fil Offreurs (COM-14), aucune trame `comment.*`.
+    await http()
+      .patch(`/api/v1/items/${itemId}`)
+      .set({ ...org.mutation, 'If-Match': String(version) })
+      .send({ unitPriceMinor: 900 })
+      .expect(200);
+    await settle();
+    expect(leaClient.frames.some((f) => f.type.startsWith('comment.'))).toBe(false);
+    // Seul le prix, qu'elle voit, lui est signalé (RT-08 : pas plus que l'API).
+    expect(leaClient.frames.map((f) => f.type)).toEqual(['item.updated']);
+    expect(leaClient.frames.some((f) => f.type === 'list.updated')).toBe(false);
+  });
+
   it('ADR 0013 : une session révoquée ferme ses sockets', async () => {
     const { paul } = await world();
     const client = await connect(paul);

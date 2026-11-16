@@ -9,6 +9,7 @@
 export type SyncSinceParams = {
   /**
    * @minimum 0
+   * @maximum 9007199254740991
    */
   since: number;
 };

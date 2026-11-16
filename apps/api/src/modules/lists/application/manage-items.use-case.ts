@@ -228,11 +228,14 @@ export class UpdateItem {
    * changé laisse une activité ; montrer au destinataire change l'accès (RT-10).
    */
   private publish(gated: GatedItem, after: ItemRecord, actorId: string, changes: ItemChanges) {
-    const keys = Object.keys(changes).filter(
-      (key) => changes[key as keyof ItemChanges] !== undefined,
-    );
-    const giversOnly = keys.length > 0 && keys.every((key) => key === 'intendedRecipientId');
     const before = gated.item;
+    // Revue SEC-40, M2 : seuls les champs qui ont vraiment changé comptent ; rien de changé,
+    // rien de publié. La position et le destinataire prévu sont des champs d'offreur (VIS-35).
+    const keys = (Object.keys(changes) as (keyof ItemChanges)[]).filter(
+      (key) => changes[key] !== undefined && before[key] !== after[key],
+    );
+    if (keys.length === 0) return;
+    const giversOnly = keys.every((key) => key === 'intendedRecipientId' || key === 'position');
     const priceChanged =
       before.unitPriceMinor !== after.unitPriceMinor || before.currency !== after.currency;
     const shownChanged = before.shownToRecipient !== after.shownToRecipient;

@@ -204,7 +204,8 @@ export class RespondToEvent {
     if (input.rsvp === 'PENDING') throw new EventInvalidError();
     const before = gated.access.rsvp;
     await this.events.setRsvp(input.eventId, input.viewerId, input.rsvp, this.clock.now());
-    this.notifier.changed(input.eventId, true);
+    // RT-10 (revue SEC-40, I1) : seule une réponse qui change publie un changement d'accès.
+    if (before !== input.rsvp) this.notifier.changed(input.eventId, true);
     // Critère de 05 : ses engagements alertent les organisateurs (port vide jusqu'aux phases 4 et 5).
     if (input.rsvp === 'NO' && (before === 'YES' || before === 'MAYBE')) {
       this.notifier.participantWithdrew(input.eventId, input.viewerId);

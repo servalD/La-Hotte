@@ -59,5 +59,5 @@ export abstract class SocketDirectory {
 
 /** API-36 : messages du client au-delà desquels la socket est fermée. */
 export const CLIENT_MESSAGES_PER_SECOND = 20;
-/** RT-11 */
-export const PRESENCE_TTL_SECONDS = 60;
+/** API-36 (revue SEC-40, M7) : connexions ouvertes par session. */
+export const SOCKETS_PER_SESSION = 8;

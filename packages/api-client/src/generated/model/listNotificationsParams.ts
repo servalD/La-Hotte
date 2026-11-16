@@ -9,6 +9,7 @@
 export type ListNotificationsParams = {
   /**
    * @minimum 1
+   * @maximum 9007199254740991
    */
   beforeSeq?: number;
   /**
