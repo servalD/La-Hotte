@@ -307,24 +307,28 @@ model Profile {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  account        Account                 @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  account        Account                  @relation(fields: [accountId], references: [id], onDelete: Restrict)
   sessions       Session[]
-  linksA         ProfileLink[]           @relation("LinkProfileA")
-  linksB         ProfileLink[]           @relation("LinkProfileB")
-  blocksMade     ProfileBlock[]          @relation("Blocker")
-  blocksReceived ProfileBlock[]          @relation("Blocked")
-  invitations    Invitation[]            @relation("InvitationCreator")
+  linksA         ProfileLink[]            @relation("LinkProfileA")
+  linksB         ProfileLink[]            @relation("LinkProfileB")
+  blocksMade     ProfileBlock[]           @relation("Blocker")
+  blocksReceived ProfileBlock[]           @relation("Blocked")
+  invitations    Invitation[]             @relation("InvitationCreator")
   tokens         AccountToken[]
   transfers      ProfileTransfer[]
   products       Product[]
-  createdLists   List[]                  @relation("ListCreator")
-  personalList   List?                   @relation("PersonalList")
+  createdLists   List[]                   @relation("ListCreator")
+  personalList   List?                    @relation("PersonalList")
   listRoles      ListMember[]
   recipientOf    ListRecipient[]
   audienceOf     ListAudienceProfile[]
-  itemsAdded     ListItem[]              @relation("ItemAddedBy")
-  itemsIntended  ListItem[]              @relation("ItemIntendedFor")
+  itemsAdded     ListItem[]               @relation("ItemAddedBy")
+  itemsIntended  ListItem[]               @relation("ItemIntendedFor")
   itemRules      ItemVisibilityProfile[]
+  eventsCreated  Event[]                  @relation("EventCreator")
+  eventRoles     EventParticipant[]       @relation("EventParticipantProfile")
+  eventInvites   EventParticipant[]       @relation("EventParticipantInviter")
+  surprisesFor   EventSurpriseRecipient[]
 
   @@index([accountId])
   @@map("profile")
@@ -627,7 +631,7 @@ model List {
   creatorProfileId      String?            @map("creator_profile_id") @db.Uuid
   /// WSH-06 : « Mes envies » de ce profil, une seule.
   personalProfileId     String?            @unique @map("personal_profile_id") @db.Uuid
-  /// Phase 3 : clé étrangère vers `event` à venir.
+  /// EVT-29 : événement de rattachement ; jamais sur une liste personnelle (`CHECK`).
   eventId               String?            @map("event_id") @db.Uuid
   audience              ListAudience
   defaultItemVisibility VisibilityMode     @default(ALL) @map("default_item_visibility")
@@ -642,12 +646,14 @@ model List {
 
   creator    Profile?              @relation("ListCreator", fields: [creatorProfileId], references: [id], onDelete: SetNull)
   personal   Profile?              @relation("PersonalList", fields: [personalProfileId], references: [id], onDelete: SetNull)
+  event      Event?                @relation(fields: [eventId], references: [id], onDelete: SetNull)
   recipients ListRecipient[]
   members    ListMember[]
   audienceOf ListAudienceProfile[]
   items      ListItem[]
 
   @@index([creatorProfileId])
+  @@index([eventId])
   @@index([deletedAt])
   @@map("list")
 }
@@ -721,7 +727,8 @@ model ListItem {
   isSuggestion        Boolean          @default(false) @map("is_suggestion")
   shownToRecipient    Boolean          @default(false) @map("shown_to_recipient")
   receivedAt          DateTime?        @map("received_at") @db.Timestamptz(3)
-  carriedFromItemId   String?          @map("carried_from_item_id") @db.Uuid
+  /// EVT-27 : origine d'une reprise ; un élément ne se reprend qu'une fois.
+  carriedFromItemId   String?          @unique @map("carried_from_item_id") @db.Uuid
   version             Int              @default(1)
   createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -730,6 +737,8 @@ model ListItem {
   product           Product                 @relation(fields: [productId], references: [id], onDelete: Restrict)
   addedBy           Profile?                @relation("ItemAddedBy", fields: [addedByProfileId], references: [id], onDelete: SetNull)
   intendedRecipient Profile?                @relation("ItemIntendedFor", fields: [intendedRecipientId], references: [id], onDelete: SetNull)
+  carriedFrom       ListItem?               @relation("ItemCarry", fields: [carriedFromItemId], references: [id], onDelete: SetNull)
+  carriedTo         ListItem?               @relation("ItemCarry")
   ruleProfiles      ItemVisibilityProfile[]
 
   @@index([listId, position])
@@ -778,4 +787,121 @@ model ExtractionCache {
 
   @@index([expiresAt])
   @@map("extraction_cache")
+}
+
+// --- Événements (docs/spec/05, docs/spec/12 « Événements » ; ADR 0017) ---
+
+enum EventType {
+  CHRISTMAS
+  BIRTHDAY
+  BIRTH
+  WEDDING
+  OTHER
+
+  @@map("event_type")
+}
+
+/// EVT-02
+enum EventMode {
+  EXCHANGE
+  HONOREE
+
+  @@map("event_mode")
+}
+
+enum EventStatus {
+  UPCOMING
+  DONE
+  CANCELLED
+
+  @@map("event_status")
+}
+
+enum EventRole {
+  ORGANIZER
+  PARTICIPANT
+
+  @@map("event_role")
+}
+
+/// EVT-13
+enum Rsvp {
+  PENDING
+  YES
+  MAYBE
+  NO
+
+  @@map("rsvp")
+}
+
+/// EVT-01, EVT-05, EVT-09. `mode` et `is_surprise` ne changent pas (déclencheur) ;
+/// `is_surprise ⇒ mode = HONOREE` (`CHECK`).
+model Event {
+  id                   String      @id @db.Uuid
+  title                String      @db.VarChar(120)
+  /// Jour sans heure, lu dans `timezone` (EVT-05).
+  date                 DateTime    @db.Date
+  timezone             String      @db.VarChar(64)
+  place                String      @default("") @db.VarChar(200)
+  description          String      @default("") @db.VarChar(2000)
+  type                 EventType
+  mode                 EventMode
+  isSurprise           Boolean     @default(false) @map("is_surprise")
+  suggestedBudgetMinor BigInt?     @map("suggested_budget_minor")
+  currency             String      @db.Char(3)
+  status               EventStatus @default(UPCOMING)
+  createdBy            String?     @map("created_by") @db.Uuid
+  /// EVT-40 : événement d'origine d'une recréation ; sans clé étrangère.
+  recreatedFromId      String?     @map("recreated_from_id") @db.Uuid
+  cancelledAt          DateTime?   @map("cancelled_at") @db.Timestamptz(3)
+  version              Int         @default(1)
+  createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  creator      Profile?                 @relation("EventCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  participants EventParticipant[]
+  surpriseFor  EventSurpriseRecipient[]
+  lists        List[]
+
+  @@index([status, date])
+  @@map("event")
+}
+
+/// EVT-06 à EVT-08, EVT-13. Un honoré de surprise n'a jamais de ligne ici (déclencheurs croisés).
+model EventParticipant {
+  id          String    @id @db.Uuid
+  eventId     String    @map("event_id") @db.Uuid
+  profileId   String    @map("profile_id") @db.Uuid
+  role        EventRole @default(PARTICIPANT)
+  /// EVT-07 : seulement en `HONOREE` sans surprise (déclencheur).
+  isHonoree   Boolean   @default(false) @map("is_honoree")
+  rsvp        Rsvp      @default(PENDING)
+  respondedAt DateTime? @map("responded_at") @db.Timestamptz(3)
+  invitedBy   String?   @map("invited_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  profile Profile  @relation("EventParticipantProfile", fields: [profileId], references: [id], onDelete: Cascade)
+  inviter Profile? @relation("EventParticipantInviter", fields: [invitedBy], references: [id], onDelete: SetNull)
+
+  @@unique([eventId, profileId])
+  @@index([profileId])
+  @@map("event_participant")
+}
+
+/// EVT-07 : honorés d'une surprise, lus par les seuls chemins d'offreur (ADR 0017).
+model EventSurpriseRecipient {
+  id        String   @id @db.Uuid
+  eventId   String   @map("event_id") @db.Uuid
+  profileId String   @map("profile_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, profileId])
+  @@index([profileId])
+  @@map("event_surprise_recipient")
 }

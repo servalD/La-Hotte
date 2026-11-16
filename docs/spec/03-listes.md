@@ -20,7 +20,7 @@ Deux types de listes, une seule mécanique : une liste contient des éléments, 
 - **LST-04** **Retrait et succession.** Un créateur qui quitte la liste doit désigner un responsable parmi les membres. S'il supprime son profil sans l'avoir fait, le contributeur le plus ancien devient responsable ; s'il n'y en a pas, la liste est archivée.
 - **LST-05** Une liste peut être archivée (lecture seule, masquée des vues courantes) puis restaurée. La suppression passe par 30 jours de corbeille.
 - **LST-06** Ordre des éléments : manuel par glisser-déposer, ou tri par priorité, prix, date d'ajout.
-- **LST-07** **Destinataires.** Une wishlist a pour destinataires son créateur ou des profils de son compte (un parent tient la liste de son enfant) ; une giftlist, des profils du cercle de son créateur (LNK-09), jamais lui-même. Le créateur et le responsable ajoutent des destinataires dans les mêmes limites, contrôlées pour une wishlist contre le compte de ses destinataires (pas contre celui de l'auteur du changement). **Un destinataire ne se retire jamais** : il deviendrait offreur de ce qu'on lui prépare (VIS-20) ; il reste destinataire jusqu'à la suppression de la liste ou de son profil. « Mes envies » (WSH-02) a pour seul destinataire son profil, qui en est créateur, et ne change pas de destinataire.
+- **LST-07** **Destinataires.** Une wishlist a pour destinataires son créateur ou des profils de son compte (un parent tient la liste de son enfant) ; une giftlist, des profils du cercle de son créateur (LNK-09), jamais lui-même. Le créateur et le responsable ajoutent des destinataires dans les mêmes limites, contrôlées pour une wishlist contre le compte de ses destinataires (pas contre celui de l'auteur du changement). **Un destinataire ne se retire jamais** : il deviendrait offreur de ce qu'on lui prépare (VIS-20) ; il reste destinataire jusqu'à la suppression de la liste ou de son profil. « Mes envies » (WSH-02) a pour seul destinataire son profil, qui en est créateur, et ne change pas de destinataire. Une giftlist rattachée à un événement peut aussi viser ses honorés, ou ses participants en échange, hors du cercle (EVT-29).
 - **LST-08** **Membres.** Le créateur et le responsable ajoutent un membre parmi les profils de leur propre cercle (aucune recherche hors du cercle, LNK-04), avec le rôle responsable, contributeur ou lecteur, et le retirent. Un membre qui n'est pas destinataire est un offreur. Un destinataire de giftlist ne peut pas en être membre (GFT-01), en base aussi.
 - **LST-09** **Autorité sans créateur.** Quand le créateur s'est retiré, le plus ancien responsable a tous ses droits, suppression de la liste comprise.
 - **LST-20** **Corbeille.** Une liste supprimée n'est plus visible que de son créateur (ou de l'autorité de LST-09), qui peut la restaurer pendant 30 jours ; elle est ensuite purgée avec ses éléments. « Mes envies » ne se supprime ni ne s'archive.
@@ -41,7 +41,7 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - **LST-15** Le destinataire peut déclarer « je l'ai déjà » ou « je n'en veux plus » sur son souhait : l'élément est retiré de la liste active. S'il était réservé, les offreurs concernés sont notifiés.
 - **LST-16** **Ce que voit le destinataire.** Il ne connaît que deux états pour ses souhaits : **neutre** et **reçu** (vert, quand il l'a coché). Il ne voit jamais `RÉSERVÉ` ni `ACHETÉ` (bleu), ni avant ni après l'événement : seuls les participants voient le bleu. Il n'y a pas de « révélation » de l'état.
 - **LST-17** Le destinataire ne peut d'aucune façon savoir qu'un souhait est réservé, même sans savoir par qui. Il n'existe pas d'option pour le montrer. C'est aux offreurs de prévenir le destinataire, s'ils le jugent utile, par le fil public (« ne l'achète pas toi-même ! »).
-- **LST-18** **Reçu.** Seul un destinataire d'une wishlist coche « reçu » sur l'un de ses souhaits, et peut le décocher. Le reçu est porté à part (`received_at`) : l'état réel (`OUVERT`, `RÉSERVÉ`, `ACHETÉ`) n'est jamais écrasé, et la vue offreur montre `REÇU` tant que le reçu est coché. La confirmation de réception d'un cadeau de giftlist vient avec la phase 3.
+- **LST-18** **Reçu.** Seul un destinataire d'une wishlist coche « reçu » sur l'un de ses souhaits, et peut le décocher. Le reçu est porté à part (`received_at`) : l'état réel (`OUVERT`, `RÉSERVÉ`, `ACHETÉ`) n'est jamais écrasé, et la vue offreur montre `REÇU` tant que le reçu est coché. Pour une giftlist, voir GFT-11.
 - **LST-19** **Retrait.** « Je l'ai déjà » et « je n'en veux plus » (LST-15) retirent l'élément de la liste active pour tous ; le motif est gardé. Un élément retiré n'apparaît plus dans aucune lecture de la liste.
 
 ## Wishlist
@@ -75,6 +75,7 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - **GFT-08** Si un destinataire et un offreur partagent le même compte, l'interface avertit le créateur que le secret dépend du PIN (voir PIN-06).
 - **GFT-09** **Ce que voit le destinataire d'une giftlist révélée.** L'existence seule, par la phrase fixe de GFT-03 : ni titre, ni description, ni créateur, ni membres. Avec un contenu `PARTIEL` ou `COMPLET`, les éléments montrés le sont en vue destinataire, sauf ceux dont la règle l'exclut (VIS-10) ; un élément retiré ou une suggestion ne l'est jamais.
 - **GFT-10** Pour la règle de surprise, chaque destinataire d'une giftlist est destinataire de chacun de ses éléments, quel que soit le destinataire précisé (GFT-02).
+- **GFT-11** **Reçu d'un cadeau.** Sur une giftlist, « reçu » est coché ou décoché par un destinataire sur un élément qui lui est montré (GFT-09), ou par le créateur ou un responsable, qui constate la remise. Les offreurs le voient en vert (`REÇU`) ; le destinataire, sur les seuls éléments qui lui sont montrés. L'état réel n'est jamais écrasé (LST-18).
 
 ## Valeurs par défaut
 
@@ -92,7 +93,7 @@ OUVERT ──réservation──▶ RÉSERVÉ ──achat coché──▶ ACHETÉ
 - Après retrait du créateur, le responsable désigné peut modifier les règles de visibilité.
 - Le destinataire d'une giftlist cachée interroge toutes les routes de l'API : aucune réponse ne diffère de celle d'un profil sans giftlist.
 - L'API renvoie au destinataire le même état neutre pour un souhait `OUVERT`, `RÉSERVÉ` ou `ACHETÉ`, avant comme après la date de l'événement ; seul `REÇU` est distingué.
-- Un élément `ACHETÉ` n'est jamais proposé à la reprise ; un élément `RÉSERVÉ` non acheté l'est.
+- Un élément est proposé à la reprise quel que soit son état réel (`OUVERT`, `RÉSERVÉ` ou `ACHETÉ`) tant que le destinataire ne l'a pas coché « reçu » ni retiré (LST-14, EVT-22). Corrigé le 2026-11-16 : ce critère disait l'inverse pour `ACHETÉ`, en contradiction avec EVT-22 et la décision du 2026-11-12 ; l'absence d'un souhait acheté trahirait l'achat.
 
 ## Questions ouvertes
 
