@@ -56,6 +56,7 @@ type MailKind =
   | { readonly kind: 'google_linked' }
   | { readonly kind: 'google_unlinked' }
   | { readonly kind: 'pin_attempts' }
+  | { readonly kind: 'event_invitation' }
   | { readonly kind: 'link_invitation'; readonly token: string; readonly inviterName: string }
   | { readonly kind: 'profile_invitation'; readonly token: string; readonly inviterName: string }
   | { readonly kind: 'ward_setup'; readonly token: string }
@@ -262,6 +263,17 @@ export class AccountMailer {
             'votre entourage n’a simplement oublié son code, quelqu’un essaie peut-être d’entrer ' +
             'dans ce profil. Depuis votre espace Compte, vous pouvez réinitialiser le code PIN ' +
             'du profil concerné.' +
+            SIGNATURE,
+        };
+      case 'event_invitation':
+        // EVT-15 : neutre ; ni titre, ni date, ni lieu, ni nom : le compte peut abriter l'honoré
+        // d'une surprise (GFT-08).
+        return {
+          to,
+          subject: 'Une invitation vous attend sur La Hotte',
+          text:
+            'Un profil de votre compte La Hotte a reçu une invitation à un événement.\n\n' +
+            'Ouvrez l’application et choisissez ce profil pour la voir et y répondre.' +
             SIGNATURE,
         };
       case 'link_invitation':

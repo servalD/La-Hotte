@@ -109,6 +109,11 @@ export function canCreateInviteLink(
   return canInvite(event, access) && !viewerIsChild;
 }
 
+/** EVT-16 : voir et révoquer les liens, pour tout organisateur (un lien révoqué ne rouvre rien). */
+export function canManageInviteLinks(access: EventAccess): boolean {
+  return isOrganizer(access);
+}
+
 /** EVT-07 */
 export function canAddHonoree(event: EventFacts, access: EventAccess): boolean {
   return isOrganizer(access) && open(event) && event.mode === 'HONOREE';
@@ -136,7 +141,11 @@ export function canRemoveParticipant(
 }
 
 /** EVT-06 : un participant, jamais un honoré, devient organisateur. */
-export function canNameOrganizer(event: EventFacts, access: EventAccess, targetId: string): boolean {
+export function canNameOrganizer(
+  event: EventFacts,
+  access: EventAccess,
+  targetId: string,
+): boolean {
   if (!isOrganizer(access) || event.status !== 'UPCOMING') return false;
   const target = participantOf(event, targetId);
   return target !== undefined && target.role === 'PARTICIPANT' && !target.isHonoree;

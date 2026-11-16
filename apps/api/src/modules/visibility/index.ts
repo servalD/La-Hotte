@@ -52,6 +52,7 @@ export {
   canDeleteEvent,
   canEditEvent,
   canInvite,
+  canManageInviteLinks,
   canNameOrganizer,
   canRecreateEvent,
   canRemoveParticipant,

@@ -176,11 +176,7 @@ function giverStatus(item: ItemRecord): GiverItemStatus {
   return item.status as Exclude<ItemRecord['status'], 'WITHDRAWN'>;
 }
 
-function giverView(
-  item: ItemRecord,
-  viewerId: string,
-  context: ProjectionContext,
-): ItemGiverView {
+function giverView(item: ItemRecord, viewerId: string, context: ProjectionContext): ItemGiverView {
   return {
     view: 'giver',
     id: item.id,

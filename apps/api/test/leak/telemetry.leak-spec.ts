@@ -288,6 +288,7 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playProfileInvitationScenario(app);
   await playTransferScenario(app);
   await playCatalogScenario(app);
+  await playEventsScenario(app);
 }
 
 /**
@@ -1608,4 +1609,78 @@ async function playCatalogScenario(app: INestApplication): Promise<void> {
     .expect(200);
   await http.get(`/api/v1/directory?q=${MARKER}`).set(them).expect(200);
   await http.post(`/api/v1/directory/${productId}/copy`).set(them).expect(201);
+}
+
+/**
+ * Phase 3 (tranche 3) : événements, invitations, liens. Titre, lieu et description portent le
+ * marqueur ; le jeton d'un lien aussi, refusé (temps plancher) puis accepté ; l'e-mail neutre part
+ * en tâche de fond (EVT-15).
+ */
+async function playEventsScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const owner = await createAccountWithProfile(prisma);
+  const friend = await createAccountWithProfile(prisma);
+  const guest = await createAccountWithProfile(prisma);
+  const [a, b] = [owner.profileId, friend.profileId].sort();
+  await prisma.profileLink.create({
+    data: {
+      id: randomUUID(),
+      profileAId: a!,
+      profileBId: b!,
+      status: 'ACCEPTED',
+      requestedBy: a!,
+      aGuardianRequired: false,
+      bGuardianRequired: false,
+    },
+  });
+  const headersOf = async (account: { accountId: string; profileId: string }) => {
+    const signed = await signIn(app, account);
+    return {
+      ...markedHeaders,
+      Cookie: `${signed.cookie}; session=${MARKER}`,
+      'X-CSRF-Token': signed.csrf,
+      Origin: 'http://localhost:3000',
+    };
+  };
+  const me = await headersOf(owner);
+  const them = await headersOf(friend);
+  const outsider = await headersOf(guest);
+
+  const event = await http
+    .post('/api/v1/events')
+    .set(me)
+    .send({
+      title: `Noël ${MARKER}`,
+      date: '2027-12-24',
+      type: 'CHRISTMAS',
+      place: `Chez ${MARKER}`,
+      description: `Apporter ${MARKER}`,
+      suggestedBudgetMinor: AMOUNT_MARKER,
+    })
+    .expect(201);
+  const eventId = event.body.id as string;
+  await http
+    .post(`/api/v1/events/${eventId}/participants`)
+    .set(me)
+    .send({ profileIds: [friend.profileId] })
+    .expect(200);
+  await http.put(`/api/v1/events/${eventId}/rsvp`).set(them).send({ rsvp: 'YES' }).expect(200);
+  const link = await http.post(`/api/v1/events/${eventId}/links`).set(me).send({}).expect(201);
+  const token = link.body.token as string;
+  // Refus au temps plancher (jeton bien formé mais inconnu), puis aperçu et inscription.
+  await http
+    .post('/api/v1/events/links/redeem')
+    .set(outsider)
+    .send({ token: `${token.slice(0, 21)}${token.endsWith('A') ? 'B' : 'A'}` })
+    .expect(404);
+  await http.post('/api/v1/events/links/inspect').set(outsider).send({ token }).expect(200);
+  await http.post('/api/v1/events/links/redeem').set(outsider).send({ token }).expect(200);
+  await http
+    .patch(`/api/v1/events/${eventId}`)
+    .set({ ...me, 'If-Match': String(event.body.version) })
+    .send({ title: `Réveillon ${MARKER}` })
+    .expect(200);
+  await http.get(`/api/v1/events/${randomUUID()}?q=${MARKER}`).set(them).expect(404);
+  await http.get('/api/v1/events').set(them).expect(200);
 }

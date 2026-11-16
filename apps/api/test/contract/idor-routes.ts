@@ -29,3 +29,23 @@ export const PHASE2_IDOR_ROUTES: readonly string[] = [
   'PUT /api/v1/products/:id/share',
   'POST /api/v1/directory/:productId/copy',
 ];
+
+// SEC-03, EVT-08 : routes à identifiant du module `events` (phase 3), couvertes par la table IDOR
+// de `events-security.spec.ts`.
+export const PHASE3_IDOR_ROUTES: readonly string[] = [
+  'GET /api/v1/events/:id',
+  'PATCH /api/v1/events/:id',
+  'DELETE /api/v1/events/:id',
+  'POST /api/v1/events/:id/cancel',
+  'POST /api/v1/events/:id/recreate',
+  'GET /api/v1/events/:id/participants',
+  'POST /api/v1/events/:id/participants',
+  'DELETE /api/v1/events/:id/participants/:profileId',
+  'PUT /api/v1/events/:id/organizers/:profileId',
+  'DELETE /api/v1/events/:id/organizers/:profileId',
+  'POST /api/v1/events/:id/honorees',
+  'PUT /api/v1/events/:id/rsvp',
+  'GET /api/v1/events/:id/links',
+  'POST /api/v1/events/:id/links',
+  'DELETE /api/v1/events/:id/links/:linkId',
+];

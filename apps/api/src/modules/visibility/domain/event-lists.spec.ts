@@ -107,7 +107,8 @@ describe('LST-18, GFT-11 : qui coche « reçu »', () => {
     ['READER', false],
   ])('giftlist : %s constate la remise : %s', (role, allowed) => {
     const l = gift({
-      members: role === 'CREATOR' ? [member(ME, 'CREATOR')] : [member('c', 'CREATOR'), member(ME, role)],
+      members:
+        role === 'CREATOR' ? [member(ME, 'CREATOR')] : [member('c', 'CREATOR'), member(ME, role)],
     });
     expect(canMarkReceived(l, access(l), item({ addedBy: 'x' }), ME)).toBe(allowed);
   });
@@ -127,7 +128,13 @@ describe('LST-18, GFT-11 : qui coche « reçu »', () => {
 
 describe('EVT-29 : rattacher et détacher une liste', () => {
   function participant(profileId: string, partial: Partial<EventParticipantFact> = {}) {
-    return { profileId, role: 'PARTICIPANT' as const, isHonoree: false, rsvp: 'YES' as const, ...partial };
+    return {
+      profileId,
+      role: 'PARTICIPANT' as const,
+      isHonoree: false,
+      rsvp: 'YES' as const,
+      ...partial,
+    };
   }
   const exchange = (partial: Partial<EventFacts> = {}): EventFacts => ({
     id: 'e',
@@ -153,7 +160,11 @@ describe('EVT-29 : rattacher et détacher une liste', () => {
 
   it('refusé : pas l’autorité, réponse En attente ou Ne participe pas, événement clos', () => {
     expect(
-      canAttachList(list({ members: [member('x', 'CREATOR'), member(ME, 'OWNER')] }), exchange(), ME),
+      canAttachList(
+        list({ members: [member('x', 'CREATOR'), member(ME, 'OWNER')] }),
+        exchange(),
+        ME,
+      ),
     ).toBe(false);
     for (const rsvp of ['PENDING', 'NO'] as const) {
       expect(
@@ -181,17 +192,17 @@ describe('EVT-29 : rattacher et détacher une liste', () => {
     expect(canAttachList(list(), meHonored, ME)).toBe(true);
     const gift = list({ type: 'GIFTLIST', recipients: ['hon'], audience: 'MEMBERS' });
     expect(canAttachList(gift, honoree, ME)).toBe(true);
-    expect(canAttachList(gift, { ...honoree, isSurprise: true, participants: [participant(ME)] }, ME)).toBe(
-      true,
-    );
+    expect(
+      canAttachList(gift, { ...honoree, isSurprise: true, participants: [participant(ME)] }, ME),
+    ).toBe(true);
   });
 
   it('détacher : l’autorité d’une liste rattachée', () => {
     expect(canDetachList(list({ event: openEvent }), ME)).toBe(true);
     expect(canDetachList(list(), ME)).toBe(false);
-    expect(
-      canDetachList(list({ event: openEvent, members: [member('x', 'CREATOR')] }), ME),
-    ).toBe(false);
+    expect(canDetachList(list({ event: openEvent, members: [member('x', 'CREATOR')] }), ME)).toBe(
+      false,
+    );
   });
 });
 
@@ -199,7 +210,14 @@ describe('EVT-27, EVT-28, VIS-35 : reprise', () => {
   const record = (partial: Partial<ItemRecord> = {}): ItemRecord => ({
     id: 'i',
     listId: 'l',
-    product: { id: 'p', title: 'Vélo', description: '', imageKey: null, merchant: null, sourceUrl: null },
+    product: {
+      id: 'p',
+      title: 'Vélo',
+      description: '',
+      imageKey: null,
+      merchant: null,
+      sourceUrl: null,
+    },
     quantity: 1,
     unitPriceMinor: 1999,
     currency: 'EUR',
@@ -252,9 +270,9 @@ describe('EVT-27, EVT-28, VIS-35 : reprise', () => {
     ).toMatchObject({
       carriedFrom: { status: 'PURCHASED', event: { title: 'Noël 2025', date: '2025-12-24' } },
     });
-    expect(
-      projectItem('giver', record({ carryOrigin: origin('RESERVED') }), 'g'),
-    ).toMatchObject({ carriedFrom: { status: 'RESERVED', event: null } });
+    expect(projectItem('giver', record({ carryOrigin: origin('RESERVED') }), 'g')).toMatchObject({
+      carriedFrom: { status: 'RESERVED', event: null },
+    });
     expect(projectItem('giver', record(), 'g')).toMatchObject({ carriedFrom: null });
   });
 });

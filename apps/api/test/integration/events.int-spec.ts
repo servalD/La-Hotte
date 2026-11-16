@@ -1,0 +1,152 @@
+import { randomUUID } from 'node:crypto';
+import type { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { AppModule } from '../../src/app.module';
+import { configureApp } from '../../src/bootstrap';
+import { PrismaService } from '../../src/platform/prisma/prisma.service';
+import { createAccountWithProfile, signIn, type SignedIn } from '../support/sign-in';
+
+// Événements contre PostgreSQL réel : déclencheurs de l'ADR 0017 vus par l'API, lien d'invitation
+// (EVT-16), suppression qui détache les listes (EVT-39), temps plancher d'un refus (GFT-07).
+
+let app: INestApplication;
+let prisma: PrismaService;
+
+beforeAll(async () => {
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  app = moduleRef.createNestApplication({ bufferLogs: true });
+  configureApp(app);
+  await app.init();
+  prisma = app.get(PrismaService);
+});
+
+afterAll(async () => {
+  await app.close();
+});
+
+const http = () => request(app.getHttpServer());
+
+async function person(): Promise<SignedIn> {
+  const { accountId, profileId } = await createAccountWithProfile(prisma);
+  return signIn(app, { accountId, profileId });
+}
+
+async function link(x: SignedIn, y: SignedIn): Promise<void> {
+  const [a, b] = [x.profileId!, y.profileId!].sort();
+  await prisma.profileLink.create({
+    data: {
+      id: randomUUID(),
+      profileAId: a!,
+      profileBId: b!,
+      status: 'ACCEPTED',
+      requestedBy: a!,
+      aGuardianRequired: false,
+      bGuardianRequired: false,
+    },
+  });
+}
+
+describe('Événements en base (ADR 0017)', { timeout: 30_000 }, () => {
+  it('EVT-07 : surprise créée ; l’honoré refusé à l’invitation directe et au lien, au temps plancher', async () => {
+    const org = await person();
+    const honoree = await person();
+    await link(org, honoree);
+    const created = await http()
+      .post('/api/v1/events')
+      .set(org.mutation)
+      .send({
+        title: 'Les 40 ans',
+        date: '2027-06-01',
+        type: 'BIRTHDAY',
+        isSurprise: true,
+        honoreeIds: [honoree.profileId],
+      })
+      .expect(201);
+    const id = created.body.id as string;
+    await http()
+      .post(`/api/v1/events/${id}/participants`)
+      .set(org.mutation)
+      .send({ profileIds: [honoree.profileId] })
+      .expect(422)
+      .expect((res) => {
+        expect(res.body.code).toBe('EVENT_HONOREE_CANNOT_PARTICIPATE');
+      });
+    const token = (await http().post(`/api/v1/events/${id}/links`).set(org.mutation).send({})).body
+      .token as string;
+    const started = Date.now();
+    await http()
+      .post('/api/v1/events/links/redeem')
+      .set(honoree.mutation)
+      .send({ token })
+      .expect(404);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(480);
+    const startedUnknown = Date.now();
+    await http()
+      .post('/api/v1/events/links/redeem')
+      .set(honoree.mutation)
+      .send({ token: 'AAAAAAAAAAAAAAAAAAAAAA' })
+      .expect(404);
+    expect(Date.now() - startedUnknown).toBeGreaterThanOrEqual(480);
+    await http().get(`/api/v1/events/${id}`).set({ Cookie: honoree.cookie }).expect(404);
+    expect(
+      await prisma.eventParticipant.count({
+        where: { eventId: id, profileId: honoree.profileId! },
+      }),
+    ).toBe(0);
+  });
+
+  it('EVT-16 : inscription par lien, un usage consommé, idempotente', async () => {
+    const org = await person();
+    const guest = await person();
+    const created = await http()
+      .post('/api/v1/events')
+      .set(org.mutation)
+      .send({ title: 'Noël', date: '2027-12-24', type: 'CHRISTMAS' })
+      .expect(201);
+    const id = created.body.id as string;
+    const token = (
+      await http().post(`/api/v1/events/${id}/links`).set(org.mutation).send({ maxUses: 1 })
+    ).body.token as string;
+    await http()
+      .post('/api/v1/events/links/redeem')
+      .set(guest.mutation)
+      .send({ token })
+      .expect(200);
+    await http()
+      .post('/api/v1/events/links/redeem')
+      .set(guest.mutation)
+      .send({ token })
+      .expect(200);
+    const invitation = await prisma.invitation.findFirstOrThrow({
+      where: { kind: 'EVENT', targetId: id },
+    });
+    expect(invitation.usedCount).toBe(1);
+    const res = await http().get(`/api/v1/events/${id}`).set({ Cookie: guest.cookie }).expect(200);
+    expect(res.body.myRsvp).toBe('PENDING');
+  });
+
+  it('EVT-39 : la suppression détache les listes, une audience EVENT devient MEMBERS', async () => {
+    const org = await person();
+    const created = await http()
+      .post('/api/v1/events')
+      .set(org.mutation)
+      .send({ title: 'Noël', date: '2027-12-24', type: 'CHRISTMAS' })
+      .expect(201);
+    const id = created.body.id as string;
+    const listId = randomUUID();
+    await prisma.list.create({
+      data: {
+        id: listId,
+        type: 'WISHLIST',
+        title: 'Noël',
+        creatorProfileId: org.profileId!,
+        eventId: id,
+        audience: 'EVENT',
+      },
+    });
+    await http().delete(`/api/v1/events/${id}`).set(org.mutation).expect(204);
+    const list = await prisma.list.findUniqueOrThrow({ where: { id: listId } });
+    expect(list).toMatchObject({ eventId: null, audience: 'MEMBERS' });
+  });
+});

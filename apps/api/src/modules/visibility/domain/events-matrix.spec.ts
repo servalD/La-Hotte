@@ -6,6 +6,7 @@ import {
   canDeleteEvent,
   canEditEvent,
   canInvite,
+  canManageInviteLinks,
   canNameOrganizer,
   canRecreateEvent,
   canRemoveParticipant,
@@ -52,7 +53,14 @@ function build(c: Case): EventFacts {
   const participants = [
     ...(c.relation === 'creator'
       ? []
-      : [{ profileId: CREATOR, role: 'ORGANIZER' as const, isHonoree: false, rsvp: 'YES' as const }]),
+      : [
+          {
+            profileId: CREATOR,
+            role: 'ORGANIZER' as const,
+            isHonoree: false,
+            rsvp: 'YES' as const,
+          },
+        ]),
     { profileId: OTHER, role: 'PARTICIPANT' as const, isHonoree: false, rsvp: 'YES' as const },
     ...(participates(c)
       ? [
@@ -167,6 +175,7 @@ describe('Matrice des événements générée (VIS-33, VIS-36)', () => {
       // EVT-15, EVT-16 : inviter ; un profil enfant ne crée pas de lien.
       check(c, 'invite', canInvite(event, access), org && open(c));
       check(c, 'link', canCreateInviteLink(event, access, c.child), org && open(c) && !c.child);
+      check(c, 'manage links', canManageInviteLinks(access), org);
       // EVT-07 : honorés ajoutés « à l'honneur ».
       check(c, 'honoree', canAddHonoree(event, access), org && open(c) && c.mode === 'HONOREE');
       // EVT-13, EVT-18 : réponse jusqu'à la fin de la date, figée ensuite et à l'annulation.

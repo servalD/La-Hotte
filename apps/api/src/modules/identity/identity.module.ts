@@ -6,6 +6,7 @@ import { CancelEmailChange } from './application/cancel-email-change.use-case';
 import { ChangePassword } from './application/change-password.use-case';
 import { CheckSessionAccess } from './application/check-session-access.use-case';
 import { ConfirmPasswordReset } from './application/confirm-password-reset.use-case';
+import { EventInvitationNotices } from './application/event-invitation-notices';
 import { ListSessions, RevokeSession, SignOut } from './application/manage-sessions.use-case';
 import { PasswordPolicy } from './application/password-policy';
 import { PurgeUnverifiedAccounts } from './application/purge-unverified-accounts.use-case';
@@ -240,6 +241,7 @@ import {
     SessionLifecycle,
     ReportCsrfRejection,
     AccountMailer,
+    EventInvitationNotices,
     PasswordPolicy,
     RegisterAccount,
     SignInWithPassword,
@@ -359,6 +361,6 @@ import {
     { provide: APP_GUARD, useClass: IdentityGuardChain },
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
-  exports: [CheckSessionAccess, IdentityEvents, CircleReader],
+  exports: [CheckSessionAccess, IdentityEvents, CircleReader, EventInvitationNotices],
 })
 export class IdentityModule {}

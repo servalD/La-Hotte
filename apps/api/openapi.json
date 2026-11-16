@@ -1863,6 +1863,845 @@
         ]
       }
     },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "listEvents",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EventScope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventCollectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "events"
+        ]
+      },
+      "post": {
+        "operationId": "createNewEvent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}": {
+      "get": {
+        "operationId": "getOneEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "events"
+        ]
+      },
+      "patch": {
+        "operationId": "updateOneEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "description": "Version lue (API-17).",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "events"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteOneEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-39 : par le créateur seul.",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/cancel": {
+      "post": {
+        "operationId": "cancelOneEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-34",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/honorees": {
+      "post": {
+        "operationId": "addEventHonorees",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventProfilesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-07",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/links": {
+      "get": {
+        "operationId": "listEventLinks",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventLinkCollectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-16",
+        "tags": [
+          "events"
+        ]
+      },
+      "post": {
+        "operationId": "createEventLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventLinkDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedEventLinkView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-16 : le jeton n'est rendu qu'ici.",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/links/{linkId}": {
+      "delete": {
+        "operationId": "revokeEventLink",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "linkId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/organizers/{profileId}": {
+      "put": {
+        "operationId": "nameEventOrganizer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-06",
+        "tags": [
+          "events"
+        ]
+      },
+      "delete": {
+        "operationId": "revokeEventOrganizer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-06 : par le créateur seul.",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/participants": {
+      "get": {
+        "operationId": "listEventParticipants",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventParticipantCollectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "events"
+        ]
+      },
+      "post": {
+        "operationId": "inviteEventParticipants",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventProfilesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-15",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/participants/{profileId}": {
+      "delete": {
+        "operationId": "removeEventParticipant",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-17",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/recreate": {
+      "post": {
+        "operationId": "recreateOneEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-35, EVT-40",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/rsvp": {
+      "put": {
+        "operationId": "respondToEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RsvpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RsvpView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-13, EVT-36",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/links/inspect": {
+      "post": {
+        "operationId": "inspectEventLink",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventLinkTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventLinkPreviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-16 : aperçu d'un lien, jeton dans le corps.",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/links/redeem": {
+      "post": {
+        "operationId": "redeemEventLink",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventLinkTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinedEventView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-16 : le profil actif rejoint l'événement.",
+        "tags": [
+          "events"
+        ]
+      }
+    },
     "/api/v1/images/{key}": {
       "get": {
         "operationId": "getImage",
@@ -4752,6 +5591,21 @@
           "productId"
         ]
       },
+      "CreatedEventLinkView": {
+        "type": "object",
+        "properties": {
+          "link": {
+            "$ref": "#/components/schemas/EventLinkView"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "link",
+          "token"
+        ]
+      },
       "CreatedInvitationView": {
         "type": "object",
         "properties": {
@@ -4809,6 +5663,80 @@
         "required": [
           "profileId"
         ]
+      },
+      "CreateEventDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "\\S"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2027-12-24"
+          },
+          "place": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventType"
+              }
+            ]
+          },
+          "mode": {
+            "description": "Défaut selon le type (`05`, « Valeurs par défaut »).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventMode"
+              }
+            ]
+          },
+          "isSurprise": {
+            "type": "boolean",
+            "default": false
+          },
+          "suggestedBudgetMinor": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 100000000000
+          },
+          "honoreeIds": {
+            "description": "EVT-07 : obligatoire « à l'honneur », interdit en échange.",
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "date",
+          "type"
+        ]
+      },
+      "CreateEventLinkDto": {
+        "type": "object",
+        "properties": {
+          "maxUses": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          }
+        }
       },
       "CreateInvitationDto": {
         "type": "object",
@@ -5099,6 +6027,535 @@
         },
         "required": [
           "token"
+        ]
+      },
+      "EventCollectionView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSummaryView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EventDetailView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "place": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventType"
+              }
+            ]
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventMode"
+              }
+            ]
+          },
+          "isSurprise": {
+            "type": "boolean"
+          },
+          "suggestedBudgetMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              }
+            ]
+          },
+          "datePassed": {
+            "type": "boolean",
+            "description": "EVT-05 : la date est passée dans le fuseau de l'événement."
+          },
+          "myRole": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventRole"
+              }
+            ]
+          },
+          "myRsvp": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
+          },
+          "iAmHonoree": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "number"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/EventPermissionsView"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventParticipantView"
+            }
+          },
+          "surpriseHonorees": {
+            "nullable": true,
+            "description": "EVT-08 : honorés d'une surprise ; `null` hors surprise (ils sont alors participants).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventPersonView"
+            }
+          },
+          "sharedAccountWarning": {
+            "type": "boolean",
+            "description": "GFT-08 : un participant partage le compte d'un honoré de la surprise (organisateurs)."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date",
+          "timezone",
+          "place",
+          "description",
+          "type",
+          "mode",
+          "isSurprise",
+          "suggestedBudgetMinor",
+          "currency",
+          "status",
+          "datePassed",
+          "myRole",
+          "myRsvp",
+          "iAmHonoree",
+          "version",
+          "permissions",
+          "participants",
+          "surpriseHonorees",
+          "sharedAccountWarning"
+        ]
+      },
+      "EventLinkCollectionView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventLinkView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EventLinkPreviewView": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventType"
+              }
+            ]
+          },
+          "inviter": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventPersonView"
+              }
+            ]
+          },
+          "alreadyParticipant": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "eventId",
+          "title",
+          "date",
+          "type",
+          "inviter",
+          "alreadyParticipant"
+        ]
+      },
+      "EventLinkTokenDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 22,
+            "maxLength": 22
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "EventLinkView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "maxUses": {
+            "type": "number"
+          },
+          "usedCount": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "createdBy",
+          "maxUses",
+          "usedCount",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "EventMode": {
+        "type": "string",
+        "enum": [
+          "EXCHANGE",
+          "HONOREE"
+        ]
+      },
+      "EventParticipantCollectionView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventParticipantView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "EventParticipantView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventRole"
+              }
+            ]
+          },
+          "isHonoree": {
+            "type": "boolean"
+          },
+          "rsvp": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "avatar",
+          "accentColor",
+          "role",
+          "isHonoree",
+          "rsvp"
+        ]
+      },
+      "EventPermissionsView": {
+        "type": "object",
+        "properties": {
+          "edit": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "cancel": {
+            "type": "boolean"
+          },
+          "invite": {
+            "type": "boolean"
+          },
+          "createLink": {
+            "type": "boolean"
+          },
+          "manageLinks": {
+            "type": "boolean"
+          },
+          "addHonoree": {
+            "type": "boolean"
+          },
+          "respond": {
+            "type": "boolean"
+          },
+          "recreate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "delete",
+          "cancel",
+          "invite",
+          "createLink",
+          "manageLinks",
+          "addHonoree",
+          "respond",
+          "recreate"
+        ]
+      },
+      "EventPersonView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profileId",
+          "displayName",
+          "avatar",
+          "accentColor"
+        ]
+      },
+      "EventProfilesDto": {
+        "type": "object",
+        "properties": {
+          "profileIds": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "profileIds"
+        ]
+      },
+      "EventRole": {
+        "type": "string",
+        "enum": [
+          "ORGANIZER",
+          "PARTICIPANT"
+        ]
+      },
+      "EventScope": {
+        "type": "string",
+        "enum": [
+          "upcoming",
+          "past"
+        ]
+      },
+      "EventStatus": {
+        "type": "string",
+        "enum": [
+          "UPCOMING",
+          "DONE",
+          "CANCELLED"
+        ]
+      },
+      "EventSummaryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "place": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventType"
+              }
+            ]
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventMode"
+              }
+            ]
+          },
+          "isSurprise": {
+            "type": "boolean"
+          },
+          "suggestedBudgetMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              }
+            ]
+          },
+          "datePassed": {
+            "type": "boolean",
+            "description": "EVT-05 : la date est passée dans le fuseau de l'événement."
+          },
+          "myRole": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventRole"
+              }
+            ]
+          },
+          "myRsvp": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
+          },
+          "iAmHonoree": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "number"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/EventPermissionsView"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date",
+          "timezone",
+          "place",
+          "description",
+          "type",
+          "mode",
+          "isSurprise",
+          "suggestedBudgetMinor",
+          "currency",
+          "status",
+          "datePassed",
+          "myRole",
+          "myRsvp",
+          "iAmHonoree",
+          "version",
+          "permissions"
+        ]
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "CHRISTMAS",
+          "BIRTHDAY",
+          "BIRTH",
+          "WEDDING",
+          "OTHER"
         ]
       },
       "ExtractionStatus": {
@@ -5623,6 +7080,18 @@
           "priority",
           "price",
           "added"
+        ]
+      },
+      "JoinedEventView": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "eventId"
         ]
       },
       "LeaveListDto": {
@@ -6875,6 +8344,60 @@
           "newPin"
         ]
       },
+      "Rsvp": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "YES",
+          "MAYBE",
+          "NO"
+        ]
+      },
+      "RsvpAnswer": {
+        "type": "string",
+        "enum": [
+          "YES",
+          "MAYBE",
+          "NO"
+        ]
+      },
+      "RsvpDto": {
+        "type": "object",
+        "properties": {
+          "rsvp": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RsvpAnswer"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rsvp"
+        ]
+      },
+      "RsvpView": {
+        "type": "object",
+        "properties": {
+          "rsvp": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rsvp"
+              }
+            ]
+          },
+          "listId": {
+            "type": "string",
+            "nullable": true,
+            "description": "EVT-36 : wishlist rattachée, créée ou retrouvée à la réponse `Participe`.",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "rsvp",
+          "listId"
+        ]
+      },
       "RuleSnapshotView": {
         "type": "object",
         "properties": {
@@ -7421,6 +8944,42 @@
           "expiresAt",
           "current"
         ]
+      },
+      "UpdateEventDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "pattern": "\\S"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "place": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "type": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventType"
+              }
+            ]
+          },
+          "suggestedBudgetMinor": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 100000000000
+          }
+        }
       },
       "UpdateItemDto": {
         "type": "object",

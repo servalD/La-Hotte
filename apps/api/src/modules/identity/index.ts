@@ -28,4 +28,7 @@ export { CheckSessionAccess } from './application/check-session-access.use-case'
  * `visibility` (invariant 2). `circle.changed` est publié à l'acceptation, la rupture et le blocage.
  */
 export { CircleReader } from './domain/link.ports';
+
+/** EVT-15 : e-mail neutre aux comptes des profils invités à un événement. */
+export { EventInvitationNotices } from './application/event-invitation-notices';
 export { type IdentityEvent, IdentityEvents, type IdentityEventListener } from './domain/ports';

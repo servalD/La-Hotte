@@ -76,6 +76,28 @@ import {
   ListRepository,
   VisibilityLogRepository,
 } from '../../src/modules/lists/testing';
+import {
+  CompleteEvents,
+  EventLinkRepository,
+  EventPeople,
+  EventRepository,
+  InMemoryEventLinkRepository,
+  InMemoryEventPeople,
+  InMemoryEventRepository,
+  RecordingResponseFloor,
+  ResponseFloor,
+} from '../../src/modules/events/testing';
+
+/** Doubles du module `events` (phase 3). */
+export interface TestEvents {
+  readonly events: InMemoryEventRepository;
+  readonly links: InMemoryEventLinkRepository;
+  readonly people: InMemoryEventPeople;
+  /** EVT-16 : refus passés par le temps plancher (sans attente en test). */
+  readonly floor: RecordingResponseFloor;
+  /** EVT-33 : exécute la tâche planifiée. */
+  complete(): Promise<number>;
+}
 
 /** Doubles des modules de la phase 2. */
 export interface TestCatalog {
@@ -142,6 +164,7 @@ export async function createTestApp(
   app: INestApplication;
   identity: TestIdentity;
   catalog: TestCatalog;
+  events: TestEvents;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
@@ -184,6 +207,14 @@ export async function createTestApp(
     items: new InMemoryItemRepository(products, visibilityLog),
     visibilityLog,
     engagements: new InMemoryEngagementReader(),
+  };
+  const eventRepository = new InMemoryEventRepository();
+  const events: TestEvents = {
+    events: eventRepository,
+    links: new InMemoryEventLinkRepository(eventRepository),
+    people: new InMemoryEventPeople(),
+    floor: new RecordingResponseFloor(),
+    complete: () => app.get(CompleteEvents).execute(),
   };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -253,7 +284,47 @@ export async function createTestApp(
     .useValue(catalog.visibilityLog)
     .overrideProvider(EngagementReader)
     .useValue(catalog.engagements)
+    .overrideProvider(EventRepository)
+    .useValue(events.events)
+    .overrideProvider(EventLinkRepository)
+    .useValue(events.links)
+    .overrideProvider(EventPeople)
+    .useValue(events.people)
+    .overrideProvider(ResponseFloor)
+    .useValue(events.floor)
     .compile();
+
+  // Doubles des événements reliés à ceux d'`identity` et des listes.
+  const cardOf = (profileId: string) => {
+    const p = accounts.profiles.get(profileId);
+    return p
+      ? {
+          id: profileId,
+          displayName: p.displayName,
+          avatar: p.avatar ?? null,
+          accentColor: p.accentColor,
+        }
+      : null;
+  };
+  events.events.cardOf = cardOf;
+  events.events.revokeLinks = (eventId, at) => {
+    events.links.revokeAll(eventId, at);
+  };
+  events.events.detachLists = (eventId) => {
+    for (const [id, list] of catalog.lists.lists) {
+      if (list.event?.id !== eventId) continue;
+      catalog.lists.lists.set(id, {
+        ...list,
+        event: null,
+        audience: list.audience === 'EVENT' ? 'MEMBERS' : list.audience,
+      });
+    }
+  };
+  events.people.settingsOf = (profileId) => {
+    const p = accounts.profiles.get(profileId);
+    return p ? { timezone: p.timezone, currency: p.currency, isChild: p.isChild ?? false } : null;
+  };
+  events.people.blocked = (a, b) => links.isBlockedEitherWay(a, b);
 
   products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
   catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
@@ -307,5 +378,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity, catalog };
+  return { app, identity, catalog, events };
 }
