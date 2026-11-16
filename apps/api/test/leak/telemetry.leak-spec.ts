@@ -1683,4 +1683,36 @@ async function playEventsScenario(app: INestApplication): Promise<void> {
     .expect(200);
   await http.get(`/api/v1/events/${randomUUID()}?q=${MARKER}`).set(them).expect(404);
   await http.get('/api/v1/events').set(them).expect(200);
+
+  // Tranche 5 : reprise (EVT-22, EVT-27) et pioche (EVT-20), notes et recherche marquées.
+  const mine = await http.get(`/api/v1/lists?eventId=${eventId}`).set(me).expect(200);
+  const ownList = (mine.body.items as { id: string; view: string }[]).find(
+    (l) => l.view === 'recipient',
+  )!;
+  const productRes = await http
+    .post('/api/v1/products')
+    .set(me)
+    .send({ title: `Lampe ${MARKER}`, unitPriceMinor: AMOUNT_MARKER })
+    .expect(201);
+  const oldItem = await http
+    .post(`/api/v1/lists/${ownList.id}/items`)
+    .set(me)
+    .send({ productId: productRes.body.id as string, note: `Note ${MARKER}` })
+    .expect(201);
+  await prisma.event.update({ where: { id: eventId }, data: { date: new Date('2025-12-24') } });
+  const next = await http
+    .post('/api/v1/events')
+    .set(me)
+    .send({ title: `Suivant ${MARKER}`, date: '2027-12-24', type: 'CHRISTMAS' })
+    .expect(201);
+  const nextId = next.body.id as string;
+  const nextLists = await http.get(`/api/v1/lists?eventId=${nextId}`).set(me).expect(200);
+  const nextList = (nextLists.body.items as { id: string }[])[0]!;
+  await http.get(`/api/v1/events/${nextId}/carry-over`).set(me).expect(200);
+  await http
+    .post(`/api/v1/events/${nextId}/carry-over`)
+    .set(me)
+    .send({ listId: nextList.id, itemIds: [oldItem.body.id as string] })
+    .expect(201);
+  await http.get(`/api/v1/events/${nextId}/ideas?q=${MARKER}`).set(me).expect(200);
 }

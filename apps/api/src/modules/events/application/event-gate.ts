@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { type EventAccess, eventAccess, type EventFacts } from '../../visibility';
 import { eventFactsOf, type EventRecord } from '../domain/event';
-import { isDayPassed } from '../domain/event-date';
+import { isDayPassed } from '../../../shared/domain/event-date';
 import { EventNotFoundError } from '../domain/event.errors';
 import { EventRepository } from '../domain/event.ports';
 

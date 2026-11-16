@@ -46,13 +46,19 @@ import {
   PrismaListRepository,
   PrismaVisibilityLogRepository,
 } from './infrastructure/prisma-list-repository';
+import {
+  CarryOver,
+  ListCarryCandidates,
+  SearchEventIdeas,
+} from './application/carry-over.use-case';
+import { EventCarryController } from './presentation/event-carry.controller';
 import { ItemsController, ListsController } from './presentation/lists.controller';
 import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
 
 /** Module `lists` : listes, éléments, rôles, succession (03). Lectures par `visibility`. */
 @Module({
   imports: [VisibilityModule, CatalogModule],
-  controllers: [ListsController, ItemsController],
+  controllers: [ListsController, ItemsController, EventCarryController],
   providers: [
     ListGate,
     ListLists,
@@ -82,6 +88,9 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     AttachListToEvent,
     DetachListFromEvent,
     EventWishlists,
+    ListCarryCandidates,
+    CarryOver,
+    SearchEventIdeas,
     { provide: EventLookup, useClass: PrismaEventLookup },
     { provide: VisibilityLogRepository, useClass: PrismaVisibilityLogRepository },
     { provide: EngagementReader, useClass: NoEngagementReader },

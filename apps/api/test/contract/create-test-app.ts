@@ -365,6 +365,25 @@ export async function createTestApp(
       : null;
   };
   catalog.eventLookup.surpriseOf = (eventId) => [...(storedEvent(eventId)?.surprise ?? [])];
+  catalog.items.listContext = (listId) => {
+    const list = catalog.lists.lists.get(listId);
+    if (!list) return null;
+    const e = list.event ? storedEvent(list.event.id) : null;
+    return {
+      isWishlist: list.type === 'WISHLIST',
+      deleted: list.deletedAt !== null,
+      recipients: list.recipients,
+      event: e
+        ? {
+            id: e.id,
+            title: e.title,
+            date: e.date,
+            timezone: e.timezone,
+            closed: e.status !== 'UPCOMING',
+          }
+        : null,
+    };
+  };
   catalog.items.eventOfList = (listId) => {
     const eventId = catalog.lists.lists.get(listId)?.event?.id;
     const e = eventId ? storedEvent(eventId) : null;

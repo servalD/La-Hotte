@@ -8,6 +8,7 @@ import {
 } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
+  type CarryCandidate,
   EngagementReader,
   type EventForLists,
   EventLookup,
@@ -370,6 +371,48 @@ export class InMemoryItemRepository extends ItemRepository {
   recipientsOf: (listId: string) => readonly string[] = () => [];
   /** EVT-28 : événement d'une liste (relié par le banc de test). */
   eventOfList: (listId: string) => { id: string; title: string; date: string } | null = () => null;
+  /** EVT-22 : ce que la reprise lit d'une liste (relié par le banc de test). */
+  listContext: (listId: string) => {
+    readonly isWishlist: boolean;
+    readonly deleted: boolean;
+    readonly recipients: readonly string[];
+    readonly event: CarryCandidate['event'] | null;
+  } | null = () => null;
+
+  carryCandidates(profileId: string, excludeEventId: string): Promise<CarryCandidate[]> {
+    const carried = new Set([...this.items.values()].map((r) => r.carriedFromItemId));
+    const out: CarryCandidate[] = [];
+    for (const row of [...this.items.values()].sort((a, b) => a.position - b.position)) {
+      const list = this.listContext(row.listId);
+      if (!list?.isWishlist || list.deleted || !list.recipients.includes(profileId)) continue;
+      if (!list.event || list.event.id === excludeEventId) continue;
+      if (row.isSuggestion || row.status === 'WITHDRAWN' || row.receivedAt || carried.has(row.id)) {
+        continue;
+      }
+      out.push({ item: this.record(row), listId: row.listId, event: list.event });
+    }
+    return Promise.resolve(out);
+  }
+
+  async carry(
+    item: NewItem & {
+      carriedFromItemId: string;
+      ruleProfiles: readonly { id: string; profileId: string }[];
+    },
+  ): Promise<ItemRecord | 'already'> {
+    if ([...this.items.values()].some((r) => r.carriedFromItemId === item.carriedFromItemId)) {
+      return 'already';
+    }
+    const created = await this.create(item);
+    const row = this.items.get(created.id);
+    if (row) {
+      this.items.set(created.id, {
+        ...row,
+        visibilityProfiles: item.ruleProfiles.map((r) => r.profileId),
+      });
+    }
+    return (await this.find(created.id)) ?? created;
+  }
 
   constructor(
     private readonly products: ProductRows,

@@ -22,6 +22,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CarryCandidateCollectionView,
+  CarryOverDto,
   CreateEventDto,
   CreateEventLinkDto,
   CreatedEventLinkView,
@@ -32,11 +34,13 @@ import type {
   EventLinkTokenDto,
   EventParticipantCollectionView,
   EventProfilesDto,
+  ItemCollectionView,
   JoinedEventView,
   ListEventsParams,
   ProblemDetailsDto,
   RsvpDto,
   RsvpView,
+  SearchEventIdeasParams,
   UpdateEventDto,
 } from '../../model';
 
@@ -599,6 +603,225 @@ export const useCancelOneEvent = <TError = ErrorType<ProblemDetailsDto>, TContex
   return useMutation(mutationOptions, queryClient);
 };
 /**
+ * @summary EVT-22 : identique que les souhaits passés soient ouverts, réservés ou achetés.
+ */
+export const getListCarryCandidatesUrl = (id: string) => {
+  return `/api/v1/events/${id}/carry-over`;
+};
+
+export const listCarryCandidates = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CarryCandidateCollectionView> => {
+  return apiFetch<CarryCandidateCollectionView>(getListCarryCandidatesUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListCarryCandidatesQueryKey = (id?: string) => {
+  return [`/api/v1/events/${id}/carry-over`] as const;
+};
+
+export const getListCarryCandidatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCarryCandidates>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listCarryCandidates>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCarryCandidatesQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCarryCandidates>>> = ({ signal }) =>
+    listCarryCandidates(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCarryCandidates>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListCarryCandidatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCarryCandidates>>
+>;
+export type ListCarryCandidatesQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListCarryCandidates<
+  TData = Awaited<ReturnType<typeof listCarryCandidates>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listCarryCandidates>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCarryCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof listCarryCandidates>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListCarryCandidates<
+  TData = Awaited<ReturnType<typeof listCarryCandidates>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listCarryCandidates>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCarryCandidates>>,
+          TError,
+          Awaited<ReturnType<typeof listCarryCandidates>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListCarryCandidates<
+  TData = Awaited<ReturnType<typeof listCarryCandidates>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listCarryCandidates>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary EVT-22 : identique que les souhaits passés soient ouverts, réservés ou achetés.
+ */
+
+export function useListCarryCandidates<
+  TData = Awaited<ReturnType<typeof listCarryCandidates>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listCarryCandidates>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListCarryCandidatesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary EVT-21, EVT-27
+ */
+export const getCarryOverItemsUrl = (id: string) => {
+  return `/api/v1/events/${id}/carry-over`;
+};
+
+export const carryOverItems = async (
+  id: string,
+  carryOverDto: CarryOverDto,
+  options?: RequestInit,
+): Promise<ItemCollectionView> => {
+  return apiFetch<ItemCollectionView>(getCarryOverItemsUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(carryOverDto),
+  });
+};
+
+export const getCarryOverItemsMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof carryOverItems>>,
+    TError,
+    { id: string; data: CarryOverDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof carryOverItems>>,
+  TError,
+  { id: string; data: CarryOverDto },
+  TContext
+> => {
+  const mutationKey = ['carryOverItems'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof carryOverItems>>,
+    { id: string; data: CarryOverDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return carryOverItems(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CarryOverItemsMutationResult = NonNullable<Awaited<ReturnType<typeof carryOverItems>>>;
+export type CarryOverItemsMutationBody = CarryOverDto;
+export type CarryOverItemsMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary EVT-21, EVT-27
+ */
+export const useCarryOverItems = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof carryOverItems>>,
+      TError,
+      { id: string; data: CarryOverDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof carryOverItems>>,
+  TError,
+  { id: string; data: CarryOverDto },
+  TContext
+> => {
+  const mutationOptions = getCarryOverItemsMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary EVT-07
  */
 export const getAddEventHonoreesUrl = (id: string) => {
@@ -684,6 +907,147 @@ export const useAddEventHonorees = <TError = ErrorType<ProblemDetailsDto>, TCont
 
   return useMutation(mutationOptions, queryClient);
 };
+/**
+ * @summary EVT-20, étape 2
+ */
+export const getSearchEventIdeasUrl = (id: string, params: SearchEventIdeasParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/events/${id}/ideas?${stringifiedParams}`
+    : `/api/v1/events/${id}/ideas`;
+};
+
+export const searchEventIdeas = async (
+  id: string,
+  params: SearchEventIdeasParams,
+  options?: RequestInit,
+): Promise<ItemCollectionView> => {
+  return apiFetch<ItemCollectionView>(getSearchEventIdeasUrl(id, params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getSearchEventIdeasQueryKey = (id?: string, params?: SearchEventIdeasParams) => {
+  return [`/api/v1/events/${id}/ideas`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchEventIdeasQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchEventIdeas>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  params: SearchEventIdeasParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchEventIdeas>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSearchEventIdeasQueryKey(id, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchEventIdeas>>> = ({ signal }) =>
+    searchEventIdeas(id, params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchEventIdeas>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type SearchEventIdeasQueryResult = NonNullable<Awaited<ReturnType<typeof searchEventIdeas>>>;
+export type SearchEventIdeasQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useSearchEventIdeas<
+  TData = Awaited<ReturnType<typeof searchEventIdeas>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  params: SearchEventIdeasParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchEventIdeas>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchEventIdeas>>,
+          TError,
+          Awaited<ReturnType<typeof searchEventIdeas>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSearchEventIdeas<
+  TData = Awaited<ReturnType<typeof searchEventIdeas>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  params: SearchEventIdeasParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchEventIdeas>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchEventIdeas>>,
+          TError,
+          Awaited<ReturnType<typeof searchEventIdeas>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSearchEventIdeas<
+  TData = Awaited<ReturnType<typeof searchEventIdeas>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  params: SearchEventIdeasParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchEventIdeas>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary EVT-20, étape 2
+ */
+
+export function useSearchEventIdeas<
+  TData = Awaited<ReturnType<typeof searchEventIdeas>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  params: SearchEventIdeasParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchEventIdeas>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSearchEventIdeasQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
 /**
  * @summary EVT-16
  */

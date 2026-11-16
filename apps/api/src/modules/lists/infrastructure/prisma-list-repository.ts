@@ -4,6 +4,7 @@ import { PrismaService } from '../../../platform/prisma/prisma.service';
 import type { ItemCriteria, ItemRecord, ListCandidateCriteria, ListRole } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
+  type CarryCandidate,
   EngagementReader,
   type EventForLists,
   EventLookup,
@@ -552,6 +553,101 @@ export class PrismaItemRepository extends ItemRepository {
       });
     });
     return toItem(row);
+  }
+
+  async carryCandidates(profileId: string, excludeEventId: string): Promise<CarryCandidate[]> {
+    const rows = await this.prisma.listItem.findMany({
+      where: {
+        isSuggestion: false,
+        status: { not: 'WITHDRAWN' },
+        receivedAt: null,
+        carriedTo: null,
+        list: {
+          type: 'WISHLIST',
+          deletedAt: null,
+          eventId: { not: excludeEventId },
+          event: { isNot: null },
+          recipients: { some: { profileId } },
+        },
+      },
+      include: {
+        ...ITEM_INCLUDE,
+        list: {
+          select: {
+            id: true,
+            event: { select: { id: true, title: true, date: true, timezone: true, status: true } },
+          },
+        },
+      },
+      orderBy: [{ listId: 'asc' }, { position: 'asc' }, { id: 'asc' }],
+      take: 500,
+    });
+    return rows.flatMap((row) => {
+      const event = row.list.event;
+      if (!event) return [];
+      return [
+        {
+          item: toItem(row),
+          listId: row.list.id,
+          event: {
+            id: event.id,
+            title: event.title,
+            date: isoDay(event.date),
+            timezone: event.timezone,
+            closed: event.status !== 'UPCOMING',
+          },
+        },
+      ];
+    });
+  }
+
+  async carry(
+    item: NewItem & {
+      carriedFromItemId: string;
+      ruleProfiles: readonly { id: string; profileId: string }[];
+    },
+  ): Promise<ItemRecord | 'already'> {
+    try {
+      const row = await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "list" WHERE id = ${item.listId}::uuid FOR UPDATE`;
+        const last = await tx.listItem.aggregate({
+          where: { listId: item.listId },
+          _max: { position: true },
+        });
+        await tx.listItem.create({
+          data: {
+            id: item.id,
+            listId: item.listId,
+            productId: item.productId,
+            addedByProfileId: item.addedBy,
+            quantity: item.quantity,
+            unitPriceMinor: item.unitPriceMinor === null ? null : BigInt(item.unitPriceMinor),
+            currency: item.currency,
+            priority: item.priority,
+            note: item.note,
+            manyWelcome: item.manyWelcome,
+            position: (last._max.position ?? -1) + 1,
+            visibilityMode: item.visibilityMode,
+            isSuggestion: false,
+            intendedRecipientId: null,
+            shownToRecipient: false,
+            carriedFromItemId: item.carriedFromItemId,
+          },
+        });
+        for (const rule of item.ruleProfiles) {
+          await tx.itemVisibilityProfile.create({
+            data: { id: rule.id, itemId: item.id, profileId: rule.profileId },
+          });
+        }
+        return tx.listItem.findUniqueOrThrow({ where: { id: item.id }, include: ITEM_INCLUDE });
+      });
+      return toItem(row);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return 'already';
+      }
+      throw error;
+    }
   }
 
   async update(input: {

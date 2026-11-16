@@ -79,7 +79,12 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
       .expect(201);
     const giftListId = gift.body.id as string;
 
-    const table: { route: string; body?: object; headers?: Record<string, string> }[] = [
+    const table: {
+      route: string;
+      body?: object;
+      headers?: Record<string, string>;
+      query?: string;
+    }[] = [
       { route: 'GET /api/v1/events/:id' },
       { route: 'PATCH /api/v1/events/:id', body: { title: 'x' }, headers: { 'If-Match': '1' } },
       { route: 'DELETE /api/v1/events/:id' },
@@ -91,6 +96,12 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
       { route: 'PUT /api/v1/events/:id/rsvp', body: { rsvp: 'YES' } },
       { route: 'GET /api/v1/events/:id/links' },
       { route: 'POST /api/v1/events/:id/links', body: {} },
+      { route: 'GET /api/v1/events/:id/carry-over' },
+      {
+        route: 'POST /api/v1/events/:id/carry-over',
+        body: { listId: giftListId, itemIds: [randomUUID()] },
+      },
+      { route: 'GET /api/v1/events/:id/ideas', query: '?q=velo' },
     ];
     const withSecond: { route: string; second: string }[] = [
       {
@@ -129,13 +140,13 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
         const template = row.route.split(' ')[1]!;
         const victim = await send(
           row.route,
-          template.replace(':id', eventId),
+          template.replace(':id', eventId) + (row.query ?? ''),
           row.body,
           row.headers,
         );
         const unknown = await send(
           row.route,
-          template.replace(':id', randomUUID()),
+          template.replace(':id', randomUUID()) + (row.query ?? ''),
           row.body,
           row.headers,
         );

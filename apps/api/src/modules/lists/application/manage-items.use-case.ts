@@ -25,8 +25,9 @@ import {
   ListActionForbiddenError,
   ListVersionMismatchError,
 } from '../domain/list.errors';
-import { ItemRepository } from '../domain/list.ports';
+import { EventLookup, ItemRepository } from '../domain/list.ports';
 import { type GatedItem, ListGate } from './list-gate';
+import { visibleOriginEvents } from './manage-event-lists.use-case';
 
 /** GET /lists/{id}/items : filtré en base (VIS-31), puis élément par élément (VIS-30). */
 @Injectable()
@@ -34,6 +35,7 @@ export class ListItems {
   constructor(
     private readonly gate: ListGate,
     private readonly items: ItemRepository,
+    private readonly lookup: EventLookup,
   ) {}
 
   async execute(input: { viewerId: string; listId: string; sort: ItemSort }): Promise<ItemView[]> {
@@ -41,12 +43,18 @@ export class ListItems {
     const criteria = itemCriteria(access, input.viewerId);
     if (!criteria) return [];
     const rows = await this.items.listItems(input.listId, criteria, input.sort);
+    // EVT-28 : seule la vue offreur porte la mention ; inutile de lire les événements sinon.
+    const visibleEventIds =
+      access.kind === 'giver'
+        ? await visibleOriginEvents(this.lookup, input.viewerId, rows)
+        : new Set<string>();
     const views: ItemView[] = [];
     for (const row of rows) {
       const view = projectItem(
         itemAccess(access, itemFactsOf(row), input.viewerId),
         row,
         input.viewerId,
+        { visibleEventIds },
       );
       if (view) views.push(view);
     }
@@ -134,11 +142,18 @@ export class AddItem {
 /** GET /items/{id} */
 @Injectable()
 export class GetItem {
-  constructor(private readonly gate: ListGate) {}
+  constructor(
+    private readonly gate: ListGate,
+    private readonly lookup: EventLookup,
+  ) {}
 
   async execute(input: { viewerId: string; itemId: string }): Promise<ItemView> {
     const gated = await this.gate.item(input.viewerId, input.itemId);
-    const view = projectItem(gated.itemAccess, gated.item, input.viewerId);
+    const visibleEventIds =
+      gated.itemAccess === 'giver'
+        ? await visibleOriginEvents(this.lookup, input.viewerId, [gated.item])
+        : new Set<string>();
+    const view = projectItem(gated.itemAccess, gated.item, input.viewerId, { visibleEventIds });
     if (!view) throw new ItemNotFoundError();
     return view;
   }

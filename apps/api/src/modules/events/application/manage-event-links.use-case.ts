@@ -13,7 +13,7 @@ import {
   type EventType,
   type PersonCard,
 } from '../domain/event';
-import { endOfDay, isDayPassed } from '../domain/event-date';
+import { endOfDay, isDayPassed } from '../../../shared/domain/event-date';
 import {
   EventActionForbiddenError,
   EventChildOutsideCircleError,

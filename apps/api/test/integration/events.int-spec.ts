@@ -160,6 +160,66 @@ describe('Événements en base (ADR 0017)', { timeout: 30_000 }, () => {
     await http().get(`/api/v1/lists/${guestListId}`).set({ Cookie: org.cookie }).expect(404);
   });
 
+  it('EVT-22, EVT-27 : candidats à la reprise en base, reprise unique', async () => {
+    const lea = await person();
+    const first = await http()
+      .post('/api/v1/events')
+      .set(lea.mutation)
+      .send({ title: 'Noël 2025', date: '2027-12-24', type: 'CHRISTMAS' })
+      .expect(201);
+    const oldId = first.body.id as string;
+    const oldLists = await http()
+      .get(`/api/v1/lists?eventId=${oldId}`)
+      .set({ Cookie: lea.cookie })
+      .expect(200);
+    const oldList = (oldLists.body.items as { id: string }[])[0]!;
+    const product = await http()
+      .post('/api/v1/products')
+      .set(lea.mutation)
+      .send({ title: 'Vélo' })
+      .expect(201);
+    const item = await http()
+      .post(`/api/v1/lists/${oldList.id}/items`)
+      .set(lea.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(201);
+    await prisma.listItem.update({
+      where: { id: item.body.id as string },
+      data: { status: 'PURCHASED' },
+    });
+    await prisma.event.update({ where: { id: oldId }, data: { date: new Date('2025-12-24') } });
+    const next = await http()
+      .post('/api/v1/events')
+      .set(lea.mutation)
+      .send({ title: 'Noël 2027', date: '2027-12-24', type: 'CHRISTMAS' })
+      .expect(201);
+    const nextId = next.body.id as string;
+    const candidates = await http()
+      .get(`/api/v1/events/${nextId}/carry-over`)
+      .set({ Cookie: lea.cookie })
+      .expect(200);
+    expect(candidates.body.items).toHaveLength(1);
+    const nextLists = await http()
+      .get(`/api/v1/lists?eventId=${nextId}`)
+      .set({ Cookie: lea.cookie })
+      .expect(200);
+    const target = (nextLists.body.items as { id: string }[])[0]!;
+    const body = { listId: target.id, itemIds: [item.body.id as string] };
+    await http()
+      .post(`/api/v1/events/${nextId}/carry-over`)
+      .set(lea.mutation)
+      .send(body)
+      .expect(201);
+    await http()
+      .post(`/api/v1/events/${nextId}/carry-over`)
+      .set(lea.mutation)
+      .send(body)
+      .expect(422);
+    expect(
+      await prisma.listItem.count({ where: { carriedFromItemId: item.body.id as string } }),
+    ).toBe(1);
+  });
+
   it('EVT-39 : la suppression détache les listes, une audience EVENT devient MEMBERS', async () => {
     const org = await person();
     const created = await http()

@@ -2116,6 +2116,98 @@
         ]
       }
     },
+    "/api/v1/events/{id}/carry-over": {
+      "get": {
+        "operationId": "listCarryCandidates",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CarryCandidateCollectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-22 : identique que les souhaits passés soient ouverts, réservés ou achetés.",
+        "tags": [
+          "events"
+        ]
+      },
+      "post": {
+        "operationId": "carryOverItems",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CarryOverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemCollectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-21, EVT-27",
+        "tags": [
+          "events"
+        ]
+      }
+    },
     "/api/v1/events/{id}/honorees": {
       "post": {
         "operationId": "addEventHonorees",
@@ -2163,6 +2255,58 @@
           }
         },
         "summary": "EVT-07",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/ideas": {
+      "get": {
+        "operationId": "searchEventIdeas",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemCollectionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-20, étape 2",
         "tags": [
           "events"
         ]
@@ -5715,6 +5859,78 @@
         "required": [
           "status",
           "event"
+        ]
+      },
+      "CarryCandidateCollectionView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CarryCandidateView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CarryCandidateView": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/CarryEventView"
+          },
+          "item": {
+            "$ref": "#/components/schemas/ItemRecipientView"
+          }
+        },
+        "required": [
+          "event",
+          "item"
+        ]
+      },
+      "CarryEventView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "date"
+        ]
+      },
+      "CarryOverDto": {
+        "type": "object",
+        "properties": {
+          "listId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemIds": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "listId",
+          "itemIds"
         ]
       },
       "CircleMemberView": {

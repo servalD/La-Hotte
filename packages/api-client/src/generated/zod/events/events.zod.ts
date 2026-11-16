@@ -317,6 +317,66 @@ export const cancelOneEventResponse = zod.object({
 });
 
 /**
+ * @summary EVT-22 : identique que les souhaits passés soient ouverts, réservés ou achetés.
+ */
+export const listCarryCandidatesParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const listCarryCandidatesResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      event: zod.object({
+        id: zod.uuid(),
+        title: zod.string(),
+        date: zod.iso.date(),
+      }),
+      item: zod.object({
+        view: zod.enum(['recipient']),
+        id: zod.uuid(),
+        listId: zod.uuid(),
+        product: zod.object({
+          id: zod.uuid(),
+          title: zod.string(),
+          description: zod.string(),
+          imageKey: zod.string().nullable(),
+          merchant: zod.string().nullable(),
+          sourceUrl: zod.string().nullable(),
+        }),
+        quantity: zod.number(),
+        unitPriceMinor: zod.number().nullable(),
+        currency: zod.string(),
+        priority: zod.enum(['WANT', 'LOVE', 'MUST']),
+        note: zod.string(),
+        manyWelcome: zod.boolean(),
+        hidden: zod.boolean(),
+        received: zod.boolean(),
+        receivedAt: zod.iso.datetime({}).nullable(),
+        mine: zod.boolean(),
+        carriedForward: zod
+          .boolean()
+          .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
+        version: zod.number(),
+      }),
+    }),
+  ),
+});
+
+/**
+ * @summary EVT-21, EVT-27
+ */
+export const carryOverItemsParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const carryOverItemsBodyItemIdsMax = 50;
+
+export const carryOverItemsBody = zod.object({
+  listId: zod.uuid(),
+  itemIds: zod.array(zod.uuid()).min(1).max(carryOverItemsBodyItemIdsMax),
+});
+
+/**
  * @summary EVT-07
  */
 export const addEventHonoreesParams = zod.object({
@@ -387,6 +447,95 @@ export const addEventHonoreesResponse = zod.object({
     .describe(
       "GFT-08 : un participant partage le compte d'un honoré de la surprise (organisateurs).",
     ),
+});
+
+/**
+ * @summary EVT-20, étape 2
+ */
+export const searchEventIdeasParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const searchEventIdeasQueryQMax = 100;
+
+export const searchEventIdeasQueryParams = zod.object({
+  q: zod.string().min(1).max(searchEventIdeasQueryQMax),
+});
+
+export const searchEventIdeasResponse = zod.object({
+  items: zod.array(
+    zod.union([
+      zod.object({
+        view: zod.enum(['giver']),
+        id: zod.uuid(),
+        listId: zod.uuid(),
+        product: zod.object({
+          id: zod.uuid(),
+          title: zod.string(),
+          description: zod.string(),
+          imageKey: zod.string().nullable(),
+          merchant: zod.string().nullable(),
+          sourceUrl: zod.string().nullable(),
+        }),
+        quantity: zod.number(),
+        unitPriceMinor: zod.number().nullable(),
+        currency: zod.string(),
+        priority: zod.enum(['WANT', 'LOVE', 'MUST']),
+        note: zod.string(),
+        manyWelcome: zod.boolean(),
+        position: zod.number(),
+        hidden: zod.boolean(),
+        visibilityMode: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+        status: zod.enum(['OPEN', 'RESERVED', 'PURCHASED', 'RECEIVED']),
+        isSuggestion: zod.boolean(),
+        shownToRecipient: zod.boolean(),
+        intendedRecipientId: zod.uuid().nullable(),
+        addedBy: zod.uuid().nullable(),
+        mine: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+        carriedForward: zod.boolean(),
+        carriedFrom: zod
+          .object({
+            status: zod.enum(['RESERVED', 'PURCHASED']),
+            event: zod
+              .object({
+                title: zod.string(),
+                date: zod.iso.date(),
+              })
+              .nullable(),
+          })
+          .nullable(),
+        version: zod.number(),
+      }),
+      zod.object({
+        view: zod.enum(['recipient']),
+        id: zod.uuid(),
+        listId: zod.uuid(),
+        product: zod.object({
+          id: zod.uuid(),
+          title: zod.string(),
+          description: zod.string(),
+          imageKey: zod.string().nullable(),
+          merchant: zod.string().nullable(),
+          sourceUrl: zod.string().nullable(),
+        }),
+        quantity: zod.number(),
+        unitPriceMinor: zod.number().nullable(),
+        currency: zod.string(),
+        priority: zod.enum(['WANT', 'LOVE', 'MUST']),
+        note: zod.string(),
+        manyWelcome: zod.boolean(),
+        hidden: zod.boolean(),
+        received: zod.boolean(),
+        receivedAt: zod.iso.datetime({}).nullable(),
+        mine: zod.boolean(),
+        carriedForward: zod
+          .boolean()
+          .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
+        version: zod.number(),
+      }),
+    ]),
+  ),
 });
 
 /**

@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { IdGenerator } from '../../../shared/domain';
-import { canAttachList, canDetachList, isEventClosed, respondedPresent } from '../../visibility';
+import {
+  canAttachList,
+  canDetachList,
+  isEventClosed,
+  type ItemRecord,
+  respondedPresent,
+} from '../../visibility';
 import { LIST_TITLE_MAX } from '../domain/list';
 import { EventNotFoundForListError, ListActionForbiddenError } from '../domain/list.errors';
 import { type EventForLists, EventLookup, ListRepository } from '../domain/list.ports';
@@ -21,6 +27,26 @@ export async function eventForParticipant(
     throw new EventNotFoundForListError();
   }
   return event;
+}
+
+/**
+ * EVT-28 : événements d'origine des reprises que `viewerId` voit (il en est participant, EVT-08),
+ * pour titrer la mention offreur. Les autres restent sans titre.
+ */
+export async function visibleOriginEvents(
+  lookup: EventLookup,
+  viewerId: string,
+  items: readonly ItemRecord[],
+): Promise<ReadonlySet<string>> {
+  const ids = new Set(
+    items.flatMap((item) => (item.carryOrigin?.event ? [item.carryOrigin.event.id] : [])),
+  );
+  const seen = new Set<string>();
+  for (const id of ids) {
+    const event = await lookup.find(id);
+    if (event?.participants.some((p) => p.profileId === viewerId)) seen.add(id);
+  }
+  return seen;
 }
 
 /**

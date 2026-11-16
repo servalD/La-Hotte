@@ -33,7 +33,7 @@ import {
   isValidDay,
   isValidTimezone,
   localDay,
-} from '../domain/event-date';
+} from '../../../shared/domain/event-date';
 import {
   EventActionForbiddenError,
   EventDatePassedError,

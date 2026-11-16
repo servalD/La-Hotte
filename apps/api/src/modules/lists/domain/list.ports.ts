@@ -184,6 +184,19 @@ export interface NewItem {
   readonly carriedFromItemId?: string | null;
 }
 
+/** EVT-22 : un élément passé, avec sa liste et l'événement de celle-ci. */
+export interface CarryCandidate {
+  readonly item: ItemRecord;
+  readonly listId: string;
+  readonly event: {
+    readonly id: string;
+    readonly title: string;
+    readonly date: string;
+    readonly timezone: string;
+    readonly closed: boolean;
+  };
+}
+
 /** Élément qui référence une fiche, vu du répertoire. */
 export interface ItemProductReference {
   readonly productId: string;
@@ -219,6 +232,25 @@ export abstract class ItemRepository {
   abstract repointProduct(itemId: string, productId: string): Promise<void>;
   /** REP-06, REP-07, REP-10 : éléments non retirés qui référencent ces fiches. */
   abstract referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]>;
+  /**
+   * EVT-22 : éléments repris possibles pour `profileId` : sur les wishlists dont il est
+   * destinataire, rattachées à un autre événement que `excludeEventId`, hors corbeille ; ni
+   * suggestion, ni retirés, ni reçus, ni déjà repris. Aucun filtre ne distingue ouvert, réservé ou
+   * acheté. Le moteur juge ensuite chaque élément (VIS-17), le cas d'usage la date de l'événement.
+   */
+  abstract carryCandidates(profileId: string, excludeEventId: string): Promise<CarryCandidate[]>;
+
+  /**
+   * EVT-27 : nouvel élément qui désigne son origine, avec la règle copiée (une transaction) ;
+   * `already` si l'origine a déjà été reprise (unicité en base).
+   */
+  abstract carry(
+    item: NewItem & {
+      readonly carriedFromItemId: string;
+      readonly ruleProfiles: readonly { readonly id: string; readonly profileId: string }[];
+    },
+  ): Promise<ItemRecord | 'already'>;
+
   /** LST-18 : pose ou retire le reçu, sans toucher à l'état réel. */
   abstract setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null>;
   /** LST-15, LST-19 */
