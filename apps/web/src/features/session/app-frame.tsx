@@ -16,6 +16,7 @@ const LINKS: Record<Area, { href: string; key: string }[]> = {
   profile: [
     { href: '/', key: 'home' },
     { href: '/lists', key: 'lists' },
+    { href: '/events', key: 'events' },
     { href: '/directory', key: 'directory' },
     { href: '/circle', key: 'circle' },
     { href: '/invitations', key: 'invitations' },

@@ -4,6 +4,7 @@ export * from './generated/endpoints/auth/auth';
 export * from './generated/endpoints/blocks/blocks';
 export * from './generated/endpoints/circle/circle';
 export * from './generated/endpoints/directory/directory';
+export * from './generated/endpoints/events/events';
 export * from './generated/endpoints/images/images';
 export * from './generated/endpoints/invitations/invitations';
 export * from './generated/endpoints/items/items';
