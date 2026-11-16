@@ -38,6 +38,8 @@ type Relation =
   | 'event_maybe'
   | 'event_pending'
   | 'event_no'
+  // Honoré de la surprise à laquelle la liste est rattachée, dans le cercle et choisi (VIS-36).
+  | 'surprise_honoree'
   | 'outsider';
 
 type RuleCase = 'ALL' | 'ONLY_IN' | 'ONLY_OUT' | 'EXCEPT_IN' | 'EXCEPT_OUT';
@@ -74,6 +76,7 @@ const RELATIONS: Relation[] = [
   'event_maybe',
   'event_pending',
   'event_no',
+  'surprise_honoree',
   'outsider',
 ];
 
@@ -125,7 +128,7 @@ function build(c: Case): { list: ListFacts; item: ItemFacts; inCircle: boolean }
     audience: c.audience,
     recipients,
     members,
-    customAudience: c.relation === 'custom' ? [VIEWER] : [],
+    customAudience: c.relation === 'custom' || c.relation === 'surprise_honoree' ? [VIEWER] : [],
     visibilityEditRole: 'CREATOR',
     giftExistence: c.existence,
     giftContent: c.content,
@@ -147,6 +150,7 @@ function build(c: Case): { list: ListFacts; item: ItemFacts; inCircle: boolean }
               : []),
           ],
           closed: false,
+          hiddenFrom: c.relation === 'surprise_honoree' ? [VIEWER] : [],
         }
       : null,
   };
@@ -160,13 +164,18 @@ function build(c: Case): { list: ListFacts; item: ItemFacts; inCircle: boolean }
     shownToRecipient: c.shown,
     addedBy: c.author === 'viewer' ? VIEWER : c.author === 'other' ? OTHER : null,
   };
-  const inCircle = c.relation === 'circle' || c.relation === 'same_account';
+  const inCircle =
+    c.relation === 'circle' || c.relation === 'same_account' || c.relation === 'surprise_honoree';
   return { list, item, inCircle };
 }
 
 /** Le demandeur voit-il la liste comme offreur (audience, VIS-01 à VIS-03) ? */
 function giverInAudience(c: Case): boolean {
   if (roleFor(c.relation, c.type) !== null) return true;
+  // VIS-36 : rattachée à sa surprise, jamais ; détachée, un proche choisi comme les autres.
+  if (c.relation === 'surprise_honoree') {
+    return !c.attached && (c.audience === 'CIRCLE' || c.audience === 'CUSTOM');
+  }
   if (c.relation === 'circle' || c.relation === 'same_account') return c.audience === 'CIRCLE';
   if (c.relation === 'custom') return c.audience === 'CUSTOM';
   // VIS-03, EVT-14 : `ÉVÉNEMENT` = participants `Participe` ou `Peut-être` d'un événement rattaché.
@@ -227,7 +236,10 @@ function* cases(): Generator<Case> {
                   for (const [existence, content] of type === 'GIFTLIST' ? gifts : [gifts[0]!])
                     for (const shown of type === 'GIFTLIST' ? [false, true] : [false])
                       for (const afterEvent of [false, true])
-                        for (const attached of audience === 'EVENT' ? [false, true] : [false])
+                        for (const attached of audience === 'EVENT' ||
+                        relation === 'surprise_honoree'
+                          ? [false, true]
+                          : [false])
                           yield {
                             type,
                             relation,

@@ -19,6 +19,7 @@ import {
 } from '../domain/event.errors';
 import {
   EventInvitationMail,
+  EventLinkRepository,
   EventNotifier,
   EventPeople,
   EventRepository,
@@ -64,12 +65,14 @@ export class InviteParticipants {
   }
 }
 
-/** DELETE /events/{id}/participants/{profileId} (EVT-17) */
+/** DELETE /events/{id}/participants/{profileId} (EVT-17) : ses liens sont révoqués. */
 @Injectable()
 export class RemoveParticipant {
   constructor(
     private readonly events: EventRepository,
+    private readonly links: EventLinkRepository,
     private readonly gate: EventGate,
+    private readonly clock: Clock,
   ) {}
 
   async execute(input: { viewerId: string; eventId: string; profileId: string }): Promise<void> {
@@ -78,6 +81,7 @@ export class RemoveParticipant {
       throw new EventActionForbiddenError();
     }
     await this.events.removeParticipant(input.eventId, input.profileId);
+    await this.links.revokeCreatedBy(input.eventId, input.profileId, this.clock.now());
   }
 }
 
@@ -98,12 +102,14 @@ export class NameOrganizer {
   }
 }
 
-/** DELETE /events/{id}/organizers/{profileId} (EVT-06) */
+/** DELETE /events/{id}/organizers/{profileId} (EVT-06) : ses liens sont révoqués (EVT-17). */
 @Injectable()
 export class RevokeOrganizer {
   constructor(
     private readonly events: EventRepository,
+    private readonly links: EventLinkRepository,
     private readonly gate: EventGate,
+    private readonly clock: Clock,
   ) {}
 
   async execute(input: { viewerId: string; eventId: string; profileId: string }): Promise<void> {
@@ -112,6 +118,7 @@ export class RevokeOrganizer {
       throw new EventActionForbiddenError();
     }
     await this.events.setRole(input.eventId, input.profileId, 'PARTICIPANT');
+    await this.links.revokeCreatedBy(input.eventId, input.profileId, this.clock.now());
   }
 }
 

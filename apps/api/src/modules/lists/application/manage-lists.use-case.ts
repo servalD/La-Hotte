@@ -7,6 +7,7 @@ import {
   authorityOf,
   canArchiveList,
   canAttachList,
+  respondedPresent,
   canDeleteList,
   canEditList,
   canEditListRules,
@@ -167,7 +168,14 @@ export class ListLists {
     for (const list of candidates) {
       const gated = await this.gate.accessOf(input.viewerId, list);
       if (gated.access.kind === 'none') continue;
-      if (input.eventId !== undefined && list.event?.id !== input.eventId) continue;
+      // EVT-29 (revue SEC-40, I2) : le filtre ne rend que des vues qui portent l'événement ; jamais
+      // l'aperçu d'une giftlist, qui confirmerait l'existence d'une surprise.
+      if (
+        input.eventId !== undefined &&
+        (list.event?.id !== input.eventId || gated.access.kind === 'gift_recipient')
+      ) {
+        continue;
+      }
       const archived = list.archivedAt !== null;
       if (input.scope === 'active' && archived) continue;
       if (input.scope === 'archived' && !archived) continue;
@@ -375,9 +383,8 @@ export class UpdateList {
       } else if (added.length > 0) {
         // EVT-29 : rattachée, la giftlist peut viser les honorés ou participants de l'événement.
         const found = list.event ? await this.lookup.find(list.event.id) : null;
-        const event = found?.participants.some((p) => p.profileId === input.viewerId)
-          ? found
-          : null;
+        // Revue SEC-40, M3 : mêmes conditions qu'à la création (EVT-29).
+        const event = found && respondedPresent(found, input.viewerId) ? found : null;
         await checkRecipients(
           this.visibility,
           list.type,

@@ -309,6 +309,15 @@ export class InMemoryEventLinkRepository extends EventLinkRepository {
     return Promise.resolve(true);
   }
 
+  revokeCreatedBy(eventId: string, profileId: string, now: Date): Promise<void> {
+    for (const link of this.links.values()) {
+      if (link.eventId === eventId && link.createdBy === profileId && !link.revokedAt) {
+        link.revokedAt = now;
+      }
+    }
+    return Promise.resolve();
+  }
+
   revokeAll(eventId: string, at: Date): void {
     for (const link of this.links.values()) {
       if (link.eventId === eventId && !link.revokedAt) link.revokedAt = at;

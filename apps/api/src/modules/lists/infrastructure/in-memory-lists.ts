@@ -89,7 +89,7 @@ export class InMemoryListRepository extends ListRepository {
     }
     this.lists.set(listId, {
       ...row,
-      event: { id: eventId, audience: [], closed: false },
+      event: { id: eventId, audience: [], closed: false, hiddenFrom: [] },
       version: row.version + 1,
     });
     return Promise.resolve(true);
@@ -165,7 +165,9 @@ export class InMemoryListRepository extends ListRepository {
       description: list.description,
       creatorProfileId: list.creatorProfileId,
       personalProfileId: list.personal ? list.creatorProfileId : null,
-      event: list.eventId ? { id: list.eventId, audience: [], closed: false } : null,
+      event: list.eventId
+        ? { id: list.eventId, audience: [], closed: false, hiddenFrom: [] }
+        : null,
       audience: list.audience,
       recipients: list.recipients.map((r) => r.profileId),
       members: [{ profileId: list.creatorProfileId, role: 'CREATOR', since: at }],
@@ -487,7 +489,12 @@ export class InMemoryItemRepository extends ItemRepository {
   private carryOrigin(row: StoredItem): ItemRecord['carryOrigin'] {
     const origin = row.carriedFromItemId ? this.items.get(row.carriedFromItemId) : undefined;
     if (!origin) return null;
-    return { status: origin.status, event: this.eventOfList(origin.listId) };
+    return {
+      status: origin.status,
+      recipients: this.recipientsOf(origin.listId),
+      rule: { mode: origin.visibilityMode, profiles: origin.visibilityProfiles },
+      event: this.eventOfList(origin.listId),
+    };
   }
 
   /** Réglage direct d'une règle, sans journal (préparation des tests). */

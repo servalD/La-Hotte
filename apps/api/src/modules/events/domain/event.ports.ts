@@ -123,6 +123,9 @@ export abstract class EventLinkRepository {
 
   abstract revoke(eventId: string, linkId: string, now: Date): Promise<boolean>;
 
+  /** EVT-06, EVT-17 : liens d'un auteur retiré ou qui perd le rôle d'organisateur. */
+  abstract revokeCreatedBy(eventId: string, profileId: string, now: Date): Promise<void>;
+
   /**
    * Lien ni révoqué ni expiré, épuisé ou non : un participant déjà inscrit retrouve l'événement
    * par un lien épuisé (EVT-16) ; l'épuisement refuse les autres.

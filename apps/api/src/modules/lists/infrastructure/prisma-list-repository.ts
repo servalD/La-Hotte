@@ -32,6 +32,8 @@ const LIST_INCLUDE = {
         where: { rsvp: { in: ['YES', 'MAYBE'] } },
         select: { profileId: true },
       },
+      // VIS-36 (revue SEC-40, I1) : lus pour toute liste rattachée, quel que soit le lecteur.
+      surpriseFor: { select: { profileId: true } },
     },
   },
 } satisfies Prisma.ListInclude;
@@ -50,6 +52,7 @@ function toList(row: ListRow): ListRecord {
           id: row.event.id,
           audience: row.event.participants.map((p) => p.profileId),
           closed: row.event.status !== 'UPCOMING',
+          hiddenFrom: row.event.surpriseFor.map((s) => s.profileId),
         }
       : null,
     audience: row.audience,
@@ -419,7 +422,14 @@ const ITEM_INCLUDE = {
   carriedFrom: {
     select: {
       status: true,
-      list: { select: { event: { select: { id: true, title: true, date: true } } } },
+      visibilityMode: true,
+      ruleProfiles: { select: { profileId: true } },
+      list: {
+        select: {
+          recipients: { select: { profileId: true } },
+          event: { select: { id: true, title: true, date: true } },
+        },
+      },
     },
   },
 } satisfies Prisma.ListItemInclude;
@@ -457,6 +467,11 @@ export function toItem(row: ItemRow): ItemRecord {
     carryOrigin: row.carriedFrom
       ? {
           status: row.carriedFrom.status,
+          recipients: row.carriedFrom.list.recipients.map((r) => r.profileId),
+          rule: {
+            mode: row.carriedFrom.visibilityMode,
+            profiles: row.carriedFrom.ruleProfiles.map((p) => p.profileId),
+          },
           event: row.carriedFrom.list.event
             ? {
                 id: row.carriedFrom.list.event.id,

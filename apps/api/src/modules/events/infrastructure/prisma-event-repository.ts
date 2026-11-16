@@ -415,6 +415,13 @@ export class PrismaEventLinkRepository extends EventLinkRepository {
     return count > 0;
   }
 
+  async revokeCreatedBy(eventId: string, profileId: string, now: Date): Promise<void> {
+    await this.prisma.invitation.updateMany({
+      where: { kind: 'EVENT', targetId: eventId, createdBy: profileId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+  }
+
   async findLive(tokenHash: string, now: Date): Promise<EventLinkRecord | null> {
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT "id" FROM "invitation"

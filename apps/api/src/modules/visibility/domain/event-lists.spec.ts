@@ -54,8 +54,52 @@ function item(partial: Partial<ItemFacts> = {}): ItemFacts {
 }
 
 const access = (l: ListFacts) => listAccess(l, { profileId: ME, inRecipientsCircle: false });
-const closedEvent = { id: 'e', audience: [ME, 'giver'], closed: true };
-const openEvent = { id: 'e', audience: [ME, 'giver'], closed: false };
+const closedEvent = { id: 'e', audience: [ME, 'giver'], closed: true, hiddenFrom: [] };
+const openEvent = { id: 'e', audience: [ME, 'giver'], closed: false, hiddenFrom: [] };
+
+describe('VIS-36, EVT-29 (revue SEC-40, I1) : liste rattachée à une surprise', () => {
+  const surprise = { id: 'e', audience: ['giver'], closed: false, hiddenFrom: [ME] };
+  it('jamais vue de l’honoré, quelle que soit l’audience, même membre', () => {
+    const gift = (partial: Partial<ListFacts>) =>
+      list({
+        type: 'GIFTLIST',
+        recipients: ['spouse'],
+        members: [member('org', 'CREATOR')],
+        event: surprise,
+        ...partial,
+      });
+    expect(
+      listAccess(gift({ audience: 'CIRCLE' }), { profileId: ME, inRecipientsCircle: true }).kind,
+    ).toBe('none');
+    expect(access(gift({ audience: 'CUSTOM', customAudience: [ME] })).kind).toBe('none');
+    expect(access(gift({ members: [member('org', 'CREATOR'), member(ME, 'READER')] })).kind).toBe(
+      'none',
+    );
+    expect(access(gift({ audience: 'EVENT' })).kind).toBe('none');
+  });
+
+  it('l’aperçu d’une giftlist révélée dont il est destinataire reste montré (GFT-09)', () => {
+    const l = list({
+      type: 'GIFTLIST',
+      recipients: [ME],
+      members: [member('org', 'CREATOR')],
+      giftExistence: 'REVEALED',
+      event: surprise,
+    });
+    expect(access(l)).toEqual({ kind: 'gift_recipient', content: 'NONE' });
+  });
+
+  it('les autres offreurs la voient toujours', () => {
+    const l = list({
+      type: 'GIFTLIST',
+      audience: 'EVENT',
+      recipients: ['spouse'],
+      members: [member('org', 'CREATOR')],
+      event: surprise,
+    });
+    expect(listAccess(l, { profileId: 'giver', inRecipientsCircle: false }).kind).toBe('giver');
+  });
+});
 
 describe('EVT-38 : liste d’un événement clos en lecture seule, sauf le reçu', () => {
   it('le destinataire ne modifie plus, ne retire plus, mais coche encore « reçu »', () => {
@@ -201,6 +245,8 @@ describe('EVT-29 : rattacher et détacher une liste', () => {
   it('détacher : l’autorité d’une liste rattachée', () => {
     expect(canDetachList(list({ event: openEvent }), ME)).toBe(true);
     expect(canDetachList(list(), ME)).toBe(false);
+    // Revue SEC-40, M1 : jamais d'un événement clos (EVT-38).
+    expect(canDetachList(list({ event: closedEvent }), ME)).toBe(false);
     expect(canDetachList(list({ event: openEvent, members: [member('x', 'CREATOR')] }), ME)).toBe(
       false,
     );
@@ -240,9 +286,40 @@ describe('EVT-27, EVT-28, VIS-35 : reprise', () => {
     carryOrigin: null,
     ...partial,
   });
-  const origin = (status: 'OPEN' | 'RESERVED' | 'PURCHASED') => ({
+  const origin = (
+    status: 'OPEN' | 'RESERVED' | 'PURCHASED',
+    partial: {
+      recipients?: string[];
+      rule?: { mode: 'ALL' | 'ONLY' | 'EXCEPT'; profiles: string[] };
+    } = {},
+  ) => ({
     status,
+    recipients: partial.recipients ?? [ME],
+    rule: partial.rule ?? { mode: 'ALL' as const, profiles: [] },
     event: { id: 'noel-2025', title: 'Noël 2025', date: '2025-12-24' },
+  });
+
+  it('revue SEC-40, B1 : jamais à un destinataire de l’origine, ni à un profil que sa règle écartait', () => {
+    const seen = { visibleEventIds: new Set(['noel-2025']) };
+    // Co-destinataire de l'origine, offreur de la nouvelle liste.
+    expect(
+      projectItem(
+        'giver',
+        record({ carryOrigin: origin('PURCHASED', { recipients: [ME, 'co'] }) }),
+        'co',
+        seen,
+      ),
+    ).toMatchObject({ carriedFrom: null });
+    expect(
+      projectItem(
+        'giver',
+        record({
+          carryOrigin: origin('PURCHASED', { rule: { mode: 'EXCEPT', profiles: ['g'] } }),
+        }),
+        'g',
+        seen,
+      ),
+    ).toMatchObject({ carriedFrom: null });
   });
 
   it('vue destinataire : identique quel que soit l’état de l’origine ; pas de mention', () => {

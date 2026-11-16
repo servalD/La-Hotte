@@ -1,5 +1,5 @@
-import type { ItemPriority, ItemStatus, VisibilityMode } from './facts';
-import type { ItemAccess } from './rules';
+import type { ItemPriority, ItemRule, ItemStatus, VisibilityMode } from './facts';
+import { type ItemAccess, ruleExcludes } from './rules';
 
 // Vues construites champ par champ (ADR 0004, API-12, VIS-35) : la vue destinataire ne contient
 // aucun champ d'offreur, ni même son nom. Jamais `...item` : un champ ajouté à l'élément n'atteint
@@ -45,6 +45,10 @@ export interface ItemRecord {
 
 export interface CarryOriginRecord {
   readonly status: ItemStatus;
+  /** EVT-28 (revue SEC-40, B1) : destinataires de la liste d'origine, jamais informés. */
+  readonly recipients: readonly string[];
+  /** EVT-28 : règle de l'origine ; un profil qu'elle écartait n'apprend pas son état. */
+  readonly rule: ItemRule;
   /** Événement de la liste d'origine, s'il en a un. */
   readonly event: { readonly id: string; readonly title: string; readonly date: string } | null;
 }
@@ -159,10 +163,19 @@ function recipientView(item: ItemRecord, viewerId: string): ItemRecipientView {
   };
 }
 
-/** EVT-28 : seulement pour une origine réservée ou achetée. */
-function carriedFrom(item: ItemRecord, context: ProjectionContext): CarriedFromPart | null {
+/**
+ * EVT-28 : seulement pour une origine réservée ou achetée, et jamais pour un destinataire de
+ * l'origine ni un profil que sa règle écartait (VIS-20 : un co-destinataire voit la nouvelle liste
+ * en offreur).
+ */
+function carriedFrom(
+  item: ItemRecord,
+  viewerId: string,
+  context: ProjectionContext,
+): CarriedFromPart | null {
   const origin = item.carryOrigin;
   if (!origin || (origin.status !== 'RESERVED' && origin.status !== 'PURCHASED')) return null;
+  if (origin.recipients.includes(viewerId) || ruleExcludes(origin.rule, viewerId)) return null;
   const event =
     origin.event && context.visibleEventIds?.has(origin.event.id)
       ? { title: origin.event.title, date: origin.event.date }
@@ -199,7 +212,7 @@ function giverView(item: ItemRecord, viewerId: string, context: ProjectionContex
     mine: item.addedBy === viewerId,
     createdAt: item.createdAt,
     carriedForward: item.carriedForward,
-    carriedFrom: carriedFrom(item, context),
+    carriedFrom: carriedFrom(item, viewerId, context),
     version: item.version,
   };
 }

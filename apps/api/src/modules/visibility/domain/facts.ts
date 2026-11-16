@@ -25,6 +25,11 @@ export interface ListEventFacts {
   readonly audience: readonly string[];
   /** EVT-38 : terminé ou annulé. */
   readonly closed: boolean;
+  /**
+   * EVT-29, VIS-36 : honorés d'une surprise, à qui aucune liste rattachée n'est montrée (sauf
+   * l'aperçu d'une giftlist révélée). Lus pour toute liste rattachée, quel que soit le lecteur.
+   */
+  readonly hiddenFrom: readonly string[];
 }
 
 export interface ListFacts {

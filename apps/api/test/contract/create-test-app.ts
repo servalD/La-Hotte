@@ -343,6 +343,7 @@ export async function createTestApp(
             .filter((p) => p.rsvp === 'YES' || p.rsvp === 'MAYBE')
             .map((p) => p.profileId),
           closed: e.status !== 'UPCOMING',
+          hiddenFrom: [...e.surprise],
         }
       : null;
   };

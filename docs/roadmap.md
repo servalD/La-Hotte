@@ -538,6 +538,26 @@ Dépendances : 1 → 2 → 3 → 4 → 5 → 6 ; les écrans (7) suivent les con
 
 Sortie : critères de `05` ; le destinataire d'une giftlist cachée ou d'un événement surprise ne peut rien observer.
 
+**Tranches 1 à 8 faites le 2026-11-16** (opus), d'affilée. Module `events`, extension de `visibility` (accès aux événements, matrice des événements, 100 % des branches) et de `lists` (rattachement, wishlist créée à la réponse, reprise, pioche, avancement), écrans `/events`, `/events/[id]`, `/events/[id]/assistant`, `/events/join`. 811 tests unitaires et de contrat dans l'API, 168 d'intégration, 128 dans le web ; test OBS-26 vert avec le scénario des événements ; lectures de l'honoré d'une surprise identiques avant et après sa préparation.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- la reprise copie l'élément en gardant le lien (`carried_from_item_id`, unique), elle ne déplace pas la ligne : l'ancien garde son état et ses engagements (ADR 0017, EVT-27) ;
+- le rattachement est porté par `lists` (`PUT/DELETE /lists/{id}/event`, `eventId` à la création, `?eventId=`), qui lit l'événement par son propre adaptateur : `lists` ne dépend pas d'`events`, et `events` appelle `lists` pour la wishlist de EVT-36. Les routes `/events/{id}/lists` prévues au départ n'existent pas (spec `13` corrigée) ; reprise, pioche et avancement sont servis par `lists` sous `/events/{id}/…` ;
+- le créateur répond `Participe` d'office et reçoit sa wishlist en échange (ou s'il est son propre honoré) ;
+- un refus de lien d'invitation est rendu au temps plancher de 500 ms (EVT-16), pour que la durée ne distingue pas un lien refusé à l'honoré d'une surprise d'un lien inconnu ;
+- un lien épuisé laisse encore entrer qui est déjà participant (trouvé par le test d'intégration) ;
+- « a un offreur » (EVT-37) : un engagement, ou un état réel réservé ou acheté ; les suggestions ne comptent pas ;
+- les fonctions de date des événements sont dans le noyau partagé (`shared/domain/event-date.ts`), pour `events` et `lists`.
+
+Restes :
+
+- **Parcours Playwright** des écrans des événements (bureau, mobile, axe) et relecture des textes avec `design:ux-copy` : non faits, comme pour la phase 2.
+- Notifications (rappels EVT-13, EVT-26, EVT-32, EVT-34, alerte de EVT-41) : port vide jusqu'à la phase 4 ; engagements : port vide jusqu'à la phase 5.
+- Commentaires publics qui suivent un souhait repris (EVT-21) : avec les fils, en phase 4.
+- Tests de non-fuite écrits après le code dans les tranches 3 à 6 (QA-10 tenu seulement pour le moteur).
+- Performance : la pioche et l'avancement parcourent les listes candidates et lisent leurs éléments liste par liste.
+
 ## Phase 4 — Commentaires, notifications, temps réel
 
 Spec : `06`. ADR 0006.

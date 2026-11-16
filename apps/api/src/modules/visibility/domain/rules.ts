@@ -65,12 +65,17 @@ export function listAccess(list: ListFacts, viewer: ViewerContext): ListAccess {
   // LST-20 : une liste à la corbeille n'est vue que de son autorité.
   if (list.deleted && authorityOf(list) !== viewer.profileId) return NONE;
 
+  const hidden = list.event?.hiddenFrom.includes(viewer.profileId) ?? false;
   if (list.recipients.includes(viewer.profileId)) {
-    if (list.type === 'WISHLIST') return { kind: 'recipient', role };
+    // Une wishlist d'un honoré ne se rattache pas à sa surprise (EVT-29) ; seconde barrière.
+    if (list.type === 'WISHLIST') return hidden ? NONE : { kind: 'recipient', role };
     // GFT-07 : cachée, rien n'apparaît ; GFT-01 : un destinataire n'est jamais membre.
     if (list.giftExistence === 'HIDDEN' || list.deleted) return NONE;
     return { kind: 'gift_recipient', content: list.giftContent };
   }
+  // EVT-29, VIS-36 (revue SEC-40, I1) : une liste rattachée à une surprise n'est jamais vue de ses
+  // honorés, quelle que soit l'audience, même membres.
+  if (hidden) return NONE;
   if (!inAudience(list, viewer, role)) return NONE;
   return { kind: 'giver', role };
 }
@@ -264,7 +269,9 @@ export function canAttachList(list: ListFacts, event: EventMembership, viewerId:
 
 /** EVT-29 : détacher, par l'autorité. */
 export function canDetachList(list: ListFacts, viewerId: string): boolean {
-  return list.event !== null && !list.deleted && authorityOf(list) === viewerId;
+  // Revue SEC-40, M1 : détacher la liste d'un événement clos la rendrait modifiable (EVT-38).
+  if (list.event === null || list.event.closed) return false;
+  return !list.deleted && authorityOf(list) === viewerId;
 }
 
 /** LST-15 : retrait, par un destinataire d'une wishlist. */
