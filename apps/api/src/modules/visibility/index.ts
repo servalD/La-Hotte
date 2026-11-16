@@ -62,6 +62,7 @@ export {
   eventAccess,
   type EventFacts,
   eventListAudience,
+  type EventMembership,
   type EventMode,
   type EventParticipantFact,
   type EventRole,

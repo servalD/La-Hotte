@@ -22,6 +22,11 @@ export interface ListGiverView {
   title: string;
   description: string;
   personal: boolean;
+  /**
+   * EVT-29 : événement de rattachement.
+   * @nullable
+   */
+  eventId: string | null;
   recipients: string[];
   /** @nullable */
   myRole: ListGiverViewMyRole;

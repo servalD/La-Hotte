@@ -67,7 +67,7 @@ export function eventListAudience(event: EventFacts): string[] {
 }
 
 /** EVT-38 */
-export function isEventClosed(event: EventFacts): boolean {
+export function isEventClosed(event: Pick<EventFacts, 'status'>): boolean {
   return event.status !== 'UPCOMING';
 }
 
@@ -158,15 +158,18 @@ export function canRevokeOrganizer(event: EventFacts, viewerId: string, targetId
   return participantOf(event, targetId)?.role === 'ORGANIZER';
 }
 
+/** Ce qu'il faut d'un événement pour juger d'un rattachement de liste (EVT-29). */
+export type EventMembership = Pick<EventFacts, 'mode' | 'status' | 'participants'>;
+
 /** EVT-29 : profils qui peuvent être destinataires d'une wishlist rattachée. */
-export function wishlistRecipientsAllowed(event: EventFacts): string[] {
+export function wishlistRecipientsAllowed(event: EventMembership): string[] {
   return event.participants
     .filter((participant) => event.mode === 'EXCHANGE' || participant.isHonoree)
     .map((participant) => participant.profileId);
 }
 
 /** EVT-29 : la réponse permet-elle de rattacher une liste ? */
-export function respondedPresent(event: EventFacts, profileId: string): boolean {
-  const me = participantOf(event, profileId);
+export function respondedPresent(event: EventMembership, profileId: string): boolean {
+  const me = event.participants.find((participant) => participant.profileId === profileId);
   return me !== undefined && (me.rsvp === 'YES' || me.rsvp === 'MAYBE');
 }

@@ -26,5 +26,7 @@ export interface ItemRecipientView {
   /** @nullable */
   receivedAt: string | null;
   mine: boolean;
+  /** EVT-27 : reporté vers une autre liste, son propre geste. */
+  carriedForward: boolean;
   version: number;
 }

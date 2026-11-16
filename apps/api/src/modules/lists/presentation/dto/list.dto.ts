@@ -27,8 +27,8 @@ import {
 // API-04 : contraintes explicites ; champs inconnus refusés.
 
 export const LIST_TYPES = ['WISHLIST', 'GIFTLIST'] as const;
-/** `EVENT` viendra avec la phase 3. */
-export const LIST_AUDIENCES = ['MEMBERS', 'CIRCLE', 'CUSTOM'] as const;
+/** `EVENT` exige une liste rattachée (VIS-03, EVT-29). */
+export const LIST_AUDIENCES = ['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM'] as const;
 export const VISIBILITY_MODES = ['ALL', 'ONLY', 'EXCEPT'] as const;
 export const VISIBILITY_EDIT_ROLES = ['CREATOR', 'OWNER', 'CONTRIBUTOR'] as const;
 export const GIFT_EXISTENCES = ['HIDDEN', 'REVEALED'] as const;
@@ -46,10 +46,29 @@ export class ListsQueryDto {
   @IsIn(LIST_SCOPES)
   @ApiProperty({ required: false, enum: LIST_SCOPES, enumName: 'ListScope', default: 'active' })
   scope?: (typeof LIST_SCOPES)[number];
+
+  /** EVT-30 : listes rattachées à cet événement. */
+  @IsOptional()
+  @IsUUID('all')
+  @ApiProperty({ required: false, format: 'uuid' })
+  eventId?: string;
 }
 
-/** `POST /lists` (LST-01, LST-07, VIS-01, GFT-03). */
+/** `PUT /lists/{id}/event` (EVT-24, EVT-29). */
+export class AttachListDto {
+  @IsUUID('all')
+  @ApiProperty({ format: 'uuid' })
+  eventId!: string;
+}
+
+/** `POST /lists` (LST-01, LST-07, VIS-01, GFT-03, EVT-29). */
 export class CreateListDto {
+  /** EVT-29 : rattachée dès la création. */
+  @IsOptional()
+  @IsUUID('all')
+  @ApiProperty({ required: false, format: 'uuid' })
+  eventId?: string;
+
   @IsIn(LIST_TYPES)
   @ApiProperty({ enum: LIST_TYPES, enumName: 'ListType' })
   type!: (typeof LIST_TYPES)[number];

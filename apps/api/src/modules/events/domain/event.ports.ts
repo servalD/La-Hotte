@@ -177,6 +177,11 @@ export abstract class EventInvitationMail {
   abstract notifyInvited(profileIds: readonly string[]): void;
 }
 
+/** EVT-36 : wishlist rattachée, créée ou retrouvée par le module `lists`. */
+export abstract class EventWishlistCreator {
+  abstract ensure(input: { profileId: string; eventId: string }): Promise<string | null>;
+}
+
 /**
  * EVT-41 : notifications de l'événement. Port vide jusqu'à la phase 4 (rappels, annulation,
  * alerte aux organisateurs d'un participant engagé qui se retire).

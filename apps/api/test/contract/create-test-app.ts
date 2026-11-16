@@ -68,7 +68,9 @@ import {
 } from '../../src/modules/catalog/testing';
 import {
   EngagementReader,
+  EventLookup,
   InMemoryEngagementReader,
+  InMemoryEventLookup,
   InMemoryItemRepository,
   InMemoryListRepository,
   InMemoryVisibilityLog,
@@ -113,6 +115,8 @@ export interface TestCatalog {
   readonly items: InMemoryItemRepository;
   readonly visibilityLog: InMemoryVisibilityLog;
   readonly engagements: InMemoryEngagementReader;
+  /** EVT-29 : événements lus par `lists`, reliés au double des événements. */
+  readonly eventLookup: InMemoryEventLookup;
 }
 
 export interface TestIdentity {
@@ -207,6 +211,7 @@ export async function createTestApp(
     items: new InMemoryItemRepository(products, visibilityLog),
     visibilityLog,
     engagements: new InMemoryEngagementReader(),
+    eventLookup: new InMemoryEventLookup(),
   };
   const eventRepository = new InMemoryEventRepository();
   const events: TestEvents = {
@@ -284,6 +289,8 @@ export async function createTestApp(
     .useValue(catalog.visibilityLog)
     .overrideProvider(EngagementReader)
     .useValue(catalog.engagements)
+    .overrideProvider(EventLookup)
+    .useValue(catalog.eventLookup)
     .overrideProvider(EventRepository)
     .useValue(events.events)
     .overrideProvider(EventLinkRepository)
@@ -325,6 +332,44 @@ export async function createTestApp(
     return p ? { timezone: p.timezone, currency: p.currency, isChild: p.isChild ?? false } : null;
   };
   events.people.blocked = (a, b) => links.isBlockedEitherWay(a, b);
+  // EVT-14, EVT-29, EVT-38 : les listes lisent l'événement à jour dans le double des événements.
+  const storedEvent = (eventId: string) => events.events.events.get(eventId) ?? null;
+  catalog.lists.eventFactsOf = (eventId) => {
+    const e = storedEvent(eventId);
+    return e
+      ? {
+          id: e.id,
+          audience: e.participants
+            .filter((p) => p.rsvp === 'YES' || p.rsvp === 'MAYBE')
+            .map((p) => p.profileId),
+          closed: e.status !== 'UPCOMING',
+        }
+      : null;
+  };
+  catalog.eventLookup.findEvent = (eventId) => {
+    const e = storedEvent(eventId);
+    return e
+      ? {
+          id: e.id,
+          title: e.title,
+          mode: e.mode,
+          isSurprise: e.isSurprise,
+          status: e.status,
+          participants: e.participants.map((p) => ({
+            profileId: p.profileId,
+            role: p.role,
+            isHonoree: p.isHonoree,
+            rsvp: p.rsvp,
+          })),
+        }
+      : null;
+  };
+  catalog.eventLookup.surpriseOf = (eventId) => [...(storedEvent(eventId)?.surprise ?? [])];
+  catalog.items.eventOfList = (listId) => {
+    const eventId = catalog.lists.lists.get(listId)?.event?.id;
+    const e = eventId ? storedEvent(eventId) : null;
+    return e ? { id: e.id, title: e.title, date: e.date } : null;
+  };
 
   products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
   catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];

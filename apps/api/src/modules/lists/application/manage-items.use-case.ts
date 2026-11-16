@@ -4,6 +4,7 @@ import { ProductCatalog, ProductNotFoundError } from '../../catalog';
 import {
   addRight,
   canActAsRecipient,
+  canMarkReceived,
   canEditItem,
   type ItemPriority,
   itemAccess,
@@ -250,7 +251,10 @@ export class DeleteItem {
   }
 }
 
-/** POST/DELETE /items/{id}/received (LST-13, LST-18). */
+/**
+ * POST/DELETE /items/{id}/received (LST-13, LST-18, GFT-11) : permis sur la liste d'un événement
+ * clos (EVT-38). Rendu dans la vue du demandeur (destinataire, ou responsable d'une giftlist).
+ */
 @Injectable()
 export class MarkItemReceived {
   constructor(
@@ -261,14 +265,14 @@ export class MarkItemReceived {
 
   async execute(input: { viewerId: string; itemId: string; received: boolean }): Promise<ItemView> {
     const gated = await this.gate.item(input.viewerId, input.itemId);
-    if (!canActAsRecipient(gated.facts, gated.access, gated.itemFacts, input.viewerId)) {
+    if (!canMarkReceived(gated.facts, gated.access, gated.itemFacts, input.viewerId)) {
       throw new ListActionForbiddenError();
     }
     const updated = await this.items.setReceived(
       gated.item.id,
       input.received ? (gated.item.receivedAt ?? this.clock.now()) : null,
     );
-    const view = updated ? projectItem('recipient', updated, input.viewerId) : null;
+    const view = updated ? projectItem(gated.itemAccess, updated, input.viewerId) : null;
     if (!view) throw new ItemNotFoundError();
     return view;
   }

@@ -40,3 +40,4 @@ export {
   SetItemRule,
 } from './manage-rules.use-case';
 export type { RuleLogEntry } from '../domain/list.ports';
+export { AttachListToEvent, DetachListFromEvent } from './manage-event-lists.use-case';

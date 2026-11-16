@@ -9,6 +9,15 @@ export class ListNotFoundError extends DomainError {
   }
 }
 
+/** EVT-08, EVT-29 : événement inconnu, ou dont le profil n'est pas participant ; même refus. */
+export class EventNotFoundForListError extends DomainError {
+  readonly kind = 'not_found';
+  readonly code = 'EVENT_NOT_FOUND';
+  constructor() {
+    super('Événement introuvable.');
+  }
+}
+
 /** VIS-34 */
 export class ItemNotFoundError extends DomainError {
   readonly kind = 'not_found';

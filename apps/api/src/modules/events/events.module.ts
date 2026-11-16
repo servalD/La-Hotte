@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity';
+import { ListsModule } from '../lists';
 import { VisibilityModule } from '../visibility';
 import { EventGate } from './application/event-gate';
 import {
@@ -35,11 +36,13 @@ import {
   EventPeople,
   EventRepository,
   EventTokens,
+  EventWishlistCreator,
   ResponseFloor,
 } from './domain/event.ports';
 import {
   CryptoEventTokens,
   IdentityEventInvitationMail,
+  ListsEventWishlistCreator,
   NoEventNotifier,
   SleepingResponseFloor,
 } from './infrastructure/adapters';
@@ -53,7 +56,7 @@ import { EventsController } from './presentation/events.controller';
 
 /** Module `events` : événements, participants, liens d'invitation (05). Accès par `visibility`. */
 @Module({
-  imports: [VisibilityModule, IdentityModule],
+  imports: [VisibilityModule, IdentityModule, ListsModule],
   controllers: [EventsController],
   providers: [
     EventGate,
@@ -85,6 +88,7 @@ import { EventsController } from './presentation/events.controller';
     { provide: ResponseFloor, useClass: SleepingResponseFloor },
     { provide: EventInvitationMail, useClass: IdentityEventInvitationMail },
     { provide: EventNotifier, useClass: NoEventNotifier },
+    { provide: EventWishlistCreator, useClass: ListsEventWishlistCreator },
   ],
 })
 export class EventsModule {}

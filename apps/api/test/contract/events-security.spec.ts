@@ -65,6 +65,19 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
       .expect(200);
     const link1 = await http().post(`/api/v1/events/${eventId}/links`).set(org.mutation).send({});
     const linkId = link1.body.link.id as string;
+    // EVT-29 : giftlist secrète de la surprise, rattachée dès la création.
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(org.mutation)
+      .send({
+        type: 'GIFTLIST',
+        title: 'Cadeau commun',
+        recipientIds: [honoree.profileId],
+        eventId,
+        audience: 'EVENT',
+      })
+      .expect(201);
+    const giftListId = gift.body.id as string;
 
     const table: { route: string; body?: object; headers?: Record<string, string> }[] = [
       { route: 'GET /api/v1/events/:id' },
@@ -87,6 +100,12 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
       { route: 'PUT /api/v1/events/:id/organizers/:profileId', second: friend.profileId as string },
       { route: 'DELETE /api/v1/events/:id/organizers/:profileId', second: org.profileId as string },
       { route: 'DELETE /api/v1/events/:id/links/:linkId', second: linkId },
+    ];
+
+    // Routes de liste : jouées sur la giftlist, l'identifiant inconnu étant une liste.
+    const listTable: { route: string; body?: object }[] = [
+      { route: 'PUT /api/v1/lists/:id/event', body: { eventId } },
+      { route: 'DELETE /api/v1/lists/:id/event' },
     ];
 
     const stranger = await person();
@@ -130,6 +149,20 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
           code: unknown.body.code as unknown,
         });
       }
+      for (const row of listTable) {
+        const template = row.route.split(' ')[1]!;
+        const victim = await send(row.route, template.replace(':id', giftListId), row.body);
+        const unknown = await send(row.route, template.replace(':id', randomUUID()), row.body);
+        expect({
+          key: row.route,
+          status: victim.status,
+          code: victim.body.code as unknown,
+        }).toEqual({
+          key: row.route,
+          status: 404,
+          code: unknown.body.code as unknown,
+        });
+      }
       for (const row of withSecond) {
         const template = row.route.split(' ')[1]!;
         const path = (id: string) =>
@@ -148,7 +181,11 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
       }
     }
     expect([snapshot(), linkState()]).toEqual(before);
-    const covered = new Set([...table.map((r) => r.route), ...withSecond.map((r) => r.route)]);
+    const covered = new Set([
+      ...table.map((r) => r.route),
+      ...withSecond.map((r) => r.route),
+      ...listTable.map((r) => r.route),
+    ]);
     expect(PHASE3_IDOR_ROUTES.filter((route) => !covered.has(route))).toEqual([]);
   });
 });

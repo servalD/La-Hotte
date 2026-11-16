@@ -3560,6 +3560,16 @@
             "schema": {
               "$ref": "#/components/schemas/ListScope"
             }
+          },
+          {
+            "name": "eventId",
+            "required": false,
+            "in": "query",
+            "description": "EVT-30 : listes rattachées à cet événement.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3809,6 +3819,134 @@
           }
         },
         "summary": "LST-20 : à la corbeille pour 30 jours.",
+        "tags": [
+          "lists"
+        ]
+      }
+    },
+    "/api/v1/lists/{id}/event": {
+      "put": {
+        "operationId": "attachListToEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachListDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ListGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ListRecipientView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ListTeaserRecipientView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ListGiverView",
+                      "recipient": "#/components/schemas/ListRecipientView",
+                      "teaser": "#/components/schemas/ListTeaserRecipientView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-24, EVT-29 : rattacher à un événement dont on est participant.",
+        "tags": [
+          "lists"
+        ]
+      },
+      "delete": {
+        "operationId": "detachListFromEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ListGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ListRecipientView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ListTeaserRecipientView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ListGiverView",
+                      "recipient": "#/components/schemas/ListRecipientView",
+                      "teaser": "#/components/schemas/ListTeaserRecipientView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "EVT-29 : détacher ; une audience `EVENT` devient `MEMBERS`.",
         "tags": [
           "lists"
         ]
@@ -5421,6 +5559,18 @@
           "ageAttested"
         ]
       },
+      "AttachListDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "eventId"
+        ]
+      },
       "BirthdayDto": {
         "type": "object",
         "properties": {
@@ -5517,6 +5667,54 @@
         },
         "required": [
           "profileId"
+        ]
+      },
+      "CarriedFromEventView": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "title",
+          "date"
+        ]
+      },
+      "CarriedFromStatus": {
+        "type": "string",
+        "enum": [
+          "RESERVED",
+          "PURCHASED"
+        ]
+      },
+      "CarriedFromView": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarriedFromStatus"
+              }
+            ]
+          },
+          "event": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarriedFromEventView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "event"
         ]
       },
       "CircleMemberView": {
@@ -5770,6 +5968,11 @@
       "CreateListDto": {
         "type": "object",
         "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "EVT-29 : rattachée dès la création.",
+            "format": "uuid"
+          },
           "type": {
             "allOf": [
               {
@@ -6886,6 +7089,18 @@
             "type": "string",
             "format": "date-time"
           },
+          "carriedForward": {
+            "type": "boolean"
+          },
+          "carriedFrom": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CarriedFromView"
+              }
+            ]
+          },
           "version": {
             "type": "number"
           }
@@ -6911,6 +7126,8 @@
           "addedBy",
           "mine",
           "createdAt",
+          "carriedForward",
+          "carriedFrom",
           "version"
         ]
       },
@@ -7014,6 +7231,10 @@
           "mine": {
             "type": "boolean"
           },
+          "carriedForward": {
+            "type": "boolean",
+            "description": "EVT-27 : reporté vers une autre liste, son propre geste."
+          },
           "version": {
             "type": "number"
           }
@@ -7033,6 +7254,7 @@
           "received",
           "receivedAt",
           "mine",
+          "carriedForward",
           "version"
         ]
       },
@@ -7223,6 +7445,7 @@
         "enum": [
           "MEMBERS",
           "CIRCLE",
+          "EVENT",
           "CUSTOM"
         ]
       },
@@ -7286,6 +7509,12 @@
           },
           "personal": {
             "type": "boolean"
+          },
+          "eventId": {
+            "type": "string",
+            "nullable": true,
+            "description": "EVT-29 : événement de rattachement.",
+            "format": "uuid"
           },
           "recipients": {
             "type": "array",
@@ -7372,6 +7601,7 @@
           "title",
           "description",
           "personal",
+          "eventId",
           "recipients",
           "myRole",
           "audience",
@@ -7491,6 +7721,12 @@
           "personal": {
             "type": "boolean"
           },
+          "eventId": {
+            "type": "string",
+            "nullable": true,
+            "description": "EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09).",
+            "format": "uuid"
+          },
           "recipients": {
             "type": "array",
             "items": {
@@ -7561,6 +7797,7 @@
           "title",
           "description",
           "personal",
+          "eventId",
           "recipients",
           "myRole",
           "audience",

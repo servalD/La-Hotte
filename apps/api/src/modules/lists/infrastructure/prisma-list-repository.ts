@@ -5,6 +5,8 @@ import type { ItemCriteria, ItemRecord, ListCandidateCriteria, ListRole } from '
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
   EngagementReader,
+  type EventForLists,
+  EventLookup,
   ItemRepository,
   type ItemProductReference,
   type ListChanges,
@@ -76,6 +78,37 @@ function logData(entry: RuleLogEntry): Prisma.VisibilityChangeLogCreateInput {
   };
 }
 
+/** EVT-29 : lecture d'un événement par `lists`, sans dépendre du module `events`. */
+@Injectable()
+export class PrismaEventLookup extends EventLookup {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async find(eventId: string): Promise<EventForLists | null> {
+    const row = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        title: true,
+        mode: true,
+        isSurprise: true,
+        status: true,
+        participants: { select: { profileId: true, role: true, isHonoree: true, rsvp: true } },
+      },
+    });
+    return row;
+  }
+
+  async surpriseRecipients(eventId: string): Promise<string[]> {
+    const rows = await this.prisma.eventSurpriseRecipient.findMany({
+      where: { eventId },
+      select: { profileId: true },
+    });
+    return rows.map((row) => row.profileId);
+  }
+}
+
 @Injectable()
 export class PrismaListRepository extends ListRepository {
   constructor(private readonly prisma: PrismaService) {
@@ -135,6 +168,7 @@ export class PrismaListRepository extends ListRepository {
           description: list.description,
           creatorProfileId: list.creatorProfileId,
           personalProfileId: list.personal ? list.creatorProfileId : null,
+          eventId: list.eventId ?? null,
           audience: list.audience,
           giftExistence: list.giftExistence,
           giftContent: list.giftContent,
@@ -185,6 +219,13 @@ export class PrismaListRepository extends ListRepository {
               ]
             : []),
           { audience: 'CUSTOM', audienceOf: { some: { profileId: viewer } } },
+          // VIS-03, EVT-14 : listes d'un événement où il a répondu Participe ou Peut-être.
+          {
+            audience: 'EVENT',
+            event: {
+              participants: { some: { profileId: viewer, rsvp: { in: ['YES', 'MAYBE'] } } },
+            },
+          },
         ],
       },
       include: LIST_INCLUDE,
@@ -302,6 +343,42 @@ export class PrismaListRepository extends ListRepository {
         where: { listId: input.listId, profileId: input.profileId },
       });
     });
+  }
+
+  async attachEvent(listId: string, eventId: string): Promise<boolean> {
+    const { count } = await this.prisma.list.updateMany({
+      where: { id: listId, eventId: null, personalProfileId: null, deletedAt: null },
+      data: { eventId, version: { increment: 1 } },
+    });
+    return count === 1;
+  }
+
+  async detachEvent(listId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.list.updateMany({
+        where: { id: listId, audience: 'EVENT' },
+        data: { audience: 'MEMBERS' },
+      }),
+      this.prisma.list.updateMany({
+        where: { id: listId, eventId: { not: null } },
+        data: { eventId: null, version: { increment: 1 } },
+      }),
+    ]);
+  }
+
+  async findEventWishlist(eventId: string, profileId: string): Promise<string | null> {
+    const row = await this.prisma.list.findFirst({
+      where: {
+        eventId,
+        type: 'WISHLIST',
+        deletedAt: null,
+        creatorProfileId: profileId,
+        recipients: { some: { profileId } },
+      },
+      select: { id: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return row?.id ?? null;
   }
 
   async trash(listId: string, at: Date): Promise<void> {

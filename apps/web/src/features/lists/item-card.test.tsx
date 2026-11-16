@@ -51,6 +51,7 @@ const base = {
   position: 0,
   hidden: false,
   mine: false,
+  carriedForward: false,
   version: 1,
 };
 
@@ -80,6 +81,7 @@ describe('ItemCard', () => {
       intendedRecipientId: null,
       addedBy: null,
       createdAt: '2026-11-15T00:00:00.000Z',
+      carriedFrom: null,
     };
     wrap(<ItemCard item={item} listId="l" permissions={permissions} isGiftlist={false} />);
     expect(screen.getByText(/Acheté \(supposé reçu\)/)).toBeInTheDocument();

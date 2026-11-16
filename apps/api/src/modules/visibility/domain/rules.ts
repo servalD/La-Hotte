@@ -1,5 +1,5 @@
 import {
-  type EventFacts,
+  type EventMembership,
   isEventClosed,
   respondedPresent,
   wishlistRecipientsAllowed,
@@ -253,7 +253,7 @@ export function canMarkReceived(
 }
 
 /** EVT-29 : rattacher une liste à un événement. */
-export function canAttachList(list: ListFacts, event: EventFacts, viewerId: string): boolean {
+export function canAttachList(list: ListFacts, event: EventMembership, viewerId: string): boolean {
   if (list.event !== null || list.personal || list.archived || list.deleted) return false;
   if (isEventClosed(event) || authorityOf(list) !== viewerId) return false;
   if (!respondedPresent(event, viewerId)) return false;

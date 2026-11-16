@@ -22,6 +22,7 @@ import {
   EventNotifier,
   EventPeople,
   EventRepository,
+  EventWishlistCreator,
 } from '../domain/event.ports';
 import { EventGate } from './event-gate';
 import { checkHonorees, detailOfGated, type EventDetail } from './manage-events.use-case';
@@ -175,6 +176,7 @@ export class RespondToEvent {
     private readonly events: EventRepository,
     private readonly gate: EventGate,
     private readonly notifier: EventNotifier,
+    private readonly wishlists: EventWishlistCreator,
     private readonly clock: Clock,
   ) {}
 
@@ -188,6 +190,12 @@ export class RespondToEvent {
     if (input.rsvp === 'NO' && (before === 'YES' || before === 'MAYBE')) {
       this.notifier.participantWithdrew(input.eventId, input.viewerId);
     }
-    return { rsvp: input.rsvp, listId: null };
+    // EVT-36 : `Participe` à un échange, ou honoré hors surprise, ouvre sa wishlist rattachée.
+    const bringsList = gated.event.mode === 'EXCHANGE' || gated.access.isHonoree;
+    const listId =
+      input.rsvp === 'YES' && bringsList
+        ? await this.wishlists.ensure({ profileId: input.viewerId, eventId: input.eventId })
+        : null;
+    return { rsvp: input.rsvp, listId };
   }
 }

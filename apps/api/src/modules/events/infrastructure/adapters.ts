@@ -3,10 +3,12 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { EventInvitationNotices } from '../../identity';
+import { EventWishlists } from '../../lists';
 import {
   EventInvitationMail,
   EventNotifier,
   EventTokens,
+  EventWishlistCreator,
   ResponseFloor,
 } from '../domain/event.ports';
 
@@ -53,6 +55,18 @@ export class IdentityEventInvitationMail extends EventInvitationMail {
 
   notifyInvited(profileIds: readonly string[]): void {
     this.notices.notify(profileIds);
+  }
+}
+
+/** EVT-36 : la wishlist naît dans `lists`, qui revérifie EVT-29. */
+@Injectable()
+export class ListsEventWishlistCreator extends EventWishlistCreator {
+  constructor(private readonly wishlists: EventWishlists) {
+    super();
+  }
+
+  ensure(input: { profileId: string; eventId: string }): Promise<string | null> {
+    return this.wishlists.ensure(input);
   }
 }
 

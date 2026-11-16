@@ -11,6 +11,8 @@ import type { GiftExistence } from './giftExistence';
 import type { GiftContent } from './giftContent';
 
 export interface CreateListDto {
+  /** EVT-29 : rattachée dès la création. */
+  eventId?: string;
   type: ListType;
   /**
    * @minLength 1

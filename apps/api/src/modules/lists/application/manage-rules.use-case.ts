@@ -102,11 +102,13 @@ export class SetItemRule {
       throw new VisibilityProfileInvalidError();
     }
     if (profiles.length > CUSTOM_AUDIENCE_MAX) throw new VisibilityProfileInvalidError();
-    // VIS-19 : le cercle de l'auteur du changement et les membres de la liste.
+    // VIS-19 : le cercle de l'auteur du changement, les membres de la liste et, rattachée, les
+    // participants de l'événement qui ont répondu Participe ou Peut-être.
     const allowed = new Set([
       ...(await this.visibility.circleOf(input.viewerId)),
       ...list.members.map((member) => member.profileId),
       ...(list.type === 'WISHLIST' ? list.recipients : []),
+      ...(list.event?.audience ?? []),
     ]);
     if (profiles.some((id) => !allowed.has(id))) {
       throw new VisibilityProfileInvalidError();

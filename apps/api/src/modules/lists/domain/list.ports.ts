@@ -1,4 +1,5 @@
 import type {
+  EventMembership,
   GiftContent,
   GiftExistence,
   ItemCriteria,
@@ -13,8 +14,27 @@ import type {
 } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from './list';
 
+/**
+ * EVT-29 : ce que `lists` lit d'un événement pour juger d'un rattachement ou des destinataires
+ * d'une giftlist. Lu en base par l'adaptateur du module (aucune dépendance au module `events`).
+ * Les honorés d'une surprise ne sont lus qu'après avoir vérifié que le demandeur participe.
+ */
+export interface EventForLists extends EventMembership {
+  readonly id: string;
+  readonly title: string;
+  readonly isSurprise: boolean;
+}
+
+export abstract class EventLookup {
+  abstract find(eventId: string): Promise<EventForLists | null>;
+  /** EVT-07 : honorés d'une surprise. */
+  abstract surpriseRecipients(eventId: string): Promise<string[]>;
+}
+
 export interface NewList {
   readonly id: string;
+  /** EVT-29, EVT-36 : événement de rattachement dès la création. */
+  readonly eventId?: string | null;
   readonly type: ListType;
   readonly title: string;
   readonly description: string;
@@ -128,6 +148,15 @@ export abstract class ListRepository {
     readonly profileId: string;
     readonly successorId: string | null;
   }): Promise<void>;
+
+  /** EVT-29 : rattache une liste qui ne l'est pas ; faux si elle l'est déjà (concurrence). */
+  abstract attachEvent(listId: string, eventId: string): Promise<boolean>;
+
+  /** EVT-29 : détache ; une audience `EVENT` devient `MEMBERS`. */
+  abstract detachEvent(listId: string): Promise<void>;
+
+  /** EVT-36 : wishlist rattachée dont le profil est créateur et destinataire, hors corbeille. */
+  abstract findEventWishlist(eventId: string, profileId: string): Promise<string | null>;
 
   /** LST-20 */
   abstract trash(listId: string, at: Date): Promise<void>;

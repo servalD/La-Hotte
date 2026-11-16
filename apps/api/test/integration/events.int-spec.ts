@@ -126,6 +126,40 @@ describe('Événements en base (ADR 0017)', { timeout: 30_000 }, () => {
     expect(res.body.myRsvp).toBe('PENDING');
   });
 
+  it('EVT-14, EVT-36 : wishlist créée à la réponse, vue des participants Participe seulement', async () => {
+    const org = await person();
+    const guest = await person();
+    await link(org, guest);
+    const created = await http()
+      .post('/api/v1/events')
+      .set(org.mutation)
+      .send({ title: 'Noël', date: '2027-12-24', type: 'CHRISTMAS' })
+      .expect(201);
+    const id = created.body.id as string;
+    await http()
+      .post(`/api/v1/events/${id}/participants`)
+      .set(org.mutation)
+      .send({ profileIds: [guest.profileId] })
+      .expect(200);
+    const answer = await http()
+      .put(`/api/v1/events/${id}/rsvp`)
+      .set(guest.mutation)
+      .send({ rsvp: 'YES' })
+      .expect(200);
+    const guestListId = answer.body.listId as string;
+    const fromOrg = await http()
+      .get(`/api/v1/lists?eventId=${id}`)
+      .set({ Cookie: org.cookie })
+      .expect(200);
+    expect((fromOrg.body.items as { id: string }[]).map((l) => l.id)).toContain(guestListId);
+    await http()
+      .put(`/api/v1/events/${id}/rsvp`)
+      .set(org.mutation)
+      .send({ rsvp: 'NO' })
+      .expect(200);
+    await http().get(`/api/v1/lists/${guestListId}`).set({ Cookie: org.cookie }).expect(404);
+  });
+
   it('EVT-39 : la suppression détache les listes, une audience EVENT devient MEMBERS', async () => {
     const org = await person();
     const created = await http()

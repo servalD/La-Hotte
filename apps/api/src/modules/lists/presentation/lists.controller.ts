@@ -25,8 +25,10 @@ import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../i
 import { parseIfMatch } from '../../../platform/http/if-match';
 import {
   AddItem,
+  AttachListToEvent,
   CopyItemProduct,
   CreateList,
+  DetachListFromEvent,
   DeleteItem,
   DeleteList,
   GetItem,
@@ -48,6 +50,7 @@ import {
 } from '../application/contract';
 import {
   AddItemDto,
+  AttachListDto,
   CreateListDto,
   ItemsQueryDto,
   LeaveListDto,
@@ -108,6 +111,8 @@ export class ListsController {
     private readonly itemsOf: ListItems,
     private readonly addItem: AddItem,
     private readonly visibilityLog: ReadVisibilityLog,
+    private readonly attach: AttachListToEvent,
+    private readonly detach: DetachListFromEvent,
   ) {}
 
   /** VIS-14 : par l'autorité de la liste (VIS-19). */
@@ -140,8 +145,37 @@ export class ListsController {
     const lists = await this.listAll.execute({
       viewerId: profile.id,
       scope: query.scope ?? 'active',
+      ...(query.eventId ? { eventId: query.eventId } : {}),
     });
     return { items: lists.map(toListView) };
+  }
+
+  /** EVT-24, EVT-29 : rattacher à un événement dont on est participant. */
+  @Put(':id/event')
+  @ApiParam({ name: 'id', ...UUID_PARAM })
+  @ApiOkResponse({ schema: LIST_VIEW_SCHEMA })
+  async attachListToEvent(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: AttachListDto,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<ListView> {
+    const summary = await this.attach.execute({
+      viewerId: profile.id,
+      listId: id,
+      eventId: body.eventId,
+    });
+    return toListView(summary);
+  }
+
+  /** EVT-29 : détacher ; une audience `EVENT` devient `MEMBERS`. */
+  @Delete(':id/event')
+  @ApiParam({ name: 'id', ...UUID_PARAM })
+  @ApiOkResponse({ schema: LIST_VIEW_SCHEMA })
+  async detachListFromEvent(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<ListView> {
+    return toListView(await this.detach.execute({ viewerId: profile.id, listId: id }));
   }
 
   @Post()
@@ -160,6 +194,7 @@ export class ListsController {
       customAudience: body.customAudience ?? [],
       giftExistence: body.giftExistence ?? null,
       giftContent: body.giftContent ?? null,
+      eventId: body.eventId ?? null,
     });
     return toListView(summary);
   }

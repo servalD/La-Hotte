@@ -12,5 +12,6 @@ export type ListAudienceChoice = (typeof ListAudienceChoice)[keyof typeof ListAu
 export const ListAudienceChoice = {
   MEMBERS: 'MEMBERS',
   CIRCLE: 'CIRCLE',
+  EVENT: 'EVENT',
   CUSTOM: 'CUSTOM',
 } as const;

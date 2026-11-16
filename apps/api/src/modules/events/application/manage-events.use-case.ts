@@ -46,6 +46,7 @@ import {
   EventNotifier,
   EventPeople,
   EventRepository,
+  EventWishlistCreator,
   type NewEventParticipant,
 } from '../domain/event.ports';
 import { EventGate, type GatedEvent } from './event-gate';
@@ -163,6 +164,7 @@ export class CreateEvent {
     private readonly people: EventPeople,
     private readonly visibility: VisibilityService,
     private readonly mail: EventInvitationMail,
+    private readonly wishlists: EventWishlistCreator,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
@@ -233,6 +235,10 @@ export class CreateEvent {
     this.mail.notifyInvited(
       participants.filter((p) => p.profileId !== input.viewerId).map((p) => p.profileId),
     );
+    // EVT-36 : le créateur répond `Participe` d'office ; il apporte sa liste en échange, ou honoré.
+    if (mode === 'EXCHANGE' || creatorHonored) {
+      await this.wishlists.ensure({ profileId: input.viewerId, eventId: created.id });
+    }
     return detailOf(this.gate, this.events, this.people, this.visibility, input.viewerId, created);
   }
 }

@@ -6,6 +6,7 @@ import {
   addRight,
   authorityOf,
   canArchiveList,
+  canAttachList,
   canDeleteList,
   canEditList,
   canEditListRules,
@@ -43,8 +44,14 @@ import {
   RecipientNotAllowedError,
   SuccessorRequiredError,
 } from '../domain/list.errors';
-import { ItemRepository, type ListChanges, ListRepository } from '../domain/list.ports';
+import {
+  EventLookup,
+  ItemRepository,
+  type ListChanges,
+  ListRepository,
+} from '../domain/list.ports';
 import { type GatedList, ListGate } from './list-gate';
+import { eventForParticipant, eventRecipientPool } from './manage-event-lists.use-case';
 
 /** Ce que le profil peut faire sur la liste (rendu au client pour l'interface ; le serveur revérifie). */
 export interface ListPermissions {
@@ -76,17 +83,25 @@ function permissionsOf(gated: GatedList, viewerId: string): ListPermissions {
   };
 }
 
+export function summarize(gated: GatedList, viewerId: string): ListSummary {
+  return { ...gated, permissions: permissionsOf(gated, viewerId) };
+}
+
 function roleOf(access: ListAccess): ListRole | null {
   return access.kind === 'giver' || access.kind === 'recipient' ? access.role : null;
 }
 
-/** Vérifie les destinataires proposés par `actorId` (LST-07). */
+/**
+ * Vérifie les destinataires proposés par `actorId` (LST-07). `eventPool` : profils qu'une
+ * giftlist rattachée peut viser hors du cercle (EVT-29).
+ */
 async function checkRecipients(
   visibility: VisibilityService,
   type: ListType,
   actorId: string,
   recipients: readonly string[],
   members: readonly string[],
+  eventPool: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   const unique = new Set(recipients);
   if (unique.size !== recipients.length || unique.size === 0 || unique.size > LIST_RECIPIENTS_MAX) {
@@ -103,7 +118,7 @@ async function checkRecipients(
   const circle = new Set(await visibility.circleOf(actorId));
   for (const id of unique) {
     // GFT-01, GFT-06 : jamais soi-même ni un membre ; un profil du cercle seulement.
-    if (id === actorId || members.includes(id) || !circle.has(id)) {
+    if (id === actorId || members.includes(id) || !(circle.has(id) || eventPool.has(id))) {
       throw new RecipientNotAllowedError();
     }
   }
@@ -134,6 +149,8 @@ export class ListLists {
   async execute(input: {
     viewerId: string;
     scope: 'active' | 'archived' | 'trash';
+    /** EVT-30 : listes rattachées à cet événement seulement. */
+    eventId?: string;
   }): Promise<ListSummary[]> {
     await this.lists.ensurePersonal({
       profileId: input.viewerId,
@@ -150,6 +167,7 @@ export class ListLists {
     for (const list of candidates) {
       const gated = await this.gate.accessOf(input.viewerId, list);
       if (gated.access.kind === 'none') continue;
+      if (input.eventId !== undefined && list.event?.id !== input.eventId) continue;
       const archived = list.archivedAt !== null;
       if (input.scope === 'active' && archived) continue;
       if (input.scope === 'archived' && !archived) continue;
@@ -174,26 +192,59 @@ export interface CreateListInput {
   readonly customAudience: readonly string[];
   readonly giftExistence: GiftExistence | null;
   readonly giftContent: GiftContent | null;
+  /** EVT-29 : rattachée dès la création. */
+  readonly eventId?: string | null;
 }
 
-/** POST /lists (LST-01, LST-07, VIS-02, GFT-03, GFT-04). */
+/** POST /lists (LST-01, LST-07, VIS-02, GFT-03, GFT-04, EVT-29). */
 @Injectable()
 export class CreateList {
   constructor(
     private readonly lists: ListRepository,
     private readonly gate: ListGate,
     private readonly visibility: VisibilityService,
+    private readonly lookup: EventLookup,
     private readonly ids: IdGenerator,
   ) {}
 
   async execute(input: CreateListInput): Promise<ListSummary> {
     if (textProblem(input.title, input.description)) throw new ListInvalidError();
     const recipients = input.recipientIds ?? (input.type === 'WISHLIST' ? [input.viewerId] : []);
-    await checkRecipients(this.visibility, input.type, input.viewerId, recipients, [
+    const event = input.eventId
+      ? await eventForParticipant(this.lookup, input.eventId, input.viewerId)
+      : null;
+    if (event) {
+      // EVT-29 : mêmes conditions qu'un rattachement, jugées par le moteur sur la liste à naître.
+      const draft = {
+        id: '',
+        type: input.type,
+        audience: 'MEMBERS' as const,
+        recipients,
+        members: [{ profileId: input.viewerId, role: 'CREATOR' as const, since: new Date(0) }],
+        customAudience: [],
+        visibilityEditRole: 'CREATOR' as const,
+        giftExistence: 'HIDDEN' as const,
+        giftContent: 'NONE' as const,
+        personal: false,
+        archived: false,
+        deleted: false,
+        event: null,
+      };
+      if (!canAttachList(draft, event, input.viewerId)) throw new ListActionForbiddenError();
+    }
+    await checkRecipients(
+      this.visibility,
+      input.type,
       input.viewerId,
-    ]);
-    const audience = input.audience ?? defaultAudience(input.type);
-    if (audience === 'EVENT') throw new ListInvalidError(); // Phase 3
+      recipients,
+      [input.viewerId],
+      event ? await eventRecipientPool(this.lookup, event) : new Set(),
+    );
+    // VIS-02 : wishlist d'événement = `EVENT` ; `EVENT` exige un événement.
+    const audience =
+      input.audience ??
+      (event && input.type === 'WISHLIST' ? 'EVENT' : defaultAudience(input.type));
+    if (audience === 'EVENT' && !event) throw new ListInvalidError();
     const custom = audience === 'CUSTOM' ? input.customAudience : [];
     await checkCustomAudience(this.visibility, input.viewerId, custom);
     if (input.type === 'WISHLIST' && (input.giftExistence || input.giftContent)) {
@@ -204,6 +255,7 @@ export class CreateList {
     if (!giftSettingsConsistent(existence, content)) throw new GiftSettingsInconsistentError();
     const list = await this.lists.create({
       id: this.ids.next(),
+      eventId: event?.id ?? null,
       type: input.type,
       title: input.title.trim(),
       description: input.description,
@@ -268,6 +320,7 @@ export class UpdateList {
     private readonly catalog: ProductCatalog,
     private readonly gate: ListGate,
     private readonly visibility: VisibilityService,
+    private readonly lookup: EventLookup,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
@@ -320,16 +373,23 @@ export class UpdateList {
           }
         }
       } else if (added.length > 0) {
+        // EVT-29 : rattachée, la giftlist peut viser les honorés ou participants de l'événement.
+        const found = list.event ? await this.lookup.find(list.event.id) : null;
+        const event = found?.participants.some((p) => p.profileId === input.viewerId)
+          ? found
+          : null;
         await checkRecipients(
           this.visibility,
           list.type,
           input.viewerId,
           added,
           list.members.map((member) => member.profileId),
+          event ? await eventRecipientPool(this.lookup, event) : new Set(),
         );
       }
     }
-    if (input.audience === 'EVENT') throw new ListInvalidError();
+    // VIS-03 : `EVENT` n'a de sens que rattachée.
+    if (input.audience === 'EVENT' && !list.event) throw new ListInvalidError();
     const audience = input.audience ?? list.audience;
     if (input.customAudience !== undefined) {
       await checkCustomAudience(this.visibility, input.viewerId, input.customAudience);

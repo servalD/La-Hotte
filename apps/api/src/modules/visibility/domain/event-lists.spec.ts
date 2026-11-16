@@ -193,7 +193,8 @@ describe('EVT-29 : rattacher et détacher une liste', () => {
     const gift = list({ type: 'GIFTLIST', recipients: ['hon'], audience: 'MEMBERS' });
     expect(canAttachList(gift, honoree, ME)).toBe(true);
     expect(
-      canAttachList(gift, { ...honoree, isSurprise: true, participants: [participant(ME)] }, ME),
+      // Surprise : l'honoré n'a pas de ligne ; seuls les offreurs participent.
+      canAttachList(gift, { ...honoree, participants: [participant(ME)] }, ME),
     ).toBe(true);
   });
 
