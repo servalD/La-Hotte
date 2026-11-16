@@ -78,8 +78,9 @@ describe('Fils en base', { timeout: 30_000 }, () => {
         .set(paul.mutation)
         .send({ thread: 'GIVERS', body, mentionIds: [lea.profileId] })
         .expect(201);
-      // COM-13 : la destinataire ne lit pas le fil Offreurs, sa mention est ignorée.
-      expect(res.body.mentions).toEqual([]);
+      // COM-13 (SEC-40 B1) : la mention reste telle que l'auteur l'a choisie, même si la
+      // destinataire ne lit pas le fil Offreurs ; seule sa notification est retenue.
+      expect((res.body.mentions as Body[]).map((m) => m.id)).toEqual([lea.profileId]);
       ids.push(res.body.id as string);
     }
     const first = await http()
