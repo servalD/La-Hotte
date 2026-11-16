@@ -38,6 +38,98 @@ async function person(): Promise<SignedIn> {
   return user;
 }
 
+describe('EVT-04, GFT-07 : l’honoré d’une surprise ne peut rien observer', () => {
+  it('toutes ses lectures sont identiques avant et après la préparation de la surprise', async () => {
+    identity.rateLimiter.reset();
+    const org = await person();
+    const honoree = await person();
+    const giver = await person();
+    await link(org, honoree);
+    await link(org, giver);
+    await link(honoree, giver);
+    // Une vie ordinaire : sa liste personnelle et un échange où il participe.
+    const own = await http()
+      .post('/api/v1/events')
+      .set(honoree.mutation)
+      .send({ title: 'Galette', date: '2027-01-06', type: 'OTHER' })
+      .expect(201);
+
+    const reads = [
+      '/api/v1/events',
+      '/api/v1/events?scope=past',
+      `/api/v1/events/${own.body.id as string}`,
+      `/api/v1/events/${own.body.id as string}/progress`,
+      '/api/v1/lists',
+      '/api/v1/lists?scope=archived',
+      `/api/v1/lists?eventId=${own.body.id as string}`,
+      '/api/v1/directory?q=Velo',
+      '/api/v1/circle',
+    ];
+    const snapshot = async (): Promise<string[]> => {
+      const out: string[] = [];
+      for (const path of reads) {
+        const res = await http().get(path).set({ Cookie: honoree.cookie });
+        out.push(`${path} ${res.status} ${JSON.stringify({ ...res.body, requestId: null })}`);
+      }
+      return out;
+    };
+    const before = await snapshot();
+
+    // La surprise : événement, invités, giftlist rattachée avec élément, lien, réponses.
+    const created = await http()
+      .post('/api/v1/events')
+      .set(org.mutation)
+      .send({
+        title: 'Les 40 ans',
+        date: '2027-06-01',
+        type: 'BIRTHDAY',
+        isSurprise: true,
+        honoreeIds: [honoree.profileId],
+      })
+      .expect(201);
+    const eventId = created.body.id as string;
+    await http()
+      .post(`/api/v1/events/${eventId}/participants`)
+      .set(org.mutation)
+      .send({ profileIds: [giver.profileId] })
+      .expect(200);
+    await http()
+      .put(`/api/v1/events/${eventId}/rsvp`)
+      .set(giver.mutation)
+      .send({ rsvp: 'YES' })
+      .expect(200);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(org.mutation)
+      .send({
+        type: 'GIFTLIST',
+        title: 'Cadeau commun',
+        recipientIds: [honoree.profileId],
+        eventId,
+        audience: 'EVENT',
+      })
+      .expect(201);
+    const product = await http()
+      .post('/api/v1/products')
+      .set(org.mutation)
+      .send({ title: 'Velo de course' })
+      .expect(201);
+    await http()
+      .post(`/api/v1/lists/${gift.body.id as string}/items`)
+      .set(org.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(201);
+    await http().post(`/api/v1/events/${eventId}/links`).set(org.mutation).send({}).expect(201);
+
+    expect(await snapshot()).toEqual(before);
+    // Aucun e-mail pour le compte de l'honoré (critère de 05).
+    await identity.background.flush();
+    expect(
+      identity.mail.sent.filter((m) => m.to === `p-${honoree.accountId}@lahotte.test`),
+    ).toEqual([]);
+  });
+});
+
 describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
   it('chaque route répond comme pour un identifiant inconnu, sans rien écrire', async () => {
     identity.rateLimiter.reset();
