@@ -247,9 +247,10 @@ model Session {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  account       Account        @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  activeProfile Profile?       @relation(fields: [activeProfileId], references: [id], onDelete: SetNull)
-  trustedDevice TrustedDevice? @relation(fields: [trustedDeviceId], references: [id], onDelete: SetNull)
+  account       Account            @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  activeProfile Profile?           @relation(fields: [activeProfileId], references: [id], onDelete: SetNull)
+  trustedDevice TrustedDevice?     @relation(fields: [trustedDeviceId], references: [id], onDelete: SetNull)
+  pushDevices   PushSubscription[]
 
   @@index([accountId])
   @@map("session")
@@ -307,28 +308,37 @@ model Profile {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  account        Account                  @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  account        Account                   @relation(fields: [accountId], references: [id], onDelete: Restrict)
   sessions       Session[]
-  linksA         ProfileLink[]            @relation("LinkProfileA")
-  linksB         ProfileLink[]            @relation("LinkProfileB")
-  blocksMade     ProfileBlock[]           @relation("Blocker")
-  blocksReceived ProfileBlock[]           @relation("Blocked")
-  invitations    Invitation[]             @relation("InvitationCreator")
+  linksA         ProfileLink[]             @relation("LinkProfileA")
+  linksB         ProfileLink[]             @relation("LinkProfileB")
+  blocksMade     ProfileBlock[]            @relation("Blocker")
+  blocksReceived ProfileBlock[]            @relation("Blocked")
+  invitations    Invitation[]              @relation("InvitationCreator")
   tokens         AccountToken[]
   transfers      ProfileTransfer[]
   products       Product[]
-  createdLists   List[]                   @relation("ListCreator")
-  personalList   List?                    @relation("PersonalList")
+  createdLists   List[]                    @relation("ListCreator")
+  personalList   List?                     @relation("PersonalList")
   listRoles      ListMember[]
   recipientOf    ListRecipient[]
   audienceOf     ListAudienceProfile[]
-  itemsAdded     ListItem[]               @relation("ItemAddedBy")
-  itemsIntended  ListItem[]               @relation("ItemIntendedFor")
+  itemsAdded     ListItem[]                @relation("ItemAddedBy")
+  itemsIntended  ListItem[]                @relation("ItemIntendedFor")
   itemRules      ItemVisibilityProfile[]
-  eventsCreated  Event[]                  @relation("EventCreator")
-  eventRoles     EventParticipant[]       @relation("EventParticipantProfile")
-  eventInvites   EventParticipant[]       @relation("EventParticipantInviter")
+  eventsCreated  Event[]                   @relation("EventCreator")
+  eventRoles     EventParticipant[]        @relation("EventParticipantProfile")
+  eventInvites   EventParticipant[]        @relation("EventParticipantInviter")
   surprisesFor   EventSurpriseRecipient[]
+  comments       Comment[]                 @relation("CommentAuthor")
+  reactions      CommentReaction[]
+  follows        ItemFollow[]
+  notifications  Notification[]            @relation("NotificationProfile")
+  notified       Notification[]            @relation("NotificationActor")
+  notifCounter   NotificationCounter?
+  notifPrefs     NotificationPref[]
+  notifSettings  NotificationSettings?
+  pushDevices    PushSubscriptionProfile[]
 
   @@index([accountId])
   @@map("profile")
@@ -644,13 +654,14 @@ model List {
   createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  creator    Profile?              @relation("ListCreator", fields: [creatorProfileId], references: [id], onDelete: SetNull)
-  personal   Profile?              @relation("PersonalList", fields: [personalProfileId], references: [id], onDelete: SetNull)
-  event      Event?                @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  recipients ListRecipient[]
-  members    ListMember[]
-  audienceOf ListAudienceProfile[]
-  items      ListItem[]
+  creator       Profile?              @relation("ListCreator", fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  personal      Profile?              @relation("PersonalList", fields: [personalProfileId], references: [id], onDelete: SetNull)
+  event         Event?                @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  recipients    ListRecipient[]
+  members       ListMember[]
+  audienceOf    ListAudienceProfile[]
+  items         ListItem[]
+  notifications Notification[]
 
   @@index([creatorProfileId])
   @@index([eventId])
@@ -740,6 +751,9 @@ model ListItem {
   carriedFrom       ListItem?               @relation("ItemCarry", fields: [carriedFromItemId], references: [id], onDelete: SetNull)
   carriedTo         ListItem?               @relation("ItemCarry")
   ruleProfiles      ItemVisibilityProfile[]
+  comments          Comment[]
+  follows           ItemFollow[]
+  notifications     Notification[]
 
   @@index([listId, position])
   @@index([productId])
@@ -854,14 +868,19 @@ model Event {
   /// EVT-40 : événement d'origine d'une recréation ; sans clé étrangère.
   recreatedFromId      String?     @map("recreated_from_id") @db.Uuid
   cancelledAt          DateTime?   @map("cancelled_at") @db.Timestamptz(3)
+  /// EVT-13, EVT-32 : rappels et invitation du lendemain, envoyés une seule fois (phase 4).
+  reminder14At         DateTime?   @map("reminder_14_at") @db.Timestamptz(3)
+  reminder3At          DateTime?   @map("reminder_3_at") @db.Timestamptz(3)
+  dayAfterAt           DateTime?   @map("day_after_at") @db.Timestamptz(3)
   version              Int         @default(1)
   createdAt            DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  creator      Profile?                 @relation("EventCreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  participants EventParticipant[]
-  surpriseFor  EventSurpriseRecipient[]
-  lists        List[]
+  creator       Profile?                 @relation("EventCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  participants  EventParticipant[]
+  surpriseFor   EventSurpriseRecipient[]
+  lists         List[]
+  notifications Notification[]
 
   @@index([status, date])
   @@map("event")
@@ -904,4 +923,225 @@ model EventSurpriseRecipient {
   @@unique([eventId, profileId])
   @@index([profileId])
   @@map("event_surprise_recipient")
+}
+
+// --- Échanges (docs/spec/06, docs/spec/12 « Échanges » ; ADR 0018, phase 4) ---
+
+enum CommentThread {
+  PUBLIC
+  GIVERS
+
+  @@map("comment_thread")
+}
+
+enum CommentKind {
+  MESSAGE
+  ACTIVITY
+
+  @@map("comment_kind")
+}
+
+/// COM-16 : liste fermée.
+enum CommentReactionKind {
+  THUMBS_UP
+  HEART
+  LAUGH
+  WOW
+  PARTY
+  THANKS
+
+  @@map("comment_reaction_kind")
+}
+
+/// COM-01, COM-13 à COM-15. Une activité n'a ni texte ni mention ; un message supprimé non plus (`CHECK`).
+model Comment {
+  id              String        @id @db.Uuid
+  itemId          String        @map("item_id") @db.Uuid
+  thread          CommentThread
+  kind            CommentKind
+  authorProfileId String?       @map("author_profile_id") @db.Uuid
+  body            String        @default("") @db.VarChar(2000)
+  mentionIds      String[]      @default([]) @map("mention_ids") @db.Uuid
+  /// COM-14 : code d'activité (`PRICE_CHANGED`…) et valeurs sans texte libre.
+  activityCode    String?       @map("activity_code") @db.VarChar(32)
+  activityData    Json?         @map("activity_data")
+  editedAt        DateTime?     @map("edited_at") @db.Timestamptz(3)
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  item          ListItem          @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  author        Profile?          @relation("CommentAuthor", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  reactions     CommentReaction[]
+  notifications Notification[]
+
+  @@index([itemId, thread, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([authorProfileId])
+  @@map("comment")
+}
+
+model CommentReaction {
+  commentId String              @map("comment_id") @db.Uuid
+  profileId String              @map("profile_id") @db.Uuid
+  reaction  CommentReactionKind
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, profileId, reaction])
+  @@index([profileId])
+  @@map("comment_reaction")
+}
+
+/// NOT-13 : `following` faux = désabonnement explicite, que le suivi d'office ne renverse pas.
+model ItemFollow {
+  itemId    String   @map("item_id") @db.Uuid
+  profileId String   @map("profile_id") @db.Uuid
+  following Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  item    ListItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  profile Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, profileId])
+  @@index([profileId])
+  @@map("item_follow")
+}
+
+/// NOT-12
+enum NotificationCategory {
+  INVITATIONS
+  LINKS
+  COMMENTS
+  MENTIONS
+  GIFTS
+  ITEMS
+  EVENTS
+  EXTRACTION
+  SECURITY
+
+  @@map("notification_category")
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+  EMAIL
+
+  @@map("notification_channel")
+}
+
+/// NOT-17
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+  OFF
+
+  @@map("digest_frequency")
+}
+
+/// NOT-10, NOT-11 : identifiants seulement, aucun contenu ; revérifiée à chaque lecture.
+model Notification {
+  id             String               @id @db.Uuid
+  profileId      String               @map("profile_id") @db.Uuid
+  seq            BigInt
+  category       NotificationCategory
+  type           String               @db.VarChar(48)
+  itemId         String?              @map("item_id") @db.Uuid
+  thread         CommentThread?
+  listId         String?              @map("list_id") @db.Uuid
+  eventId        String?              @map("event_id") @db.Uuid
+  commentId      String?              @map("comment_id") @db.Uuid
+  actorProfileId String?              @map("actor_profile_id") @db.Uuid
+  data           Json                 @default("{}")
+  readAt         DateTime?            @map("read_at") @db.Timestamptz(3)
+  /// NOT-14 : échéance de la push (fin des heures calmes) ; absente si aucune push n'est due.
+  pushDueAt      DateTime?            @map("push_due_at") @db.Timestamptz(3)
+  pushSentAt     DateTime?            @map("push_sent_at") @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  profile Profile   @relation("NotificationProfile", fields: [profileId], references: [id], onDelete: Cascade)
+  actor   Profile?  @relation("NotificationActor", fields: [actorProfileId], references: [id], onDelete: SetNull)
+  item    ListItem? @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  list    List?     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  event   Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  comment Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, seq])
+  @@index([profileId, createdAt])
+  @@index([pushDueAt])
+  @@index([createdAt])
+  @@map("notification")
+}
+
+/// RT-12 : `seq` croissant par profil.
+model NotificationCounter {
+  profileId String @id @map("profile_id") @db.Uuid
+  lastSeq   BigInt @default(0) @map("last_seq")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("notification_counter")
+}
+
+/// NOT-04 : écarts au défaut de NOT-12 ; `SECURITY` jamais désactivé (`CHECK`).
+model NotificationPref {
+  profileId String               @map("profile_id") @db.Uuid
+  category  NotificationCategory
+  channel   NotificationChannel
+  enabled   Boolean
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, category, channel])
+  @@map("notification_pref")
+}
+
+/// NOT-14, NOT-17, RT-11. Heures en minutes depuis minuit, heure locale du profil.
+model NotificationSettings {
+  profileId     String          @id @map("profile_id") @db.Uuid
+  quietEnabled  Boolean         @default(true) @map("quiet_enabled")
+  quietStart    Int             @default(1260) @map("quiet_start") @db.SmallInt
+  quietEnd      Int             @default(480) @map("quiet_end") @db.SmallInt
+  digest        DigestFrequency @default(DAILY)
+  sharePresence Boolean         @default(true) @map("share_presence")
+  lastDigestAt  DateTime?       @map("last_digest_at") @db.Timestamptz(3)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+/// NOT-15, NOT-16 : un appareil, rattaché à la session qui l'a créé.
+model PushSubscription {
+  id        String   @id @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  endpoint  String   @unique @db.VarChar(1024)
+  p256dh    String   @db.VarChar(128)
+  auth      String   @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  session  Session                   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  profiles PushSubscriptionProfile[]
+
+  @@index([sessionId])
+  @@map("push_subscription")
+}
+
+model PushSubscriptionProfile {
+  subscriptionId String   @map("subscription_id") @db.Uuid
+  profileId      String   @map("profile_id") @db.Uuid
+  showDetails    Boolean  @default(false) @map("show_details")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  subscription PushSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  profile      Profile          @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([subscriptionId, profileId])
+  @@index([profileId])
+  @@map("push_subscription_profile")
 }

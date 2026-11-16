@@ -19,7 +19,7 @@ docs/
   spec/  adr/  roadmap.md
 ```
 
-- **QA-02** `apps/api` suit une architecture propre, un dossier par module métier (`identity`, `catalog`, `lists`, `visibility`, `events`, `accounting`, `conversations`, `notifications`, `directory`, `admin`) :
+- **QA-02** `apps/api` suit une architecture propre, un dossier par module métier (`identity`, `catalog`, `lists`, `visibility`, `events`, `accounting`, `conversations`, `notifications`, `realtime`, `directory`, `admin`) ; `realtime` porte la passerelle WebSocket, ses salons et leur revérification, sans règle d'accès propre (ADR 0018) :
 
 ```
 modules/<module>/

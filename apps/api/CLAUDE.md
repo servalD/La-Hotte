@@ -20,7 +20,7 @@ Sens des imports : `presentation → application → domain ← infrastructure`.
 - Pas de logique métier dans un contrôleur, un dépôt ou un mappeur.
 - Les entités du domaine ne sont pas les modèles Prisma.
 
-Modules : `identity`, `catalog`, `lists`, `visibility`, `events`, `accounting`, `conversations`, `notifications`, `directory`, `admin`.
+Modules : `identity`, `catalog`, `lists`, `visibility`, `events`, `accounting`, `conversations`, `notifications`, `realtime`, `directory`, `admin`.
 
 Hors modules :
 
