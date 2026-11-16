@@ -550,6 +550,14 @@ Choix faits dans les silences, à relire (écrits en règles quand ils touchent 
 - « a un offreur » (EVT-37) : un engagement, ou un état réel réservé ou acheté ; les suggestions ne comptent pas ;
 - les fonctions de date des événements sont dans le noyau partagé (`shared/domain/event-date.ts`), pour `events` et `lists`.
 
+- **Revue `security-reviewer` du 2026-11-16 (cycle 1)** : visa refusé. B1 (la mention de reprise montrait l'achat d'un souhait à son co-destinataire, offreur de la nouvelle liste), I1 (une liste rattachée à une surprise restait visible de l'honoré en audience cercle, sélection, ou s'il en était membre), I2 (le filtre `?eventId=` confirmait la surprise par l'aperçu d'une giftlist révélée) ; mineurs M1 (détachement d'un événement clos), M2 (liens d'un auteur retiré), M3 (réserve hors cercle sans réponse). Tous corrigés, spec d'abord (EVT-17, EVT-28, EVT-29, VIS-36), tests de non-régression avec contre-épreuve (`events-review.spec.ts`).
+- **Cycle 2 (dernier) : visa SEC-40 accordé.** Points restants, mineurs :
+  - **R1** : un membre ou l'autorité d'une liste rattachée qui devient honoré de la surprise (après son retrait) voit cette liste disparaître ; refuser l'honoré dans ce cas, ou avertir l'organisateur ;
+  - **R2** : supprimer un événement clos détache ses listes, qui redeviennent modifiables (EVT-38) ; à trancher avant la compta (refuser la suppression, ou archiver les listes) ;
+  - **R3** : retrait et révocation des liens de l'auteur ne sont pas dans une même transaction ;
+  - **R4** : M4 (blocages ignorés dans la réserve hors cercle d'une giftlist), M5 (reprise par lot non atomique), M6 (course de la wishlist créée à la réponse, doublon possible), acceptés en l'état ;
+  - amélioration proposée : écarter en SQL, dans `findCandidates`, les listes rattachées à une surprise dont le lecteur est l'honoré (VIS-31).
+
 Restes :
 
 - **Parcours Playwright** des écrans des événements (bureau, mobile, axe) et relecture des textes avec `design:ux-copy` : non faits, comme pour la phase 2.
