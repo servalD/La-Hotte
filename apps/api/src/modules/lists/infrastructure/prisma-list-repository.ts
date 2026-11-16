@@ -20,6 +20,17 @@ const LIST_INCLUDE = {
   recipients: { select: { profileId: true } },
   members: { select: { profileId: true, role: true, createdAt: true } },
   audienceOf: { select: { profileId: true } },
+  // EVT-14, EVT-38 : audience et clôture de l'événement de rattachement.
+  event: {
+    select: {
+      id: true,
+      status: true,
+      participants: {
+        where: { rsvp: { in: ['YES', 'MAYBE'] } },
+        select: { profileId: true },
+      },
+    },
+  },
 } satisfies Prisma.ListInclude;
 
 type ListRow = Prisma.ListGetPayload<{ include: typeof LIST_INCLUDE }>;
@@ -31,7 +42,13 @@ function toList(row: ListRow): ListRecord {
     title: row.title,
     description: row.description,
     personalProfileId: row.personalProfileId,
-    eventId: row.eventId,
+    event: row.event
+      ? {
+          id: row.event.id,
+          audience: row.event.participants.map((p) => p.profileId),
+          closed: row.event.status !== 'UPCOMING',
+        }
+      : null,
     audience: row.audience,
     recipients: row.recipients.map((r) => r.profileId),
     members: row.members.map((m) => ({ profileId: m.profileId, role: m.role, since: m.createdAt })),
@@ -319,9 +336,22 @@ const ITEM_INCLUDE = {
     },
   },
   ruleProfiles: { select: { profileId: true } },
+  // EVT-27, EVT-28 : reprise ; l'état de l'origine ne sort que par la vue offreur.
+  carriedTo: { select: { id: true } },
+  carriedFrom: {
+    select: {
+      status: true,
+      list: { select: { event: { select: { id: true, title: true, date: true } } } },
+    },
+  },
 } satisfies Prisma.ListItemInclude;
 
 type ItemRow = Prisma.ListItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
+
+/** EVT-05 : un jour sans heure, rendu `AAAA-MM-JJ`. */
+export function isoDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
 export function toItem(row: ItemRow): ItemRecord {
   return {
@@ -345,6 +375,19 @@ export function toItem(row: ItemRow): ItemRecord {
     intendedRecipientId: row.intendedRecipientId,
     createdAt: row.createdAt,
     version: row.version,
+    carriedForward: row.carriedTo !== null,
+    carryOrigin: row.carriedFrom
+      ? {
+          status: row.carriedFrom.status,
+          event: row.carriedFrom.list.event
+            ? {
+                id: row.carriedFrom.list.event.id,
+                title: row.carriedFrom.list.event.title,
+                date: isoDay(row.carriedFrom.list.event.date),
+              }
+            : null,
+        }
+      : null,
   };
 }
 

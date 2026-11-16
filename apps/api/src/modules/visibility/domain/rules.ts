@@ -1,3 +1,9 @@
+import {
+  type EventFacts,
+  isEventClosed,
+  respondedPresent,
+  wishlistRecipientsAllowed,
+} from './events';
 import type { GiftContent, ItemFacts, ItemRule, ListFacts, ListRole, ViewerContext } from './facts';
 
 // Moteur de visibilité (04, ADR 0004, ADR 0016). Fonctions pures : la seule réponse à « ce profil
@@ -46,7 +52,8 @@ function inAudience(list: ListFacts, viewer: ViewerContext, role: ListRole | nul
     case 'CIRCLE':
       return viewer.inRecipientsCircle;
     case 'EVENT':
-      return false; // Phase 3 : participants de l'événement.
+      // VIS-03, EVT-14 : participants `Participe` ou `Peut-être` ; détachée, les membres seuls.
+      return list.event?.audience.includes(viewer.profileId) ?? false;
     case 'CUSTOM':
       return list.customAudience.includes(viewer.profileId);
   }
@@ -130,8 +137,9 @@ export function itemCriteria(access: ListAccess, viewerId: string): ItemCriteria
 
 // --- Permissions d'action (LST-02, LST-03, VIS-18, WSH-07 ; ADR 0016) ---
 
+/** LST-05, LST-20, EVT-38 : un événement clos met ses listes en lecture seule. */
 function writable(list: ListFacts): boolean {
-  return !list.archived && !list.deleted;
+  return !list.archived && !list.deleted && !(list.event?.closed ?? false);
 }
 
 function isManager(role: ListRole | null): boolean {
@@ -227,7 +235,39 @@ export function canEditListRules(list: ListFacts, access: ListAccess, viewerId: 
   return isManager(role);
 }
 
-/** LST-13, LST-15, LST-18 : reçu et retrait, par un destinataire d'une wishlist. */
+/**
+ * LST-13, LST-18, GFT-11 : cocher ou décocher « reçu ». Permis sur la liste d'un événement clos
+ * (EVT-38), jamais sur une liste archivée ou à la corbeille.
+ */
+export function canMarkReceived(
+  list: ListFacts,
+  access: ListAccess,
+  item: ItemFacts,
+  viewerId: string,
+): boolean {
+  if (list.archived || list.deleted) return false;
+  const seen = itemAccess(access, item, viewerId);
+  if (list.type === 'WISHLIST') return access.kind === 'recipient' && seen === 'recipient';
+  if (access.kind === 'gift_recipient') return seen === 'recipient';
+  return access.kind === 'giver' && isManager(access.role) && seen === 'giver';
+}
+
+/** EVT-29 : rattacher une liste à un événement. */
+export function canAttachList(list: ListFacts, event: EventFacts, viewerId: string): boolean {
+  if (list.event !== null || list.personal || list.archived || list.deleted) return false;
+  if (isEventClosed(event) || authorityOf(list) !== viewerId) return false;
+  if (!respondedPresent(event, viewerId)) return false;
+  if (list.type === 'GIFTLIST') return true;
+  const allowed = wishlistRecipientsAllowed(event);
+  return list.recipients.every((recipient) => allowed.includes(recipient));
+}
+
+/** EVT-29 : détacher, par l'autorité. */
+export function canDetachList(list: ListFacts, viewerId: string): boolean {
+  return list.event !== null && !list.deleted && authorityOf(list) === viewerId;
+}
+
+/** LST-15 : retrait, par un destinataire d'une wishlist. */
 export function canActAsRecipient(
   list: ListFacts,
   access: ListAccess,

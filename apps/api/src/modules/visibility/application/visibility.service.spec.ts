@@ -37,6 +37,7 @@ const wishlist: ListFacts = {
   personal: false,
   archived: false,
   deleted: false,
+  event: null,
 };
 
 describe('VisibilityService (VIS-03)', () => {

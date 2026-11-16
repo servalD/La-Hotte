@@ -151,6 +151,8 @@ export interface NewItem {
   readonly isSuggestion: boolean;
   readonly intendedRecipientId: string | null;
   readonly shownToRecipient: boolean;
+  /** EVT-27 : origine d'une reprise. */
+  readonly carriedFromItemId?: string | null;
 }
 
 /** Élément qui référence une fiche, vu du répertoire. */

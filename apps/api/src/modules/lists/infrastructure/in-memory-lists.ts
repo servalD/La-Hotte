@@ -70,7 +70,7 @@ export class InMemoryListRepository extends ListRepository {
       description: '',
       creatorProfileId: input.profileId,
       personalProfileId: input.profileId,
-      eventId: null,
+      event: null,
       audience: 'CIRCLE',
       recipients: [input.profileId],
       members: [{ profileId: input.profileId, role: 'CREATOR', since: at }],
@@ -96,7 +96,7 @@ export class InMemoryListRepository extends ListRepository {
       description: list.description,
       creatorProfileId: list.creatorProfileId,
       personalProfileId: list.personal ? list.creatorProfileId : null,
-      eventId: null,
+      event: null,
       audience: list.audience,
       recipients: list.recipients.map((r) => r.profileId),
       members: [{ profileId: list.creatorProfileId, role: 'CREATOR', since: at }],
@@ -270,6 +270,7 @@ interface StoredItem {
   readonly shownToRecipient: boolean;
   readonly receivedAt: Date | null;
   readonly intendedRecipientId: string | null;
+  readonly carriedFromItemId: string | null;
   readonly createdAt: Date;
   readonly version: number;
 }
@@ -296,6 +297,8 @@ export class InMemoryItemRepository extends ItemRepository {
 
   /** Destinataires d'une liste, lus dans le double des listes (relié par le banc de test). */
   recipientsOf: (listId: string) => readonly string[] = () => [];
+  /** EVT-28 : événement d'une liste (relié par le banc de test). */
+  eventOfList: (listId: string) => { id: string; title: string; date: string } | null = () => null;
 
   constructor(
     private readonly products: ProductRows,
@@ -362,7 +365,15 @@ export class InMemoryItemRepository extends ItemRepository {
       intendedRecipientId: row.intendedRecipientId,
       createdAt: row.createdAt,
       version: row.version,
+      carriedForward: [...this.items.values()].some((other) => other.carriedFromItemId === row.id),
+      carryOrigin: this.carryOrigin(row),
     };
+  }
+
+  private carryOrigin(row: StoredItem): ItemRecord['carryOrigin'] {
+    const origin = row.carriedFromItemId ? this.items.get(row.carriedFromItemId) : undefined;
+    if (!origin) return null;
+    return { status: origin.status, event: this.eventOfList(origin.listId) };
   }
 
   /** Réglage direct d'une règle, sans journal (préparation des tests). */
@@ -426,6 +437,7 @@ export class InMemoryItemRepository extends ItemRepository {
       status: 'OPEN',
       withdrawnReason: null,
       receivedAt: null,
+      carriedFromItemId: item.carriedFromItemId ?? null,
       createdAt: new Date(Date.UTC(2026, 10, 1) + this.tick * 1000),
       version: 1,
     };

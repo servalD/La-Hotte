@@ -33,6 +33,11 @@ type Relation =
   | 'circle' // hors membres, dans le cercle d'un destinataire
   | 'same_account' // hors membres, du même compte qu'un destinataire (donc dans son cercle)
   | 'custom' // hors membres, choisi dans l'audience explicite
+  // Hors membres, participant de l'événement de rattachement, selon sa réponse (EVT-14).
+  | 'event_yes'
+  | 'event_maybe'
+  | 'event_pending'
+  | 'event_no'
   | 'outsider';
 
 type RuleCase = 'ALL' | 'ONLY_IN' | 'ONLY_OUT' | 'EXCEPT_IN' | 'EXCEPT_OUT';
@@ -51,6 +56,8 @@ interface Case {
   content: GiftContent;
   shown: boolean;
   afterEvent: boolean;
+  /** Liste rattachée à un événement (EVT-29) ; ne varie qu'avec l'audience `EVENT`. */
+  attached: boolean;
 }
 
 const RELATIONS: Relation[] = [
@@ -63,6 +70,10 @@ const RELATIONS: Relation[] = [
   'circle',
   'same_account',
   'custom',
+  'event_yes',
+  'event_maybe',
+  'event_pending',
+  'event_no',
   'outsider',
 ];
 
@@ -121,6 +132,23 @@ function build(c: Case): { list: ListFacts; item: ItemFacts; inCircle: boolean }
     personal: false,
     archived: false,
     deleted: false,
+    // EVT-14 : l'audience de l'événement compte aussi les destinataires qui y participent (échange),
+    // pour vérifier que la règle de surprise prime (VIS-21).
+    event: c.attached
+      ? {
+          id: 'event',
+          audience: [
+            OTHER,
+            ...(c.relation === 'event_yes' ||
+            c.relation === 'event_maybe' ||
+            c.relation === 'recipient' ||
+            c.relation === 'co_recipient'
+              ? [VIEWER]
+              : []),
+          ],
+          closed: false,
+        }
+      : null,
   };
   const ruleIncludesViewer = c.rule === 'ONLY_IN' || c.rule === 'EXCEPT_IN';
   const item: ItemFacts = {
@@ -141,6 +169,10 @@ function giverInAudience(c: Case): boolean {
   if (roleFor(c.relation, c.type) !== null) return true;
   if (c.relation === 'circle' || c.relation === 'same_account') return c.audience === 'CIRCLE';
   if (c.relation === 'custom') return c.audience === 'CUSTOM';
+  // VIS-03, EVT-14 : `ÉVÉNEMENT` = participants `Participe` ou `Peut-être` d'un événement rattaché.
+  if (c.relation === 'event_yes' || c.relation === 'event_maybe') {
+    return c.audience === 'EVENT' && c.attached;
+  }
   return false;
 }
 
@@ -195,20 +227,22 @@ function* cases(): Generator<Case> {
                   for (const [existence, content] of type === 'GIFTLIST' ? gifts : [gifts[0]!])
                     for (const shown of type === 'GIFTLIST' ? [false, true] : [false])
                       for (const afterEvent of [false, true])
-                        yield {
-                          type,
-                          relation,
-                          audience,
-                          rule,
-                          author,
-                          status,
-                          received,
-                          suggestion,
-                          existence,
-                          content,
-                          shown,
-                          afterEvent,
-                        };
+                        for (const attached of audience === 'EVENT' ? [false, true] : [false])
+                          yield {
+                            type,
+                            relation,
+                            audience,
+                            rule,
+                            author,
+                            status,
+                            received,
+                            suggestion,
+                            existence,
+                            content,
+                            shown,
+                            afterEvent,
+                            attached,
+                          };
 }
 
 function record(c: Case, item: ItemFacts): ItemRecord {
@@ -240,12 +274,16 @@ function record(c: Case, item: ItemFacts): ItemRecord {
     intendedRecipientId: null,
     createdAt: new Date('2026-11-01'),
     version: 1,
+    carriedForward: false,
+    carryOrigin: null,
   };
 }
 
 const all = [...cases()];
 
-describe('Matrice de visibilité générée (VIS-33)', () => {
+// Plusieurs dizaines de milliers de combinaisons : le délai par défaut ne suffit pas sous la
+// charge de toute la suite.
+describe('Matrice de visibilité générée (VIS-33)', { timeout: 60_000 }, () => {
   it(`couvre ${all.length} combinaisons`, () => {
     expect(all.length).toBeGreaterThan(10_000);
   });
@@ -271,6 +309,7 @@ describe('Matrice de visibilité générée (VIS-33)', () => {
       'addedBy',
       'visibilityMode',
       'createdAt',
+      'carriedFrom', // EVT-28
     ];
     for (const c of all) {
       const { list, item, inCircle } = build(c);
@@ -352,6 +391,7 @@ describe('Matrice de référence de 04, ligne par ligne', () => {
       content: 'NONE',
       shown: false,
       afterEvent: false,
+      attached: false,
       ...partial,
     };
     const { list, item, inCircle } = build(c);
@@ -389,6 +429,28 @@ describe('Matrice de référence de 04, ligne par ligne', () => {
   it('destinataire d’une giftlist cachée : rien, quel que soit le contenu', () => {
     expect(
       at({ type: 'GIFTLIST', existence: 'HIDDEN', content: 'NONE', author: 'other', shown: true }),
+    ).toBe('none');
+  });
+
+  it('participant d’un événement rattaché : Participe et Peut-être voient, En attente et Ne participe pas non', () => {
+    const base = { audience: 'EVENT' as const, attached: true, author: 'other' as const };
+    expect(at({ ...base, relation: 'event_yes' })).toBe('giver');
+    expect(at({ ...base, relation: 'event_maybe' })).toBe('giver');
+    expect(at({ ...base, relation: 'event_pending' })).toBe('none');
+    expect(at({ ...base, relation: 'event_no' })).toBe('none');
+    // VIS-03 : liste détachée, `ÉVÉNEMENT` = les membres seuls.
+    expect(at({ ...base, attached: false, relation: 'event_yes' })).toBe('none');
+  });
+
+  it('VIS-21 : le destinataire d’une giftlist cachée qui participe à l’événement ne voit rien', () => {
+    expect(
+      at({
+        type: 'GIFTLIST',
+        audience: 'EVENT',
+        attached: true,
+        existence: 'HIDDEN',
+        author: 'other',
+      }),
     ).toBe('none');
   });
 

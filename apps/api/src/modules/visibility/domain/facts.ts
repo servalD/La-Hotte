@@ -18,6 +18,15 @@ export interface ListMemberFact {
   readonly since: Date;
 }
 
+/** Événement de rattachement d'une liste (EVT-29), vu de la liste. */
+export interface ListEventFacts {
+  readonly id: string;
+  /** EVT-14 : participants qui ont répondu `Participe` ou `Peut-être`. */
+  readonly audience: readonly string[];
+  /** EVT-38 : terminé ou annulé. */
+  readonly closed: boolean;
+}
+
 export interface ListFacts {
   readonly id: string;
   readonly type: ListType;
@@ -32,6 +41,8 @@ export interface ListFacts {
   readonly personal: boolean;
   readonly archived: boolean;
   readonly deleted: boolean;
+  /** Absent si la liste n'est rattachée à aucun événement. */
+  readonly event: ListEventFacts | null;
 }
 
 /** Règle d'un élément (VIS-10). */
