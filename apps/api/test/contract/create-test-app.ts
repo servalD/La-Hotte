@@ -317,13 +317,14 @@ export async function createTestApp(
   events.events.revokeLinks = (eventId, at) => {
     events.links.revokeAll(eventId, at);
   };
-  events.events.detachLists = (eventId) => {
+  events.events.detachLists = (eventId, archiveAt) => {
     for (const [id, list] of catalog.lists.lists) {
       if (list.event?.id !== eventId) continue;
       catalog.lists.lists.set(id, {
         ...list,
         event: null,
         audience: list.audience === 'EVENT' ? 'MEMBERS' : list.audience,
+        archivedAt: list.archivedAt ?? archiveAt,
       });
     }
   };
