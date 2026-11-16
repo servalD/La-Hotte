@@ -89,6 +89,24 @@ import {
   RecordingResponseFloor,
   ResponseFloor,
 } from '../../src/modules/events/testing';
+import {
+  CommentRepository,
+  ConversationPeople,
+  FollowRepository,
+  InMemoryCommentRepository,
+  InMemoryConversationPeople,
+  InMemoryFollowRepository,
+} from '../../src/modules/conversations/testing';
+import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
+
+/** Doubles du module `conversations` (phase 4). */
+export interface TestConversations {
+  readonly comments: InMemoryCommentRepository;
+  readonly follows: InMemoryFollowRepository;
+  readonly people: InMemoryConversationPeople;
+  /** Attend la livraison des événements de domaine (ADR 0018). */
+  settle(): Promise<void>;
+}
 
 /** Doubles du module `events` (phase 3). */
 export interface TestEvents {
@@ -169,6 +187,7 @@ export async function createTestApp(
   identity: TestIdentity;
   catalog: TestCatalog;
   events: TestEvents;
+  conversations: TestConversations;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
@@ -220,6 +239,12 @@ export async function createTestApp(
     people: new InMemoryEventPeople(),
     floor: new RecordingResponseFloor(),
     complete: () => app.get(CompleteEvents).execute(),
+  };
+  const conversations: TestConversations = {
+    comments: new InMemoryCommentRepository(),
+    follows: new InMemoryFollowRepository(),
+    people: new InMemoryConversationPeople(),
+    settle: () => app.get(InProcessAppEvents).drain(),
   };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -299,6 +324,12 @@ export async function createTestApp(
     .useValue(events.people)
     .overrideProvider(ResponseFloor)
     .useValue(events.floor)
+    .overrideProvider(CommentRepository)
+    .useValue(conversations.comments)
+    .overrideProvider(FollowRepository)
+    .useValue(conversations.follows)
+    .overrideProvider(ConversationPeople)
+    .useValue(conversations.people)
     .compile();
 
   // Doubles des événements reliés à ceux d'`identity` et des listes.
@@ -314,6 +345,7 @@ export async function createTestApp(
       : null;
   };
   events.events.cardOf = cardOf;
+  conversations.people.cardOf = cardOf;
   events.events.revokeLinks = (eventId, at) => {
     events.links.revokeAll(eventId, at);
   };
@@ -454,5 +486,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity, catalog, events };
+  return { app, identity, catalog, events, conversations };
 }

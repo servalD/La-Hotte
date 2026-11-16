@@ -1757,6 +1757,174 @@
         ]
       }
     },
+    "/api/v1/comments/{id}": {
+      "patch": {
+        "operationId": "editOneComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "COM-15",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteOneComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "COM-15 : il reste « message supprimé ».",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
+    "/api/v1/comments/{id}/reactions/{reaction}": {
+      "put": {
+        "operationId": "addCommentReaction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reaction",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/CommentReaction"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "COM-16",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "delete": {
+        "operationId": "removeCommentReaction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "reaction",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/CommentReaction"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
     "/api/v1/directory": {
       "get": {
         "operationId": "searchDirectory",
@@ -3365,6 +3533,126 @@
         ]
       }
     },
+    "/api/v1/items/{id}/comments": {
+      "get": {
+        "operationId": "listItemComments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "thread",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CommentThread"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentPageView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "COM-17",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "post": {
+        "operationId": "postItemComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "COM-11 à COM-13",
+        "tags": [
+          "conversations"
+        ]
+      }
+    },
     "/api/v1/items/{id}/copy": {
       "post": {
         "operationId": "copyItemProduct",
@@ -3404,6 +3692,73 @@
         "summary": "ART-04 : copie de la fiche dans mes fiches.",
         "tags": [
           "items"
+        ]
+      }
+    },
+    "/api/v1/items/{id}/follow": {
+      "put": {
+        "operationId": "followOneItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "NOT-13",
+        "tags": [
+          "conversations"
+        ]
+      },
+      "delete": {
+        "operationId": "unfollowOneItem",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "conversations"
         ]
       }
     },
@@ -3485,6 +3840,62 @@
         },
         "tags": [
           "items"
+        ]
+      }
+    },
+    "/api/v1/items/{id}/threads": {
+      "get": {
+        "operationId": "getItemThreads",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemThreadsGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemThreadsRecipientView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemThreadsGiverView",
+                      "recipient": "#/components/schemas/ItemThreadsRecipientView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "COM-03, COM-12, NOT-13",
+        "tags": [
+          "conversations"
         ]
       }
     },
@@ -6023,6 +6434,236 @@
           "items"
         ]
       },
+      "CommentActivityCode": {
+        "type": "string",
+        "enum": [
+          "PRICE_CHANGED",
+          "RECEIVED",
+          "UNRECEIVED",
+          "SHOWN"
+        ]
+      },
+      "CommentActivityView": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentActivityCode"
+              }
+            ]
+          },
+          "beforeMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "afterMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "beforeMinor",
+          "afterMinor",
+          "currency"
+        ]
+      },
+      "CommentKind": {
+        "type": "string",
+        "enum": [
+          "MESSAGE",
+          "ACTIVITY"
+        ]
+      },
+      "CommentPageView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentView"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "CommentPersonView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "avatar",
+          "accentColor"
+        ]
+      },
+      "CommentReaction": {
+        "type": "string",
+        "enum": [
+          "THUMBS_UP",
+          "HEART",
+          "LAUGH",
+          "WOW",
+          "PARTY",
+          "THANKS"
+        ]
+      },
+      "CommentReactionView": {
+        "type": "object",
+        "properties": {
+          "reaction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentReaction"
+              }
+            ]
+          },
+          "count": {
+            "type": "number"
+          },
+          "mine": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reaction",
+          "count",
+          "mine"
+        ]
+      },
+      "CommentThread": {
+        "type": "string",
+        "enum": [
+          "PUBLIC",
+          "GIVERS"
+        ]
+      },
+      "CommentView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "thread": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentThread"
+              }
+            ]
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentKind"
+              }
+            ]
+          },
+          "author": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentPersonView"
+              }
+            ]
+          },
+          "body": {
+            "type": "string",
+            "description": "COM-09, COM-13 : texte brut, rendu échappé par le client."
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentPersonView"
+            }
+          },
+          "activity": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentActivityView"
+              }
+            ]
+          },
+          "editedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommentReactionView"
+            }
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "itemId",
+          "thread",
+          "kind",
+          "author",
+          "body",
+          "mentions",
+          "activity",
+          "editedAt",
+          "deleted",
+          "createdAt",
+          "reactions",
+          "mine",
+          "canEdit",
+          "canDelete"
+        ]
+      },
       "CopiedDirectoryProductView": {
         "type": "object",
         "properties": {
@@ -6461,6 +7102,27 @@
         },
         "required": [
           "items"
+        ]
+      },
+      "EditCommentDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          },
+          "mentionIds": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "EmailDto": {
@@ -7593,6 +8255,60 @@
           "added"
         ]
       },
+      "ItemThreadsGiverView": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "enum": [
+              "giver"
+            ]
+          },
+          "public": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ThreadCountView"
+              }
+            ]
+          },
+          "givers": {
+            "$ref": "#/components/schemas/ThreadCountView"
+          },
+          "following": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "view",
+          "public",
+          "givers",
+          "following"
+        ]
+      },
+      "ItemThreadsRecipientView": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "enum": [
+              "recipient"
+            ]
+          },
+          "public": {
+            "$ref": "#/components/schemas/ThreadCountView"
+          },
+          "following": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "view",
+          "public",
+          "following"
+        ]
+      },
       "JoinedEventView": {
         "type": "object",
         "properties": {
@@ -8342,6 +9058,35 @@
         "required": [
           "newPassword",
           "token"
+        ]
+      },
+      "PostCommentDto": {
+        "type": "object",
+        "properties": {
+          "thread": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentThread"
+              }
+            ]
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          },
+          "mentionIds": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "thread",
+          "body"
         ]
       },
       "ProblemDetailsDto": {
@@ -9172,6 +9917,21 @@
         },
         "required": [
           "level"
+        ]
+      },
+      "ThreadCountView": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "canWrite": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "count",
+          "canWrite"
         ]
       },
       "TotpActivationView": {

@@ -89,6 +89,11 @@ export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {
     ],
     schemas: ['ItemProductView', 'ItemPriority'],
   },
+  // COM-03, COM-12 : le fil Public seul, ni onglet ni compteur du fil Offreurs.
+  ItemThreadsRecipientView: {
+    fields: ['view', 'public', 'following'],
+    schemas: ['ThreadCountView'],
+  },
 };
 
 /** Second filet : vocabulaire d'offreur, quel que soit l'endroit où il apparaît. */

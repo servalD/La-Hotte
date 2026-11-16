@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CatalogModule } from './modules/catalog';
+import { ConversationsModule } from './modules/conversations';
 import { DirectoryModule } from './modules/directory';
 import { EventsModule } from './modules/events';
 import { IdentityModule } from './modules/identity';
@@ -16,6 +17,7 @@ import { PlatformModule } from './platform/platform.module';
     ListsModule,
     DirectoryModule,
     EventsModule,
+    ConversationsModule,
   ],
 })
 export class AppModule {}
