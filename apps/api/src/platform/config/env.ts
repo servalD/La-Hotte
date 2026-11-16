@@ -54,6 +54,20 @@ const envSchema = z.object({
   // EXT-30 : extraction par modèle. Facultative : sans clé, seules les données structurées servent.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   EXTRACTION_MODEL: z.string().min(1).max(64).default('claude-haiku-5-5'),
+  // NOT-15, ADR 0018 : Web Push (VAPID). Facultatif : sans clés, aucune push ne part et la clé
+  // publique rendue au client est absente. Les trois vont ensemble.
+  VAPID_PUBLIC_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{80,100}$/)
+    .optional(),
+  VAPID_PRIVATE_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{40,50}$/)
+    .optional(),
+  VAPID_SUBJECT: z
+    .string()
+    .regex(/^(mailto:|https:\/\/)/)
+    .optional(),
   ...telemetryEnvShape,
 });
 
@@ -102,6 +116,15 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
   // EXT-46 : l'adresse du fetcher et son jeton vont ensemble.
   if ((result.data.FETCHER_URL === undefined) !== (result.data.FETCHER_TOKEN === undefined)) {
     throw new Error('Configuration invalide : FETCHER_URL, FETCHER_TOKEN');
+  }
+  // NOT-15 : les trois réglages VAPID vont ensemble.
+  const vapid = [
+    result.data.VAPID_PUBLIC_KEY,
+    result.data.VAPID_PRIVATE_KEY,
+    result.data.VAPID_SUBJECT,
+  ];
+  if (vapid.some((v) => v === undefined) && vapid.some((v) => v !== undefined)) {
+    throw new Error('Configuration invalide : VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT');
   }
   if (result.data.NODE_ENV === 'production') {
     const invalid = productionProblems(source, result.data);

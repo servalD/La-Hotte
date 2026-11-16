@@ -275,6 +275,14 @@ export const SECURITY_EVENTS = [
 export type SecurityEvent = (typeof SECURITY_EVENTS)[number];
 
 /** Journal de sécurité (SEC-30), en ajout seul (DAT-02). */
+/**
+ * Stockage du journal de sécurité (DAT-02). Le port `SecurityLog` l'enveloppe pour publier les avis
+ * de sécurité (NOT-12) après chaque écriture.
+ */
+export abstract class SecurityLogStore {
+  abstract record(entry: Parameters<SecurityLog['record']>[0]): Promise<void>;
+}
+
 export abstract class SecurityLog {
   abstract record(entry: {
     readonly accountId: string | null;
@@ -316,7 +324,20 @@ export type IdentityEvent =
    * LNK-09 : le cercle de ces profils a changé (lien accepté, rompu, blocage). La passerelle
    * temps réel (phase 4, RT-07) désabonne et purge le cache local.
    */
-  | { readonly type: 'circle.changed'; readonly profileIds: readonly string[] };
+  | { readonly type: 'circle.changed'; readonly profileIds: readonly string[] }
+  /**
+   * NOT-12 (`SECURITY`) : avis de sécurité, publié après l'écriture au journal ; `profileId` absent
+   * pour un avis du compte (nouvelle connexion, TOTP), adressé à tous ses profils.
+   */
+  | {
+      readonly type: 'security.notice';
+      readonly notice: SecurityNotice;
+      readonly accountId: string;
+      readonly profileId: string | null;
+    };
+
+/** NOT-02 : PIN réinitialisé, nouvelle connexion, TOTP modifié. */
+export type SecurityNotice = 'pin_reset' | 'login' | 'totp_enabled' | 'totp_disabled';
 
 export type IdentityEventListener = (event: IdentityEvent) => void;
 

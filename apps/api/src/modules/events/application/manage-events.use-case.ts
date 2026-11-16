@@ -234,7 +234,9 @@ export class CreateEvent {
     });
     if (created === 'conflict') throw new EventProfileNotAllowedError();
     this.mail.notifyInvited(
+      created.id,
       participants.filter((p) => p.profileId !== input.viewerId).map((p) => p.profileId),
+      input.viewerId,
     );
     // EVT-36 : le créateur répond `Participe` d'office ; il apporte sa liste en échange, ou honoré.
     if (mode === 'EXCHANGE' || creatorHonored) {
@@ -334,6 +336,7 @@ export class UpdateEvent {
     private readonly people: EventPeople,
     private readonly visibility: VisibilityService,
     private readonly clock: Clock,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(input: {
@@ -361,6 +364,7 @@ export class UpdateEvent {
     });
     if (updated === 'version') throw new EventVersionMismatchError();
     if (updated === 'missing') throw new EventActionForbiddenError();
+    this.notifier.changed(input.eventId, false);
     return detailOf(this.gate, this.events, this.people, this.visibility, input.viewerId, updated);
   }
 }
@@ -372,6 +376,7 @@ export class DeleteEvent {
     private readonly events: EventRepository,
     private readonly gate: EventGate,
     private readonly clock: Clock,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(input: { viewerId: string; eventId: string }): Promise<void> {
@@ -379,6 +384,7 @@ export class DeleteEvent {
     if (!canDeleteEvent(gated.facts, input.viewerId)) throw new EventActionForbiddenError();
     // EVT-39 (R2) : détachées, les listes d'un événement clos resteraient modifiables (EVT-38).
     await this.events.delete(input.eventId, this.clock.now(), isEventClosed(gated.facts));
+    this.notifier.changed(input.eventId, true);
   }
 }
 
@@ -398,7 +404,12 @@ export class CancelEvent {
     const gated = await this.gate.event(input.viewerId, input.eventId);
     if (!canCancelEvent(gated.facts, gated.access)) throw new EventActionForbiddenError();
     await this.events.cancel(input.eventId, this.clock.now());
-    this.notifier.eventCancelled(input.eventId);
+    this.notifier.eventCancelled(
+      input.eventId,
+      gated.event.participants.map((p) => p.profileId).filter((id) => id !== input.viewerId),
+      input.viewerId,
+    );
+    this.notifier.changed(input.eventId, true);
     const after = await this.gate.event(input.viewerId, input.eventId);
     return detailOfGated(this.events, this.people, this.visibility, input.viewerId, after);
   }
@@ -457,7 +468,9 @@ export class RecreateEvent {
     });
     if (created === 'conflict') throw new EventProfileNotAllowedError();
     this.mail.notifyInvited(
+      created.id,
       participants.filter((p) => p.profileId !== input.viewerId).map((p) => p.profileId),
+      input.viewerId,
     );
     return detailOf(this.gate, this.events, this.people, this.visibility, input.viewerId, created);
   }
@@ -469,6 +482,7 @@ export class CompleteEvents {
   constructor(
     private readonly events: EventRepository,
     private readonly clock: Clock,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(): Promise<number> {
@@ -479,6 +493,7 @@ export class CompleteEvents {
     for (const event of candidates) {
       if (!isDoneDue(event.date, event.timezone, now)) continue;
       await this.events.markDone(event.id);
+      this.notifier.changed(event.id, true);
       count += 1;
     }
     return count;

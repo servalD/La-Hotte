@@ -2,7 +2,7 @@
 
 PWA de listes de souhaits et de cadeaux : plusieurs profils par compte, fiches article extraites par IA, événements, visibilité fine, giftlists secrètes, commentaires, compta des participations, temps réel, hors ligne.
 
-**État : phase 0 (socle) livrée ; phase 1 livrée (visa SEC-40 du 2026-11-15) ; phase 2 livrée (visa SEC-40) ; phase 3 : tranches 1 à 8 faites le 2026-11-16, visa SEC-40 accordé au cycle 2 (points mineurs R1 à R4 notés) ; restes notés dans `docs/roadmap.md`.**
+**État : phase 0 (socle) livrée ; phase 1 livrée (visa SEC-40 du 2026-11-15) ; phase 2 livrée (visa SEC-40) ; phase 3 : tranches 1 à 8 faites le 2026-11-16, visa SEC-40 accordé au cycle 2 (points mineurs R1 à R4 notés) ; phase 4 : tranches 0 à 8 faites le 2026-11-16, visa SEC-40 accordé au cycle 2 (N1 corrigé, R1 à R6 notés) ; restes notés dans `docs/roadmap.md`.**
 
 ## Où trouver quoi
 

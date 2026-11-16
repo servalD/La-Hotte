@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, IdGenerator } from '../../../shared/domain';
+import { AppEvents, Clock, IdGenerator } from '../../../shared/domain';
+import { itemChanged } from './list-events';
 import { isDayPassed } from '../../../shared/domain/event-date';
 import { ProductCatalog } from '../../catalog';
 import {
@@ -76,6 +77,7 @@ export class CarryOver {
     private readonly catalog: ProductCatalog,
     private readonly gate: ListGate,
     private readonly ids: IdGenerator,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -138,6 +140,14 @@ export class CarryOver {
         })),
       });
       if (created === 'already') throw new CarryNotAllowedError();
+      this.events.publish(
+        itemChanged({
+          listId: list.id,
+          itemId: created.id,
+          change: 'created',
+          actorId: input.viewerId,
+        }),
+      );
       const view = projectItem(
         itemAccess(access, itemFactsOf(created), input.viewerId),
         created,

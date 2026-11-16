@@ -62,7 +62,12 @@ const config: NextConfig = {
     ]);
   },
   rewrites() {
-    return Promise.resolve([{ source: '/api/:path*', destination: `${API_ORIGIN}/api/:path*` }]);
+    return Promise.resolve([
+      { source: '/api/:path*', destination: `${API_ORIGIN}/api/:path*` },
+      // API-30 : passerelle temps réel. En local, le relais ne passe que l'interrogation longue
+      // (Socket.IO s'y replie) ; en production, Caddy relaie aussi le WebSocket.
+      { source: '/realtime/:path*', destination: `${API_ORIGIN}/realtime/:path*` },
+    ]);
   },
 };
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, IdGenerator } from '../../../shared/domain';
+import { AppEvents, Clock, IdGenerator } from '../../../shared/domain';
 import { ProductCatalog } from '../../catalog';
 import {
   type AddRight,
@@ -51,6 +51,7 @@ import {
   type ListChanges,
   ListRepository,
 } from '../domain/list.ports';
+import { listChanged } from './list-events';
 import { type GatedList, ListGate } from './list-gate';
 import { eventForParticipant, eventRecipientPool } from './manage-event-lists.use-case';
 
@@ -331,6 +332,7 @@ export class UpdateList {
     private readonly lookup: EventLookup,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: UpdateListInput): Promise<ListSummary> {
@@ -490,6 +492,12 @@ export class UpdateList {
         await this.items.repointProduct(itemId, copy.id);
       }
     }
+    // RT-10 : tout sauf le titre, la description et les défauts change ou peut changer l'accès.
+    const accessChanged = Object.keys(changes).some(
+      (key) =>
+        !['title', 'description', 'defaultItemVisibility', 'visibilityEditRole'].includes(key),
+    );
+    this.events.publish(listChanged(list.id, accessChanged));
     const fresh = await this.gate.list(input.viewerId, list.id);
     return { ...fresh, permissions: permissionsOf(fresh, input.viewerId) };
   }
@@ -502,6 +510,7 @@ export class DeleteList {
     private readonly lists: ListRepository,
     private readonly gate: ListGate,
     private readonly clock: Clock,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: { viewerId: string; listId: string }): Promise<void> {
@@ -510,6 +519,7 @@ export class DeleteList {
     if (list.deletedAt !== null) throw new ListNotFoundError();
     if (!canDeleteList(facts, input.viewerId)) throw new ListActionForbiddenError();
     await this.lists.trash(list.id, this.clock.now());
+    this.events.publish(listChanged(list.id, true));
   }
 }
 
@@ -519,12 +529,14 @@ export class RestoreList {
   constructor(
     private readonly lists: ListRepository,
     private readonly gate: ListGate,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: { viewerId: string; listId: string }): Promise<ListSummary> {
     const { list, facts } = await this.gate.list(input.viewerId, input.listId);
     if (!canRestoreList(facts, input.viewerId)) throw new ListActionForbiddenError();
     await this.lists.restore(list.id);
+    this.events.publish(listChanged(list.id, true));
     const fresh = await this.gate.list(input.viewerId, list.id);
     return { ...fresh, permissions: permissionsOf(fresh, input.viewerId) };
   }
@@ -564,6 +576,7 @@ export class SetListMember {
     private readonly gate: ListGate,
     private readonly visibility: VisibilityService,
     private readonly ids: IdGenerator,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -591,6 +604,7 @@ export class SetListMember {
       profileId: input.profileId,
       role: input.role,
     });
+    this.events.publish(listChanged(list.id, true));
   }
 }
 
@@ -600,6 +614,7 @@ export class RemoveListMember {
   constructor(
     private readonly lists: ListRepository,
     private readonly gate: ListGate,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: { viewerId: string; listId: string; profileId: string }): Promise<void> {
@@ -613,6 +628,7 @@ export class RemoveListMember {
       throw new MemberNotAllowedError();
     }
     await this.lists.removeMember(list.id, input.profileId);
+    this.events.publish(listChanged(list.id, true));
   }
 }
 
@@ -622,6 +638,7 @@ export class LeaveList {
   constructor(
     private readonly lists: ListRepository,
     private readonly gate: ListGate,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -645,5 +662,6 @@ export class LeaveList {
       successor = heir.profileId;
     }
     await this.lists.leave({ listId: list.id, profileId: input.viewerId, successorId: successor });
+    this.events.publish(listChanged(list.id, true));
   }
 }

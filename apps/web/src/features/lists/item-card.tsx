@@ -20,6 +20,7 @@ import { ConfirmButton } from '@/components/confirm-button';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/features/auth/field';
+import { ItemThreadsButton } from '@/features/conversations/item-threads';
 import { text } from '@/features/auth/form-data';
 import { listErrorKey } from './api-errors';
 import { formatMinor, imageUrl } from './format';
@@ -141,6 +142,7 @@ export function ItemCard({
         />
       ) : (
         <div className="flex flex-wrap gap-2">
+          <ItemThreadsButton itemId={item.id} title={item.product.title} />
           {recipient && !isGiftlist ? (
             <>
               <Button

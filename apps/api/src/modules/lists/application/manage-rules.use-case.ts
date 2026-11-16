@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, IdGenerator } from '../../../shared/domain';
+import { AppEvents, Clock, IdGenerator } from '../../../shared/domain';
 import {
   canEditItemRule,
   canReadVisibilityLog,
@@ -27,6 +27,7 @@ import {
   VisibilityEngagedProfileError,
   VisibilityProfileInvalidError,
 } from '../domain/visibility-rule.errors';
+import { itemChanged } from './list-events';
 import { ListGate } from './list-gate';
 
 export interface ItemRuleState extends RuleSnapshot {
@@ -83,6 +84,7 @@ export class SetItemRule {
     private readonly visibility: VisibilityService,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -141,6 +143,17 @@ export class SetItemRule {
     });
     if (result === 'missing') throw new ItemNotFoundError();
     if (result === 'version') throw new ListVersionMismatchError();
+    // RT-10 : la règle change qui voit l'élément.
+    this.events.publish(
+      itemChanged({
+        listId: list.id,
+        itemId: item.id,
+        change: 'updated',
+        actorId: input.viewerId,
+        audience: 'givers',
+        accessChanged: true,
+      }),
+    );
     return {
       ...rule,
       outsideAudience:

@@ -14,6 +14,8 @@ export const COUNTER_NAMES = [
   'wishlist.authorization_denied',
   // Tâche 8 de la phase 0 bis : issue d'une extraction (EXT-02), par `code` (source ou échec).
   'wishlist.extraction_outcome',
+  // RT-09 : poignée de main refusée (`HANDSHAKE`), salon d'offreurs refusé (`GIVERS_ROOM`).
+  'wishlist.realtime_denied',
 ] as const;
 export type CounterName = (typeof COUNTER_NAMES)[number];
 

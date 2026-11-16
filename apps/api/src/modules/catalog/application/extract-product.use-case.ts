@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, IdGenerator, Metrics } from '../../../shared/domain';
+import { AppEvents, Clock, IdGenerator, Metrics } from '../../../shared/domain';
 import {
   EXTRACTION_CACHE_TTL_MS,
   EXTRACTIONS_PER_ACCOUNT_PER_DAY,
@@ -28,7 +28,7 @@ import {
 } from '../domain/extraction.ports';
 import { PageFetcher } from '../domain/page-fetcher.port';
 import type { Product } from '../domain/product';
-import { ImageStore, ProductRepository } from '../domain/product.ports';
+import { type ExtractionOutcome, ImageStore, ProductRepository } from '../domain/product.ports';
 
 /** EXT-34 : refus avant toute création si le profil ou son compte a atteint son plafond. */
 async function checkRateLimit(
@@ -164,6 +164,7 @@ export class RunExtraction {
     private readonly metrics: Metrics,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly events: AppEvents,
   ) {}
 
   async link(productId: string, url: string): Promise<void> {
@@ -275,7 +276,7 @@ export class RunExtraction {
   ): Promise<void> {
     const uncertain = new Set<ExtractedField>(validated.uncertainFields);
     if (imageKey === null && validated.imageUrl !== null) uncertain.add('image');
-    await this.products.completeExtraction(productId, {
+    await this.finish(productId, {
       status: 'DONE',
       fields: {
         ...(validated.title !== null ? { title: validated.title } : {}),
@@ -291,8 +292,20 @@ export class RunExtraction {
     });
   }
 
+  /** NOT-12 (EXTRACTION), API-33 (product.extracted) : publié après l'écriture. */
+  private async finish(productId: string, outcome: ExtractionOutcome): Promise<void> {
+    const product = await this.products.completeExtraction(productId, outcome);
+    if (product?.ownerProfileId) {
+      this.events.publish({
+        type: 'product.extracted',
+        productId: product.id,
+        ownerId: product.ownerProfileId,
+      });
+    }
+  }
+
   private async fail(productId: string): Promise<void> {
-    await this.products.completeExtraction(productId, {
+    await this.finish(productId, {
       status: 'FAILED',
       fields: {},
       imageKey: null,

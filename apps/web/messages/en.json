@@ -179,7 +179,8 @@
     "wards": "Wards",
     "lists": "Lists",
     "directory": "Directory",
-    "events": "Events"
+    "events": "Events",
+    "notifications": "Notifications"
   },
   "home": {
     "hello": "Hello {name}",
@@ -1122,5 +1123,104 @@
       "open": "See the event",
       "accept": "Join"
     }
+  },
+  "threads": {
+    "open": "Discussion",
+    "title": "Discussion: {item}",
+    "tabs": "Discussion threads",
+    "givers": "Between givers ({count})",
+    "public": "With the recipients ({count})",
+    "publicClosed": "No thread with the recipients: they don’t see this item.",
+    "giversLabel": "Givers’ thread",
+    "publicLabel": "Thread with the recipients",
+    "audienceGivers": "The recipients won’t see this message.",
+    "audienceAll": "Visible to the recipients and everyone who sees this item.",
+    "audienceSelf": "Visible to everyone who sees this item.",
+    "write": "Your message",
+    "send": "Send",
+    "empty": "No messages yet.",
+    "loading": "Loading…",
+    "readOnly": "This list is archived: no new messages.",
+    "error": "The message could not be sent.",
+    "follow": "Follow this item",
+    "unfollow": "Stop following this item",
+    "someone": "Someone",
+    "edited": "edited",
+    "deleted": "Message deleted",
+    "delete": "Delete",
+    "noPrice": "no price",
+    "activity": {
+      "PRICE_CHANGED": "{who} changed the price: {before} → {after}",
+      "RECEIVED": "{who} received it",
+      "UNRECEIVED": "{who} unmarked “received”",
+      "SHOWN": "{who} showed it to the recipients"
+    },
+    "reactions": {
+      "THUMBS_UP": "Agree",
+      "HEART": "Love",
+      "LAUGH": "Funny",
+      "WOW": "Wow",
+      "PARTY": "Well done",
+      "THANKS": "Thanks"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "loading": "Loading…",
+    "empty": "Nothing new.",
+    "markAll": "Mark all as read",
+    "unread": "Unread",
+    "someone": "Someone",
+    "linkCount": "{count, plural, one {Notifications: # unread} other {Notifications: # unread}}",
+    "types": {
+      "comment_created": "{who} wrote on “{title}” ({context})",
+      "comment_mention": "{who} mentioned you on “{title}” ({context})",
+      "event_invited": "{who} invited you to “{title}”",
+      "event_cancelled": "“{title}” is cancelled",
+      "event_reminder": "“{title}” is coming: remember to reply",
+      "event_day_after": "“{title}” is over: tick what you received",
+      "product_extracted": "Your product sheet “{title}” is ready",
+      "security_pin_reset": "This profile’s PIN was reset",
+      "security_login": "New sign-in to your account",
+      "security_totp_enabled": "Two-factor authentication was turned on",
+      "security_totp_disabled": "Two-factor authentication was turned off"
+    }
+  },
+  "notificationPrefs": {
+    "title": "Notifications",
+    "loading": "Loading…",
+    "caption": "What you receive, and how",
+    "category": "Topic",
+    "channels": {
+      "IN_APP": "In the app",
+      "PUSH": "On the device",
+      "EMAIL": "Email summary"
+    },
+    "categories": {
+      "INVITATIONS": "Invitations",
+      "LINKS": "Link requests",
+      "COMMENTS": "Messages on followed items",
+      "MENTIONS": "When someone mentions you",
+      "GIFTS": "Gifts you contribute to",
+      "ITEMS": "Reserved wishes withdrawn or changed",
+      "EVENTS": "Events",
+      "EXTRACTION": "Product sheets ready",
+      "SECURITY": "Security"
+    },
+    "securityLocked": "Security alerts can’t be turned off.",
+    "quiet": "Quiet hours",
+    "quietEnabled": "No device notifications during these hours",
+    "from": "From",
+    "to": "To",
+    "digest": "Email summary",
+    "digests": {
+      "DAILY": "Every day",
+      "WEEKLY": "Every week",
+      "OFF": "Never"
+    },
+    "digestWho": "Sent to the account address, shared by all its profiles: it only gives the number of notifications per profile, never their content.",
+    "sharePresence": "Show other givers that I’m looking or typing",
+    "save": "Save",
+    "saved": "Saved."
   }
 }

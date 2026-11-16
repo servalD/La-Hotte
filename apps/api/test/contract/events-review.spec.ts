@@ -264,6 +264,50 @@ describe('R2 : supprimer un événement clos archive ses listes (EVT-38, EVT-39)
   });
 });
 
+describe('R1 : un profil lié à une liste rattachée ne devient pas honoré de la surprise (EVT-07)', () => {
+  it('participant retiré, membre d’une liste rattachée : refusé ; sans liste : accepté', async () => {
+    const org = await person();
+    const ex = await person();
+    const other = await person();
+    await link(org, ex);
+    await link(org, other);
+    const id = await event(org, {
+      title: 'Les 40 ans',
+      type: 'BIRTHDAY',
+      isSurprise: true,
+      honoreeIds: [other.profileId],
+    });
+    await invite(org, id, ex);
+    await rsvp(ex, id);
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(ex.mutation)
+      .send({ type: 'GIFTLIST', title: 'Pour O', recipientIds: [other.profileId], eventId: id })
+      .expect(201);
+    await http()
+      .delete(`/api/v1/events/${id}/participants/${ex.profileId as string}`)
+      .set(org.mutation)
+      .expect(204);
+    const refused = await http()
+      .post(`/api/v1/events/${id}/honorees`)
+      .set(org.mutation)
+      .send({ profileIds: [ex.profileId] })
+      .expect(422);
+    expect(refused.body.code).toBe('EVENT_PROFILE_NOT_ALLOWED');
+    expect(await events.events.surpriseRecipients(id)).not.toContain(ex.profileId);
+    // Contre-épreuve : sans liste rattachée, le même geste réussit.
+    await http()
+      .delete(`/api/v1/lists/${gift.body.id as string}/event`)
+      .set(ex.mutation)
+      .expect(200);
+    await http()
+      .post(`/api/v1/events/${id}/honorees`)
+      .set(org.mutation)
+      .send({ profileIds: [ex.profileId] })
+      .expect(200);
+  });
+});
+
 describe('M2 : retrait et rétrogradation révoquent les liens de l’auteur (EVT-06, EVT-17)', () => {
   it('liens d’un organisateur retiré, puis d’un organisateur rétrogradé', async () => {
     const org = await person();

@@ -13,6 +13,7 @@ export {
   ProfileLockPolicies,
   RateLimiter,
   SecurityLog,
+  SecurityLogStore,
   SessionStore,
 } from './domain/ports';
 export {

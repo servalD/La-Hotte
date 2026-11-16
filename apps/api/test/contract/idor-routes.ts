@@ -58,3 +58,17 @@ export const PHASE3_IDOR_ROUTES: readonly string[] = [
   'PUT /api/v1/lists/:id/event',
   'DELETE /api/v1/lists/:id/event',
 ];
+
+// SEC-03, COM-11 : routes à identifiant des échanges (phase 4), couvertes par la table IDOR de
+// `exchanges-security.spec.ts`.
+export const PHASE4_IDOR_ROUTES: readonly string[] = [
+  'GET /api/v1/items/:id/threads',
+  'GET /api/v1/items/:id/comments',
+  'POST /api/v1/items/:id/comments',
+  'PATCH /api/v1/comments/:id',
+  'DELETE /api/v1/comments/:id',
+  'PUT /api/v1/comments/:id/reactions/:reaction',
+  'DELETE /api/v1/comments/:id/reactions/:reaction',
+  'PUT /api/v1/items/:id/follow',
+  'DELETE /api/v1/items/:id/follow',
+];

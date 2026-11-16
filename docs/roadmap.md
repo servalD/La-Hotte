@@ -552,9 +552,9 @@ Choix faits dans les silences, à relire (écrits en règles quand ils touchent 
 
 - **Revue `security-reviewer` du 2026-11-16 (cycle 1)** : visa refusé. B1 (la mention de reprise montrait l'achat d'un souhait à son co-destinataire, offreur de la nouvelle liste), I1 (une liste rattachée à une surprise restait visible de l'honoré en audience cercle, sélection, ou s'il en était membre), I2 (le filtre `?eventId=` confirmait la surprise par l'aperçu d'une giftlist révélée) ; mineurs M1 (détachement d'un événement clos), M2 (liens d'un auteur retiré), M3 (réserve hors cercle sans réponse). Tous corrigés, spec d'abord (EVT-17, EVT-28, EVT-29, VIS-36), tests de non-régression avec contre-épreuve (`events-review.spec.ts`).
 - **Cycle 2 (dernier) : visa SEC-40 accordé.** Points restants, mineurs :
-  - **R1** : un membre ou l'autorité d'une liste rattachée qui devient honoré de la surprise (après son retrait) voit cette liste disparaître ; refuser l'honoré dans ce cas, ou avertir l'organisateur ;
+  - ~~**R1** : un membre ou l'autorité d'une liste rattachée qui devient honoré de la surprise (après son retrait) voit cette liste disparaître ; refuser l'honoré dans ce cas, ou avertir l'organisateur~~ ; fait le 2026-11-16 (tranche 0 de la phase 4) : refusé comme honoré, même refus qu'un profil hors du cercle (EVT-07) ;
   - ~~**R2** : supprimer un événement clos détache ses listes, qui redeviennent modifiables (EVT-38)~~ ; tranché le 2026-11-16 par l'utilisateur : ses listes sont **archivées** en plus d'être détachées (EVT-39), fait le même jour ;
-  - **R3** : retrait et révocation des liens de l'auteur ne sont pas dans une même transaction ;
+  - ~~**R3** : retrait et révocation des liens de l'auteur ne sont pas dans une même transaction~~ ; fait le 2026-11-16 (tranche 0 de la phase 4), rétrogradation comprise (EVT-17) ;
   - **R4** : M4 (blocages ignorés dans la réserve hors cercle d'une giftlist), M5 (reprise par lot non atomique), M6 (course de la wishlist créée à la réponse, doublon possible), acceptés en l'état ;
   - amélioration proposée : écarter en SQL, dans `findCandidates`, les listes rattachées à une surprise dont le lecteur est l'honoré (VIS-31).
 
@@ -568,18 +568,61 @@ Restes :
 
 ## Phase 4 — Commentaires, notifications, temps réel
 
-Spec : `06`. ADR 0006.
+Spec : `06`, `13` (API-30 à API-36). ADR 0006, ADR 0018.
 
-| Tâche                                                                         | Modèle                      |
-| ----------------------------------------------------------------------------- | --------------------------- |
-| Passerelle temps réel, salons, vérification d'abonnement, rattrapage          | opus                        |
-| Deux fils de commentaires, dépôts distincts, activité                         | opus                        |
-| Notifications : génération par destinataire à travers le moteur de visibilité | opus                        |
-| Web Push, résumé e-mail, préférences, heures calmes                           | sonnet                      |
-| Écrans : fils, centre de notifications, présence                              | sonnet                      |
-| Tests à deux clients (QA-13)                                                  | sonnet, cas écrits par opus |
+**Découpage fait le 2026-11-16** (opus). Branche `feat/phase-4`. Même rythme que les phases 2 et 3, reconduit par l'utilisateur : tranches enchaînées, `security-reviewer` une seule fois en fin de phase sur `main..HEAD`, 2 cycles au plus ; commits locaux par tranche, envoi groupé et PR après la revue. Résumé e-mail quotidien par défaut (question 2 de `06`, tranchée par l'utilisateur). Ce qui dépend des engagements (phase 5 : « quelqu'un rejoint », achat, parts, souhait réservé retiré, avis de reprise EVT-26, offreurs sans réservation, alerte EVT-34) passe par le port d'engagements, vide : la notification est écrite, elle n'a aucun destinataire avant la phase 5.
+
+Dépendances : 0 ; 1 → 2 → 3 → 4 → 5 → 6 ; les écrans (7) suivent les contrats générés ; 8 clôt la phase.
+
+| #   | Tranche                        | Modèle | Contenu                                                                                                                                                                                                                                                                                                                                                                  | Sortie et tests attendus                                                                                                                                                          |
+| --- | ------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | Restes de la phase 3           | opus   | R1 (honoré qui tient une liste rattachée), R3 (retrait et révocation dans une transaction)                                                                                                                                                                                                                                                                               | Non-régression contrat et intégration                                                                                                                                             |
+| 1   | Spec et schéma                 | opus   | Choix faits dans les silences de `06` écrits en règles (COM-11 et suivantes, NOT-10 et suivantes, RT-08 et suivantes), API-32 revu (`seq` des seules notifications), module `realtime` (QA-02), ADR 0018 ; migration `comment`, `comment_reaction`, `item_follow`, `notification`, `notification_counter`, `notification_pref`, `notification_settings`, `push_subscription`, `push_subscription_profile` | Contraintes vérifiées en base (intégration)                                                                                                                                       |
+| 2   | Moteur de visibilité           | opus   | Accès aux fils (COM-01, COM-03, COM-04, COM-12), fil d'une activité (COM-14), accès aux salons (RT-02, RT-03), accès d'un candidat à une notification (NOT-10)                                                                                                                                                                                                         | **Matrice générée étendue avant le code** (VIS-33) : fil × forme de liste × rôle × règle × contenu montré ; 100 % des branches                                                  |
+| 3   | Module `conversations`         | opus   | Fils, commentaires, modification, suppression, réactions, mentions, suivi (NOT-03), activité (prix, reçu, retrait, montré), port vers les notifications et le temps réel                                                                                                                                                                                                 | Contrat : fil Offreurs `404` au destinataire, sur toutes les routes ; aucun compteur ; non-fuite (texte d'un commentaire absent de la télémétrie)                               |
+| 4   | Module `notifications`         | opus   | Production par candidat à travers le moteur (NOT-05, NOT-10), centre, lu, compteur, préférences, heures calmes ; producteurs : commentaires, mentions, invitations (EVT-15), rappels (EVT-13), annulation (EVT-34), lendemain (EVT-32), extraction terminée, sécurité (PIN, connexion, TOTP) ; ports d'engagements vides                                                | Une notification dont le sujet devient invisible disparaît, compteur compris ; aucune notification d'offreur pour un destinataire, y compris par le compteur                     |
+| 5   | Temps réel                     | opus   | Passerelle Socket.IO (`/realtime`), adaptateur Redis, cookie et origine, salons, revérification, `access.revoked`, émission par profil à travers le moteur (RT-08), présence et saisie (RT-05), `GET /sync` ; schémas Zod dans `packages/api-client/src/realtime`                                                                                                        | Deux clients (QA-13) : refus journalisé du salon d'offreurs ; aucune trame d'offreur chez le destinataire ; retrait de l'audience = désabonnement et `access.revoked`          |
+| 6   | Push et résumé                 | opus   | Web Push (VAPID), abonnements par appareil et profil, hôtes de service permis (NOT-16), texte neutre (NOT-06, NOT-07), heures calmes, résumé e-mail quotidien neutre (NOT-08, NOT-17), tâches planifiées dans le processus                                                                                                                                            | Texte d'une push d'offreur sans nom d'article ni de personne ; point de terminaison hors liste refusé ; résumé sans détail                                                        |
+| 7   | Écrans                         | sonnet | Deux fils (COM-02), centre de notifications, préférences et heures calmes, abonnement push, présence, client temps réel                                                                                                                                                                                                                                                 | Composants testés                                                                                                                                                                 |
+| 8   | Tests transverses et revue     | opus   | Balayage des routes nouvelles (CSRF, sans session, IDOR), trames de tous les salons pour un destinataire, OBS-26 étendu ; `security-reviewer` sur `main..HEAD`, 2 cycles au plus                                                                                                                                                                                         | Sortie de la phase                                                                                                                                                                |
 
 Sortie : aucun événement d'offreur dans les trames d'un destinataire, sur tous les salons.
+
+**Tranches 0 à 8 faites le 2026-11-16** (opus), d'affilée. Modules `conversations`, `notifications`, `realtime` ; bus de domaine (ADR 0018) ; fils dans le moteur (matrice générée des fils, 100 % des branches) ; écrans des fils, centre de notifications et préférences, client temps réel. 873 tests unitaires et de contrat dans l'API (dont des tests à deux et trois clients Socket.IO), 181 d'intégration, 133 dans le web ; test OBS-26 vert avec le scénario des échanges ; toutes les lectures d'un destinataire identiques avant et après la préparation entre offreurs.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- les trames ne portent que des identifiants ; `seq` n'existe que pour les notifications, les autres messages ne sont pas rejoués (RT-12, API-32 revu) ;
+- `item.removed` n'est envoyé qu'à l'auteur du geste : l'élément n'a plus de faits pour juger qui le voyait ; les autres le voient disparaître à la relecture ;
+- `list.updated` n'est jamais envoyé à l'aperçu d'une giftlist révélée ;
+- une notification devenue invisible est tue, jamais supprimée ;
+- `seq` tiré d'un compteur par profil dans la même instruction SQL que l'insertion (une transaction interactive saturait le pool en rafale) ;
+- les avis de sécurité naissent d'un journal de sécurité qui publie après écriture (`SecurityLogStore` enveloppé) ; une nouvelle connexion avertit tous les profils du compte ;
+- les rappels d'événements (J-14, J-3, lendemain) sont réclamés en base par colonne (`reminder_14_at`…), une seule instance les envoie ;
+- un appareil push repris par une autre session perd ses profils précédents ;
+- push et résumé : tâches dans le processus, réclamation par `FOR UPDATE SKIP LOCKED` ; pas encore de `worker`.
+
+- **Revue `security-reviewer` du 2026-11-16 (cycle 1)** : visa refusé. B1 (les mentions retenues, rendues à l'auteur, disaient au destinataire d'une giftlist révélée qui la prépare), I1 (revérification de toutes les sockets déclenchable sans limite), mineurs M1 à M8. Tous corrigés (commit `fda2b52`), spec d'abord (COM-13, RT-11, API-36), tests de non-régression ; M3 accepté et noté dans `99-tracabilite`.
+- **Cycle 2 (dernier) : visa SEC-40 accordé.** Points restants :
+  - ~~**N1 (important)**~~ : tranché et fait le 2026-11-16 à la demande de l'utilisateur (NOT-19, test avec contre-épreuve dans `push-digest.spec.ts`) : oracle par la push et le résumé sur un compte partagé. Si Léa et Paul partagent un compte et un appareil, Léa qui écrit au fil Public d'un élément de « sa » giftlist révélée (ou y cite Paul) déclenche « Pour Paul : un nouveau message » sur l'écran verrouillé, ou « Paul : 1 non lue » dans le résumé, seulement si Paul suit la giftlist : elle apprend qu'il la prépare. Correction proposée : une notification de fil d'élément dont le candidat partage un compte avec un destinataire de la liste reste in-app (ni push, ni résumé), décidé à la production et revérifié à l'envoi ;
+  - R1 : le regroupement des revérifications peut perdre une demande arrivée entre la fin de la boucle et la remise à zéro, ou après une erreur (le cache local n'est pas purgé ; rien ne fuit, les trames restent filtrées) ;
+  - R2 : le plafond de 8 connexions se contourne par des poignées de main simultanées, et chaque connexion parcourt toutes les sockets (compteur Redis par session à prévoir) ;
+  - R3 : la carte d'un profil mentionné est montrée à des lecteurs hors de son cercle (comme celle d'un auteur) ;
+  - R4 : sur une wishlist, un contributeur qui ne change que la position fait bouger `version` dans la vue du destinataire ;
+  - R5 : le web n'affiche pas encore la présence ni n'applique l'oubli à 60 secondes (RT-11), et envoie la présence avant que l'abonnement ait abouti ;
+  - R6 : `circle.changed` d'un seul profil (marqueur enfant, tutelle) ne revérifie que ce profil, à confirmer.
+
+Restes :
+
+- **Abonnement push côté web** : l'API est prête (`/push-subscriptions`), mais le navigateur a besoin du service worker, qui naît en phase 6. D'ici là, aucune push n'est demandée par l'interface.
+- Image jointe d'un message (COM-05) : phase 6, avec le service worker et le cache.
+- Signalement d'un commentaire (COM-10) : avec la modération, en phase 7.
+- Rappels « réglables par l'organisateur » (EVT-13) : seuls J-14 et J-3 existent.
+- Demandes de lien (`LINKS`) : catégorie prête, aucun producteur tant que `POST /links` n'existe pas.
+- Notifications liées aux engagements (rejoindre, achat, parts, souhait réservé retiré, avis de reprise EVT-26, alerte EVT-34) : port d'engagements vide jusqu'à la phase 5.
+- Adaptateur Redis de Socket.IO non exercé par les tests (désactivé en test) : à vérifier à deux instances avant la mise en production.
+- Parcours Playwright des écrans de la phase et relecture `design:ux-copy` : non faits, comme pour les phases 2 et 3.
+- Test OBS-26 : un échec isolé observé une fois sur trois sur le scénario de détachement (PRO-13, jeton d'installation non capturé), sans lien apparent avec la phase ; à surveiller.
 
 ## Phase 5 — Compta
 

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Injectable } from '@nestjs/common';
-import { Clock } from '../../../shared/domain';
+import { AppEvents, Clock } from '../../../shared/domain';
 import { EventInvitationNotices } from '../../identity';
 import { EventWishlists } from '../../lists';
 import {
@@ -46,15 +46,29 @@ export class SleepingResponseFloor extends ResponseFloor {
   }
 }
 
-/** EVT-15 : l'e-mail neutre part d'`identity`, seul détenteur des adresses des comptes. */
+/**
+ * EVT-15 : l'e-mail neutre part d'`identity`, seul détenteur des adresses des comptes ; la
+ * notification `INVITATIONS` part du bus de domaine (ADR 0018).
+ */
 @Injectable()
 export class IdentityEventInvitationMail extends EventInvitationMail {
-  constructor(private readonly notices: EventInvitationNotices) {
+  constructor(
+    private readonly notices: EventInvitationNotices,
+    private readonly events: AppEvents,
+  ) {
     super();
   }
 
-  notifyInvited(profileIds: readonly string[]): void {
+  notifyInvited(eventId: string, profileIds: readonly string[], actorId: string): void {
+    if (profileIds.length === 0) return;
     this.notices.notify(profileIds);
+    this.events.publish({
+      type: 'event.notice',
+      eventId,
+      notice: 'invited',
+      profileIds,
+      actorId,
+    });
   }
 }
 
@@ -70,9 +84,32 @@ export class ListsEventWishlistCreator extends EventWishlistCreator {
   }
 }
 
-/** EVT-41 : port vide jusqu'à la phase 4. */
+/** EVT-41 : avis publiés sur le bus de domaine (ADR 0018). */
 @Injectable()
-export class NoEventNotifier extends EventNotifier {
-  eventCancelled(): void {}
+export class AppEventsEventNotifier extends EventNotifier {
+  constructor(private readonly events: AppEvents) {
+    super();
+  }
+
+  eventCancelled(eventId: string, profileIds: readonly string[], actorId: string): void {
+    this.events.publish({
+      type: 'event.notice',
+      eventId,
+      notice: 'cancelled',
+      profileIds,
+      actorId,
+    });
+  }
+
+  /** Phase 5 : seulement si le participant était engagé (port de VIS-16, vide d'ici là). */
   participantWithdrew(): void {}
+
+  reminded(eventId: string, notice: 'reminder' | 'day_after', profileIds: readonly string[]): void {
+    if (profileIds.length === 0) return;
+    this.events.publish({ type: 'event.notice', eventId, notice, profileIds, actorId: null });
+  }
+
+  changed(eventId: string, accessChanged: boolean): void {
+    this.events.publish({ type: 'event.changed', eventId, accessChanged });
+  }
 }

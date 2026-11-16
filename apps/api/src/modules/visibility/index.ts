@@ -73,6 +73,16 @@ export {
   wishlistRecipientsAllowed,
 } from './domain/events';
 export {
+  activityThread,
+  canModerateComment,
+  publicThreadOpen,
+  type Thread,
+  type ThreadAccess,
+  type ThreadLevel,
+  threadAccess,
+  threadLevel,
+} from './domain/threads';
+export {
   type CarriedFromPart,
   type CarryOriginRecord,
   type GiverItemStatus,

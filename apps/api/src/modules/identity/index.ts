@@ -22,6 +22,8 @@ export type { ActiveProfile as ActiveProfileValue } from './application/authoriz
  * émission, et les événements `session.revoked`, `profile.locked`, `session.profile_changed`.
  */
 export { CheckSessionAccess } from './application/check-session-access.use-case';
+/** API-30, RT-01 : poignée de main de la passerelle (cookie de session, origine, profil actif). */
+export { SocketAuthenticator, type SocketIdentity } from './presentation/socket-authenticator';
 
 /**
  * Cercle d'un profil (LNK-09), lu en base à chaque appel : seul juge du cercle pour le futur module
@@ -31,4 +33,6 @@ export { CircleReader } from './domain/link.ports';
 
 /** EVT-15 : e-mail neutre aux comptes des profils invités à un événement. */
 export { EventInvitationNotices } from './application/event-invitation-notices';
+/** NOT-15, NOT-17 : résumé e-mail au compte ; session encore vivante avant une push. */
+export { CheckSessionAlive, DigestMailer } from './application/digest-mailer';
 export { type IdentityEvent, IdentityEvents, type IdentityEventListener } from './domain/ports';

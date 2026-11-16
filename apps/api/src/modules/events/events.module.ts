@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity';
 import { ListsModule } from '../lists';
 import { VisibilityModule } from '../visibility';
+import { EventAccessReader } from './application/event-access-reader';
 import { EventGate } from './application/event-gate';
 import {
   CreateEventLink,
@@ -43,7 +44,7 @@ import {
   CryptoEventTokens,
   IdentityEventInvitationMail,
   ListsEventWishlistCreator,
-  NoEventNotifier,
+  AppEventsEventNotifier,
   SleepingResponseFloor,
 } from './infrastructure/adapters';
 import {
@@ -51,7 +52,9 @@ import {
   PrismaEventPeople,
   PrismaEventRepository,
 } from './infrastructure/prisma-event-repository';
+import { SendEventReminders } from './application/send-event-reminders.use-case';
 import { EventCompletionScheduler } from './presentation/event-completion.scheduler';
+import { EventReminderScheduler } from './presentation/event-reminder.scheduler';
 import { EventsController } from './presentation/events.controller';
 
 /** Module `events` : événements, participants, liens d'invitation (05). Accès par `visibility`. */
@@ -60,6 +63,7 @@ import { EventsController } from './presentation/events.controller';
   controllers: [EventsController],
   providers: [
     EventGate,
+    EventAccessReader,
     ListEvents,
     CreateEvent,
     GetEvent,
@@ -81,14 +85,17 @@ import { EventsController } from './presentation/events.controller';
     InspectEventLink,
     RedeemEventLink,
     EventCompletionScheduler,
+    SendEventReminders,
+    EventReminderScheduler,
     { provide: EventRepository, useClass: PrismaEventRepository },
     { provide: EventLinkRepository, useClass: PrismaEventLinkRepository },
     { provide: EventPeople, useClass: PrismaEventPeople },
     { provide: EventTokens, useClass: CryptoEventTokens },
     { provide: ResponseFloor, useClass: SleepingResponseFloor },
     { provide: EventInvitationMail, useClass: IdentityEventInvitationMail },
-    { provide: EventNotifier, useClass: NoEventNotifier },
+    { provide: EventNotifier, useClass: AppEventsEventNotifier },
     { provide: EventWishlistCreator, useClass: ListsEventWishlistCreator },
   ],
+  exports: [EventAccessReader],
 })
 export class EventsModule {}

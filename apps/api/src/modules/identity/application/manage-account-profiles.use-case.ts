@@ -185,7 +185,8 @@ export class ResetProfilePin {
     });
     if (!written) throw new ProfileNotFoundError();
     await this.lifecycle.lockProfileEverywhere(accountId, input.profileId, null);
-    await log(this.securityLog, accountId, 'pin.reset', input.client, now);
+    // NOT-12 : l'avis de sécurité va au profil dont le PIN est réinitialisé.
+    await log(this.securityLog, accountId, 'pin.reset', input.client, now, input.profileId);
   }
 }
 
@@ -228,8 +229,16 @@ async function log(
   event: SecurityEvent,
   client: ClientInfo,
   at: Date,
+  profileId: string | null = null,
 ): Promise<void> {
-  await securityLog.record({ accountId, event, ip: client.ip, userAgent: client.userAgent, at });
+  await securityLog.record({
+    accountId,
+    profileId,
+    event,
+    ip: client.ip,
+    userAgent: client.userAgent,
+    at,
+  });
 }
 
 /**
