@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { purgeUserData } from '@/lib/session/purge';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { NotificationsLink } from '@/features/notifications/notifications-screen';
 
 type Area = 'profile' | 'account';
 
@@ -72,6 +73,7 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
           ))}
           {area === 'profile' ? (
             <>
+              <NotificationsLink label={t('notifications')} />
               <Button asChild variant="ghost">
                 <Link href="/profiles">{t('switchProfile')}</Link>
               </Button>

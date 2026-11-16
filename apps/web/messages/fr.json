@@ -179,7 +179,8 @@
     "wards": "Comptes sous tutelle",
     "lists": "Listes",
     "directory": "Répertoire",
-    "events": "Événements"
+    "events": "Événements",
+    "notifications": "Notifications"
   },
   "home": {
     "hello": "Bonjour {name}",
@@ -1122,5 +1123,104 @@
       "open": "Voir l’événement",
       "accept": "Rejoindre"
     }
+  },
+  "threads": {
+    "open": "Discussion",
+    "title": "Discussion : {item}",
+    "tabs": "Fils de discussion",
+    "givers": "Entre offreurs ({count})",
+    "public": "Avec les destinataires ({count})",
+    "publicClosed": "Pas de fil avec les destinataires : ils ne voient pas cet élément.",
+    "giversLabel": "Fil entre offreurs",
+    "publicLabel": "Fil avec les destinataires",
+    "audienceGivers": "Les destinataires ne verront pas ce message.",
+    "audienceAll": "Visible des destinataires et de tous ceux qui voient cet élément.",
+    "audienceSelf": "Visible de tous ceux qui voient cet élément.",
+    "write": "Votre message",
+    "send": "Envoyer",
+    "empty": "Aucun message pour l’instant.",
+    "loading": "Chargement…",
+    "readOnly": "Cette liste est archivée : on ne peut plus y écrire.",
+    "error": "Le message n’a pas pu être envoyé.",
+    "follow": "Suivre cet élément",
+    "unfollow": "Ne plus suivre cet élément",
+    "someone": "Quelqu’un",
+    "edited": "modifié",
+    "deleted": "Message supprimé",
+    "delete": "Supprimer",
+    "noPrice": "sans prix",
+    "activity": {
+      "PRICE_CHANGED": "{who} a changé le prix : {before} → {after}",
+      "RECEIVED": "{who} l’a reçu",
+      "UNRECEIVED": "{who} a retiré « reçu »",
+      "SHOWN": "{who} l’a montré aux destinataires"
+    },
+    "reactions": {
+      "THUMBS_UP": "D’accord",
+      "HEART": "J’aime",
+      "LAUGH": "Drôle",
+      "WOW": "Surprenant",
+      "PARTY": "Bravo",
+      "THANKS": "Merci"
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "loading": "Chargement…",
+    "empty": "Rien de nouveau.",
+    "markAll": "Tout marquer comme lu",
+    "unread": "Non lue",
+    "someone": "Quelqu’un",
+    "linkCount": "{count, plural, one {Notifications : # non lue} other {Notifications : # non lues}}",
+    "types": {
+      "comment_created": "{who} a écrit sur « {title} » ({context})",
+      "comment_mention": "{who} vous a cité sur « {title} » ({context})",
+      "event_invited": "{who} vous invite à « {title} »",
+      "event_cancelled": "« {title} » est annulé",
+      "event_reminder": "« {title} » approche : pensez à répondre",
+      "event_day_after": "« {title} » est passé : cochez ce que vous avez reçu",
+      "product_extracted": "Votre fiche « {title} » est prête",
+      "security_pin_reset": "Le code PIN de ce profil a été réinitialisé",
+      "security_login": "Nouvelle connexion à votre compte",
+      "security_totp_enabled": "La double authentification a été activée",
+      "security_totp_disabled": "La double authentification a été désactivée"
+    }
+  },
+  "notificationPrefs": {
+    "title": "Notifications",
+    "loading": "Chargement…",
+    "caption": "Ce que vous recevez, et par quel moyen",
+    "category": "Sujet",
+    "channels": {
+      "IN_APP": "Dans l’application",
+      "PUSH": "Sur l’appareil",
+      "EMAIL": "Résumé par e-mail"
+    },
+    "categories": {
+      "INVITATIONS": "Invitations",
+      "LINKS": "Demandes de lien",
+      "COMMENTS": "Messages sur les éléments suivis",
+      "MENTIONS": "Quand on vous cite",
+      "GIFTS": "Cadeaux où vous participez",
+      "ITEMS": "Souhaits réservés retirés ou modifiés",
+      "EVENTS": "Événements",
+      "EXTRACTION": "Fiches prêtes",
+      "SECURITY": "Sécurité"
+    },
+    "securityLocked": "Les alertes de sécurité ne se désactivent pas.",
+    "quiet": "Heures calmes",
+    "quietEnabled": "Pas de notification sur l’appareil pendant ces heures",
+    "from": "De",
+    "to": "À",
+    "digest": "Résumé par e-mail",
+    "digests": {
+      "DAILY": "Chaque jour",
+      "WEEKLY": "Chaque semaine",
+      "OFF": "Jamais"
+    },
+    "digestWho": "Envoyé à l’adresse du compte, que tous ses profils partagent : il ne dit que le nombre de notifications de chaque profil, jamais leur contenu.",
+    "sharePresence": "Montrer aux autres offreurs que je regarde ou que j’écris",
+    "save": "Enregistrer",
+    "saved": "Enregistré."
   }
 }
