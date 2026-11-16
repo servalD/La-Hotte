@@ -175,8 +175,17 @@ export class PrismaEventRepository extends EventRepository {
     ]);
   }
 
-  async delete(eventId: string, at: Date): Promise<void> {
+  async delete(eventId: string, at: Date, archiveLists: boolean): Promise<void> {
     await this.prisma.$transaction([
+      // EVT-39 (R2) : les listes d'un événement clos restent en lecture seule (EVT-38).
+      ...(archiveLists
+        ? [
+            this.prisma.list.updateMany({
+              where: { eventId, archivedAt: null },
+              data: { archivedAt: at, version: { increment: 1 } },
+            }),
+          ]
+        : []),
       // EVT-29 : l'audience `EVENT` d'une liste détachée devient `MEMBERS` (jamais d'élargissement).
       this.prisma.list.updateMany({
         where: { eventId, audience: 'EVENT' },

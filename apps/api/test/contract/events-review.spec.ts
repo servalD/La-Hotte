@@ -222,6 +222,48 @@ describe('I1, I2 : listes rattachées à une surprise (EVT-29, VIS-36)', () => {
   });
 });
 
+describe('R2 : supprimer un événement clos archive ses listes (EVT-38, EVT-39)', () => {
+  it('annulé puis supprimé : liste détachée, archivée, en lecture seule ; à venir : seulement détachée', async () => {
+    const org = await person();
+    const closed = await event(org, { title: 'Noël', type: 'CHRISTMAS' });
+    const lists = await http()
+      .get(`/api/v1/lists?eventId=${closed}`)
+      .set({ Cookie: org.cookie })
+      .expect(200);
+    const listId = (lists.body.items as Body[])[0]!.id as string;
+    await http().post(`/api/v1/events/${closed}/cancel`).set(org.mutation).expect(200);
+    await http().delete(`/api/v1/events/${closed}`).set(org.mutation).expect(204);
+    const after = await http()
+      .get(`/api/v1/lists/${listId}`)
+      .set({ Cookie: org.cookie })
+      .expect(200);
+    expect(after.body).toMatchObject({ eventId: null, archivedAt: expect.any(String) });
+    const product = await http()
+      .post('/api/v1/products')
+      .set(org.mutation)
+      .send({ title: 'Vélo' })
+      .expect(201);
+    await http()
+      .post(`/api/v1/lists/${listId}/items`)
+      .set(org.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(403);
+
+    const open = await event(org, { title: 'Anniv', type: 'OTHER' });
+    const openLists = await http()
+      .get(`/api/v1/lists?eventId=${open}`)
+      .set({ Cookie: org.cookie })
+      .expect(200);
+    const openListId = (openLists.body.items as Body[])[0]!.id as string;
+    await http().delete(`/api/v1/events/${open}`).set(org.mutation).expect(204);
+    const kept = await http()
+      .get(`/api/v1/lists/${openListId}`)
+      .set({ Cookie: org.cookie })
+      .expect(200);
+    expect(kept.body).toMatchObject({ eventId: null, archivedAt: null });
+  });
+});
+
 describe('M2 : retrait et rétrogradation révoquent les liens de l’auteur (EVT-06, EVT-17)', () => {
   it('liens d’un organisateur retiré, puis d’un organisateur rétrogradé', async () => {
     const org = await person();

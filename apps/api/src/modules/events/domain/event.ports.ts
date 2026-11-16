@@ -51,9 +51,10 @@ export abstract class EventRepository {
 
   /**
    * EVT-39 : une transaction ; les listes rattachées sont détachées (une audience `EVENT` devient
-   * `MEMBERS`, EVT-29), les liens révoqués, puis l'événement supprimé.
+   * `MEMBERS`, EVT-29), les liens révoqués, puis l'événement supprimé. `archiveLists` : événement
+   * clos, ses listes sont archivées en plus (EVT-39, EVT-38).
    */
-  abstract delete(eventId: string, at: Date): Promise<void>;
+  abstract delete(eventId: string, at: Date, archiveLists: boolean): Promise<void>;
 
   /**
    * EVT-15 : ajoute des participants `PENDING`, sans toucher à ceux qui y sont déjà.

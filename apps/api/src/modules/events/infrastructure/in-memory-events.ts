@@ -31,8 +31,8 @@ export class InMemoryEventRepository extends EventRepository {
 
   /** Profils connus (relié par le banc de test au double d'`identity`). */
   cardOf: (profileId: string) => PersonCard | null = () => null;
-  /** EVT-39 : détachement des listes (relié au double des listes). */
-  detachLists: (eventId: string) => void = () => undefined;
+  /** EVT-39 : détachement des listes, archivées si l'événement est clos (relié au double des listes). */
+  detachLists: (eventId: string, archiveAt: Date | null) => void = () => undefined;
   /** EVT-34, EVT-39 : révocation des liens (relié au double des liens). */
   revokeLinks: (eventId: string, at: Date) => void = () => undefined;
 
@@ -122,8 +122,8 @@ export class InMemoryEventRepository extends EventRepository {
     return Promise.resolve();
   }
 
-  delete(eventId: string, at: Date): Promise<void> {
-    this.detachLists(eventId);
+  delete(eventId: string, at: Date, archiveLists: boolean): Promise<void> {
+    this.detachLists(eventId, archiveLists ? at : null);
     this.revokeLinks(eventId, at);
     this.events.delete(eventId);
     return Promise.resolve();

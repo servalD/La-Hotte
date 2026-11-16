@@ -241,6 +241,25 @@ describe('Événements en base (ADR 0017)', { timeout: 30_000 }, () => {
     });
     await http().delete(`/api/v1/events/${id}`).set(org.mutation).expect(204);
     const list = await prisma.list.findUniqueOrThrow({ where: { id: listId } });
-    expect(list).toMatchObject({ eventId: null, audience: 'MEMBERS' });
+    expect(list).toMatchObject({ eventId: null, audience: 'MEMBERS', archivedAt: null });
+  });
+
+  it('EVT-39 (R2) : supprimer un événement clos archive aussi ses listes', async () => {
+    const org = await person();
+    const created = await http()
+      .post('/api/v1/events')
+      .set(org.mutation)
+      .send({ title: 'Noël', date: '2027-12-24', type: 'CHRISTMAS' })
+      .expect(201);
+    const id = created.body.id as string;
+    const lists = await prisma.list.findMany({ where: { eventId: id }, select: { id: true } });
+    expect(lists.length).toBeGreaterThan(0);
+    await http().post(`/api/v1/events/${id}/cancel`).set(org.mutation).expect(200);
+    await http().delete(`/api/v1/events/${id}`).set(org.mutation).expect(204);
+    for (const { id: listId } of lists) {
+      const list = await prisma.list.findUniqueOrThrow({ where: { id: listId } });
+      expect(list.eventId).toBeNull();
+      expect(list.archivedAt).not.toBeNull();
+    }
   });
 });

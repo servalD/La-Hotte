@@ -10,6 +10,7 @@ import {
   canManageInviteLinks,
   canRecreateEvent,
   canRespond,
+  isEventClosed,
   type EventMode,
   type EventRole,
   type Rsvp,
@@ -376,7 +377,8 @@ export class DeleteEvent {
   async execute(input: { viewerId: string; eventId: string }): Promise<void> {
     const gated = await this.gate.event(input.viewerId, input.eventId);
     if (!canDeleteEvent(gated.facts, input.viewerId)) throw new EventActionForbiddenError();
-    await this.events.delete(input.eventId, this.clock.now());
+    // EVT-39 (R2) : détachées, les listes d'un événement clos resteraient modifiables (EVT-38).
+    await this.events.delete(input.eventId, this.clock.now(), isEventClosed(gated.facts));
   }
 }
 
