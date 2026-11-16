@@ -109,7 +109,6 @@ export function toItemView(item: ItemView): ItemViewDto {
       priority: item.priority,
       note: item.note,
       manyWelcome: item.manyWelcome,
-      position: item.position,
       hidden: item.hidden,
       received: item.received,
       receivedAt: item.receivedAt?.toISOString() ?? null,

@@ -298,13 +298,33 @@ export class UpdateList {
     }
     if (input.recipientIds !== undefined) {
       if (personal) throw new PersonalListLockedError();
-      await checkRecipients(
-        this.visibility,
-        list.type,
-        input.viewerId,
-        input.recipientIds,
-        list.members.map((member) => member.profileId),
-      );
+      // LST-07 (revue SEC-40, B1) : un destinataire ne se retire jamais ; il deviendrait offreur
+      // de ce qu'on lui prépare.
+      if (list.recipients.some((id) => !input.recipientIds?.includes(id))) {
+        throw new RecipientNotAllowedError();
+      }
+      const unique = new Set(input.recipientIds);
+      if (unique.size !== input.recipientIds.length || unique.size > LIST_RECIPIENTS_MAX) {
+        throw new RecipientNotAllowedError();
+      }
+      const added = [...unique].filter((id) => !list.recipients.includes(id));
+      if (list.type === 'WISHLIST') {
+        // Contrôle contre le compte des destinataires, pas contre celui de l'auteur du changement.
+        const anchor = list.recipients[0];
+        for (const id of added) {
+          if (!anchor || !(await this.visibility.sameAccount(anchor, id))) {
+            throw new RecipientNotAllowedError();
+          }
+        }
+      } else if (added.length > 0) {
+        await checkRecipients(
+          this.visibility,
+          list.type,
+          input.viewerId,
+          added,
+          list.members.map((member) => member.profileId),
+        );
+      }
     }
     if (input.audience === 'EVENT') throw new ListInvalidError();
     const audience = input.audience ?? list.audience;

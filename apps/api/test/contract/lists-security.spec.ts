@@ -426,3 +426,149 @@ describe('Giftlist cachée indiscernable (GFT-07, critère de 03)', () => {
     expect(await read()).toEqual(before);
   });
 });
+
+describe('Revue SEC-40 de la phase 2 : non-régressions', () => {
+  it('B1 : un destinataire ne se retire pas ; un responsable d’un autre compte ne s’ajoute pas à une wishlist', async () => {
+    const marie = await person();
+    const tonton = await person();
+    await link(marie, tonton);
+    const res = await http()
+      .post('/api/v1/lists')
+      .set(marie.mutation)
+      .send({ type: 'WISHLIST', title: 'Noël' })
+      .expect(201);
+    const id = res.body.id as string;
+    await http()
+      .put(`/api/v1/lists/${id}/members/${tonton.profileId!}`)
+      .set(marie.mutation)
+      .send({ role: 'OWNER' })
+      .expect(204);
+    const current = await http().get(`/api/v1/lists/${id}`).set({ Cookie: marie.cookie });
+    const removed = await http()
+      .patch(`/api/v1/lists/${id}`)
+      .set({ ...marie.mutation, 'If-Match': String(current.body.version) })
+      .send({ recipientIds: [] });
+    expect({ status: removed.status, code: removed.body.code }).toEqual({
+      status: 422,
+      code: 'RECIPIENT_NOT_ALLOWED',
+    });
+    const sibling = await identity.signIn();
+    const row = identity.accounts.profiles.get(sibling.profileId!)!;
+    identity.accounts.profiles.set(sibling.profileId!, { ...row, accountId: marie.accountId });
+    const swapped = await http()
+      .patch(`/api/v1/lists/${id}`)
+      .set({ ...marie.mutation, 'If-Match': String(current.body.version) })
+      .send({ recipientIds: [sibling.profileId] });
+    expect({ status: swapped.status, code: swapped.body.code }).toEqual({
+      status: 422,
+      code: 'RECIPIENT_NOT_ALLOWED',
+    });
+    const self = await http()
+      .patch(`/api/v1/lists/${id}`)
+      .set({ ...tonton.mutation, 'If-Match': String(current.body.version) })
+      .send({ recipientIds: [marie.profileId, tonton.profileId] });
+    expect(self.body.code).toBe('RECIPIENT_NOT_ALLOWED');
+    // Ajouter un profil du compte de Marie reste possible.
+    await http()
+      .patch(`/api/v1/lists/${id}`)
+      .set({ ...marie.mutation, 'If-Match': String(current.body.version) })
+      .send({ recipientIds: [marie.profileId, sibling.profileId] })
+      .expect(200);
+  });
+
+  it('I1 : le destinataire ne reçoit pas de position (les trous trahiraient une suggestion)', async () => {
+    const marie = await person();
+    const tonton = await person();
+    await link(marie, tonton);
+    const lists = await http().get('/api/v1/lists').set({ Cookie: marie.cookie });
+    const listId = (lists.body.items as Body[]).find((l) => l.personal)!.id as string;
+    const add = async (user: SignedIn) => {
+      const p = await http().post('/api/v1/products').set(user.mutation).send({ title: 'x' });
+      await http()
+        .post(`/api/v1/lists/${listId}/items`)
+        .set(user.mutation)
+        .send({ productId: p.body.id })
+        .expect(201);
+    };
+    await add(marie);
+    await add(tonton);
+    await add(marie);
+    const items = await http().get(`/api/v1/lists/${listId}/items`).set({ Cookie: marie.cookie });
+    expect(items.body.items).toHaveLength(2);
+    for (const item of items.body.items as Body[]) expect(item).not.toHaveProperty('position');
+  });
+
+  it('I2 : le journal ne raconte pas au destinataire la règle qui l’écartait, ni l’élément supprimé d’un offreur', async () => {
+    const marie = await person();
+    const tonton = await person();
+    await link(marie, tonton);
+    const res = await http()
+      .post('/api/v1/lists')
+      .set(marie.mutation)
+      .send({ type: 'WISHLIST', title: 'Noël' });
+    const id = res.body.id as string;
+    await http()
+      .put(`/api/v1/lists/${id}/members/${tonton.profileId!}`)
+      .set(marie.mutation)
+      .send({ role: 'OWNER' })
+      .expect(204);
+    const list = await http().get(`/api/v1/lists/${id}`).set({ Cookie: marie.cookie });
+    await http()
+      .patch(`/api/v1/lists/${id}`)
+      .set({ ...marie.mutation, 'If-Match': String(list.body.version) })
+      .send({ visibilityEditRole: 'OWNER' })
+      .expect(200);
+    const p = await http().post('/api/v1/products').set(tonton.mutation).send({ title: 'Secret' });
+    const item = await http()
+      .post(`/api/v1/lists/${id}/items`)
+      .set(tonton.mutation)
+      .send({ productId: p.body.id, isSuggestion: false })
+      .expect(201);
+    await http()
+      .put(`/api/v1/items/${item.body.id as string}/visibility`)
+      .set({ ...tonton.mutation, 'If-Match': '1' })
+      .send({ mode: 'EXCEPT', profileIds: [marie.profileId] })
+      .expect(200);
+    const hidden = await http()
+      .get(`/api/v1/lists/${id}/visibility-log`)
+      .set({ Cookie: marie.cookie })
+      .expect(200);
+    expect(hidden.body.items).toEqual([]);
+    await http()
+      .delete(`/api/v1/items/${item.body.id as string}`)
+      .set(tonton.mutation)
+      .expect(204);
+    const after = await http()
+      .get(`/api/v1/lists/${id}/visibility-log`)
+      .set({ Cookie: marie.cookie })
+      .expect(200);
+    expect(after.body.items).toEqual([]);
+  });
+
+  it('I3 : une fiche publiée ajoutée à une giftlist cachée reste au répertoire de son destinataire', async () => {
+    const papa = await person();
+    const marie = await person();
+    await link(papa, marie);
+    const p = await http().post('/api/v1/products').set(papa.mutation).send({ title: 'Casque' });
+    const productId = p.body.id as string;
+    await http()
+      .put(`/api/v1/products/${productId}/share`)
+      .set(papa.mutation)
+      .send({ level: 'CIRCLE' })
+      .expect(200);
+    const before = await http().get('/api/v1/directory').set({ Cookie: marie.cookie });
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(papa.mutation)
+      .send({ type: 'GIFTLIST', title: 'x', recipientIds: [marie.profileId] })
+      .expect(201);
+    const item = await http()
+      .post(`/api/v1/lists/${gift.body.id as string}/items`)
+      .set(papa.mutation)
+      .send({ productId })
+      .expect(201);
+    expect((item.body.product as Body).id).not.toBe(productId);
+    const after = await http().get('/api/v1/directory').set({ Cookie: marie.cookie });
+    expect(after.body.items).toEqual(before.body.items);
+  });
+});

@@ -147,7 +147,6 @@ export class ItemRecipientView {
   priority!: (typeof ITEM_PRIORITIES)[number];
   @ApiProperty() note!: string;
   @ApiProperty() manyWelcome!: boolean;
-  @ApiProperty() position!: number;
   @ApiProperty() hidden!: boolean;
   @ApiProperty() received!: boolean;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) receivedAt!: string | null;

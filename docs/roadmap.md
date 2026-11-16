@@ -480,6 +480,39 @@ Dépendances : 1 → 2 → 3 → 4 → 5 ; 6 → 7 (après 3) ; 8 après 5 ; les
 
 Sortie : matrice de visibilité verte ; tests de non-fuite sur toutes les routes de lecture ; tests SSRF verts.
 
+**Tranches 1 à 11 faites le 2026-11-15** (opus), d'affilée. Modules `visibility`, `catalog`, `lists`, `directory`, service `apps/fetcher`, écrans `/lists`, `/lists/[id]`, `/products/[id]`, `/directory`. 725 tests unitaires et de contrat dans l'API (dont une matrice générée de plus de 10 000 combinaisons, 100 % des branches du moteur), 156 d'intégration, 73 dans le fetcher, 126 dans le web ; test OBS-26 vert avec le scénario de la phase.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- permissions sans CASL, RLS reportée à la phase 4, file d'extraction dans le processus, images sur disque, décodage des images dans le fetcher (ADR 0016) ;
+- « Mes envies » créée à la première lecture des listes du profil (WSH-06) ; un profil qui n'a jamais lu ses listes n'en a pas encore ;
+- reçu porté par `received_at`, l'état réel jamais écrasé (LST-18) ; un élément retiré disparaît de toutes les lectures (LST-19) ;
+- destinataires d'une wishlist : soi ou un profil de son compte ; d'une giftlist : son cercle (LST-07) ; membres pris dans son cercle (LST-08) ; sans créateur, le plus ancien responsable a tous ses droits (LST-09) ;
+- giftlist révélée : l'existence seule, sans titre (GFT-09) ; tous ses destinataires sont destinataires de chaque cadeau (GFT-10) ;
+- un co-destinataire d'une wishlist partagée est soumis à la règle d'un souhait qu'il n'a pas ajouté (VIS-17) ; un contributeur délégué ne règle que ses éléments (VIS-18) ;
+- profils d'une règle : cercle de l'auteur et membres de la liste ; la règle n'est lue que par qui peut la modifier ; les règles des suggestions ne vont pas au journal (VIS-19) ;
+- la version d'un élément est montrée au destinataire, et ne bouge jamais pour une écriture d'offreur (VIS-35 : à tenir en phase 5) ;
+- une fiche publiée n'est jamais montrée au destinataire d'un élément qui la référence (REP-10) ; catalogue global refusé (REP-09) ;
+- copie d'une fiche par `POST /items/{id}/copy` et `POST /directory/{productId}/copy` (la route `POST /products/{id}/copy` prévue n'existe pas) ;
+- l'« ajout direct » de EXT-04 attend les réglages du profil (EXT-07) ; le brouillon est relu toutes les 1,5 s tant qu'il est en cours (EXT-06, temps réel en phase 4) ;
+- modèle d'extraction : Claude Haiku 5.5 en effort `low`, sans repli côté serveur (Haiku 5.5 n'en a pas) ; un refus donne un brouillon (EXT-32) ;
+- prix lu en texte par le modèle et converti en unités mineures par le domaine (jamais par le modèle) ; prix à 0 refusé ;
+- image d'une fiche servie à tout profil actif qui en connaît la clé de 128 bits (EXT-47) ; le cache d'extraction partage l'image entre profils pour une même page publique (EXT-35).
+
+- **Revue `security-reviewer` du 2026-11-15 (cycle 1, seule revue de la phase avec le cycle 2)** : visa refusé pour B1 (retirer un destinataire en faisait un offreur de sa propre liste ; un responsable d'un autre compte pouvait s'ajouter destinataire d'une wishlist). Corrigés, spec d'abord, avec des tests de non-régression : B1 (un destinataire ne se retire jamais, LST-07 ; contrôle contre le compte des destinataires) ; I1 (la position brute n'est plus rendue au destinataire, VIS-35) ; I2 (le journal n'expose ni une règle qui écartait le lecteur, ni l'élément supprimé d'un offreur, VIS-19) ; I3 (une fiche publiée ajoutée à une liste destinée à d'autres est copiée en privé, REP-10) ; M1 (image recopiée sous une clé neuve sur un succès de cache, EXT-35) ; M4 (la page ne referme plus la balise qui l'encadre). Acceptés : M2 (plafond de EXT-34 contournable par requêtes simultanées, file et fetcher sans limite de concurrence : risque de coût, à borner avec le premier serveur), M3 (une règle changée par un responsable fait bouger la version vue du destinataire : écrit dans VIS-35).
+
+Restes :
+
+- **Parcours Playwright** des écrans (bureau, mobile, axe) et relecture des textes avec `design:ux-copy` : non faits.
+- Fetcher : télémétrie (`instrument.ts`, tâche 7 de la phase 0 bis) non branchée, il ne journalise rien ; isolement réseau (EXT-44) et conteneur à poser avec le premier serveur ; pas encore lancé par `pnpm dev` sans `apps/fetcher/.env`.
+- Spans en liste blanche (suite de la phase 0 bis) : non fait ; aucune instrumentation `gen_ai.*` n'est posée (le SDK d'Anthropic n'émet pas de spans), les appels sortants vers le fetcher et l'API d'Anthropic ne portent que leur hôte.
+- Test OBS-26 écrit après le code de la phase (QA-10 non tenu), sans contre-épreuve propre aux nouveaux canaux.
+- Instabilités relevées : le scénario des passages du test OBS-26 (`transferSecrets.setupToken` vide une fois sur deux exécutions, aussi sur `main`) et `apps/web/src/lib/telemetry/server.test.ts` (délai dépassé sous la charge de `pnpm test`, vert seul).
+- Devise d'une fiche saisie à la main : EUR par défaut, et non la devise du profil.
+- Suppression d'un profil : la corbeille de 30 jours de PRO-06 ne vaut que pour « Mes envies » ; ses autres listes suivent la succession de LST-04.
+- Plafonds de EXT-34 comptés sur les fiches créées (une fiche supprimée plus tard ne rend pas son essai).
+- Performance : `inCircle` lit le cercle entier à chaque appel (déjà noté en phase 1) ; la liste des listes visibles relit le cercle pour chaque candidate en audience `CERCLE`.
+
 ## Phase 3 — Événements et giftlists
 
 Spec : `03` (giftlists), `05`.

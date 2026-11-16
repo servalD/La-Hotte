@@ -342,7 +342,6 @@ export const listItemsResponse = zod.object({
         priority: zod.enum(['WANT', 'LOVE', 'MUST']),
         note: zod.string(),
         manyWelcome: zod.boolean(),
-        position: zod.number(),
         hidden: zod.boolean(),
         received: zod.boolean(),
         receivedAt: zod.iso.datetime({}).nullable(),

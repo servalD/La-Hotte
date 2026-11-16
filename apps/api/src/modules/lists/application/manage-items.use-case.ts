@@ -94,8 +94,14 @@ export class AddItem {
     }
     if (itemChangesProblem(input)) throw new ItemInvalidError();
     // ART-05 : on n'ajoute que ses propres fiches ; une autre se copie d'abord (ART-04).
-    const product = await this.catalog.findOwned(input.viewerId, input.productId);
-    if (!product) throw new ProductNotFoundError();
+    const owned = await this.catalog.findOwned(input.viewerId, input.productId);
+    if (!owned) throw new ProductNotFoundError();
+    // REP-10 (revue SEC-40, I3) : une fiche déjà publiée ne disparaît pas du répertoire d'un
+    // destinataire ; l'élément référence une copie privée (ART-04).
+    const product =
+      owned.shareLevel !== 'PRIVATE' && list.recipients.some((id) => id !== input.viewerId)
+        ? await this.catalog.copy(owned.id, input.viewerId)
+        : owned;
     const created = await this.items.create({
       id: this.ids.next(),
       listId: list.id,

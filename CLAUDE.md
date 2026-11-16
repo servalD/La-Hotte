@@ -2,7 +2,7 @@
 
 PWA de listes de souhaits et de cadeaux : plusieurs profils par compte, fiches article extraites par IA, événements, visibilité fine, giftlists secrètes, commentaires, compta des participations, temps réel, hors ligne.
 
-**État : phase 0 (socle) livrée ; phase 1 : tranches 1 à 8 faites (visa SEC-40 de la tranche 8 accordé le 2026-11-15), avec des restes notés dans `docs/roadmap.md`.**
+**État : phase 0 (socle) livrée ; phase 1 livrée (visa SEC-40 du 2026-11-15) ; phase 2 : tranches 1 à 11 faites le 2026-11-15, en revue SEC-40 ; restes notés dans `docs/roadmap.md`.**
 
 ## Où trouver quoi
 

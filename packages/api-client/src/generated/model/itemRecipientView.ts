@@ -21,7 +21,6 @@ export interface ItemRecipientView {
   priority: ItemPriority;
   note: string;
   manyWelcome: boolean;
-  position: number;
   hidden: boolean;
   received: boolean;
   /** @nullable */

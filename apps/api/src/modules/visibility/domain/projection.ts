@@ -60,7 +60,7 @@ export interface ItemRecipientView {
   readonly priority: ItemPriority;
   readonly note: string;
   readonly manyWelcome: boolean;
-  readonly position: number;
+  /** VIS-35 : pas de position brute (ses trous trahiraient ce qui est caché). */
   /** VIS-11 */
   readonly hidden: boolean;
   /** LST-16 : seul « reçu » est distingué. */
@@ -123,7 +123,6 @@ function recipientView(item: ItemRecord, viewerId: string): ItemRecipientView {
     priority: item.priority,
     note: item.note,
     manyWelcome: item.manyWelcome,
-    position: item.position,
     hidden: item.visibilityMode !== 'ALL',
     received: item.receivedAt !== null,
     receivedAt: item.receivedAt,

@@ -77,7 +77,6 @@ export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {
       'priority',
       'note',
       'manyWelcome',
-      'position',
       'hidden',
       'received',
       'receivedAt',

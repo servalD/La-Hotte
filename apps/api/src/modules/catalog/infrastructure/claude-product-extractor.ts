@@ -71,7 +71,9 @@ export class ClaudeProductExtractor extends ProductExtractor {
   }
 
   fromPageText(text: string): Promise<ModelOutcome> {
-    return this.extract([{ type: 'text', text: `<page_text>\n${text}\n</page_text>` }]);
+    // EXT-31 (revue SEC-40, M4) : la page ne referme pas la balise qui l'encadre.
+    const safe = text.replace(/<\/?page_text/gi, '<page-text');
+    return this.extract([{ type: 'text', text: `<page_text>\n${safe}\n</page_text>` }]);
   }
 
   fromPhoto(webp: Buffer): Promise<ModelOutcome> {

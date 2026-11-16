@@ -171,7 +171,11 @@ export class RunExtraction {
     const cached = await this.cache.get(url, now);
     if (cached) {
       this.metrics.increment('wishlist.extraction_outcome', { code: 'CACHE' });
-      await this.complete(productId, cached.extraction, cached.imageKey, cached.truncated);
+      // EXT-35 (revue SEC-40, M1) : l'image est recopiée sous une clé neuve ; la clé d'un autre
+      // profil trahirait qu'il a ajouté le même lien.
+      const image = cached.imageKey ? await this.images.get(cached.imageKey) : null;
+      const imageKey = image ? await this.images.put(image.bytes, image.contentType) : null;
+      await this.complete(productId, cached.extraction, imageKey, cached.truncated);
       return;
     }
     const page = await this.fetcher.fetchPage(url);

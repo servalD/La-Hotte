@@ -5543,9 +5543,6 @@
           "manyWelcome": {
             "type": "boolean"
           },
-          "position": {
-            "type": "number"
-          },
           "hidden": {
             "type": "boolean"
           },
@@ -5575,7 +5572,6 @@
           "priority",
           "note",
           "manyWelcome",
-          "position",
           "hidden",
           "received",
           "receivedAt",

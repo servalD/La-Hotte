@@ -87,10 +87,11 @@ describe('Par lien (EXT-01 à EXT-07)', () => {
     const again = await addLink(other, PAGE);
     await catalog.runExtractions();
     expect(catalog.fetcher.calls).toEqual([]);
-    expect(await product(other, again.id as string)).toMatchObject({
-      title: 'Vélo rouge',
-      imageKey: done.imageKey,
-    });
+    const fromCache = await product(other, again.id as string);
+    expect(fromCache).toMatchObject({ title: 'Vélo rouge' });
+    // Revue SEC-40, M1 : image recopiée sous une clé neuve.
+    expect(fromCache.imageKey).toMatch(/^[0-9a-f]{32}$/);
+    expect(fromCache.imageKey).not.toBe(done.imageKey);
   });
 
   it('EXT-33 : le modèle ne reçoit que le texte de la page, sans donnée personnelle', async () => {

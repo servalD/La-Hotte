@@ -162,15 +162,27 @@ export class ReadVisibilityLog {
     if (!canReadVisibilityLog(facts, input.viewerId)) throw new ListActionForbiddenError();
     const entries = await this.log.listFor(input.listId, 200);
     const out: RuleLogEntry[] = [];
+    const isRecipient = facts.recipients.includes(input.viewerId);
     for (const entry of entries) {
       if (entry.itemId === null) {
         out.push(entry);
         continue;
       }
+      // VIS-19 (revue SEC-40, I2) : une règle qui écartait le lecteur ne lui est jamais racontée,
+      // sauf s'il l'a posée lui-même.
+      if (
+        entry.changedBy !== input.viewerId &&
+        (ruleExcludes(entry.before, input.viewerId) || ruleExcludes(entry.after, input.viewerId))
+      ) {
+        continue;
+      }
       const item = await this.items.find(entry.itemId);
-      // Élément supprimé : la ligne reste ; élément que le lecteur ne voit pas : elle est écartée.
-      if (!item || itemAccess(access, itemFactsOf(item), input.viewerId) !== 'none')
-        out.push(entry);
+      if (item) {
+        if (itemAccess(access, itemFactsOf(item), input.viewerId) !== 'none') out.push(entry);
+        continue;
+      }
+      // Élément supprimé : pas d'activité d'offreur racontée à un destinataire (VIS-20).
+      if (!isRecipient || facts.recipients.includes(entry.changedBy)) out.push(entry);
     }
     return out;
   }

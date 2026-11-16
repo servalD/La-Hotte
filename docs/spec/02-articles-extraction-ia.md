@@ -51,7 +51,7 @@ Créer une fiche article complète à partir d'un lien, d'une photo ou d'une sai
 - **EXT-32** Si le modèle refuse ou renvoie une sortie invalide, on applique EXT-05. Pas de nouvelle tentative automatique au-delà d'une.
 - **EXT-33** Aucune donnée personnelle n'est envoyée au modèle : ni nom de profil, ni nom de liste, ni identifiant.
 - **EXT-34** Plafonds : 30 extractions par profil et par heure, 200 par compte et par jour. Texte de page tronqué à une taille fixe après nettoyage, avec mention « page partiellement analysée » si la troncature a eu lieu.
-- **EXT-35** Cache par URL normalisée pendant 24 heures : une même page n'est analysée qu'une fois, quel que soit le profil. Le cache ne contient que des données publiques de la page.
+- **EXT-35** Cache par URL normalisée pendant 24 heures : une même page n'est analysée qu'une fois, quel que soit le profil. Le cache ne contient que des données publiques de la page. Un succès de cache recopie l'image sous une clé neuve : la clé d'un autre profil ne trahit pas qu'il a ajouté le même lien. Le texte de la page ne peut pas refermer la balise qui l'encadre dans le message au modèle.
 
 ## Sécurité de la récupération d'URL
 
