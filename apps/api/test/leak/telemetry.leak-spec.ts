@@ -24,6 +24,8 @@ import {
 import { type FakeOidcProvider, startFakeOidcProvider } from '../support/fake-oidc-provider';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
 import { PRESESSION_COOKIE } from '../../src/modules/identity/presentation/cookies';
+import { DeliverPushes, SendDigests } from '../../src/modules/notifications/testing';
+import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 import {
   CompleteGoogleFlow,
   RunDueTransfers,
@@ -289,6 +291,116 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playTransferScenario(app);
   await playCatalogScenario(app);
   await playEventsScenario(app);
+  await playExchangesScenario(app);
+}
+
+/**
+ * Phase 4 (tranche 8) : fils, mentions, activité de prix, notifications, préférences, abonnement
+ * push, résumé. Textes, prix et point de terminaison portent les marqueurs ; les tâches de push et
+ * de résumé tournent. Rien ne doit en sortir (OBS-20, NOT-16).
+ */
+async function playExchangesScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const owner = await createAccountWithProfile(prisma);
+  const friend = await createAccountWithProfile(prisma);
+  const [a, b] = [owner.profileId, friend.profileId].sort();
+  await prisma.profileLink.create({
+    data: {
+      id: randomUUID(),
+      profileAId: a!,
+      profileBId: b!,
+      status: 'ACCEPTED',
+      requestedBy: a!,
+      aGuardianRequired: false,
+      bGuardianRequired: false,
+    },
+  });
+  const headersOf = async (account: { accountId: string; profileId: string }) => {
+    const signed = await signIn(app, account);
+    return {
+      ...markedHeaders,
+      Cookie: `${signed.cookie}; session=${MARKER}`,
+      'X-CSRF-Token': signed.csrf,
+      Origin: 'http://localhost:3000',
+    };
+  };
+  const me = await headersOf(owner);
+  const them = await headersOf(friend);
+  const list = await http
+    .post('/api/v1/lists')
+    .set(me)
+    .send({ type: 'WISHLIST', title: `Envies ${MARKER}`, recipientIds: [owner.profileId] })
+    .expect(201);
+  const product = await http
+    .post('/api/v1/products')
+    .set(me)
+    .send({ title: `Montre ${MARKER}`, unitPriceMinor: 1000 })
+    .expect(201);
+  const item = await http
+    .post(`/api/v1/lists/${list.body.id as string}/items`)
+    .set(me)
+    .send({ productId: product.body.id as string })
+    .expect(201);
+  const itemId = item.body.id as string;
+  const events = app.get(InProcessAppEvents);
+  // COM-14 : activité de prix, au montant marqueur.
+  await http
+    .patch(`/api/v1/items/${itemId}`)
+    .set({ ...me, 'If-Match': String(item.body.version) })
+    .send({ unitPriceMinor: AMOUNT_MARKER })
+    .expect(200);
+  const secret = await http
+    .post(`/api/v1/items/${itemId}/comments`)
+    .set(them)
+    .send({ thread: 'GIVERS', body: `Je prends ${MARKER}`, mentionIds: [owner.profileId] })
+    .expect(201);
+  const pub = await http
+    .post(`/api/v1/items/${itemId}/comments`)
+    .set(them)
+    .send({ thread: 'PUBLIC', body: `Taille ${MARKER} ?`, mentionIds: [owner.profileId] })
+    .expect(201);
+  await http
+    .patch(`/api/v1/comments/${pub.body.id as string}`)
+    .set(them)
+    .send({ body: `Pointure ${MARKER} ?` })
+    .expect(200);
+  await http
+    .put(`/api/v1/comments/${secret.body.id as string}/reactions/HEART`)
+    .set(them)
+    .expect(204);
+  await http
+    .get(`/api/v1/items/${itemId}/comments?thread=GIVERS&cursor=${MARKER}`)
+    .set(them)
+    .expect(422);
+  await http.get(`/api/v1/items/${itemId}/comments?thread=PUBLIC`).set(me).expect(200);
+  await http
+    .delete(`/api/v1/comments/${secret.body.id as string}`)
+    .set(them)
+    .expect(204);
+  await events.drain();
+  await http.get('/api/v1/notifications').set(me).expect(200);
+  await http.get('/api/v1/notifications/unread-count').set(me).expect(200);
+  await http.get('/api/v1/sync?since=0').set(me).expect(200);
+  await http.post('/api/v1/notifications/read').set(me).send({ upToSeq: 1 }).expect(204);
+  // NOT-16 : point de terminaison marqué, accepté puis retiré ; un autre refusé.
+  const endpoint = `https://fcm.googleapis.com/fcm/send/${MARKER}`;
+  await http
+    .post('/api/v1/push-subscriptions')
+    .set(me)
+    .send({ endpoint, keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) } })
+    .expect(204);
+  await http
+    .post('/api/v1/push-subscriptions')
+    .set(me)
+    .send({
+      endpoint: `https://${MARKER}.example/push`,
+      keys: { p256dh: 'B'.repeat(87), auth: 'a'.repeat(22) },
+    })
+    .expect(422);
+  await app.get(DeliverPushes).execute();
+  await http.post('/api/v1/push-subscriptions/remove').set(me).send({ endpoint }).expect(204);
+  await app.get(SendDigests).execute();
 }
 
 /**
