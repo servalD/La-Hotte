@@ -24,8 +24,11 @@ import type {
 import type {
   AddItemDto,
   AddListItem201,
+  AttachListDto,
+  AttachListToEvent200,
   CreateListDto,
   CreateNewList201,
+  DetachListFromEvent200,
   GetOneList200,
   ItemCollectionView,
   LeaveListDto,
@@ -516,6 +519,175 @@ export const useDeleteOneList = <TError = ErrorType<ProblemDetailsDto>, TContext
   TContext
 > => {
   const mutationOptions = getDeleteOneListMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary EVT-24, EVT-29 : rattacher à un événement dont on est participant.
+ */
+export const getAttachListToEventUrl = (id: string) => {
+  return `/api/v1/lists/${id}/event`;
+};
+
+export const attachListToEvent = async (
+  id: string,
+  attachListDto: AttachListDto,
+  options?: RequestInit,
+): Promise<AttachListToEvent200> => {
+  return apiFetch<AttachListToEvent200>(getAttachListToEventUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(attachListDto),
+  });
+};
+
+export const getAttachListToEventMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof attachListToEvent>>,
+    TError,
+    { id: string; data: AttachListDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof attachListToEvent>>,
+  TError,
+  { id: string; data: AttachListDto },
+  TContext
+> => {
+  const mutationKey = ['attachListToEvent'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof attachListToEvent>>,
+    { id: string; data: AttachListDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return attachListToEvent(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AttachListToEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof attachListToEvent>>
+>;
+export type AttachListToEventMutationBody = AttachListDto;
+export type AttachListToEventMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary EVT-24, EVT-29 : rattacher à un événement dont on est participant.
+ */
+export const useAttachListToEvent = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof attachListToEvent>>,
+      TError,
+      { id: string; data: AttachListDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof attachListToEvent>>,
+  TError,
+  { id: string; data: AttachListDto },
+  TContext
+> => {
+  const mutationOptions = getAttachListToEventMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary EVT-29 : détacher ; une audience `EVENT` devient `MEMBERS`.
+ */
+export const getDetachListFromEventUrl = (id: string) => {
+  return `/api/v1/lists/${id}/event`;
+};
+
+export const detachListFromEvent = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DetachListFromEvent200> => {
+  return apiFetch<DetachListFromEvent200>(getDetachListFromEventUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDetachListFromEventMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof detachListFromEvent>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof detachListFromEvent>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['detachListFromEvent'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof detachListFromEvent>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return detachListFromEvent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DetachListFromEventMutationResult = NonNullable<
+  Awaited<ReturnType<typeof detachListFromEvent>>
+>;
+
+export type DetachListFromEventMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary EVT-29 : détacher ; une audience `EVENT` devient `MEMBERS`.
+ */
+export const useDetachListFromEvent = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof detachListFromEvent>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof detachListFromEvent>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getDetachListFromEventMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

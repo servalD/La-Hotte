@@ -10,6 +10,7 @@ import type { ItemProductView } from './itemProductView';
 import type { ItemPriority } from './itemPriority';
 import type { VisibilityMode } from './visibilityMode';
 import type { GiverItemStatus } from './giverItemStatus';
+import type { ItemGiverViewCarriedFrom } from './itemGiverViewCarriedFrom';
 
 export interface ItemGiverView {
   view: ItemGiverViewView;
@@ -35,5 +36,8 @@ export interface ItemGiverView {
   addedBy: string | null;
   mine: boolean;
   createdAt: string;
+  carriedForward: boolean;
+  /** @nullable */
+  carriedFrom: ItemGiverViewCarriedFrom;
   version: number;
 }

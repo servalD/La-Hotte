@@ -18,6 +18,11 @@ export interface ListRecipientView {
   title: string;
   description: string;
   personal: boolean;
+  /**
+   * EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09).
+   * @nullable
+   */
+  eventId: string | null;
   recipients: string[];
   /** @nullable */
   myRole: ListRecipientViewMyRole;

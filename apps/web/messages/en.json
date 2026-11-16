@@ -178,7 +178,8 @@
     "security": "Security",
     "wards": "Wards",
     "lists": "Lists",
-    "directory": "Directory"
+    "directory": "Directory",
+    "events": "Events"
   },
   "home": {
     "hello": "Hello {name}",
@@ -967,5 +968,159 @@
     "sharedBy": "Shared by {name}",
     "add": "Add to My wishes",
     "added": "Added to “My wishes”."
+  },
+  "events": {
+    "title": "Events",
+    "whoList": "Events this profile is invited to. Only their participants see them.",
+    "open": "Open",
+    "surprise": "surprise",
+    "loading": "Loading events",
+    "empty": "No events yet.",
+    "notFound": "This event cannot be found.",
+    "who": "Visible to the event’s participants, and only to them.",
+    "whoSurprise": "Visible to participants only. The people being celebrated are not invited and see nothing.",
+    "sharedAccount": "A participant shares an account with someone being celebrated: the surprise holds only if every profile on that account has its PIN.",
+    "participants": "Participants",
+    "surpriseFor": "Surprise for: {names}",
+    "organizer": "organiser",
+    "honoree": "being celebrated",
+    "scope": {
+      "label": "Events to show",
+      "upcoming": "Upcoming",
+      "past": "Past"
+    },
+    "type": {
+      "CHRISTMAS": "Christmas",
+      "BIRTHDAY": "Birthday",
+      "BIRTH": "Birth",
+      "WEDDING": "Wedding",
+      "OTHER": "Other"
+    },
+    "status": {
+      "UPCOMING": "Upcoming",
+      "DONE": "Finished",
+      "CANCELLED": "Cancelled"
+    },
+    "mode": {
+      "EXCHANGE": "Exchange",
+      "HONOREE": "Celebration"
+    },
+    "rsvp": {
+      "title": "Your answer",
+      "PENDING": "Not answered yet",
+      "YES": "Going",
+      "MAYBE": "Maybe",
+      "NO": "Not going"
+    },
+    "create": {
+      "action": "Create an event",
+      "title": "New event",
+      "who": "Only the profiles you invite will see it.",
+      "whoSurprise": "Only the profiles you invite will see it. The people being celebrated will know nothing.",
+      "name": "Name",
+      "date": "Date",
+      "type": "Type",
+      "honoreeMode": "One or more people being celebrated",
+      "honorees": "Being celebrated",
+      "honoreesHint": "Choose from your circle. The other guests give them presents.",
+      "surprise": "It’s a surprise",
+      "surpriseHint": "The people being celebrated are not invited and see neither the event nor its lists.",
+      "exchangeHint": "Everyone gives and receives: each participant brings their list.",
+      "place": "Place (optional)",
+      "description": "Description (optional)",
+      "cancel": "Cancel",
+      "submit": "Create"
+    },
+    "errors": {
+      "EVENT_NOT_FOUND": "This event cannot be found.",
+      "EVENT_ACTION_FORBIDDEN": "You can’t do that on this event.",
+      "EVENT_INVALID": "Some information isn’t valid. Check the fields.",
+      "EVENT_DATE_PASSED": "This date has passed. Choose today or later.",
+      "EVENT_HONOREE_CANNOT_PARTICIPATE": "This profile is being celebrated by the surprise: it can’t be invited.",
+      "EVENT_PROFILE_NOT_ALLOWED": "This profile can’t be added to this event.",
+      "EVENT_INVITATION_INVALID": "This invitation link isn’t valid.",
+      "EVENT_CHILD_OUTSIDE_CIRCLE": "A child profile only joins an event through someone in its circle.",
+      "CARRY_NOT_ALLOWED": "This wish can’t be carried over.",
+      "VERSION_MISMATCH": "The event changed in the meantime. Reload the page.",
+      "generic": "Something went wrong. Try again.",
+      "network": "Can’t connect. Check your network and try again."
+    },
+    "invite": {
+      "action": "Invite people",
+      "title": "Invite people",
+      "who": "Profiles from your circle. Their account gets an email that says nothing about the event.",
+      "empty": "Everyone in your circle is already invited.",
+      "submit": "Invite"
+    },
+    "links": {
+      "title": "Invitation link",
+      "who": "Anyone with the link and an account can join the event, until its date.",
+      "create": "Create a link",
+      "copy": "Link to share",
+      "once": "Copy it now: it won’t be shown again.",
+      "uses": "{used} of {max} uses",
+      "revoke": "Disable"
+    },
+    "progress": {
+      "title": "Progress",
+      "count": "Wishes with a giver: {given} of {total}",
+      "nobodyYet": "Who has nothing yet",
+      "someone": "A participant",
+      "everyone": "Everyone already has at least one present planned.",
+      "who": "Visible to givers only. Your own lists never count."
+    },
+    "lists": {
+      "title": "Event lists",
+      "reception": "The event is over: open your list and tick what you received.",
+      "empty": "No lists yet.",
+      "mine": "My list",
+      "open": "See the list"
+    },
+    "manage": {
+      "title": "Organising",
+      "recreate": "Recreate next year",
+      "cancel": "Cancel the event",
+      "cancelConfirm": "Cancel the event? Its lists become read-only.",
+      "delete": "Delete the event",
+      "deleteConfirm": "Delete the event? Its lists will be detached."
+    },
+    "assistant": {
+      "title": "Build my list",
+      "who": "Your list is visible to participants who answered “Going” or “Maybe”.",
+      "noList": "No list to fill in. Go back to the event.",
+      "steps": "Steps",
+      "step1": "Carry over my wishes",
+      "step2": "Pick ideas",
+      "step3": "Add something new",
+      "newHint": "Add an item by link, photo or by hand, from your list.",
+      "toList": "Open my list",
+      "leave": "Finish later",
+      "carry": {
+        "loading": "Loading your wishes",
+        "who": "Your wishes from past events that you haven’t ticked “received”.",
+        "empty": "No wishes to carry over.",
+        "from": "From “{title}”, {date}",
+        "submit": "{count, plural, one {Carry over this wish} other {Carry over these # wishes}}",
+        "skip": "Skip"
+      },
+      "ideas": {
+        "who": "In “My wishes” and in others’ lists you can see. They aren’t told.",
+        "search": "Search",
+        "submit": "Search",
+        "empty": "Nothing found.",
+        "add": "Add to my list",
+        "added": "Added",
+        "next": "Next step"
+      }
+    },
+    "join": {
+      "title": "Event invitation",
+      "loading": "Opening the invitation",
+      "body": "{name} invites you to “{title}” on {date}.",
+      "someone": "Someone",
+      "who": "Only the active profile joins. To add another profile, switch profiles and reopen the link.",
+      "open": "See the event",
+      "accept": "Join"
+    }
   }
 }

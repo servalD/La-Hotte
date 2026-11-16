@@ -5,6 +5,7 @@ import type {
   ItemPriority,
   ItemRecord,
   ListAudience,
+  ListEventFacts,
   ListFacts,
   ListMemberFact,
   ListType,
@@ -34,7 +35,8 @@ export interface ListRecord {
   readonly title: string;
   readonly description: string;
   readonly personalProfileId: string | null;
-  readonly eventId: string | null;
+  /** EVT-29 : événement de rattachement, avec son audience (EVT-14) et sa clôture (EVT-38). */
+  readonly event: ListEventFacts | null;
   readonly audience: ListAudience;
   readonly recipients: readonly string[];
   readonly members: readonly ListMemberFact[];
@@ -63,6 +65,7 @@ export function factsOf(list: ListRecord): ListFacts {
     personal: list.personalProfileId !== null,
     archived: list.archivedAt !== null,
     deleted: list.deletedAt !== null,
+    event: list.event,
   };
 }
 

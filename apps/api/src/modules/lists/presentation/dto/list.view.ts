@@ -37,6 +37,8 @@ export class ListGiverView {
   @ApiProperty() title!: string;
   @ApiProperty() description!: string;
   @ApiProperty() personal!: boolean;
+  /** EVT-29 : événement de rattachement. */
+  @ApiProperty({ type: String, format: 'uuid', nullable: true }) eventId!: string | null;
   @ApiProperty({ type: [String], format: 'uuid' }) recipients!: string[];
   @ApiProperty({ enum: ROLES, enumName: 'ListRole', nullable: true })
   myRole!: (typeof ROLES)[number] | null;
@@ -64,6 +66,8 @@ export class ListRecipientView {
   @ApiProperty() title!: string;
   @ApiProperty() description!: string;
   @ApiProperty() personal!: boolean;
+  /** EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09). */
+  @ApiProperty({ type: String, format: 'uuid', nullable: true }) eventId!: string | null;
   @ApiProperty({ type: [String], format: 'uuid' }) recipients!: string[];
   @ApiProperty({ enum: ROLES, enumName: 'ListRole', nullable: true })
   myRole!: (typeof ROLES)[number] | null;
@@ -151,7 +155,21 @@ export class ItemRecipientView {
   @ApiProperty() received!: boolean;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) receivedAt!: string | null;
   @ApiProperty() mine!: boolean;
+  /** EVT-27 : reporté vers une autre liste, son propre geste. */
+  @ApiProperty() carriedForward!: boolean;
   @ApiProperty() version!: number;
+}
+
+/** EVT-28 : état réel de l'origine d'une reprise, en vue offreur seulement. */
+export class CarriedFromEventView {
+  @ApiProperty() title!: string;
+  @ApiProperty({ format: 'date' }) date!: string;
+}
+
+export class CarriedFromView {
+  @ApiProperty({ enum: ['RESERVED', 'PURCHASED'], enumName: 'CarriedFromStatus' })
+  status!: 'RESERVED' | 'PURCHASED';
+  @ApiProperty({ type: CarriedFromEventView, nullable: true }) event!: CarriedFromEventView | null;
 }
 
 export class ItemGiverView {
@@ -179,6 +197,8 @@ export class ItemGiverView {
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) addedBy!: string | null;
   @ApiProperty() mine!: boolean;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
+  @ApiProperty() carriedForward!: boolean;
+  @ApiProperty({ type: CarriedFromView, nullable: true }) carriedFrom!: CarriedFromView | null;
   @ApiProperty() version!: number;
 }
 

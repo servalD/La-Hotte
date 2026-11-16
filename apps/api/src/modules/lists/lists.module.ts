@@ -28,24 +28,38 @@ import {
 } from './application/manage-lists.use-case';
 import { GetItemRule, ReadVisibilityLog, SetItemRule } from './application/manage-rules.use-case';
 import {
+  AttachListToEvent,
+  DetachListFromEvent,
+  EventWishlists,
+} from './application/manage-event-lists.use-case';
+import {
   EngagementReader,
+  EventLookup,
   ItemRepository,
   ListRepository,
   VisibilityLogRepository,
 } from './domain/list.ports';
 import {
   NoEngagementReader,
+  PrismaEventLookup,
   PrismaItemRepository,
   PrismaListRepository,
   PrismaVisibilityLogRepository,
 } from './infrastructure/prisma-list-repository';
+import {
+  CarryOver,
+  ListCarryCandidates,
+  SearchEventIdeas,
+} from './application/carry-over.use-case';
+import { GetEventProgress } from './application/event-progress.use-case';
+import { EventCarryController } from './presentation/event-carry.controller';
 import { ItemsController, ListsController } from './presentation/lists.controller';
 import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
 
 /** Module `lists` : listes, éléments, rôles, succession (03). Lectures par `visibility`. */
 @Module({
   imports: [VisibilityModule, CatalogModule],
-  controllers: [ListsController, ItemsController],
+  controllers: [ListsController, ItemsController, EventCarryController],
   providers: [
     ListGate,
     ListLists,
@@ -72,11 +86,19 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     SetItemRule,
     ReadVisibilityLog,
     ProductReferences,
+    AttachListToEvent,
+    DetachListFromEvent,
+    EventWishlists,
+    ListCarryCandidates,
+    CarryOver,
+    SearchEventIdeas,
+    GetEventProgress,
+    { provide: EventLookup, useClass: PrismaEventLookup },
     { provide: VisibilityLogRepository, useClass: PrismaVisibilityLogRepository },
     { provide: EngagementReader, useClass: NoEngagementReader },
     { provide: ListRepository, useClass: PrismaListRepository },
     { provide: ItemRepository, useClass: PrismaItemRepository },
   ],
-  exports: [ProductReferences],
+  exports: [ProductReferences, EventWishlists],
 })
 export class ListsModule {}

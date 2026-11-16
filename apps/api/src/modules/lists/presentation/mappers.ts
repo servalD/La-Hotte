@@ -44,6 +44,7 @@ export function toListView(summary: ListSummary): ListView {
         title: list.title,
         description: list.description,
         personal: list.personalProfileId !== null,
+        eventId: list.event?.id ?? null,
         recipients: [...list.recipients],
         myRole: access.role,
         audience: list.audience,
@@ -69,6 +70,7 @@ export function toListView(summary: ListSummary): ListView {
         title: list.title,
         description: list.description,
         personal: list.personalProfileId !== null,
+        eventId: list.event?.id ?? null,
         recipients: [...list.recipients],
         myRole: access.role,
         audience: list.audience,
@@ -113,6 +115,7 @@ export function toItemView(item: ItemView): ItemViewDto {
       received: item.received,
       receivedAt: item.receivedAt?.toISOString() ?? null,
       mine: item.mine,
+      carriedForward: item.carriedForward,
       version: item.version,
     };
     return view;
@@ -138,6 +141,15 @@ export function toItemView(item: ItemView): ItemViewDto {
     addedBy: item.addedBy,
     mine: item.mine,
     createdAt: item.createdAt.toISOString(),
+    carriedForward: item.carriedForward,
+    carriedFrom: item.carriedFrom
+      ? {
+          status: item.carriedFrom.status,
+          event: item.carriedFrom.event
+            ? { title: item.carriedFrom.event.title, date: item.carriedFrom.event.date }
+            : null,
+        }
+      : null,
     version: item.version,
   };
   return view;

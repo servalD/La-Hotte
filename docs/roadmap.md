@@ -519,17 +519,52 @@ Restes :
 
 ## Phase 3 — Événements et giftlists
 
-Spec : `03` (giftlists), `05`.
+Spec : `03` (giftlists), `04`, `05`.
 
-| Tâche                                                                                 | Modèle             |
-| ------------------------------------------------------------------------------------- | ------------------ |
-| Giftlists : exposition, absence de trace (GFT-07), tests de non-fuite                 | opus               |
-| Événements, invitations, réponses, audience                                           | sonnet, revue opus |
-| Reprise des souhaits non obtenus (EVT-22), événements surprise                        | opus               |
-| Assistant de réponse en trois étapes, pages d'événement                               | sonnet             |
-| Confirmation de réception (vue offreur bleu et vert, vue destinataire neutre et vert) | sonnet, revue opus |
+**Découpage fait le 2026-11-16** (opus). Branche `feat/phase-3`. Même rythme que la phase 2, décidé par l'utilisateur : tranches enchaînées sans interruption, `security-reviewer` une seule fois en fin de phase (tranche 8) sur `main..HEAD`, 2 cycles au plus ; commits locaux par tranche, envoi groupé et PR après la revue. Ce qui dépend des notifications (phase 4 : rappels EVT-13, EVT-26, EVT-32, EVT-34) et des engagements (phase 5 : EVT-26, EVT-30, EVT-31, EVT-34) passe par des **ports vides**, comme VIS-16 : seule l'invitation part par e-mail. Tests de non-fuite de chaque tranche écrits avant son code (QA-10).
 
-Sortie : critères de `05` ; le destinataire d'une giftlist cachée ne peut rien observer.
+Dépendances : 1 → 2 → 3 → 4 → 5 → 6 ; les écrans (7) suivent les contrats générés ; 8 clôt la phase.
+
+| #   | Tranche                                | Modèle             | Contenu                                                                                                                                                                                                                                                                                                                                                                            | Sortie et tests attendus                                                                                                                                                         |
+| --- | -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Spec et schéma                         | opus               | Choix faits dans les silences de `03`, `04`, `05` écrits en règles ; contradiction de `03` sur la reprise corrigée ; ADR 0017 ; migration `event`, `event_participant`, `event_surprise_recipient`, clé étrangère `list.event_id`, reprise unique par élément ; `CHECK` et déclencheurs (DAT-01) : l'honoré d'un événement surprise n'en est jamais participant                     | Contraintes vérifiées en base (intégration)                                                                                                                                     |
+| 2   | Moteur de visibilité                   | opus               | Accès à un événement (participant, organisateur, honoré, surprise), audience `EVENT` (EVT-14), liste d'un événement clos en lecture seule sauf reçu (EVT-33), vue offreur de la reprise (EVT-26), reçu de giftlist (GFT-11)                                                                                                                                                        | **Matrice générée étendue avant le code** (VIS-33) : forme × surprise × réponse × rôle × état de l'événement ; 100 % des branches                                              |
+| 3   | Module `events`                        | sonnet, revue opus | `GET/POST /events`, `GET/PATCH/DELETE /events/{id}`, organisateurs (EVT-03), participants et invitations directes dans le cercle (EVT-10), lien d'invitation (`invitation` de type `EVENT`, EVT-10 à EVT-12), réponse (EVT-13, EVT-14), annulation (EVT-34), recréation (EVT-35), passage à `DONE` planifié (EVT-33) ; ports `EventNotifier` et engagements vides ; e-mail neutre | Contrat : `404` à l'honoré d'un événement surprise sur toutes les routes, lien compris ; e-mail neutre ; table IDOR étendue ; non-fuite (titre, lieu) dans la télémétrie        |
+| 4   | Listes d'un événement                  | opus               | Rattachement et détachement (EVT-24), liste créée à la réponse `Participe` (EVT-20, EVT-25), destinataires d'une giftlist d'événement (honorés, LST-07 étendu), audience `EVENT` en lecture (`findCandidates`), giftlist d'un événement surprise                                                                                                                                    | Un participant passé à `Ne participe pas` perd l'accès à la requête suivante ; l'honoré d'un événement surprise ne voit rien ; trois gestes au plus jusqu'à la liste            |
+| 5   | Reprise et pioche                      | opus               | `GET /events/{id}/carry-over` (EVT-22), `POST /events/{id}/carry-over` (EVT-21), trace « reporté » (vue destinataire), mention offreur (EVT-26), recherche d'idées dans les listes accessibles (EVT-20 étape 2, EVT-23)                                                                                                                                                            | **Critère de `05`** : réponse identique octet pour octet que les souhaits passés soient ouverts, réservés ou achetés ; seuls les reçus et retirés en sont absents             |
+| 6   | Vie de l'événement                     | sonnet, revue opus | Page de l'événement : participants et réponses, listes, avancement (EVT-30) et « qui n'a encore rien » (EVT-31) par le port d'engagements, confirmation de réception (EVT-32, GFT-11)                                                                                                                                                                                               | Avancement absent pour les listes dont le lecteur est destinataire, même co-destinataire ; ensemble des « qui n'a rien » indépendant de l'état                                 |
+| 7   | Écrans                                 | sonnet             | Événements, création, invitations et lien, réponse et assistant en trois étapes, page d'événement, confirmation de réception                                                                                                                                                                                                                                                       | Composants testés ; textes relus avec `design:ux-copy`                                                                                                                         |
+| 8   | Tests transverses et revue             | opus               | Matrice d'API des événements, giftlist cachée et événement surprise indiscernables (GFT-07, EVT-04) sur toutes les routes, OBS-26 étendu ; `security-reviewer` sur `main..HEAD`, 2 cycles au plus                                                                                                                                                                                  | Sortie de la phase                                                                                                                                                               |
+
+Sortie : critères de `05` ; le destinataire d'une giftlist cachée ou d'un événement surprise ne peut rien observer.
+
+**Tranches 1 à 8 faites le 2026-11-16** (opus), d'affilée. Module `events`, extension de `visibility` (accès aux événements, matrice des événements, 100 % des branches) et de `lists` (rattachement, wishlist créée à la réponse, reprise, pioche, avancement), écrans `/events`, `/events/[id]`, `/events/[id]/assistant`, `/events/join`. 811 tests unitaires et de contrat dans l'API, 168 d'intégration, 128 dans le web ; test OBS-26 vert avec le scénario des événements ; lectures de l'honoré d'une surprise identiques avant et après sa préparation.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- la reprise copie l'élément en gardant le lien (`carried_from_item_id`, unique), elle ne déplace pas la ligne : l'ancien garde son état et ses engagements (ADR 0017, EVT-27) ;
+- le rattachement est porté par `lists` (`PUT/DELETE /lists/{id}/event`, `eventId` à la création, `?eventId=`), qui lit l'événement par son propre adaptateur : `lists` ne dépend pas d'`events`, et `events` appelle `lists` pour la wishlist de EVT-36. Les routes `/events/{id}/lists` prévues au départ n'existent pas (spec `13` corrigée) ; reprise, pioche et avancement sont servis par `lists` sous `/events/{id}/…` ;
+- le créateur répond `Participe` d'office et reçoit sa wishlist en échange (ou s'il est son propre honoré) ;
+- un refus de lien d'invitation est rendu au temps plancher de 500 ms (EVT-16), pour que la durée ne distingue pas un lien refusé à l'honoré d'une surprise d'un lien inconnu ;
+- un lien épuisé laisse encore entrer qui est déjà participant (trouvé par le test d'intégration) ;
+- « a un offreur » (EVT-37) : un engagement, ou un état réel réservé ou acheté ; les suggestions ne comptent pas ;
+- les fonctions de date des événements sont dans le noyau partagé (`shared/domain/event-date.ts`), pour `events` et `lists`.
+
+- **Revue `security-reviewer` du 2026-11-16 (cycle 1)** : visa refusé. B1 (la mention de reprise montrait l'achat d'un souhait à son co-destinataire, offreur de la nouvelle liste), I1 (une liste rattachée à une surprise restait visible de l'honoré en audience cercle, sélection, ou s'il en était membre), I2 (le filtre `?eventId=` confirmait la surprise par l'aperçu d'une giftlist révélée) ; mineurs M1 (détachement d'un événement clos), M2 (liens d'un auteur retiré), M3 (réserve hors cercle sans réponse). Tous corrigés, spec d'abord (EVT-17, EVT-28, EVT-29, VIS-36), tests de non-régression avec contre-épreuve (`events-review.spec.ts`).
+- **Cycle 2 (dernier) : visa SEC-40 accordé.** Points restants, mineurs :
+  - **R1** : un membre ou l'autorité d'une liste rattachée qui devient honoré de la surprise (après son retrait) voit cette liste disparaître ; refuser l'honoré dans ce cas, ou avertir l'organisateur ;
+  - **R2** : supprimer un événement clos détache ses listes, qui redeviennent modifiables (EVT-38) ; à trancher avant la compta (refuser la suppression, ou archiver les listes) ;
+  - **R3** : retrait et révocation des liens de l'auteur ne sont pas dans une même transaction ;
+  - **R4** : M4 (blocages ignorés dans la réserve hors cercle d'une giftlist), M5 (reprise par lot non atomique), M6 (course de la wishlist créée à la réponse, doublon possible), acceptés en l'état ;
+  - amélioration proposée : écarter en SQL, dans `findCandidates`, les listes rattachées à une surprise dont le lecteur est l'honoré (VIS-31).
+
+Restes :
+
+- **Parcours Playwright** des écrans des événements (bureau, mobile, axe) et relecture des textes avec `design:ux-copy` : non faits, comme pour la phase 2.
+- Notifications (rappels EVT-13, EVT-26, EVT-32, EVT-34, alerte de EVT-41) : port vide jusqu'à la phase 4 ; engagements : port vide jusqu'à la phase 5.
+- Commentaires publics qui suivent un souhait repris (EVT-21) : avec les fils, en phase 4.
+- Tests de non-fuite écrits après le code dans les tranches 3 à 6 (QA-10 tenu seulement pour le moteur).
+- Performance : la pioche et l'avancement parcourent les listes candidates et lisent leurs éléments liste par liste.
 
 ## Phase 4 — Commentaires, notifications, temps réel
 

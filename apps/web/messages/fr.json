@@ -178,7 +178,8 @@
     "security": "Sécurité",
     "wards": "Comptes sous tutelle",
     "lists": "Listes",
-    "directory": "Répertoire"
+    "directory": "Répertoire",
+    "events": "Événements"
   },
   "home": {
     "hello": "Bonjour {name}",
@@ -967,5 +968,159 @@
     "sharedBy": "Partagée par {name}",
     "add": "Ajouter à Mes envies",
     "added": "Ajouté à « Mes envies »."
+  },
+  "events": {
+    "title": "Événements",
+    "whoList": "Les événements auxquels ce profil est invité. Seuls leurs participants les voient.",
+    "open": "Ouvrir",
+    "surprise": "surprise",
+    "loading": "Chargement des événements",
+    "empty": "Aucun événement pour l’instant.",
+    "notFound": "Cet événement est introuvable.",
+    "who": "Visible des participants de l’événement, et d’eux seuls.",
+    "whoSurprise": "Visible des participants seulement. Les personnes à l’honneur ne sont pas invitées et n’en voient rien.",
+    "sharedAccount": "Un participant partage le compte d’une personne à l’honneur : la surprise ne tient que si chaque profil de ce compte a son code PIN.",
+    "participants": "Participants",
+    "surpriseFor": "Surprise pour : {names}",
+    "organizer": "organise",
+    "honoree": "à l’honneur",
+    "scope": {
+      "label": "Événements à afficher",
+      "upcoming": "À venir",
+      "past": "Passés"
+    },
+    "type": {
+      "CHRISTMAS": "Noël",
+      "BIRTHDAY": "Anniversaire",
+      "BIRTH": "Naissance",
+      "WEDDING": "Mariage",
+      "OTHER": "Autre"
+    },
+    "status": {
+      "UPCOMING": "À venir",
+      "DONE": "Terminé",
+      "CANCELLED": "Annulé"
+    },
+    "mode": {
+      "EXCHANGE": "Échange",
+      "HONOREE": "À l’honneur"
+    },
+    "rsvp": {
+      "title": "Votre réponse",
+      "PENDING": "Pas encore répondu",
+      "YES": "Participe",
+      "MAYBE": "Peut-être",
+      "NO": "Ne participe pas"
+    },
+    "create": {
+      "action": "Créer un événement",
+      "title": "Nouvel événement",
+      "who": "Seuls les profils que vous invitez le verront.",
+      "whoSurprise": "Seuls les profils que vous invitez le verront. Les personnes à l’honneur n’en sauront rien.",
+      "name": "Nom",
+      "date": "Date",
+      "type": "Type",
+      "honoreeMode": "Une ou plusieurs personnes à l’honneur",
+      "honorees": "À l’honneur",
+      "honoreesHint": "Choisissez dans votre cercle. Les autres invités leur offrent des cadeaux.",
+      "surprise": "C’est une surprise",
+      "surpriseHint": "Les personnes à l’honneur ne sont pas invitées et ne voient ni l’événement ni ses listes.",
+      "exchangeHint": "Chacun offre et reçoit : chaque participant apporte sa liste.",
+      "place": "Lieu (facultatif)",
+      "description": "Description (facultative)",
+      "cancel": "Annuler",
+      "submit": "Créer"
+    },
+    "errors": {
+      "EVENT_NOT_FOUND": "Cet événement est introuvable.",
+      "EVENT_ACTION_FORBIDDEN": "Vous ne pouvez pas faire cela sur cet événement.",
+      "EVENT_INVALID": "Une information n’est pas valable. Vérifiez les champs.",
+      "EVENT_DATE_PASSED": "Cette date est déjà passée. Choisissez aujourd’hui ou plus tard.",
+      "EVENT_HONOREE_CANNOT_PARTICIPATE": "Ce profil est à l’honneur de la surprise : il ne peut pas être invité.",
+      "EVENT_PROFILE_NOT_ALLOWED": "Ce profil ne peut pas être ajouté à cet événement.",
+      "EVENT_INVITATION_INVALID": "Ce lien d’invitation n’est pas valable.",
+      "EVENT_CHILD_OUTSIDE_CIRCLE": "Un profil enfant ne rejoint un événement que par un proche de son cercle.",
+      "CARRY_NOT_ALLOWED": "Ce souhait ne peut pas être repris.",
+      "VERSION_MISMATCH": "L’événement a changé entre-temps. Rechargez la page.",
+      "generic": "Une erreur est survenue. Réessayez.",
+      "network": "Connexion impossible. Vérifiez votre réseau et réessayez."
+    },
+    "invite": {
+      "action": "Inviter des proches",
+      "title": "Inviter des proches",
+      "who": "Profils de votre cercle. Leur compte reçoit un e-mail qui ne dit rien de l’événement.",
+      "empty": "Tous vos proches sont déjà invités.",
+      "submit": "Inviter"
+    },
+    "links": {
+      "title": "Lien d’invitation",
+      "who": "Toute personne qui a le lien et un compte peut rejoindre l’événement, jusqu’à sa date.",
+      "create": "Créer un lien",
+      "copy": "Lien à partager",
+      "once": "Copiez-le maintenant : il ne sera plus affiché.",
+      "uses": "{used} sur {max} utilisations",
+      "revoke": "Désactiver"
+    },
+    "progress": {
+      "title": "Avancement",
+      "count": "Souhaits qui ont un offreur : {given} sur {total}",
+      "nobodyYet": "Qui n’a encore rien",
+      "someone": "Un participant",
+      "everyone": "Chacun a déjà au moins un cadeau prévu.",
+      "who": "Visible des offreurs seulement. Vos propres listes n’y entrent jamais."
+    },
+    "lists": {
+      "title": "Listes de l’événement",
+      "reception": "L’événement est passé : ouvrez votre liste et cochez ce que vous avez reçu.",
+      "empty": "Aucune liste pour l’instant.",
+      "mine": "Ma liste",
+      "open": "Voir la liste"
+    },
+    "manage": {
+      "title": "Organisation",
+      "recreate": "Recréer l’an prochain",
+      "cancel": "Annuler l’événement",
+      "cancelConfirm": "Annuler l’événement ? Ses listes passent en lecture seule.",
+      "delete": "Supprimer l’événement",
+      "deleteConfirm": "Supprimer l’événement ? Ses listes en seront détachées."
+    },
+    "assistant": {
+      "title": "Composer ma liste",
+      "who": "Votre liste est visible des participants qui ont répondu « Participe » ou « Peut-être ».",
+      "noList": "Aucune liste à compléter. Revenez à l’événement.",
+      "steps": "Étapes",
+      "step1": "Reprendre mes souhaits",
+      "step2": "Piocher des idées",
+      "step3": "Ajouter du neuf",
+      "newHint": "Ajoutez un article par lien, photo ou saisie, depuis votre liste.",
+      "toList": "Ouvrir ma liste",
+      "leave": "Terminer plus tard",
+      "carry": {
+        "loading": "Chargement de vos souhaits",
+        "who": "Vos souhaits des événements passés que vous n’avez pas cochés « reçu ».",
+        "empty": "Aucun souhait à reprendre.",
+        "from": "De « {title} », {date}",
+        "submit": "{count, plural, one {Reprendre ce souhait} other {Reprendre ces # souhaits}}",
+        "skip": "Passer"
+      },
+      "ideas": {
+        "who": "Dans « Mes envies » et les listes des autres que vous voyez. Ils n’en sont pas avertis.",
+        "search": "Rechercher",
+        "submit": "Chercher",
+        "empty": "Rien trouvé.",
+        "add": "Ajouter à ma liste",
+        "added": "Ajouté",
+        "next": "Étape suivante"
+      }
+    },
+    "join": {
+      "title": "Invitation à un événement",
+      "loading": "Ouverture de l’invitation",
+      "body": "{name} vous invite à « {title} », le {date}.",
+      "someone": "Quelqu’un",
+      "who": "Seul le profil actif rejoint. Pour inscrire un autre profil, changez de profil et rouvrez le lien.",
+      "open": "Voir l’événement",
+      "accept": "Rejoindre"
+    }
   }
 }

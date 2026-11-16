@@ -2,12 +2,16 @@ import {
   type ItemCriteria,
   type ItemRecord,
   type ListCandidateCriteria,
+  type ListEventFacts,
   type ListRole,
   ruleExcludes,
 } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
+  type CarryCandidate,
   EngagementReader,
+  type EventForLists,
+  EventLookup,
   ItemRepository,
   type ItemProductReference,
   type ListChanges,
@@ -44,13 +48,78 @@ export class InMemoryEngagementReader extends EngagementReader {
 
 type StoredList = ListRecord & { creatorProfileId: string | null };
 
+/** EVT-29 : événements lus par `lists` (reliés par le banc de test au double des événements). */
+export class InMemoryEventLookup extends EventLookup {
+  findEvent: (eventId: string) => EventForLists | null = () => null;
+  surpriseOf: (eventId: string) => string[] = () => [];
+
+  find(eventId: string): Promise<EventForLists | null> {
+    return Promise.resolve(this.findEvent(eventId));
+  }
+
+  surpriseRecipients(eventId: string): Promise<string[]> {
+    return Promise.resolve(this.surpriseOf(eventId));
+  }
+}
+
 /** Double de test : même comportement observable que l'adaptateur Prisma. */
 export class InMemoryListRepository extends ListRepository {
   readonly lists = new Map<string, StoredList>();
   private tick = 0;
 
+  /**
+   * EVT-14, EVT-38 : faits à jour de l'événement de rattachement (reliés au double des
+   * événements) ; la ligne ne garde que l'identifiant.
+   */
+  eventFactsOf: (eventId: string) => ListEventFacts | null = () => null;
+
   constructor(private readonly log: InMemoryVisibilityLog) {
     super();
+  }
+
+  private view(row: StoredList): StoredList {
+    if (!row.event) return row;
+    return { ...row, event: this.eventFactsOf(row.event.id) ?? row.event };
+  }
+
+  attachEvent(listId: string, eventId: string): Promise<boolean> {
+    const row = this.lists.get(listId);
+    if (!row || row.event || row.personalProfileId !== null || row.deletedAt) {
+      return Promise.resolve(false);
+    }
+    this.lists.set(listId, {
+      ...row,
+      event: { id: eventId, audience: [], closed: false, hiddenFrom: [] },
+      version: row.version + 1,
+    });
+    return Promise.resolve(true);
+  }
+
+  detachEvent(listId: string): Promise<void> {
+    const row = this.lists.get(listId);
+    if (row?.event) {
+      this.lists.set(listId, {
+        ...row,
+        event: null,
+        audience: row.audience === 'EVENT' ? 'MEMBERS' : row.audience,
+        version: row.version + 1,
+      });
+    }
+    return Promise.resolve();
+  }
+
+  findEventWishlist(eventId: string, profileId: string): Promise<string | null> {
+    const found = [...this.lists.values()]
+      .filter(
+        (l) =>
+          l.event?.id === eventId &&
+          l.type === 'WISHLIST' &&
+          l.deletedAt === null &&
+          l.creatorProfileId === profileId &&
+          l.recipients.includes(profileId),
+      )
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0];
+    return Promise.resolve(found?.id ?? null);
   }
 
   private stamp(): Date {
@@ -70,7 +139,7 @@ export class InMemoryListRepository extends ListRepository {
       description: '',
       creatorProfileId: input.profileId,
       personalProfileId: input.profileId,
-      eventId: null,
+      event: null,
       audience: 'CIRCLE',
       recipients: [input.profileId],
       members: [{ profileId: input.profileId, role: 'CREATOR', since: at }],
@@ -96,7 +165,9 @@ export class InMemoryListRepository extends ListRepository {
       description: list.description,
       creatorProfileId: list.creatorProfileId,
       personalProfileId: list.personal ? list.creatorProfileId : null,
-      eventId: null,
+      event: list.eventId
+        ? { id: list.eventId, audience: [], closed: false, hiddenFrom: [] }
+        : null,
       audience: list.audience,
       recipients: list.recipients.map((r) => r.profileId),
       members: [{ profileId: list.creatorProfileId, role: 'CREATOR', since: at }],
@@ -111,24 +182,27 @@ export class InMemoryListRepository extends ListRepository {
       version: 1,
     };
     this.lists.set(row.id, row);
-    return Promise.resolve(row);
+    return Promise.resolve(this.view(row));
   }
 
   find(listId: string): Promise<ListRecord | null> {
-    return Promise.resolve(this.lists.get(listId) ?? null);
+    const row = this.lists.get(listId);
+    return Promise.resolve(row ? this.view(row) : null);
   }
 
   findCandidates(criteria: ListCandidateCriteria): Promise<ListRecord[]> {
     const viewer = criteria.viewerId;
     return Promise.resolve(
       [...this.lists.values()]
+        .map((l) => this.view(l))
         .filter(
           (l) =>
             l.deletedAt === null &&
             (l.members.some((m) => m.profileId === viewer) ||
               l.recipients.includes(viewer) ||
               (l.audience === 'CIRCLE' && l.recipients.some((r) => criteria.circle.includes(r))) ||
-              (l.audience === 'CUSTOM' && l.customAudience.includes(viewer))),
+              (l.audience === 'CUSTOM' && l.customAudience.includes(viewer)) ||
+              (l.audience === 'EVENT' && (l.event?.audience.includes(viewer) ?? false))),
         )
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     );
@@ -181,7 +255,7 @@ export class InMemoryListRepository extends ListRepository {
       version: row.version + 1,
     };
     this.lists.set(row.id, next);
-    return Promise.resolve(next);
+    return Promise.resolve(this.view(next));
   }
 
   setMember(input: {
@@ -270,6 +344,7 @@ interface StoredItem {
   readonly shownToRecipient: boolean;
   readonly receivedAt: Date | null;
   readonly intendedRecipientId: string | null;
+  readonly carriedFromItemId: string | null;
   readonly createdAt: Date;
   readonly version: number;
 }
@@ -296,6 +371,50 @@ export class InMemoryItemRepository extends ItemRepository {
 
   /** Destinataires d'une liste, lus dans le double des listes (relié par le banc de test). */
   recipientsOf: (listId: string) => readonly string[] = () => [];
+  /** EVT-28 : événement d'une liste (relié par le banc de test). */
+  eventOfList: (listId: string) => { id: string; title: string; date: string } | null = () => null;
+  /** EVT-22 : ce que la reprise lit d'une liste (relié par le banc de test). */
+  listContext: (listId: string) => {
+    readonly isWishlist: boolean;
+    readonly deleted: boolean;
+    readonly recipients: readonly string[];
+    readonly event: CarryCandidate['event'] | null;
+  } | null = () => null;
+
+  carryCandidates(profileId: string, excludeEventId: string): Promise<CarryCandidate[]> {
+    const carried = new Set([...this.items.values()].map((r) => r.carriedFromItemId));
+    const out: CarryCandidate[] = [];
+    for (const row of [...this.items.values()].sort((a, b) => a.position - b.position)) {
+      const list = this.listContext(row.listId);
+      if (!list?.isWishlist || list.deleted || !list.recipients.includes(profileId)) continue;
+      if (!list.event || list.event.id === excludeEventId) continue;
+      if (row.isSuggestion || row.status === 'WITHDRAWN' || row.receivedAt || carried.has(row.id)) {
+        continue;
+      }
+      out.push({ item: this.record(row), listId: row.listId, event: list.event });
+    }
+    return Promise.resolve(out);
+  }
+
+  async carry(
+    item: NewItem & {
+      carriedFromItemId: string;
+      ruleProfiles: readonly { id: string; profileId: string }[];
+    },
+  ): Promise<ItemRecord | 'already'> {
+    if ([...this.items.values()].some((r) => r.carriedFromItemId === item.carriedFromItemId)) {
+      return 'already';
+    }
+    const created = await this.create(item);
+    const row = this.items.get(created.id);
+    if (row) {
+      this.items.set(created.id, {
+        ...row,
+        visibilityProfiles: item.ruleProfiles.map((r) => r.profileId),
+      });
+    }
+    return (await this.find(created.id)) ?? created;
+  }
 
   constructor(
     private readonly products: ProductRows,
@@ -362,6 +481,19 @@ export class InMemoryItemRepository extends ItemRepository {
       intendedRecipientId: row.intendedRecipientId,
       createdAt: row.createdAt,
       version: row.version,
+      carriedForward: [...this.items.values()].some((other) => other.carriedFromItemId === row.id),
+      carryOrigin: this.carryOrigin(row),
+    };
+  }
+
+  private carryOrigin(row: StoredItem): ItemRecord['carryOrigin'] {
+    const origin = row.carriedFromItemId ? this.items.get(row.carriedFromItemId) : undefined;
+    if (!origin) return null;
+    return {
+      status: origin.status,
+      recipients: this.recipientsOf(origin.listId),
+      rule: { mode: origin.visibilityMode, profiles: origin.visibilityProfiles },
+      event: this.eventOfList(origin.listId),
     };
   }
 
@@ -426,6 +558,7 @@ export class InMemoryItemRepository extends ItemRepository {
       status: 'OPEN',
       withdrawnReason: null,
       receivedAt: null,
+      carriedFromItemId: item.carriedFromItemId ?? null,
       createdAt: new Date(Date.UTC(2026, 10, 1) + this.tick * 1000),
       version: 1,
     };

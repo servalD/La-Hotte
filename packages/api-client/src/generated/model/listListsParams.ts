@@ -9,4 +9,8 @@ import type { ListScope } from './listScope';
 
 export type ListListsParams = {
   scope?: ListScope;
+  /**
+   * EVT-30 : listes rattachées à cet événement.
+   */
+  eventId?: string;
 };

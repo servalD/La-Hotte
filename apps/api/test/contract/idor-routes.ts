@@ -29,3 +29,32 @@ export const PHASE2_IDOR_ROUTES: readonly string[] = [
   'PUT /api/v1/products/:id/share',
   'POST /api/v1/directory/:productId/copy',
 ];
+
+// SEC-03, EVT-08 : routes à identifiant du module `events` (phase 3), couvertes par la table IDOR
+// de `events-security.spec.ts`.
+export const PHASE3_IDOR_ROUTES: readonly string[] = [
+  'GET /api/v1/events/:id',
+  'PATCH /api/v1/events/:id',
+  'DELETE /api/v1/events/:id',
+  'POST /api/v1/events/:id/cancel',
+  'POST /api/v1/events/:id/recreate',
+  'GET /api/v1/events/:id/participants',
+  'POST /api/v1/events/:id/participants',
+  'DELETE /api/v1/events/:id/participants/:profileId',
+  'PUT /api/v1/events/:id/organizers/:profileId',
+  'DELETE /api/v1/events/:id/organizers/:profileId',
+  'POST /api/v1/events/:id/honorees',
+  'PUT /api/v1/events/:id/rsvp',
+  'GET /api/v1/events/:id/links',
+  'POST /api/v1/events/:id/links',
+  'DELETE /api/v1/events/:id/links/:linkId',
+  // EVT-20 à EVT-27 : reprise et pioche.
+  'GET /api/v1/events/:id/carry-over',
+  'POST /api/v1/events/:id/carry-over',
+  'GET /api/v1/events/:id/ideas',
+  // EVT-30, EVT-31
+  'GET /api/v1/events/:id/progress',
+  // EVT-29 : rattachement d'une liste.
+  'PUT /api/v1/lists/:id/event',
+  'DELETE /api/v1/lists/:id/event',
+];

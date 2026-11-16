@@ -1,5 +1,5 @@
-import type { ItemPriority, ItemStatus, VisibilityMode } from './facts';
-import type { ItemAccess } from './rules';
+import type { ItemPriority, ItemRule, ItemStatus, VisibilityMode } from './facts';
+import { type ItemAccess, ruleExcludes } from './rules';
 
 // Vues construites champ par champ (ADR 0004, API-12, VIS-35) : la vue destinataire ne contient
 // aucun champ d'offreur, ni même son nom. Jamais `...item` : un champ ajouté à l'élément n'atteint
@@ -37,6 +37,33 @@ export interface ItemRecord {
   readonly intendedRecipientId: string | null;
   readonly createdAt: Date;
   readonly version: number;
+  /** EVT-27 : l'élément a été repris dans une autre liste. */
+  readonly carriedForward: boolean;
+  /** EVT-27, EVT-28 : origine d'une reprise, avec son état réel (jamais montré au destinataire). */
+  readonly carryOrigin: CarryOriginRecord | null;
+}
+
+export interface CarryOriginRecord {
+  readonly status: ItemStatus;
+  /** EVT-28 (revue SEC-40, B1) : destinataires de la liste d'origine, jamais informés. */
+  readonly recipients: readonly string[];
+  /** EVT-28 : règle de l'origine ; un profil qu'elle écartait n'apprend pas son état. */
+  readonly rule: ItemRule;
+  /** Événement de la liste d'origine, s'il en a un. */
+  readonly event: { readonly id: string; readonly title: string; readonly date: string } | null;
+}
+
+/** EVT-28 : mention offreur d'une reprise. */
+export interface CarriedFromPart {
+  readonly status: 'RESERVED' | 'PURCHASED';
+  /** Absent si le lecteur ne voit pas l'ancien événement. */
+  readonly event: { readonly title: string; readonly date: string } | null;
+}
+
+/** Ce que la projection doit savoir du lecteur au-delà de l'élément. */
+export interface ProjectionContext {
+  /** EVT-28 : événements que le lecteur voit (pour titrer la mention de reprise). */
+  readonly visibleEventIds?: ReadonlySet<string>;
 }
 
 export interface ProductPart {
@@ -67,6 +94,8 @@ export interface ItemRecipientView {
   readonly received: boolean;
   readonly receivedAt: Date | null;
   readonly mine: boolean;
+  /** EVT-27 : reporté vers une autre liste, son propre geste. */
+  readonly carriedForward: boolean;
   /** Ne bouge jamais pour une écriture d'offreur (réservation, part : autres tables). */
   readonly version: number;
 }
@@ -95,6 +124,8 @@ export interface ItemGiverView {
   readonly addedBy: string | null;
   readonly mine: boolean;
   readonly createdAt: Date;
+  readonly carriedForward: boolean;
+  readonly carriedFrom: CarriedFromPart | null;
   readonly version: number;
 }
 
@@ -127,8 +158,29 @@ function recipientView(item: ItemRecord, viewerId: string): ItemRecipientView {
     received: item.receivedAt !== null,
     receivedAt: item.receivedAt,
     mine: item.addedBy === viewerId,
+    carriedForward: item.carriedForward,
     version: item.version,
   };
+}
+
+/**
+ * EVT-28 : seulement pour une origine réservée ou achetée, et jamais pour un destinataire de
+ * l'origine ni un profil que sa règle écartait (VIS-20 : un co-destinataire voit la nouvelle liste
+ * en offreur).
+ */
+function carriedFrom(
+  item: ItemRecord,
+  viewerId: string,
+  context: ProjectionContext,
+): CarriedFromPart | null {
+  const origin = item.carryOrigin;
+  if (!origin || (origin.status !== 'RESERVED' && origin.status !== 'PURCHASED')) return null;
+  if (origin.recipients.includes(viewerId) || ruleExcludes(origin.rule, viewerId)) return null;
+  const event =
+    origin.event && context.visibleEventIds?.has(origin.event.id)
+      ? { title: origin.event.title, date: origin.event.date }
+      : null;
+  return { status: origin.status, event };
 }
 
 function giverStatus(item: ItemRecord): GiverItemStatus {
@@ -137,7 +189,7 @@ function giverStatus(item: ItemRecord): GiverItemStatus {
   return item.status as Exclude<ItemRecord['status'], 'WITHDRAWN'>;
 }
 
-function giverView(item: ItemRecord, viewerId: string): ItemGiverView {
+function giverView(item: ItemRecord, viewerId: string, context: ProjectionContext): ItemGiverView {
   return {
     view: 'giver',
     id: item.id,
@@ -159,6 +211,8 @@ function giverView(item: ItemRecord, viewerId: string): ItemGiverView {
     addedBy: item.addedBy,
     mine: item.addedBy === viewerId,
     createdAt: item.createdAt,
+    carriedForward: item.carriedForward,
+    carriedFrom: carriedFrom(item, viewerId, context),
     version: item.version,
   };
 }
@@ -168,6 +222,7 @@ export function projectItem(
   access: ItemAccess,
   item: ItemRecord,
   viewerId: string,
+  context: ProjectionContext = {},
 ): ItemView | null {
   // Seconde barrière de LST-19 : un élément retiré n'a pas de vue, quelle que soit la décision.
   if (item.status === 'WITHDRAWN') return null;
@@ -177,6 +232,6 @@ export function projectItem(
     case 'recipient':
       return recipientView(item, viewerId);
     case 'giver':
-      return giverView(item, viewerId);
+      return giverView(item, viewerId, context);
   }
 }

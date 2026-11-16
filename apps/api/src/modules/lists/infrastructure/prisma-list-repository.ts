@@ -4,7 +4,10 @@ import { PrismaService } from '../../../platform/prisma/prisma.service';
 import type { ItemCriteria, ItemRecord, ListCandidateCriteria, ListRole } from '../../visibility';
 import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
 import {
+  type CarryCandidate,
   EngagementReader,
+  type EventForLists,
+  EventLookup,
   ItemRepository,
   type ItemProductReference,
   type ListChanges,
@@ -20,6 +23,19 @@ const LIST_INCLUDE = {
   recipients: { select: { profileId: true } },
   members: { select: { profileId: true, role: true, createdAt: true } },
   audienceOf: { select: { profileId: true } },
+  // EVT-14, EVT-38 : audience et clôture de l'événement de rattachement.
+  event: {
+    select: {
+      id: true,
+      status: true,
+      participants: {
+        where: { rsvp: { in: ['YES', 'MAYBE'] } },
+        select: { profileId: true },
+      },
+      // VIS-36 (revue SEC-40, I1) : lus pour toute liste rattachée, quel que soit le lecteur.
+      surpriseFor: { select: { profileId: true } },
+    },
+  },
 } satisfies Prisma.ListInclude;
 
 type ListRow = Prisma.ListGetPayload<{ include: typeof LIST_INCLUDE }>;
@@ -31,7 +47,14 @@ function toList(row: ListRow): ListRecord {
     title: row.title,
     description: row.description,
     personalProfileId: row.personalProfileId,
-    eventId: row.eventId,
+    event: row.event
+      ? {
+          id: row.event.id,
+          audience: row.event.participants.map((p) => p.profileId),
+          closed: row.event.status !== 'UPCOMING',
+          hiddenFrom: row.event.surpriseFor.map((s) => s.profileId),
+        }
+      : null,
     audience: row.audience,
     recipients: row.recipients.map((r) => r.profileId),
     members: row.members.map((m) => ({ profileId: m.profileId, role: m.role, since: m.createdAt })),
@@ -57,6 +80,37 @@ function logData(entry: RuleLogEntry): Prisma.VisibilityChangeLogCreateInput {
     after: { mode: entry.after.mode, profiles: [...entry.after.profiles] },
     at: entry.at,
   };
+}
+
+/** EVT-29 : lecture d'un événement par `lists`, sans dépendre du module `events`. */
+@Injectable()
+export class PrismaEventLookup extends EventLookup {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async find(eventId: string): Promise<EventForLists | null> {
+    const row = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: {
+        id: true,
+        title: true,
+        mode: true,
+        isSurprise: true,
+        status: true,
+        participants: { select: { profileId: true, role: true, isHonoree: true, rsvp: true } },
+      },
+    });
+    return row;
+  }
+
+  async surpriseRecipients(eventId: string): Promise<string[]> {
+    const rows = await this.prisma.eventSurpriseRecipient.findMany({
+      where: { eventId },
+      select: { profileId: true },
+    });
+    return rows.map((row) => row.profileId);
+  }
 }
 
 @Injectable()
@@ -118,6 +172,7 @@ export class PrismaListRepository extends ListRepository {
           description: list.description,
           creatorProfileId: list.creatorProfileId,
           personalProfileId: list.personal ? list.creatorProfileId : null,
+          eventId: list.eventId ?? null,
           audience: list.audience,
           giftExistence: list.giftExistence,
           giftContent: list.giftContent,
@@ -168,6 +223,13 @@ export class PrismaListRepository extends ListRepository {
               ]
             : []),
           { audience: 'CUSTOM', audienceOf: { some: { profileId: viewer } } },
+          // VIS-03, EVT-14 : listes d'un événement où il a répondu Participe ou Peut-être.
+          {
+            audience: 'EVENT',
+            event: {
+              participants: { some: { profileId: viewer, rsvp: { in: ['YES', 'MAYBE'] } } },
+            },
+          },
         ],
       },
       include: LIST_INCLUDE,
@@ -287,6 +349,42 @@ export class PrismaListRepository extends ListRepository {
     });
   }
 
+  async attachEvent(listId: string, eventId: string): Promise<boolean> {
+    const { count } = await this.prisma.list.updateMany({
+      where: { id: listId, eventId: null, personalProfileId: null, deletedAt: null },
+      data: { eventId, version: { increment: 1 } },
+    });
+    return count === 1;
+  }
+
+  async detachEvent(listId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.list.updateMany({
+        where: { id: listId, audience: 'EVENT' },
+        data: { audience: 'MEMBERS' },
+      }),
+      this.prisma.list.updateMany({
+        where: { id: listId, eventId: { not: null } },
+        data: { eventId: null, version: { increment: 1 } },
+      }),
+    ]);
+  }
+
+  async findEventWishlist(eventId: string, profileId: string): Promise<string | null> {
+    const row = await this.prisma.list.findFirst({
+      where: {
+        eventId,
+        type: 'WISHLIST',
+        deletedAt: null,
+        creatorProfileId: profileId,
+        recipients: { some: { profileId } },
+      },
+      select: { id: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return row?.id ?? null;
+  }
+
   async trash(listId: string, at: Date): Promise<void> {
     await this.prisma.list.updateMany({
       where: { id: listId, deletedAt: null, personalProfileId: null },
@@ -319,9 +417,29 @@ const ITEM_INCLUDE = {
     },
   },
   ruleProfiles: { select: { profileId: true } },
+  // EVT-27, EVT-28 : reprise ; l'état de l'origine ne sort que par la vue offreur.
+  carriedTo: { select: { id: true } },
+  carriedFrom: {
+    select: {
+      status: true,
+      visibilityMode: true,
+      ruleProfiles: { select: { profileId: true } },
+      list: {
+        select: {
+          recipients: { select: { profileId: true } },
+          event: { select: { id: true, title: true, date: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.ListItemInclude;
 
 type ItemRow = Prisma.ListItemGetPayload<{ include: typeof ITEM_INCLUDE }>;
+
+/** EVT-05 : un jour sans heure, rendu `AAAA-MM-JJ`. */
+export function isoDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
 
 export function toItem(row: ItemRow): ItemRecord {
   return {
@@ -345,6 +463,24 @@ export function toItem(row: ItemRow): ItemRecord {
     intendedRecipientId: row.intendedRecipientId,
     createdAt: row.createdAt,
     version: row.version,
+    carriedForward: row.carriedTo !== null,
+    carryOrigin: row.carriedFrom
+      ? {
+          status: row.carriedFrom.status,
+          recipients: row.carriedFrom.list.recipients.map((r) => r.profileId),
+          rule: {
+            mode: row.carriedFrom.visibilityMode,
+            profiles: row.carriedFrom.ruleProfiles.map((p) => p.profileId),
+          },
+          event: row.carriedFrom.list.event
+            ? {
+                id: row.carriedFrom.list.event.id,
+                title: row.carriedFrom.list.event.title,
+                date: isoDay(row.carriedFrom.list.event.date),
+              }
+            : null,
+        }
+      : null,
   };
 }
 
@@ -432,6 +568,101 @@ export class PrismaItemRepository extends ItemRepository {
       });
     });
     return toItem(row);
+  }
+
+  async carryCandidates(profileId: string, excludeEventId: string): Promise<CarryCandidate[]> {
+    const rows = await this.prisma.listItem.findMany({
+      where: {
+        isSuggestion: false,
+        status: { not: 'WITHDRAWN' },
+        receivedAt: null,
+        carriedTo: null,
+        list: {
+          type: 'WISHLIST',
+          deletedAt: null,
+          eventId: { not: excludeEventId },
+          event: { isNot: null },
+          recipients: { some: { profileId } },
+        },
+      },
+      include: {
+        ...ITEM_INCLUDE,
+        list: {
+          select: {
+            id: true,
+            event: { select: { id: true, title: true, date: true, timezone: true, status: true } },
+          },
+        },
+      },
+      orderBy: [{ listId: 'asc' }, { position: 'asc' }, { id: 'asc' }],
+      take: 500,
+    });
+    return rows.flatMap((row) => {
+      const event = row.list.event;
+      if (!event) return [];
+      return [
+        {
+          item: toItem(row),
+          listId: row.list.id,
+          event: {
+            id: event.id,
+            title: event.title,
+            date: isoDay(event.date),
+            timezone: event.timezone,
+            closed: event.status !== 'UPCOMING',
+          },
+        },
+      ];
+    });
+  }
+
+  async carry(
+    item: NewItem & {
+      carriedFromItemId: string;
+      ruleProfiles: readonly { id: string; profileId: string }[];
+    },
+  ): Promise<ItemRecord | 'already'> {
+    try {
+      const row = await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "list" WHERE id = ${item.listId}::uuid FOR UPDATE`;
+        const last = await tx.listItem.aggregate({
+          where: { listId: item.listId },
+          _max: { position: true },
+        });
+        await tx.listItem.create({
+          data: {
+            id: item.id,
+            listId: item.listId,
+            productId: item.productId,
+            addedByProfileId: item.addedBy,
+            quantity: item.quantity,
+            unitPriceMinor: item.unitPriceMinor === null ? null : BigInt(item.unitPriceMinor),
+            currency: item.currency,
+            priority: item.priority,
+            note: item.note,
+            manyWelcome: item.manyWelcome,
+            position: (last._max.position ?? -1) + 1,
+            visibilityMode: item.visibilityMode,
+            isSuggestion: false,
+            intendedRecipientId: null,
+            shownToRecipient: false,
+            carriedFromItemId: item.carriedFromItemId,
+          },
+        });
+        for (const rule of item.ruleProfiles) {
+          await tx.itemVisibilityProfile.create({
+            data: { id: rule.id, itemId: item.id, profileId: rule.profileId },
+          });
+        }
+        return tx.listItem.findUniqueOrThrow({ where: { id: item.id }, include: ITEM_INCLUDE });
+      });
+      return toItem(row);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return 'already';
+      }
+      throw error;
+    }
   }
 
   async update(input: {

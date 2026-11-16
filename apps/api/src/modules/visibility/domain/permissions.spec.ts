@@ -38,6 +38,7 @@ function list(partial: Partial<ListFacts> = {}): ListFacts {
     personal: false,
     archived: false,
     deleted: false,
+    event: null,
     ...partial,
   };
 }

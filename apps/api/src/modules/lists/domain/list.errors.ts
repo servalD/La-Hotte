@@ -9,6 +9,24 @@ export class ListNotFoundError extends DomainError {
   }
 }
 
+/** EVT-08, EVT-29 : événement inconnu, ou dont le profil n'est pas participant ; même refus. */
+export class EventNotFoundForListError extends DomainError {
+  readonly kind = 'not_found';
+  readonly code = 'EVENT_NOT_FOUND';
+  constructor() {
+    super('Événement introuvable.');
+  }
+}
+
+/** EVT-22, EVT-27 : élément absent des souhaits non obtenus (ou déjà repris). */
+export class CarryNotAllowedError extends DomainError {
+  readonly kind = 'business_rule';
+  readonly code = 'CARRY_NOT_ALLOWED';
+  constructor() {
+    super('Ce souhait ne peut pas être repris.');
+  }
+}
+
 /** VIS-34 */
 export class ItemNotFoundError extends DomainError {
   readonly kind = 'not_found';

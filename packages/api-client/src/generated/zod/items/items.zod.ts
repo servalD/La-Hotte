@@ -40,6 +40,18 @@ export const getOneItemResponse = zod.union([
     addedBy: zod.uuid().nullable(),
     mine: zod.boolean(),
     createdAt: zod.iso.datetime({}),
+    carriedForward: zod.boolean(),
+    carriedFrom: zod
+      .object({
+        status: zod.enum(['RESERVED', 'PURCHASED']),
+        event: zod
+          .object({
+            title: zod.string(),
+            date: zod.iso.date(),
+          })
+          .nullable(),
+      })
+      .nullable(),
     version: zod.number(),
   }),
   zod.object({
@@ -64,6 +76,9 @@ export const getOneItemResponse = zod.union([
     received: zod.boolean(),
     receivedAt: zod.iso.datetime({}).nullable(),
     mine: zod.boolean(),
+    carriedForward: zod
+      .boolean()
+      .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
     version: zod.number(),
   }),
 ]);
@@ -137,6 +152,18 @@ export const updateOneItemResponse = zod.union([
     addedBy: zod.uuid().nullable(),
     mine: zod.boolean(),
     createdAt: zod.iso.datetime({}),
+    carriedForward: zod.boolean(),
+    carriedFrom: zod
+      .object({
+        status: zod.enum(['RESERVED', 'PURCHASED']),
+        event: zod
+          .object({
+            title: zod.string(),
+            date: zod.iso.date(),
+          })
+          .nullable(),
+      })
+      .nullable(),
     version: zod.number(),
   }),
   zod.object({
@@ -161,6 +188,9 @@ export const updateOneItemResponse = zod.union([
     received: zod.boolean(),
     receivedAt: zod.iso.datetime({}).nullable(),
     mine: zod.boolean(),
+    carriedForward: zod
+      .boolean()
+      .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
     version: zod.number(),
   }),
 ]);
@@ -205,6 +235,9 @@ export const markItemReceivedResponse = zod.object({
   received: zod.boolean(),
   receivedAt: zod.iso.datetime({}).nullable(),
   mine: zod.boolean(),
+  carriedForward: zod
+    .boolean()
+    .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
   version: zod.number(),
 });
 
@@ -234,6 +267,9 @@ export const unmarkItemReceivedResponse = zod.object({
   received: zod.boolean(),
   receivedAt: zod.iso.datetime({}).nullable(),
   mine: zod.boolean(),
+  carriedForward: zod
+    .boolean()
+    .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
   version: zod.number(),
 });
 

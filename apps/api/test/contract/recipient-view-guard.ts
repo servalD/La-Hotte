@@ -45,6 +45,8 @@ export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {
       'title',
       'description',
       'personal',
+      // EVT-29 : l'événement de sa propre wishlist, qu'il voit (jamais sur l'aperçu de giftlist).
+      'eventId',
       'recipients',
       'myRole',
       'audience',
@@ -81,6 +83,8 @@ export const RECIPIENT_VIEW_ALLOWLIST: Record<string, RecipientViewRule> = {
       'received',
       'receivedAt',
       'mine',
+      // EVT-27, VIS-35 : reporté, son propre geste.
+      'carriedForward',
       'version',
     ],
     schemas: ['ItemProductView', 'ItemPriority'],

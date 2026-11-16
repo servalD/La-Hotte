@@ -9,6 +9,7 @@ import * as zod from 'zod';
 
 export const listListsQueryParams = zod.object({
   scope: zod.enum(['active', 'archived', 'trash']).optional(),
+  eventId: zod.uuid().optional().describe('EVT-30 : listes rattachées à cet événement.'),
 });
 
 export const listListsResponse = zod.object({
@@ -21,6 +22,7 @@ export const listListsResponse = zod.object({
         title: zod.string(),
         description: zod.string(),
         personal: zod.boolean(),
+        eventId: zod.uuid().nullable().describe('EVT-29 : événement de rattachement.'),
         recipients: zod.array(zod.uuid()),
         myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
         audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -50,6 +52,10 @@ export const listListsResponse = zod.object({
         title: zod.string(),
         description: zod.string(),
         personal: zod.boolean(),
+        eventId: zod
+          .uuid()
+          .nullable()
+          .describe("EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09)."),
         recipients: zod.array(zod.uuid()),
         myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
         audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -90,6 +96,7 @@ export const createNewListBodyRecipientIdsMax = 10;
 export const createNewListBodyCustomAudienceMax = 100;
 
 export const createNewListBody = zod.object({
+  eventId: zod.uuid().optional().describe('EVT-29 : rattachée dès la création.'),
   type: zod.enum(['WISHLIST', 'GIFTLIST']),
   title: zod.string().min(1).max(createNewListBodyTitleMax).regex(createNewListBodyTitleRegExp),
   description: zod.string().max(createNewListBodyDescriptionMax).optional(),
@@ -98,7 +105,7 @@ export const createNewListBody = zod.object({
     .max(createNewListBodyRecipientIdsMax)
     .optional()
     .describe('Wishlist : soi-même par défaut ; giftlist : obligatoire.'),
-  audience: zod.enum(['MEMBERS', 'CIRCLE', 'CUSTOM']).optional(),
+  audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']).optional(),
   customAudience: zod.array(zod.uuid()).max(createNewListBodyCustomAudienceMax).optional(),
   giftExistence: zod.enum(['HIDDEN', 'REVEALED']).optional(),
   giftContent: zod.enum(['NONE', 'PARTIAL', 'FULL']).optional(),
@@ -116,6 +123,7 @@ export const getOneListResponse = zod.union([
     title: zod.string(),
     description: zod.string(),
     personal: zod.boolean(),
+    eventId: zod.uuid().nullable().describe('EVT-29 : événement de rattachement.'),
     recipients: zod.array(zod.uuid()),
     myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
     audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -145,6 +153,10 @@ export const getOneListResponse = zod.union([
     title: zod.string(),
     description: zod.string(),
     personal: zod.boolean(),
+    eventId: zod
+      .uuid()
+      .nullable()
+      .describe("EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09)."),
     recipients: zod.array(zod.uuid()),
     myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
     audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -199,7 +211,7 @@ export const updateOneListBody = zod.object({
     .optional(),
   description: zod.string().max(updateOneListBodyDescriptionMax).optional(),
   recipientIds: zod.array(zod.uuid()).max(updateOneListBodyRecipientIdsMax).optional(),
-  audience: zod.enum(['MEMBERS', 'CIRCLE', 'CUSTOM']).optional(),
+  audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']).optional(),
   customAudience: zod.array(zod.uuid()).max(updateOneListBodyCustomAudienceMax).optional(),
   defaultItemVisibility: zod.enum(['ALL', 'ONLY', 'EXCEPT']).optional().describe('LST-03'),
   visibilityEditRole: zod
@@ -219,6 +231,7 @@ export const updateOneListResponse = zod.union([
     title: zod.string(),
     description: zod.string(),
     personal: zod.boolean(),
+    eventId: zod.uuid().nullable().describe('EVT-29 : événement de rattachement.'),
     recipients: zod.array(zod.uuid()),
     myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
     audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -248,6 +261,10 @@ export const updateOneListResponse = zod.union([
     title: zod.string(),
     description: zod.string(),
     personal: zod.boolean(),
+    eventId: zod
+      .uuid()
+      .nullable()
+      .describe("EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09)."),
     recipients: zod.array(zod.uuid()),
     myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
     audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -282,6 +299,164 @@ export const updateOneListResponse = zod.union([
 export const deleteOneListParams = zod.object({
   id: zod.uuid(),
 });
+
+/**
+ * @summary EVT-24, EVT-29 : rattacher à un événement dont on est participant.
+ */
+export const attachListToEventParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const attachListToEventBody = zod.object({
+  eventId: zod.uuid(),
+});
+
+export const attachListToEventResponse = zod.union([
+  zod.object({
+    view: zod.enum(['giver']),
+    id: zod.uuid(),
+    type: zod.enum(['WISHLIST', 'GIFTLIST']),
+    title: zod.string(),
+    description: zod.string(),
+    personal: zod.boolean(),
+    eventId: zod.uuid().nullable().describe('EVT-29 : événement de rattachement.'),
+    recipients: zod.array(zod.uuid()),
+    myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
+    audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
+    customAudience: zod.array(zod.uuid()),
+    defaultItemVisibility: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+    visibilityEditRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR']),
+    giftExistence: zod.enum(['HIDDEN', 'REVEALED']),
+    giftContent: zod.enum(['NONE', 'PARTIAL', 'FULL']),
+    archivedAt: zod.iso.datetime({}).nullable(),
+    deletedAt: zod.iso.datetime({}).nullable(),
+    createdAt: zod.iso.datetime({}),
+    version: zod.number(),
+    permissions: zod.object({
+      edit: zod.boolean(),
+      archive: zod.boolean(),
+      delete: zod.boolean(),
+      restore: zod.boolean(),
+      manageMembers: zod.boolean(),
+      add: zod.enum(['none', 'suggestion', 'item', 'item_or_suggestion']),
+      editRules: zod.boolean(),
+      readLog: zod.boolean(),
+    }),
+  }),
+  zod.object({
+    view: zod.enum(['recipient']),
+    id: zod.uuid(),
+    title: zod.string(),
+    description: zod.string(),
+    personal: zod.boolean(),
+    eventId: zod
+      .uuid()
+      .nullable()
+      .describe("EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09)."),
+    recipients: zod.array(zod.uuid()),
+    myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
+    audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
+    customAudience: zod.array(zod.uuid()),
+    defaultItemVisibility: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+    visibilityEditRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR']),
+    archivedAt: zod.iso.datetime({}).nullable(),
+    deletedAt: zod.iso.datetime({}).nullable(),
+    createdAt: zod.iso.datetime({}),
+    version: zod.number(),
+    permissions: zod.object({
+      edit: zod.boolean(),
+      archive: zod.boolean(),
+      delete: zod.boolean(),
+      restore: zod.boolean(),
+      manageMembers: zod.boolean(),
+      add: zod.enum(['none', 'suggestion', 'item', 'item_or_suggestion']),
+      editRules: zod.boolean(),
+      readLog: zod.boolean(),
+    }),
+  }),
+  zod.object({
+    view: zod.enum(['teaser']),
+    id: zod.uuid(),
+    content: zod.enum(['NONE', 'PARTIAL', 'FULL']),
+  }),
+]);
+
+/**
+ * @summary EVT-29 : détacher ; une audience `EVENT` devient `MEMBERS`.
+ */
+export const detachListFromEventParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const detachListFromEventResponse = zod.union([
+  zod.object({
+    view: zod.enum(['giver']),
+    id: zod.uuid(),
+    type: zod.enum(['WISHLIST', 'GIFTLIST']),
+    title: zod.string(),
+    description: zod.string(),
+    personal: zod.boolean(),
+    eventId: zod.uuid().nullable().describe('EVT-29 : événement de rattachement.'),
+    recipients: zod.array(zod.uuid()),
+    myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
+    audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
+    customAudience: zod.array(zod.uuid()),
+    defaultItemVisibility: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+    visibilityEditRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR']),
+    giftExistence: zod.enum(['HIDDEN', 'REVEALED']),
+    giftContent: zod.enum(['NONE', 'PARTIAL', 'FULL']),
+    archivedAt: zod.iso.datetime({}).nullable(),
+    deletedAt: zod.iso.datetime({}).nullable(),
+    createdAt: zod.iso.datetime({}),
+    version: zod.number(),
+    permissions: zod.object({
+      edit: zod.boolean(),
+      archive: zod.boolean(),
+      delete: zod.boolean(),
+      restore: zod.boolean(),
+      manageMembers: zod.boolean(),
+      add: zod.enum(['none', 'suggestion', 'item', 'item_or_suggestion']),
+      editRules: zod.boolean(),
+      readLog: zod.boolean(),
+    }),
+  }),
+  zod.object({
+    view: zod.enum(['recipient']),
+    id: zod.uuid(),
+    title: zod.string(),
+    description: zod.string(),
+    personal: zod.boolean(),
+    eventId: zod
+      .uuid()
+      .nullable()
+      .describe("EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09)."),
+    recipients: zod.array(zod.uuid()),
+    myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
+    audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
+    customAudience: zod.array(zod.uuid()),
+    defaultItemVisibility: zod.enum(['ALL', 'ONLY', 'EXCEPT']),
+    visibilityEditRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR']),
+    archivedAt: zod.iso.datetime({}).nullable(),
+    deletedAt: zod.iso.datetime({}).nullable(),
+    createdAt: zod.iso.datetime({}),
+    version: zod.number(),
+    permissions: zod.object({
+      edit: zod.boolean(),
+      archive: zod.boolean(),
+      delete: zod.boolean(),
+      restore: zod.boolean(),
+      manageMembers: zod.boolean(),
+      add: zod.enum(['none', 'suggestion', 'item', 'item_or_suggestion']),
+      editRules: zod.boolean(),
+      readLog: zod.boolean(),
+    }),
+  }),
+  zod.object({
+    view: zod.enum(['teaser']),
+    id: zod.uuid(),
+    content: zod.enum(['NONE', 'PARTIAL', 'FULL']),
+  }),
+]);
 
 export const listItemsParams = zod.object({
   id: zod.uuid(),
@@ -322,6 +497,18 @@ export const listItemsResponse = zod.object({
         addedBy: zod.uuid().nullable(),
         mine: zod.boolean(),
         createdAt: zod.iso.datetime({}),
+        carriedForward: zod.boolean(),
+        carriedFrom: zod
+          .object({
+            status: zod.enum(['RESERVED', 'PURCHASED']),
+            event: zod
+              .object({
+                title: zod.string(),
+                date: zod.iso.date(),
+              })
+              .nullable(),
+          })
+          .nullable(),
         version: zod.number(),
       }),
       zod.object({
@@ -346,6 +533,9 @@ export const listItemsResponse = zod.object({
         received: zod.boolean(),
         receivedAt: zod.iso.datetime({}).nullable(),
         mine: zod.boolean(),
+        carriedForward: zod
+          .boolean()
+          .describe('EVT-27 : reporté vers une autre liste, son propre geste.'),
         version: zod.number(),
       }),
     ]),
@@ -441,6 +631,7 @@ export const restoreOneListResponse = zod.union([
     title: zod.string(),
     description: zod.string(),
     personal: zod.boolean(),
+    eventId: zod.uuid().nullable().describe('EVT-29 : événement de rattachement.'),
     recipients: zod.array(zod.uuid()),
     myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
     audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
@@ -470,6 +661,10 @@ export const restoreOneListResponse = zod.union([
     title: zod.string(),
     description: zod.string(),
     personal: zod.boolean(),
+    eventId: zod
+      .uuid()
+      .nullable()
+      .describe("EVT-29 : sa propre wishlist ; jamais sur l'aperçu d'une giftlist (GFT-09)."),
     recipients: zod.array(zod.uuid()),
     myRole: zod.enum(['CREATOR', 'OWNER', 'CONTRIBUTOR', 'READER']).nullable(),
     audience: zod.enum(['MEMBERS', 'CIRCLE', 'EVENT', 'CUSTOM']),
