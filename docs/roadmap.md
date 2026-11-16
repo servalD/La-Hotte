@@ -602,6 +602,16 @@ Choix faits dans les silences, à relire (écrits en règles quand ils touchent 
 - un appareil push repris par une autre session perd ses profils précédents ;
 - push et résumé : tâches dans le processus, réclamation par `FOR UPDATE SKIP LOCKED` ; pas encore de `worker`.
 
+- **Revue `security-reviewer` du 2026-11-16 (cycle 1)** : visa refusé. B1 (les mentions retenues, rendues à l'auteur, disaient au destinataire d'une giftlist révélée qui la prépare), I1 (revérification de toutes les sockets déclenchable sans limite), mineurs M1 à M8. Tous corrigés (commit `fda2b52`), spec d'abord (COM-13, RT-11, API-36), tests de non-régression ; M3 accepté et noté dans `99-tracabilite`.
+- **Cycle 2 (dernier) : visa SEC-40 accordé.** Points restants :
+  - **N1 (important, à trancher dans la spec avant la phase 5)** : oracle par la push et le résumé sur un compte partagé. Si Léa et Paul partagent un compte et un appareil, Léa qui écrit au fil Public d'un élément de « sa » giftlist révélée (ou y cite Paul) déclenche « Pour Paul : un nouveau message » sur l'écran verrouillé, ou « Paul : 1 non lue » dans le résumé, seulement si Paul suit la giftlist : elle apprend qu'il la prépare. Correction proposée : une notification de fil d'élément dont le candidat partage un compte avec un destinataire de la liste reste in-app (ni push, ni résumé), décidé à la production et revérifié à l'envoi ;
+  - R1 : le regroupement des revérifications peut perdre une demande arrivée entre la fin de la boucle et la remise à zéro, ou après une erreur (le cache local n'est pas purgé ; rien ne fuit, les trames restent filtrées) ;
+  - R2 : le plafond de 8 connexions se contourne par des poignées de main simultanées, et chaque connexion parcourt toutes les sockets (compteur Redis par session à prévoir) ;
+  - R3 : la carte d'un profil mentionné est montrée à des lecteurs hors de son cercle (comme celle d'un auteur) ;
+  - R4 : sur une wishlist, un contributeur qui ne change que la position fait bouger `version` dans la vue du destinataire ;
+  - R5 : le web n'affiche pas encore la présence ni n'applique l'oubli à 60 secondes (RT-11), et envoie la présence avant que l'abonnement ait abouti ;
+  - R6 : `circle.changed` d'un seul profil (marqueur enfant, tutelle) ne revérifie que ce profil, à confirmer.
+
 Restes :
 
 - **Abonnement push côté web** : l'API est prête (`/push-subscriptions`), mais le navigateur a besoin du service worker, qui naît en phase 6. D'ici là, aucune push n'est demandée par l'interface.
