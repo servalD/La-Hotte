@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { IdGenerator } from '../../../shared/domain';
+import { AppEvents, IdGenerator } from '../../../shared/domain';
 import {
   canAttachList,
   canDetachList,
@@ -10,6 +10,7 @@ import {
 import { LIST_TITLE_MAX } from '../domain/list';
 import { EventNotFoundForListError, ListActionForbiddenError } from '../domain/list.errors';
 import { type EventForLists, EventLookup, ListRepository } from '../domain/list.ports';
+import { listChanged } from './list-events';
 import { ListGate } from './list-gate';
 import { type ListSummary, summarize } from './manage-lists.use-case';
 
@@ -70,6 +71,7 @@ export class AttachListToEvent {
     private readonly lists: ListRepository,
     private readonly lookup: EventLookup,
     private readonly gate: ListGate,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -83,6 +85,7 @@ export class AttachListToEvent {
     if (!(await this.lists.attachEvent(input.listId, input.eventId))) {
       throw new ListActionForbiddenError();
     }
+    this.events.publish(listChanged(input.listId, true));
     return summarize(await this.gate.list(input.viewerId, input.listId), input.viewerId);
   }
 }
@@ -93,12 +96,14 @@ export class DetachListFromEvent {
   constructor(
     private readonly lists: ListRepository,
     private readonly gate: ListGate,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: { viewerId: string; listId: string }): Promise<ListSummary> {
     const gated = await this.gate.list(input.viewerId, input.listId);
     if (!canDetachList(gated.facts, input.viewerId)) throw new ListActionForbiddenError();
     await this.lists.detachEvent(input.listId);
+    this.events.publish(listChanged(input.listId, true));
     return summarize(await this.gate.list(input.viewerId, input.listId), input.viewerId);
   }
 }

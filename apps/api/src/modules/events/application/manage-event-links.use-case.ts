@@ -24,6 +24,7 @@ import {
 import {
   type EventLinkRecord,
   EventLinkRepository,
+  EventNotifier,
   EventPeople,
   EventRepository,
   EventTokens,
@@ -207,6 +208,7 @@ export class RedeemEventLink {
     private readonly floor: ResponseFloor,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(input: { viewerId: string; token: string }): Promise<{ eventId: string }> {
@@ -225,6 +227,7 @@ export class RedeemEventLink {
       await this.floor.pad(startedAt);
       throw new EventInvitationInvalidError();
     }
+    if (outcome === 'joined') this.notifier.changed(event.id, true);
     return { eventId: event.id };
   }
 }

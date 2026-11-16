@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog';
 import { VisibilityModule } from '../visibility';
+import { ItemAccessReader } from './application/item-access-reader';
 import { ListGate } from './application/list-gate';
 import { ProductReferences } from './application/product-references';
 import {
@@ -62,6 +63,7 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
   controllers: [ListsController, ItemsController, EventCarryController],
   providers: [
     ListGate,
+    ItemAccessReader,
     ListLists,
     CreateList,
     GetList,
@@ -99,6 +101,6 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     { provide: ListRepository, useClass: PrismaListRepository },
     { provide: ItemRepository, useClass: PrismaItemRepository },
   ],
-  exports: [ProductReferences, EventWishlists],
+  exports: [ProductReferences, EventWishlists, ItemAccessReader],
 })
 export class ListsModule {}

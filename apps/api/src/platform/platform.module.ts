@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
-import { Clock, IdGenerator, Metrics } from '../shared/domain';
+import { AppEvents, Clock, IdGenerator, Metrics } from '../shared/domain';
+import { InProcessAppEvents } from './events/in-process-app-events';
 import { AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
 import { ProblemDetailsFilter } from './http/problem-details.filter';
@@ -33,10 +34,21 @@ class ConfigModule {}
     { provide: Clock, useClass: SystemClock },
     { provide: Metrics, useClass: OtelMetrics },
     { provide: ErrorReporter, useClass: SentryErrorReporter },
+    InProcessAppEvents,
+    { provide: AppEvents, useExisting: InProcessAppEvents },
     TelemetryShutdown,
     { provide: APP_FILTER, useClass: ProblemDetailsFilter },
     { provide: APP_PIPE, useFactory: createValidationPipe },
   ],
-  exports: [PrismaService, RedisService, IdGenerator, Clock, Metrics, ErrorReporter],
+  exports: [
+    PrismaService,
+    RedisService,
+    IdGenerator,
+    Clock,
+    Metrics,
+    ErrorReporter,
+    AppEvents,
+    InProcessAppEvents,
+  ],
 })
 export class PlatformModule {}

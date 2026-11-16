@@ -37,6 +37,7 @@ export class InviteParticipants {
     private readonly visibility: VisibilityService,
     private readonly mail: EventInvitationMail,
     private readonly ids: IdGenerator,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(input: {
@@ -58,7 +59,8 @@ export class InviteParticipants {
       rows: ids.map((profileId) => ({ id: this.ids.next(), profileId })),
     });
     if (result === 'surprise_honoree') throw new EventHonoreeCannotParticipateError();
-    this.mail.notifyInvited(result.added);
+    this.mail.notifyInvited(input.eventId, result.added, input.viewerId);
+    this.notifier.changed(input.eventId, true);
     const after = await this.gate.event(input.viewerId, input.eventId);
     return detailOfGated(this.events, this.people, this.visibility, input.viewerId, after);
   }
@@ -71,6 +73,7 @@ export class RemoveParticipant {
     private readonly events: EventRepository,
     private readonly gate: EventGate,
     private readonly clock: Clock,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(input: { viewerId: string; eventId: string; profileId: string }): Promise<void> {
@@ -80,6 +83,7 @@ export class RemoveParticipant {
     }
     // R3 : retrait et révocation de ses liens dans une même transaction.
     await this.events.removeParticipant(input.eventId, input.profileId, this.clock.now());
+    this.notifier.changed(input.eventId, true);
   }
 }
 
@@ -130,6 +134,7 @@ export class AddHonorees {
     private readonly visibility: VisibilityService,
     private readonly mail: EventInvitationMail,
     private readonly ids: IdGenerator,
+    private readonly notifier: EventNotifier,
   ) {}
 
   async execute(input: {
@@ -163,8 +168,14 @@ export class AddHonorees {
     // Même refus que les autres : l'organisateur ne voit pas forcément cette liste.
     if (result !== 'ok') throw new EventProfileNotAllowedError();
     if (!event.isSurprise) {
-      this.mail.notifyInvited(input.profileIds.filter((id) => !byId.has(id)));
+      this.mail.notifyInvited(
+        event.id,
+        input.profileIds.filter((id) => !byId.has(id)),
+        input.viewerId,
+      );
     }
+    // RT-10 : un honoré de surprise perd la vue des listes rattachées (VIS-36).
+    this.notifier.changed(event.id, true);
     const after = await this.gate.event(input.viewerId, input.eventId);
     return detailOfGated(this.events, this.people, this.visibility, input.viewerId, after);
   }
@@ -193,6 +204,7 @@ export class RespondToEvent {
     if (input.rsvp === 'PENDING') throw new EventInvalidError();
     const before = gated.access.rsvp;
     await this.events.setRsvp(input.eventId, input.viewerId, input.rsvp, this.clock.now());
+    this.notifier.changed(input.eventId, true);
     // Critère de 05 : ses engagements alertent les organisateurs (port vide jusqu'aux phases 4 et 5).
     if (input.rsvp === 'NO' && (before === 'YES' || before === 'MAYBE')) {
       this.notifier.participantWithdrew(input.eventId, input.viewerId);

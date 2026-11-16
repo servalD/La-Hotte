@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Clock, IdGenerator } from '../../../shared/domain';
+import { AppEvents, Clock, IdGenerator } from '../../../shared/domain';
 import { ProductCatalog, ProductNotFoundError } from '../../catalog';
 import {
   addRight,
@@ -7,6 +7,7 @@ import {
   canMarkReceived,
   canEditItem,
   type ItemPriority,
+  type ItemRecord,
   itemAccess,
   itemCriteria,
   type ItemView,
@@ -26,6 +27,7 @@ import {
   ListVersionMismatchError,
 } from '../domain/list.errors';
 import { EventLookup, ItemRepository } from '../domain/list.ports';
+import { itemChanged } from './list-events';
 import { type GatedItem, ListGate } from './list-gate';
 import { visibleOriginEvents } from './manage-event-lists.use-case';
 
@@ -85,6 +87,7 @@ export class AddItem {
     private readonly items: ItemRepository,
     private readonly catalog: ProductCatalog,
     private readonly ids: IdGenerator,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: AddItemInput): Promise<ItemView> {
@@ -129,6 +132,14 @@ export class AddItem {
       intendedRecipientId: input.intendedRecipientId ?? null,
       shownToRecipient: input.shownToRecipient ?? false,
     });
+    this.events.publish(
+      itemChanged({
+        listId: list.id,
+        itemId: created.id,
+        change: 'created',
+        actorId: input.viewerId,
+      }),
+    );
     const view = projectItem(
       itemAccess(access, itemFactsOf(created), input.viewerId),
       created,
@@ -165,6 +176,7 @@ export class UpdateItem {
   constructor(
     private readonly gate: ListGate,
     private readonly items: ItemRepository,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -201,6 +213,7 @@ export class UpdateItem {
     });
     if (result === 'missing') throw new ItemNotFoundError();
     if (result === 'version') throw new ListVersionMismatchError();
+    this.publish(gated, result, input.viewerId, changes);
     const view = projectItem(
       itemAccess(gated.access, itemFactsOf(result), input.viewerId),
       result,
@@ -208,6 +221,41 @@ export class UpdateItem {
     );
     if (!view) throw new ItemNotFoundError();
     return view;
+  }
+
+  /**
+   * RT-08, COM-14 : seul le destinataire prévu d'une giftlist est un champ d'offreur ; un prix
+   * changé laisse une activité ; montrer au destinataire change l'accès (RT-10).
+   */
+  private publish(gated: GatedItem, after: ItemRecord, actorId: string, changes: ItemChanges) {
+    const keys = Object.keys(changes).filter(
+      (key) => changes[key as keyof ItemChanges] !== undefined,
+    );
+    const giversOnly = keys.length > 0 && keys.every((key) => key === 'intendedRecipientId');
+    const before = gated.item;
+    const priceChanged =
+      before.unitPriceMinor !== after.unitPriceMinor || before.currency !== after.currency;
+    const shownChanged = before.shownToRecipient !== after.shownToRecipient;
+    this.events.publish(
+      itemChanged({
+        listId: after.listId,
+        itemId: after.id,
+        change: 'updated',
+        actorId,
+        audience: giversOnly ? 'givers' : 'all',
+        activity: priceChanged
+          ? {
+              code: 'PRICE_CHANGED',
+              before: before.unitPriceMinor,
+              after: after.unitPriceMinor,
+              currency: after.currency,
+            }
+          : shownChanged && after.shownToRecipient
+            ? { code: 'SHOWN' }
+            : null,
+        accessChanged: shownChanged,
+      }),
+    );
   }
 
   /**
@@ -255,6 +303,7 @@ export class DeleteItem {
   constructor(
     private readonly gate: ListGate,
     private readonly items: ItemRepository,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: { viewerId: string; itemId: string }): Promise<void> {
@@ -263,6 +312,15 @@ export class DeleteItem {
       throw new ListActionForbiddenError();
     }
     await this.items.delete(gated.item.id);
+    this.events.publish(
+      itemChanged({
+        listId: gated.list.id,
+        itemId: gated.item.id,
+        change: 'removed',
+        actorId: input.viewerId,
+        accessChanged: true,
+      }),
+    );
   }
 }
 
@@ -276,6 +334,7 @@ export class MarkItemReceived {
     private readonly gate: ListGate,
     private readonly items: ItemRepository,
     private readonly clock: Clock,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: { viewerId: string; itemId: string; received: boolean }): Promise<ItemView> {
@@ -287,6 +346,17 @@ export class MarkItemReceived {
       gated.item.id,
       input.received ? (gated.item.receivedAt ?? this.clock.now()) : null,
     );
+    if (updated && (gated.item.receivedAt !== null) !== input.received) {
+      this.events.publish(
+        itemChanged({
+          listId: gated.list.id,
+          itemId: gated.item.id,
+          change: 'updated',
+          actorId: input.viewerId,
+          activity: { code: input.received ? 'RECEIVED' : 'UNRECEIVED' },
+        }),
+      );
+    }
     const view = updated ? projectItem(gated.itemAccess, updated, input.viewerId) : null;
     if (!view) throw new ItemNotFoundError();
     return view;
@@ -299,6 +369,7 @@ export class WithdrawItem {
   constructor(
     private readonly gate: ListGate,
     private readonly items: ItemRepository,
+    private readonly events: AppEvents,
   ) {}
 
   async execute(input: {
@@ -310,8 +381,18 @@ export class WithdrawItem {
     if (!canActAsRecipient(gated.facts, gated.access, gated.itemFacts, input.viewerId)) {
       throw new ListActionForbiddenError();
     }
-    // Phase 4 : notification des offreurs engagés (LST-15).
     await this.items.withdraw(gated.item.id, input.reason);
+    // LST-15 : les offreurs engagés seront notifiés par le port d'engagements (phase 5) ; l'élément
+    // n'a plus de vue (LST-19).
+    this.events.publish(
+      itemChanged({
+        listId: gated.list.id,
+        itemId: gated.item.id,
+        change: 'removed',
+        actorId: input.viewerId,
+        accessChanged: true,
+      }),
+    );
   }
 }
 

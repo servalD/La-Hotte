@@ -43,7 +43,7 @@ import {
   CryptoEventTokens,
   IdentityEventInvitationMail,
   ListsEventWishlistCreator,
-  NoEventNotifier,
+  AppEventsEventNotifier,
   SleepingResponseFloor,
 } from './infrastructure/adapters';
 import {
@@ -87,7 +87,7 @@ import { EventsController } from './presentation/events.controller';
     { provide: EventTokens, useClass: CryptoEventTokens },
     { provide: ResponseFloor, useClass: SleepingResponseFloor },
     { provide: EventInvitationMail, useClass: IdentityEventInvitationMail },
-    { provide: EventNotifier, useClass: NoEventNotifier },
+    { provide: EventNotifier, useClass: AppEventsEventNotifier },
     { provide: EventWishlistCreator, useClass: ListsEventWishlistCreator },
   ],
 })

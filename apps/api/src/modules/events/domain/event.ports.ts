@@ -180,9 +180,12 @@ export abstract class ResponseFloor {
   abstract pad(startedAt: Date): Promise<void>;
 }
 
-/** EVT-15 : e-mail neutre aux comptes des profils invités, envoyé par `identity`. */
+/**
+ * EVT-15 : e-mail neutre aux comptes des profils invités, envoyé par `identity`, et notification
+ * `INVITATIONS` (NOT-12, phase 4).
+ */
 export abstract class EventInvitationMail {
-  abstract notifyInvited(profileIds: readonly string[]): void;
+  abstract notifyInvited(eventId: string, profileIds: readonly string[], actorId: string): void;
 }
 
 /** EVT-36 : wishlist rattachée, créée ou retrouvée par le module `lists`. */
@@ -191,10 +194,23 @@ export abstract class EventWishlistCreator {
 }
 
 /**
- * EVT-41 : notifications de l'événement. Port vide jusqu'à la phase 4 (rappels, annulation,
- * alerte aux organisateurs d'un participant engagé qui se retire).
+ * EVT-41 : avis de l'événement, publiés sur le bus de domaine (ADR 0018) après l'écriture ; le
+ * module `notifications` les rend par candidat à travers le moteur (NOT-10).
  */
 export abstract class EventNotifier {
-  abstract eventCancelled(eventId: string): void;
+  /** EVT-34 : tous les participants, sauf l'auteur de l'annulation. */
+  abstract eventCancelled(eventId: string, profileIds: readonly string[], actorId: string): void;
+  /**
+   * Critère « Ne participe pas » de 05 : alerte aux organisateurs si le participant était engagé.
+   * Les engagements naissent en phase 5 (VIS-16) : d'ici là, rien n'est publié.
+   */
   abstract participantWithdrew(eventId: string, profileId: string): void;
+  /** EVT-13, EVT-32 : rappels et invitation du lendemain (tâche planifiée). */
+  abstract reminded(
+    eventId: string,
+    notice: 'reminder' | 'day_after',
+    profileIds: readonly string[],
+  ): void;
+  /** RT-10 : l'événement a changé ; `accessChanged` si qui le voit a pu changer. */
+  abstract changed(eventId: string, accessChanged: boolean): void;
 }
