@@ -52,6 +52,8 @@ export const PHASE3_IDOR_ROUTES: readonly string[] = [
   'GET /api/v1/events/:id/carry-over',
   'POST /api/v1/events/:id/carry-over',
   'GET /api/v1/events/:id/ideas',
+  // EVT-30, EVT-31
+  'GET /api/v1/events/:id/progress',
   // EVT-29 : rattachement d'une liste.
   'PUT /api/v1/lists/:id/event',
   'DELETE /api/v1/lists/:id/event',

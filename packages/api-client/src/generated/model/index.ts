@@ -70,6 +70,7 @@ export * from './eventParticipantView';
 export * from './eventPermissionsView';
 export * from './eventPersonView';
 export * from './eventProfilesDto';
+export * from './eventProgressView';
 export * from './eventRole';
 export * from './eventScope';
 export * from './eventStatus';

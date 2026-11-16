@@ -102,6 +102,7 @@ describe('IDOR sur les événements (SEC-03, EVT-08)', () => {
         body: { listId: giftListId, itemIds: [randomUUID()] },
       },
       { route: 'GET /api/v1/events/:id/ideas', query: '?q=velo' },
+      { route: 'GET /api/v1/events/:id/progress' },
     ];
     const withSecond: { route: string; second: string }[] = [
       {

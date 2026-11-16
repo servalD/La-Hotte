@@ -42,3 +42,4 @@ export {
 export type { RuleLogEntry } from '../domain/list.ports';
 export { AttachListToEvent, DetachListFromEvent } from './manage-event-lists.use-case';
 export { CarryOver, ListCarryCandidates, SearchEventIdeas } from './carry-over.use-case';
+export { GetEventProgress } from './event-progress.use-case';

@@ -697,6 +697,20 @@ export const removeEventParticipantParams = zod.object({
 });
 
 /**
+ * @summary EVT-30, EVT-31 : jamais sur une liste dont le lecteur est destinataire (EVT-37).
+ */
+export const getEventProgressParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const getEventProgressResponse = zod.object({
+  itemsTotal: zod.number(),
+  itemsWithGiver: zod.number(),
+  recipients: zod.array(zod.uuid()),
+  recipientsWithoutGiver: zod.array(zod.uuid()),
+});
+
+/**
  * @summary EVT-35, EVT-40
  */
 export const recreateOneEventParams = zod.object({

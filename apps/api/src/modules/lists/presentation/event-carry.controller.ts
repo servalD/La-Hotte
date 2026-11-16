@@ -2,7 +2,12 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestj
 import { ApiCreatedResponse, ApiOkResponse, ApiParam, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsString, IsUUID, Length } from 'class-validator';
 import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../identity';
-import { CarryOver, ListCarryCandidates, SearchEventIdeas } from '../application/contract';
+import {
+  CarryOver,
+  GetEventProgress,
+  ListCarryCandidates,
+  SearchEventIdeas,
+} from '../application/contract';
 import { ItemCollectionView, ItemRecipientView } from './dto/list.view';
 import { toItemView } from './mappers';
 
@@ -46,6 +51,14 @@ export class CarryCandidateCollectionView {
   @ApiProperty({ type: [CarryCandidateView] }) items!: CarryCandidateView[];
 }
 
+/** EVT-30, EVT-31, EVT-37 : calculé sur les listes vues en offreur seulement. */
+export class EventProgressView {
+  @ApiProperty() itemsTotal!: number;
+  @ApiProperty() itemsWithGiver!: number;
+  @ApiProperty({ type: [String], format: 'uuid' }) recipients!: string[];
+  @ApiProperty({ type: [String], format: 'uuid' }) recipientsWithoutGiver!: string[];
+}
+
 /**
  * Reprise et pioche de l'assistant (EVT-20 à EVT-23). Portées par `lists`, qui tient les
  * éléments ; l'événement doit compter le profil parmi ses participants, sinon `404`.
@@ -58,7 +71,25 @@ export class EventCarryController {
     private readonly candidates: ListCarryCandidates,
     private readonly carry: CarryOver,
     private readonly ideas: SearchEventIdeas,
+    private readonly progress: GetEventProgress,
   ) {}
+
+  /** EVT-30, EVT-31 : jamais sur une liste dont le lecteur est destinataire (EVT-37). */
+  @Get(':id/progress')
+  @ApiParam({ name: 'id', ...UUID_PARAM })
+  @ApiOkResponse({ type: EventProgressView })
+  async getEventProgress(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<EventProgressView> {
+    const result = await this.progress.execute({ viewerId: profile.id, eventId: id });
+    return {
+      itemsTotal: result.itemsTotal,
+      itemsWithGiver: result.itemsWithGiver,
+      recipients: [...result.recipients],
+      recipientsWithoutGiver: [...result.recipientsWithoutGiver],
+    };
+  }
 
   /** EVT-22 : identique que les souhaits passés soient ouverts, réservés ou achetés. */
   @Get(':id/carry-over')
