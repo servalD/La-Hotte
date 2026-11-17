@@ -708,6 +708,26 @@ Spec : `08`, `10`. ADR 0005, ADR 0020.
 
 Sortie : critères de `08` ; Lighthouse ≥ 90 ; les six parcours clés tenus.
 
+**Tranches 0 à 9 faites le 2026-11-17** (opus), d'affilée. API : idempotence générale par intercepteur, clé de cache, appareil partagé, `GET /offset-proposals`. Web : coffre par profil chiffré pour un profil à PIN, file d'actions et écran `/actions`, service worker écrit à la main, images en coffre, manifeste et cible de partage, invitations à installer et aux notifications, moments animés. Playwright : parcours « mode avion » (achat et commentaire rejoués une seule fois), déconnexion qui efface tout, axe sur les nouveaux écrans, bureau et mobile. Test OBS-26 étendu à la clé de cache.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- clé de cache dérivée de l'empreinte du PIN du déverrouillage et du compte, sans colonne d'époque (OFF-26, ADR 0020) ;
+- l'appareil reçoit une étiquette opaque du compte (`accountTag`), jamais son identifiant ;
+- service worker écrit à la main plutôt que Serwist ; pages de l'application (sans donnée) gardées pour l'ouverture hors ligne, nonce de CSP rejoué (PWA-07, ADR 0020) ;
+- idempotence générale par réservation de clé : un arrêt du serveur entre l'écriture et l'enregistrement de la réponse peut laisser rejouer une seule fois une action non monétaire (ADR 0020) ; le mutateur pose une clé neuve sur toute mutation qui n'en a pas ;
+- les actions en attente s'affichent par-dessus les lectures (« à confirmer »), le cache de lecture n'est jamais modifié par avance ;
+- un lien collé hors ligne crée la fiche par l'URL au rejeu, sans passer par le brouillon (OFF-17).
+
+Restes :
+
+- Connexion Google sur un appareil partagé : la case n'est portée que par la connexion par mot de passe (et son second facteur).
+- Motion : carte qui devient la page (élément partagé), réorganisation au doigt, fondu au changement de profil, transitions de page par l'API View Transitions.
+- Déconnexion : l'abonnement push de l'appareil n'est pas retiré côté client (le serveur le retire avec la session, NOT-15 ?) ; à vérifier.
+- iOS : repli par copier-coller détecté à l'ouverture (PWA-02) non fait.
+- Relecture `design:ux-copy` des nouveaux textes, mesure Lighthouse (≥ 90) et test avec cinq personnes non techniciennes : non faits.
+- Résolution de conflit (OFF-14) pour la modification d'un élément seulement ; les autres refus passent par « Refaire » ou « Abandonner ».
+
 ## Phase 7 — Administration, catalogue global, mise en production
 
 Spec : `11`, `14`. ADR 0008.
