@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type AccountingSubject,
   activityThread,
   canModerateComment,
   type ItemAccess,
@@ -21,6 +22,21 @@ export interface ItemAccessContext {
   readonly threads: ThreadAccess;
   /** COM-15 : autorité de la liste. */
   readonly canModerate: boolean;
+}
+
+/** Faits d'un élément lus par la compta (ADR 0019) ; la décision reste au moteur. */
+export interface AccountingItem {
+  readonly subject: AccountingSubject;
+  readonly itemId: string;
+  readonly listId: string;
+  readonly eventId: string | null;
+  readonly title: string;
+  /** CPT-11 : lien marchand de la fiche. */
+  readonly sourceUrl: string | null;
+  readonly quantity: number;
+  readonly unitPriceMinor: number | null;
+  readonly currency: string;
+  readonly recipients: readonly string[];
 }
 
 /** Ce qu'un profil voit d'un élément pour en parler (titres relus à l'affichage, NOT-11). */
@@ -100,6 +116,30 @@ export class ItemAccessReader {
       listTitle: list.title,
       view,
       threads: threadAccess(factsOf(list), access, itemFacts, viewerId),
+    };
+  }
+
+  /**
+   * Faits d'un élément pour la compta (ADR 0019) : le sujet que le moteur juge
+   * (`accountingLevel`, `canContribute`) et le coût de l'élément. Aucune décision ici ; `null`
+   * si l'élément a disparu.
+   */
+  async accountingSubject(viewerId: string, itemId: string): Promise<AccountingItem | null> {
+    const loaded = await this.load(itemId);
+    if (!loaded) return null;
+    const { list, item } = loaded;
+    const { access } = await this.gate.accessOf(viewerId, list);
+    return {
+      subject: { list: factsOf(list), access, item: itemFactsOf(item) },
+      itemId: item.id,
+      listId: list.id,
+      eventId: list.event?.id ?? null,
+      title: item.product.title,
+      sourceUrl: item.product.sourceUrl,
+      quantity: item.quantity,
+      unitPriceMinor: item.unitPriceMinor,
+      currency: item.currency,
+      recipients: list.recipients,
     };
   }
 

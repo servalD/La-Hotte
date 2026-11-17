@@ -13,7 +13,12 @@ import {
 } from '../../src/modules/identity/presentation/cookies';
 import { session, signIn, type SignedIn, WEB_ORIGIN } from '../support/sign-in';
 import { createTestApp, type TestIdentity } from './create-test-app';
-import { PHASE2_IDOR_ROUTES, PHASE3_IDOR_ROUTES, PHASE4_IDOR_ROUTES } from './idor-routes';
+import {
+  PHASE2_IDOR_ROUTES,
+  PHASE3_IDOR_ROUTES,
+  PHASE4_IDOR_ROUTES,
+  PHASE5_IDOR_ROUTES,
+} from './idor-routes';
 import { listRoutes, type RouteInfo } from './routes';
 
 // Tests de sécurité transverses de la phase 1 (tranche 8) : énumération, CSRF, fixation, force
@@ -1085,6 +1090,8 @@ describe('IDOR : ressources d’un autre compte (SEC-03, critère de 01)', () =>
         ...PHASE3_IDOR_ROUTES,
         // Phase 4 : table de `exchanges-security.spec.ts`.
         ...PHASE4_IDOR_ROUTES,
+        // Phase 5 : table de `accounting-contributions.spec.ts`.
+        ...PHASE5_IDOR_ROUTES,
       ].sort(),
     );
   });

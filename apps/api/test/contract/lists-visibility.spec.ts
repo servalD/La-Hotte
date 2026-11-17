@@ -157,6 +157,21 @@ describe('Règle d’un élément (VIS-10, VIS-11, VIS-15)', () => {
     catalog.engagements.engaged.clear();
   });
 
+  it('VIS-37 : la destinataire écarte un offreur engagé comme sur un souhait libre (VIS-20)', async () => {
+    const { papa, marie } = await world();
+    const lists = await http().get('/api/v1/lists').set({ Cookie: marie.cookie });
+    const own = (lists.body.items as Body[]).find((l) => l.personal)!;
+    const free = await addItem(marie, own.id as string);
+    const engaged = await addItem(marie, own.id as string);
+    catalog.engagements.engaged.set(engaged.id as string, [papa.profileId!]);
+    const a = await setRule(marie, free, 'EXCEPT', [papa.profileId]);
+    const b = await setRule(marie, engaged, 'EXCEPT', [papa.profileId]);
+    catalog.engagements.engaged.clear();
+    expect(b.status).toBe(a.status);
+    expect(b.status).toBe(200);
+    expect(Object.keys(b.body as Body).sort()).toEqual(Object.keys(a.body as Body).sort());
+  });
+
   it('API-17 : version dépassée, 412', async () => {
     const { papa, tonton, list } = await world();
     const item = await addItem(papa, list.id as string);

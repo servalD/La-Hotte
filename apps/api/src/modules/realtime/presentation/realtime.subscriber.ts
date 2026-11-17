@@ -26,6 +26,8 @@ export class RealtimeSubscriber implements OnModuleInit, OnModuleDestroy {
             return this.dispatcher.listChanged(event);
           case 'comment.changed':
             return this.dispatcher.commentChanged(event);
+          case 'accounting.changed':
+            return this.dispatcher.accountingChanged(event);
           case 'event.changed':
             return this.dispatcher.eventChanged(event);
           case 'notification.created':

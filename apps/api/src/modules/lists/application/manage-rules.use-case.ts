@@ -3,6 +3,7 @@ import { AppEvents, Clock, IdGenerator } from '../../../shared/domain';
 import {
   canEditItemRule,
   canReadVisibilityLog,
+  engagementBlocksRuleChange,
   itemAccess,
   type ListFacts,
   ruleExcludes,
@@ -116,10 +117,13 @@ export class SetItemRule {
       throw new VisibilityProfileInvalidError();
     }
     const rule: RuleSnapshot = { mode: input.mode, profiles };
-    // VIS-16 : on n'écarte pas un profil engagé sur l'élément.
-    for (const engaged of await this.engagements.engagedProfiles(item.id)) {
-      if (engaged !== item.addedBy && ruleExcludes(rule, engaged)) {
-        throw new VisibilityEngagedProfileError();
+    // VIS-16 : on n'écarte pas un profil engagé sur l'élément ; sauf quand l'auteur est
+    // destinataire de la liste, à qui un refus apprendrait la réservation (VIS-37).
+    if (engagementBlocksRuleChange(facts, input.viewerId)) {
+      for (const engaged of await this.engagements.engagedProfiles(item.id)) {
+        if (engaged !== item.addedBy && ruleExcludes(rule, engaged)) {
+          throw new VisibilityEngagedProfileError();
+        }
       }
     }
     const before: RuleSnapshot = { mode: item.visibilityMode, profiles: item.visibilityProfiles };

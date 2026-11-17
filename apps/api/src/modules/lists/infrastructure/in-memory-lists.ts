@@ -6,7 +6,13 @@ import {
   type ListRole,
   ruleExcludes,
 } from '../../visibility';
-import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
+import {
+  itemChangesBumpVersion,
+  type ItemChanges,
+  type ItemSort,
+  type ListRecord,
+  type WithdrawnReason,
+} from '../domain/list';
 import {
   type CarryCandidate,
   EngagementReader,
@@ -574,7 +580,11 @@ export class InMemoryItemRepository extends ItemRepository {
     const row = this.items.get(input.itemId);
     if (!row) return Promise.resolve('missing');
     if (row.version !== input.expectedVersion) return Promise.resolve('version');
-    const next = { ...row, ...input.changes, version: row.version + 1 };
+    const next = {
+      ...row,
+      ...input.changes,
+      version: itemChangesBumpVersion(input.changes) ? row.version + 1 : row.version,
+    };
     this.items.set(row.id, next);
     return Promise.resolve(this.record(next));
   }

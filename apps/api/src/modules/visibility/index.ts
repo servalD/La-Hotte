@@ -83,6 +83,19 @@ export {
   threadLevel,
 } from './domain/threads';
 export {
+  type AccountingFacts,
+  type AccountingLevel,
+  accountingLevel,
+  type AccountingSubject,
+  BUYER_REQUEST_DELAY_MS,
+  canContribute,
+  canDecideBuyerRequest,
+  canDecideReview,
+  canSeeAmounts,
+  canSeeSettlement,
+  engagementBlocksRuleChange,
+} from './domain/accounting';
+export {
   type CarriedFromPart,
   type CarryOriginRecord,
   type GiverItemStatus,

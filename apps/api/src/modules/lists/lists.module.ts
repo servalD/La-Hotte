@@ -41,7 +41,7 @@ import {
   VisibilityLogRepository,
 } from './domain/list.ports';
 import {
-  NoEngagementReader,
+  PrismaEngagementReader,
   PrismaEventLookup,
   PrismaItemRepository,
   PrismaListRepository,
@@ -97,10 +97,10 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     GetEventProgress,
     { provide: EventLookup, useClass: PrismaEventLookup },
     { provide: VisibilityLogRepository, useClass: PrismaVisibilityLogRepository },
-    { provide: EngagementReader, useClass: NoEngagementReader },
+    { provide: EngagementReader, useClass: PrismaEngagementReader },
     { provide: ListRepository, useClass: PrismaListRepository },
     { provide: ItemRepository, useClass: PrismaItemRepository },
   ],
-  exports: [ProductReferences, EventWishlists, ItemAccessReader],
+  exports: [ProductReferences, EventWishlists, ItemAccessReader, GetEventProgress],
 })
 export class ListsModule {}

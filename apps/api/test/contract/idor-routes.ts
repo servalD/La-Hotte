@@ -72,3 +72,30 @@ export const PHASE4_IDOR_ROUTES: readonly string[] = [
   'PUT /api/v1/items/:id/follow',
   'DELETE /api/v1/items/:id/follow',
 ];
+
+// SEC-03, CPT-59 : routes à identifiant de la compta (phase 5), couvertes par la table IDOR de
+// `accounting-contributions.spec.ts` (et, en fin de phase, `accounting-security.spec.ts`).
+export const PHASE5_IDOR_ROUTES: readonly string[] = [
+  'GET /api/v1/items/:id/accounting',
+  'PUT /api/v1/items/:id/contribution',
+  'DELETE /api/v1/items/:id/contribution',
+  'PUT /api/v1/items/:id/accounting/options',
+  'POST /api/v1/accounting-reviews/:id/approve',
+  'POST /api/v1/accounting-reviews/:id/refuse',
+  'PUT /api/v1/items/:id/purchase',
+  'DELETE /api/v1/items/:id/purchase',
+  'POST /api/v1/items/:id/contribution/lower',
+  'POST /api/v1/items/:id/shortfall-notice',
+  'POST /api/v1/items/:id/buyer-requests',
+  'POST /api/v1/buyer-requests/:id/accept',
+  'POST /api/v1/buyer-requests/:id/refuse',
+  'DELETE /api/v1/buyer-requests/:id',
+  'PUT /api/v1/items/:id/purchase/receipt',
+  'GET /api/v1/items/:id/purchase/receipt',
+  'PUT /api/v1/contributions/:id/settlement',
+  'POST /api/v1/contributions/:id/claim',
+  'POST /api/v1/contributions/:id/nudge',
+  'POST /api/v1/offset-proposals/:id/confirm',
+  'POST /api/v1/offset-proposals/:id/decline',
+  'DELETE /api/v1/budgets/:id',
+];

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type {
+  AccountingChanged,
   CommentChanged,
   EventChanged,
   ItemChanged,
@@ -125,6 +126,25 @@ export class RealtimeDispatcher {
           [...contexts].flatMap(([id, context]) =>
             threadLevel(context.threads, event.thread) === 'none' ? [] : [id],
           ),
+        );
+      },
+    );
+  }
+
+  /**
+   * `accounting.changed` (API-33, CPT-59) : salon des offreurs de l'élément, à qui le voit sous la
+   * forme offreur seulement ; jamais à un destinataire. Un élément disparu n'a plus de salon.
+   */
+  async accountingChanged(event: AccountingChanged): Promise<void> {
+    const itemId = event.itemId;
+    if (itemId === null) return;
+    await this.deliver(
+      roomName({ kind: 'item', id: itemId, thread: 'GIVERS' }),
+      { type: 'accounting.changed', data: { itemId } },
+      async (profileIds) => {
+        const contexts = await this.items.forViewers(profileIds, itemId);
+        return new Set(
+          [...contexts].flatMap(([id, context]) => (context.view === 'giver' ? [id] : [])),
         );
       },
     );

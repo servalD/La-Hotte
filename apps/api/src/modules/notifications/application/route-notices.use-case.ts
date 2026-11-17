@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { CommentChanged, EventNotice, ProductExtracted } from '../../../shared/domain';
+import type {
+  AccountingChanged,
+  CommentChanged,
+  EventNotice,
+  ProductExtracted,
+} from '../../../shared/domain';
 import { FollowRepository } from '../../conversations';
 import type { NotificationType } from '../domain/notification';
 import { NotificationPeople } from '../domain/notification.ports';
@@ -10,8 +15,8 @@ const EVENT_TYPES: Record<EventNotice['notice'], NotificationType | null> = {
   cancelled: 'event.cancelled',
   reminder: 'event.reminder',
   day_after: 'event.day_after',
-  // Phase 5 : seulement pour un participant engagé (port vide d'ici là).
-  participant_withdrew: null,
+  // Critère de 05 : publié pour un participant engagé seulement (phase 5).
+  participant_withdrew: 'event.participant_withdrew',
 };
 
 const SECURITY_TYPES = {
@@ -67,6 +72,43 @@ export class RouteNotices {
       type,
       subject: { kind: 'event', eventId: event.eventId },
       candidates: event.profileIds,
+      actorId: event.actorId,
+    });
+  }
+
+  /**
+   * Avis de compta (NOT-12, 07). Candidats tirés des seuls participants et de l'acheteur portés
+   * par l'avis ; chacun repasse par le moteur sous la forme offreur (fil Offreurs, CPT-59, NOT-05).
+   * CPT-19 : un reste ne va qu'aux personnes choisies par son auteur.
+   */
+  async accounting(event: AccountingChanged): Promise<void> {
+    if (event.itemId === null) return;
+    const others = event.participantIds.filter((id) => id !== event.actorId);
+    const buyer = event.buyerId && event.buyerId !== event.actorId ? [event.buyerId] : [];
+    const route: Partial<
+      Record<AccountingChanged['change'], [NotificationType, readonly string[]]>
+    > = {
+      joined: ['gift.joined', others],
+      purchased: ['gift.purchased', others],
+      unchecked: ['gift.unchecked', others],
+      review_opened: ['gift.review', others],
+      buyer_requested: ['gift.buyer_request', buyer],
+      shortfall: [
+        'gift.shortfall',
+        (event.profileIds ?? []).filter((id) => event.participantIds.includes(id)),
+      ],
+      settlement_claimed: ['gift.settlement_claimed', buyer],
+      settlement_nudged: [
+        'gift.settlement_reminder',
+        (event.profileIds ?? []).filter((id) => event.participantIds.includes(id)),
+      ],
+    };
+    const target = route[event.change];
+    if (!target || target[1].length === 0) return;
+    await this.produce.execute({
+      type: target[0],
+      subject: { kind: 'item', itemId: event.itemId, thread: 'GIVERS' },
+      candidates: target[1],
       actorId: event.actorId,
     });
   }

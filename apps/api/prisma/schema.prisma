@@ -308,37 +308,50 @@ model Profile {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  account        Account                   @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  sessions       Session[]
-  linksA         ProfileLink[]             @relation("LinkProfileA")
-  linksB         ProfileLink[]             @relation("LinkProfileB")
-  blocksMade     ProfileBlock[]            @relation("Blocker")
-  blocksReceived ProfileBlock[]            @relation("Blocked")
-  invitations    Invitation[]              @relation("InvitationCreator")
-  tokens         AccountToken[]
-  transfers      ProfileTransfer[]
-  products       Product[]
-  createdLists   List[]                    @relation("ListCreator")
-  personalList   List?                     @relation("PersonalList")
-  listRoles      ListMember[]
-  recipientOf    ListRecipient[]
-  audienceOf     ListAudienceProfile[]
-  itemsAdded     ListItem[]                @relation("ItemAddedBy")
-  itemsIntended  ListItem[]                @relation("ItemIntendedFor")
-  itemRules      ItemVisibilityProfile[]
-  eventsCreated  Event[]                   @relation("EventCreator")
-  eventRoles     EventParticipant[]        @relation("EventParticipantProfile")
-  eventInvites   EventParticipant[]        @relation("EventParticipantInviter")
-  surprisesFor   EventSurpriseRecipient[]
-  comments       Comment[]                 @relation("CommentAuthor")
-  reactions      CommentReaction[]
-  follows        ItemFollow[]
-  notifications  Notification[]            @relation("NotificationProfile")
-  notified       Notification[]            @relation("NotificationActor")
-  notifCounter   NotificationCounter?
-  notifPrefs     NotificationPref[]
-  notifSettings  NotificationSettings?
-  pushDevices    PushSubscriptionProfile[]
+  account         Account                   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  sessions        Session[]
+  linksA          ProfileLink[]             @relation("LinkProfileA")
+  linksB          ProfileLink[]             @relation("LinkProfileB")
+  blocksMade      ProfileBlock[]            @relation("Blocker")
+  blocksReceived  ProfileBlock[]            @relation("Blocked")
+  invitations     Invitation[]              @relation("InvitationCreator")
+  tokens          AccountToken[]
+  transfers       ProfileTransfer[]
+  products        Product[]
+  createdLists    List[]                    @relation("ListCreator")
+  personalList    List?                     @relation("PersonalList")
+  listRoles       ListMember[]
+  recipientOf     ListRecipient[]
+  audienceOf      ListAudienceProfile[]
+  itemsAdded      ListItem[]                @relation("ItemAddedBy")
+  itemsIntended   ListItem[]                @relation("ItemIntendedFor")
+  itemRules       ItemVisibilityProfile[]
+  eventsCreated   Event[]                   @relation("EventCreator")
+  eventRoles      EventParticipant[]        @relation("EventParticipantProfile")
+  eventInvites    EventParticipant[]        @relation("EventParticipantInviter")
+  surprisesFor    EventSurpriseRecipient[]
+  comments        Comment[]                 @relation("CommentAuthor")
+  reactions       CommentReaction[]
+  follows         ItemFollow[]
+  notifications   Notification[]            @relation("NotificationProfile")
+  notified        Notification[]            @relation("NotificationActor")
+  notifCounter    NotificationCounter?
+  notifPrefs      NotificationPref[]
+  notifSettings   NotificationSettings?
+  pushDevices     PushSubscriptionProfile[]
+  buyerOf         ItemAccounting[]          @relation("AccountingBuyer")
+  contributions   Contribution[]            @relation("ContributionProfile")
+  purchases       Purchase[]                @relation("PurchaseBuyer")
+  reviewsAuthored AccountingReview[]        @relation("ReviewAuthor")
+  reviewsDecided  AccountingReview[]        @relation("ReviewDecider")
+  buyerRequests   BuyerRequest[]            @relation("BuyerCandidate")
+  buyerDecisions  BuyerRequest[]            @relation("BuyerRequestDecider")
+  shortfalls      ShortfallNotice[]         @relation("ShortfallAuthor")
+  offsetsProposed OffsetProposal[]          @relation("OffsetProposer")
+  offsetsReceived OffsetProposal[]          @relation("OffsetCounterpart")
+  budgets         Budget[]                  @relation("BudgetOwner")
+  budgetsFor      Budget[]                  @relation("BudgetRecipient")
+  idempotency     IdempotencyRecord[]
 
   @@index([accountId])
   @@map("profile")
@@ -754,6 +767,7 @@ model ListItem {
   comments          Comment[]
   follows           ItemFollow[]
   notifications     Notification[]
+  accounting        ItemAccounting?
 
   @@index([listId, position])
   @@index([productId])
@@ -881,6 +895,7 @@ model Event {
   surpriseFor   EventSurpriseRecipient[]
   lists         List[]
   notifications Notification[]
+  budgets       Budget[]
 
   @@index([status, date])
   @@map("event")
@@ -1144,4 +1159,287 @@ model PushSubscriptionProfile {
   @@id([subscriptionId, profileId])
   @@index([profileId])
   @@map("push_subscription_profile")
+}
+
+// ---------------------------------------------------------------------------
+// Compta (07, ADR 0019)
+// ---------------------------------------------------------------------------
+
+/// CPT-01, CPT-53 à CPT-55
+enum ContributionMode {
+  FULL
+  PERCENT
+  FIXED
+
+  @@map("contribution_mode")
+}
+
+/// CPT-20 à CPT-22, CPT-65
+enum SettlementState {
+  NONE
+  DUE
+  CLAIMED
+  SETTLED
+
+  @@map("settlement_state")
+}
+
+/// CPT-58
+enum AccountingReviewKind {
+  COST
+  OPTIONS
+
+  @@map("accounting_review_kind")
+}
+
+enum AccountingReviewStatus {
+  PENDING
+  APPROVED
+  REFUSED
+  REPLACED
+  CLOSED
+
+  @@map("accounting_review_status")
+}
+
+/// CPT-61
+enum BuyerRequestStatus {
+  PENDING
+  ACCEPTED
+  REFUSED
+  CANCELLED
+
+  @@map("buyer_request_status")
+}
+
+/// CPT-68
+enum OffsetProposalStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  STALE
+
+  @@map("offset_proposal_status")
+}
+
+/// Fiche de compta d'un élément (ADR 0019), créée à la première participation. Détachée par le
+/// déclencheur `item_accounting_detach` quand l'élément disparaît (CPT-73) : `item_id` vidé,
+/// titre et événement relevés. `detached_event_id` sans clé étrangère : il survit à l'événement.
+model ItemAccounting {
+  id                   String    @id @db.Uuid
+  itemId               String?   @unique @map("item_id") @db.Uuid
+  currency             String    @db.Char(3)
+  /// CPT-57 : coût prévu ; absent sur un élément sans prix (CPT-55).
+  plannedTotalMinor    BigInt?   @map("planned_total_minor")
+  buyerProfileId       String?   @map("buyer_profile_id") @db.Uuid
+  reviewEnabled        Boolean   @default(true) @map("review_enabled")
+  receiptEnabled       Boolean   @default(false) @map("receipt_enabled")
+  /// CPT-53 : rang d'arrivée suivant.
+  nextRank             Int       @default(1) @map("next_rank")
+  detachedTitle        String?   @map("detached_title") @db.VarChar(300)
+  detachedEventId      String?   @map("detached_event_id") @db.Uuid
+  /// CPT-52, CPT-73 : destinataires et honorés relevés au détachement ; jamais d'accès.
+  detachedRecipientIds String[]  @default([]) @map("detached_recipient_ids") @db.Uuid
+  detachedAt           DateTime? @map("detached_at") @db.Timestamptz(3)
+  version              Int       @default(1)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  item          ListItem?          @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  buyer         Profile?           @relation("AccountingBuyer", fields: [buyerProfileId], references: [id], onDelete: SetNull)
+  contributions Contribution[]
+  purchase      Purchase?
+  reviews       AccountingReview[]
+  buyerRequests BuyerRequest[]
+  shortfalls    ShortfallNotice[]
+  ledger        LedgerEntry[]
+
+  @@index([buyerProfileId])
+  @@index([detachedEventId])
+  @@map("item_accounting")
+}
+
+/// CPT-01 à CPT-07, CPT-53 à CPT-56, CPT-65. Somme des montants ≤ coût prévu : verrou sur la fiche.
+model Contribution {
+  id               String           @id @db.Uuid
+  accountingId     String           @map("accounting_id") @db.Uuid
+  /// DAT-06 : vidé à la suppression du profil.
+  profileId        String?          @map("profile_id") @db.Uuid
+  mode             ContributionMode
+  shareNum         Int?             @map("share_num")
+  shareDen         Int?             @map("share_den")
+  units            Int?
+  /// Absent seulement en `FULL` sans prix (CPT-55).
+  amountMinor      BigInt?          @map("amount_minor")
+  /// CPT-18 : part d'avant l'achat, plancher d'un refus de hausse.
+  prePurchaseMinor BigInt?          @map("pre_purchase_minor")
+  rank             Int
+  settledMinor     BigInt           @default(0) @map("settled_minor")
+  settlement       SettlementState  @default(NONE)
+  settledAt        DateTime?        @map("settled_at") @db.Timestamptz(3)
+  settlementNote   String?          @map("settlement_note") @db.VarChar(60)
+  remindedSevenAt  DateTime?        @map("reminded_7_at") @db.Timestamptz(3)
+  remindedEventAt  DateTime?        @map("reminded_event_at") @db.Timestamptz(3)
+  nudgedAt         DateTime?        @map("nudged_at") @db.Timestamptz(3)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  accounting ItemAccounting @relation(fields: [accountingId], references: [id], onDelete: Restrict)
+  profile    Profile?       @relation("ContributionProfile", fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@unique([accountingId, profileId])
+  @@unique([accountingId, rank])
+  @@index([profileId, settlement])
+  @@map("contribution")
+}
+
+/// CPT-12 à CPT-15, CPT-18 ; supprimé quand l'achat est décoché (le journal le garde).
+model Purchase {
+  id                String   @id @db.Uuid
+  accountingId      String   @unique @map("accounting_id") @db.Uuid
+  buyerProfileId    String?  @map("buyer_profile_id") @db.Uuid
+  purchasedAt       DateTime @map("purchased_at") @db.Timestamptz(3)
+  plannedTotalMinor BigInt?  @map("planned_total_minor")
+  actualTotalMinor  BigInt?  @map("actual_total_minor")
+  receiptKey        String?  @map("receipt_key") @db.VarChar(64)
+  /// CPT-18 : fin de la fenêtre de refus d'une hausse.
+  raiseUntil        DateTime @map("raise_until") @db.Timestamptz(3)
+
+  accounting ItemAccounting @relation(fields: [accountingId], references: [id], onDelete: Restrict)
+  buyer      Profile?       @relation("PurchaseBuyer", fields: [buyerProfileId], references: [id], onDelete: SetNull)
+
+  @@index([buyerProfileId])
+  @@map("purchase")
+}
+
+/// CPT-57, CPT-58 : une demande `PENDING` par fiche et par genre (index unique partiel).
+model AccountingReview {
+  id              String                 @id @db.Uuid
+  accountingId    String                 @map("accounting_id") @db.Uuid
+  kind            AccountingReviewKind
+  authorProfileId String?                @map("author_profile_id") @db.Uuid
+  proposed        Json
+  status          AccountingReviewStatus @default(PENDING)
+  decidedBy       String?                @map("decided_by") @db.Uuid
+  decidedAt       DateTime?              @map("decided_at") @db.Timestamptz(3)
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  accounting ItemAccounting @relation(fields: [accountingId], references: [id], onDelete: Restrict)
+  author     Profile?       @relation("ReviewAuthor", fields: [authorProfileId], references: [id], onDelete: SetNull)
+  decider    Profile?       @relation("ReviewDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
+
+  @@index([accountingId])
+  @@map("accounting_review")
+}
+
+/// CPT-61 : une demande `PENDING` par fiche (index unique partiel).
+model BuyerRequest {
+  id                 String             @id @db.Uuid
+  accountingId       String             @map("accounting_id") @db.Uuid
+  candidateProfileId String             @map("candidate_profile_id") @db.Uuid
+  status             BuyerRequestStatus @default(PENDING)
+  decidedBy          String?            @map("decided_by") @db.Uuid
+  decidedAt          DateTime?          @map("decided_at") @db.Timestamptz(3)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  accounting ItemAccounting @relation(fields: [accountingId], references: [id], onDelete: Restrict)
+  candidate  Profile        @relation("BuyerCandidate", fields: [candidateProfileId], references: [id], onDelete: Cascade)
+  decider    Profile?       @relation("BuyerRequestDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
+
+  @@index([accountingId])
+  @@map("buyer_request")
+}
+
+/// CPT-19 : lisible par son seul auteur.
+model ShortfallNotice {
+  id                 String   @id @db.Uuid
+  accountingId       String   @map("accounting_id") @db.Uuid
+  authorProfileId    String   @map("author_profile_id") @db.Uuid
+  amountMinor        BigInt   @map("amount_minor")
+  notifiedProfileIds String[] @map("notified_profile_ids") @db.Uuid
+  at                 DateTime @default(now()) @db.Timestamptz(3)
+
+  accounting ItemAccounting @relation(fields: [accountingId], references: [id], onDelete: Restrict)
+  author     Profile        @relation("ShortfallAuthor", fields: [authorProfileId], references: [id], onDelete: Cascade)
+
+  @@index([accountingId])
+  @@map("shortfall_notice")
+}
+
+/// CPT-68 : une proposition `PENDING` par paire et par devise (index unique partiel).
+model OffsetProposal {
+  id                   String               @id @db.Uuid
+  proposerProfileId    String               @map("proposer_profile_id") @db.Uuid
+  counterpartProfileId String               @map("counterpart_profile_id") @db.Uuid
+  currency             String               @db.Char(3)
+  snapshot             Json
+  status               OffsetProposalStatus @default(PENDING)
+  decidedAt            DateTime?            @map("decided_at") @db.Timestamptz(3)
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  proposer    Profile @relation("OffsetProposer", fields: [proposerProfileId], references: [id], onDelete: Cascade)
+  counterpart Profile @relation("OffsetCounterpart", fields: [counterpartProfileId], references: [id], onDelete: Cascade)
+
+  @@index([proposerProfileId])
+  @@index([counterpartProfileId])
+  @@map("offset_proposal")
+}
+
+/// CPT-50, CPT-70, DAT-02 : ajout seul (`REVOKE UPDATE, DELETE`). `actor_profile_id` et
+/// `target_id` sans clé étrangère : une écriture survit à tout (comme `security_log`).
+model LedgerEntry {
+  id             String   @id @db.Uuid
+  accountingId   String   @map("accounting_id") @db.Uuid
+  actorProfileId String?  @map("actor_profile_id") @db.Uuid
+  kind           String   @db.VarChar(40)
+  targetId       String?  @map("target_id") @db.Uuid
+  before         Json?
+  after          Json?
+  operationId    String   @map("operation_id") @db.Uuid
+  at             DateTime @default(now()) @db.Timestamptz(3)
+
+  accounting ItemAccounting @relation(fields: [accountingId], references: [id], onDelete: Restrict)
+
+  @@index([accountingId, at])
+  @@index([operationId])
+  @@map("ledger_entry")
+}
+
+/// CPT-40, CPT-69 : privé à son profil.
+model Budget {
+  id                 String   @id @db.Uuid
+  profileId          String   @map("profile_id") @db.Uuid
+  eventId            String   @map("event_id") @db.Uuid
+  recipientProfileId String?  @map("recipient_profile_id") @db.Uuid
+  amountMinor        BigInt   @map("amount_minor")
+  currency           String   @db.Char(3)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  profile   Profile  @relation("BudgetOwner", fields: [profileId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recipient Profile? @relation("BudgetRecipient", fields: [recipientProfileId], references: [id], onDelete: Cascade)
+
+  /// CPT-69 : `NULLS NOT DISTINCT` ajouté à la main dans la migration (un budget global par événement).
+  @@unique([profileId, eventId, recipientProfileId], map: "budget_scope_key")
+  @@index([profileId])
+  @@map("budget")
+}
+
+/// API-16, CPT-71 : clé par profil, 30 jours.
+model IdempotencyRecord {
+  id          String   @id @db.Uuid
+  profileId   String   @map("profile_id") @db.Uuid
+  key         String   @db.VarChar(128)
+  requestHash String   @map("request_hash") @db.Char(64)
+  status      Int      @db.SmallInt
+  response    Json
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, key])
+  @@index([expiresAt])
+  @@map("idempotency_record")
 }

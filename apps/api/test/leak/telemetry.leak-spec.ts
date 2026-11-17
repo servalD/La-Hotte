@@ -34,6 +34,7 @@ import { createAccountWithProfile, session as sessionHeaders, signIn } from '../
 import { CAPTURE_PROBE, captureOutput, type OutputCapture } from './capture-output';
 import { describeHandedError } from './describe-handed-error.mjs';
 import { LeakRoutesController } from './leak-routes.controller';
+import { RunSettlementTasks } from '../../src/modules/accounting/application/contract';
 import { ALLOWED_EVENT_KEYS, AMOUNT_MARKER, envelopeEvents, findMarker, MARKER } from './markers';
 import { type Channel, fetchRecords, type ReceivedRecord, resetRecords } from './receivers';
 
@@ -292,6 +293,126 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playCatalogScenario(app);
   await playEventsScenario(app);
   await playExchangesScenario(app);
+  await playAccountingScenario(app);
+}
+
+/**
+ * Phase 5 (tranche 9) : participations, reste refusé (409 avec le reste), clé d'idempotence
+ * marquée et réutilisée (409), achat au prix marqueur, refus d'une hausse, avis de reste,
+ * règlements, compensation, budgets, vue latérale, tâches planifiées. Ni montant, ni titre, ni
+ * nom n'en sortent (CPT-70, OBS-20).
+ */
+async function playAccountingScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const owner = await createAccountWithProfile(prisma);
+  const givers = [await createAccountWithProfile(prisma), await createAccountWithProfile(prisma)];
+  for (const giver of givers) {
+    const [a, b] = [owner.profileId, giver.profileId].sort();
+    await prisma.profileLink.create({
+      data: {
+        id: randomUUID(),
+        profileAId: a!,
+        profileBId: b!,
+        status: 'ACCEPTED',
+        requestedBy: a!,
+        aGuardianRequired: false,
+        bGuardianRequired: false,
+      },
+    });
+  }
+  const headersOf = async (account: { accountId: string; profileId: string }) => {
+    const signed = await signIn(app, account);
+    return {
+      ...markedHeaders,
+      Cookie: `${signed.cookie}; session=${MARKER}`,
+      'X-CSRF-Token': signed.csrf,
+      Origin: 'http://localhost:3000',
+    };
+  };
+  const me = await headersOf(owner);
+  const papa = await headersOf(givers[0]!);
+  const tonton = await headersOf(givers[1]!);
+  const key = () => ({ 'Idempotency-Key': randomUUID() });
+  const list = await http
+    .post('/api/v1/lists')
+    .set(me)
+    .send({ type: 'WISHLIST', title: `Compta ${MARKER}`, recipientIds: [owner.profileId] })
+    .expect(201);
+  const product = await http
+    .post('/api/v1/products')
+    .set(me)
+    .send({ title: `Robot ${MARKER}`, unitPriceMinor: AMOUNT_MARKER })
+    .expect(201);
+  const itemId = (
+    await http
+      .post(`/api/v1/lists/${list.body.id as string}/items`)
+      .set(me)
+      .send({ productId: product.body.id as string })
+      .expect(201)
+  ).body.id as string;
+  const half = Math.floor(AMOUNT_MARKER / 2);
+  await http
+    .put(`/api/v1/items/${itemId}/contribution`)
+    .set({ ...papa, ...key() })
+    .send({ mode: 'FIXED', amountMinor: half })
+    .expect(200);
+  // CPT-03 : le refus porte le reste marqueur dans la réponse, jamais dans la télémétrie.
+  await http
+    .put(`/api/v1/items/${itemId}/contribution`)
+    .set({ ...tonton, ...key() })
+    .send({ mode: 'FIXED', amountMinor: AMOUNT_MARKER })
+    .expect(409);
+  // CPT-71 : clé marquée, puis réutilisée pour une autre requête.
+  await http
+    .put(`/api/v1/items/${itemId}/contribution`)
+    .set({ ...tonton, 'Idempotency-Key': `k-${MARKER}` })
+    .send({ mode: 'FULL' })
+    .expect(200);
+  await http
+    .put(`/api/v1/items/${itemId}/contribution`)
+    .set({ ...tonton, 'Idempotency-Key': `k-${MARKER}` })
+    .send({ mode: 'FIXED', amountMinor: 1 })
+    .expect(409);
+  await http.get(`/api/v1/items/${itemId}/accounting`).set(tonton).expect(200);
+  await http.get(`/api/v1/items/${itemId}/accounting`).set(me).expect(404);
+  await http
+    .put(`/api/v1/items/${itemId}/purchase`)
+    .set({ ...papa, ...key() })
+    .send({ actualTotalMinor: AMOUNT_MARKER + 1_000 })
+    .expect(200);
+  const lowered = await http
+    .post(`/api/v1/items/${itemId}/contribution/lower`)
+    .set({ ...tonton, ...key() })
+    .send({ amountMinor: AMOUNT_MARKER - half });
+  if (lowered.status === 200) {
+    await http
+      .post(`/api/v1/items/${itemId}/shortfall-notice`)
+      .set({ ...tonton, ...key() })
+      .send({ profileIds: [givers[0]!.profileId] })
+      .expect(200);
+  }
+  const contributions = await prisma.contribution.findMany({ where: { accounting: { itemId } } });
+  const tontonPart = contributions.find((c) => c.profileId === givers[1]!.profileId)!;
+  await http
+    .post(`/api/v1/contributions/${tontonPart.id}/claim`)
+    .set({ ...tonton, ...key() })
+    .expect(200);
+  await http
+    .put(`/api/v1/contributions/${tontonPart.id}/settlement`)
+    .set({ ...papa, ...key() })
+    .send({ settled: true, note: `virement ${MARKER}`.slice(0, 60) })
+    .expect(200);
+  await http.get('/api/v1/cart').set(papa).expect(200);
+  await http.get('/api/v1/balances').set(tonton).expect(200);
+  await http.get('/api/v1/accounting/overview').set(tonton).expect(200);
+  await http
+    .post('/api/v1/offset-proposals')
+    .set(papa)
+    .send({ counterpartId: givers[1]!.profileId, currency: 'EUR' })
+    .expect(422);
+  await app.get(RunSettlementTasks).execute();
+  await app.get(InProcessAppEvents).drain();
 }
 
 /**

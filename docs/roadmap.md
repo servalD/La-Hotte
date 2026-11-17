@@ -608,7 +608,7 @@ Choix faits dans les silences, à relire (écrits en règles quand ils touchent 
   - R1 : le regroupement des revérifications peut perdre une demande arrivée entre la fin de la boucle et la remise à zéro, ou après une erreur (le cache local n'est pas purgé ; rien ne fuit, les trames restent filtrées) ;
   - R2 : le plafond de 8 connexions se contourne par des poignées de main simultanées, et chaque connexion parcourt toutes les sockets (compteur Redis par session à prévoir) ;
   - R3 : la carte d'un profil mentionné est montrée à des lecteurs hors de son cercle (comme celle d'un auteur) ;
-  - R4 : sur une wishlist, un contributeur qui ne change que la position fait bouger `version` dans la vue du destinataire ;
+  - ~~R4~~ (fait le 2026-11-17, tranche 0 de la phase 5 : la position et le destinataire prévu ne font plus bouger `version`) : sur une wishlist, un contributeur qui ne change que la position fait bouger `version` dans la vue du destinataire ;
   - R5 : le web n'affiche pas encore la présence ni n'applique l'oubli à 60 secondes (RT-11), et envoie la présence avant que l'abonnement ait abouti ;
   - R6 : `circle.changed` d'un seul profil (marqueur enfant, tutelle) ne revérifie que ce profil, à confirmer.
 
@@ -628,16 +628,64 @@ Restes :
 
 Spec : `07`.
 
-| Tâche                                                                                  | Modèle             |
-| -------------------------------------------------------------------------------------- | ------------------ |
-| Domaine : participations, arrondis, journal, tests par propriétés                      | opus               |
-| Concurrence sur le reste, idempotence                                                  | opus               |
-| Acheteur, panier, achat, règlements                                                    | sonnet, revue opus |
-| Écart de prix (CPT-16 à CPT-19) : répartition, reste à couvrir, notification sélective | opus               |
-| Soldes, compensation, budgets                                                          | sonnet, revue opus |
-| Vue latérale, panier, comptes, animations associées                                    | sonnet             |
+**Découpage fait le 2026-11-17** (opus). Branche `feat/phase-5`. Même rythme que les phases 2 à 4, reconduit par l'utilisateur : tranches enchaînées, `security-reviewer` une seule fois en fin de phase sur `main..HEAD`, 2 cycles au plus ; commits locaux par tranche, envoi groupé et PR après la revue. Décisions de l'utilisateur dans les silences de `07` :
+
+- un changement de prix avant l'achat est toujours accepté (le refuser trahirait la réservation, VIS-20) et se traite comme un écart (CPT-16 à CPT-19) ; avec plus d'un participant, le nouveau coût ne s'applique aux parts qu'après la validation d'un **autre participant** que l'auteur (la « revue ») ;
+- les participants règlent, par élément, des options de compta : la **revue** (cochée par défaut) et le **justificatif** (CPT-15, décoché par défaut) ; le destinataire n'en voit rien ;
+- « Je l'offre » est permis sur un élément sans prix : montant inconnu jusqu'à l'achat (CPT-05 amendé).
+
+Dépendances : 0 ; 1 → 2 → 3 → 4 → 5 → 6 → 7 ; les écrans (8) suivent les contrats générés ; 9 clôt la phase.
+
+| #   | Tranche                       | Modèle | Contenu                                                                                                                                                                                                                                                       | Sortie et tests attendus                                                                                                                       |
+| --- | ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | Reste de la phase 4           | opus   | R4 : la `version` vue par le destinataire ne bouge pas quand seule la position change (VIS-35)                                                                                                                                                                | Contrat et intégration                                                                                                                         |
+| 1   | Spec et schéma                | opus   | Silences de `07` écrits en règles (revue, options, sans prix, journal, idempotence), ADR 0019 ; migration `contribution`, `purchase`, `ledger_entry` (REVOKE, DAT-02), `budget`, options et demandes de revue, demandes de changement d'acheteur ; RLS (DAT-05) | Contraintes et privilèges vérifiés en base (intégration)                                                                                       |
+| 2   | Domaine pur                   | opus   | Parts et arrondis (CPT-07), écart (CPT-16, CPT-17), refus d'une hausse (CPT-18), reconstitution de l'état depuis le journal (CPT-50)                                                                                                                         | Critères chiffrés de `07` ; tests par propriétés (somme des parts = total, jamais négative)                                                     |
+| 3   | Moteur de visibilité          | opus   | Accès à la compta d'un élément (CPT-52), panier, comptes, budget privé (CPT-40) ; ports VIS-16 et EVT-37 branchés                                                                                                                                             | **Matrice générée étendue avant le code** (VIS-33) ; 100 % des branches                                                                        |
+| 4   | Participations                | opus   | Participer, modifier, retirer ; verrou sur le reste (CPT-03) ; idempotence (CPT-51) ; journal ; `RÉSERVÉ` dérivé (LST-11) ; suivi (NOT-03) ; revue d'un changement de prix                                                                                     | Deux requêtes sur le dernier reste (intégration) ; rejeu sans effet ; non-fuite (montants absents de la télémétrie)                             |
+| 5   | Acheteur et achat             | opus   | Changement d'acheteur (CPT-10), panier (CPT-11), Acheté et décocher (CPT-12 à CPT-14), justificatif (CPT-15), écart, refus d'une hausse, reste à couvrir et prévenus choisis (CPT-19)                                                                          | Un participant décoché ne reçoit rien ; le choix n'est lu que par son auteur                                                                   |
+| 6   | Règlements, soldes, budgets   | opus   | CPT-20 à CPT-24 et rappels, Comptes et compensation (CPT-30 à CPT-33), budgets (CPT-40), vue latérale côté API (CPT-41 à CPT-45)                                                                                                                              | Seul l'acheteur règle ; budget absent de toute réponse faite à un autre profil                                                                 |
+| 7   | Branchements                  | opus   | Ports d'engagements : notifications, temps réel (`item:{id}:givers`), EVT-26, EVT-30, EVT-31, EVT-34, LST-15, VIS-16                                                                                                                                          | Aucune trame ni notification de compta chez un destinataire                                                                                    |
+| 8   | Écrans                        | sonnet | Participer, vue latérale, panier, Comptes, fenêtre CPT-19, revue, options de l'élément                                                                                                                                                                        | Composants testés                                                                                                                              |
+| 9   | Tests transverses et revue    | opus   | Balayage des routes nouvelles (CSRF, sans session, IDOR), schéma des vues destinataire (API-36), OBS-26 étendu ; `security-reviewer` sur `main..HEAD`, 2 cycles au plus                                                                                       | Sortie de la phase                                                                                                                             |
 
 Sortie : critères de `07` ; le journal permet de reconstituer tout état.
+
+**Tranches 0 à 9 faites le 2026-11-17** (opus), d'affilée. Module `accounting` (domaine pur testé par propriétés, verrou par fiche, idempotence dans la transaction, journal dérivé de la différence d'état), décisions de compta dans le moteur (matrice générée, 100 % des branches), avis, trame `accounting.changed`, tâches planifiées, écrans (Offrir, Panier, Comptes, Mes cadeaux). Test OBS-26 vert avec un scénario de compta ; toutes les lectures d'une destinataire identiques avant et après une compta complète.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- pourcentages en fractions exactes (`num/den`), centimes distribués par rang seulement si les fractions couvrent exactement (CPT-53) ; une part Tout ne rétrécit jamais par le geste d'autrui (CPT-54) ;
+- avant l'achat, un nouveau coût garde les pourcentages et la part Tout complète ; une hausse sans part relative ne va au dernier arrivé que si l'élément était couvert ; un excédent est retiré aux derniers arrivés, un pourcentage réduit devient un montant fixe (CPT-57) ;
+- la revue d'un nouveau coût naît de l'avis `item.changed`, au nom de l'auteur du changement ; si l'avis se perd, la prochaine écriture la crée sans auteur (tout participant peut alors décider) ;
+- l'état réel `list_item.status` est écrit par la transaction de compta, sans toucher la version (ADR 0019) ;
+- `IDEMPOTENCY_KEY_REQUIRED` en `422` (et non `400`), faute de nature d'erreur `400` dans le domaine ;
+- le reste actualisé sort dans le corps du `409` (`remainingMinor`), seul membre d'extension numérique permis ;
+- un « Ne prévenir personne » (CPT-19) est enregistré comme un avis sans destinataire ;
+- RLS (DAT-05) reportée à la phase 7 (ADR 0019).
+
+- **Revue `security-reviewer` du 2026-11-17 (cycle 1)** : visa accordé sous réserve, aucun bloquant. Corrigés (commit `46d017f`), spec d'abord : I1 (interblocage suppression/achat : un seul ordre de verrous, élément puis fiche), I2 (destinataires et honorés relevés au détachement, CPT-73), I3 (second « Acheté » refusé, CPT-63), I4 (pas de changement d'acheteur avec une part avancée, CPT-61), M1 (proposition de compensation verrouillée), M6 (membres d'extension sous les membres standard). Mineurs notés :
+  - M2 : le rejeu d'une décision (revue, demande d'acheteur, compensation, retrait) rend `404` au lieu de la première réponse, la vérification d'accès passant avant la clé ;
+  - M3 : `POST /offset-proposals`, `PUT /budgets`, `DELETE /budgets/{id}` n'exigent pas `Idempotency-Key` ;
+  - M4 : `idempotency_record` n'est jamais purgé (corps de réponse gardés au-delà de 30 jours) ;
+  - M5 : le justificatif est rangé dans le magasin des images de fiche (clé jamais rendue, mais `GET /images/{key}` le servirait) ; une image est stockée avant la clé d'idempotence (orphelines possibles) ;
+  - M7 : l'avis de reste (CPT-19) n'est pas limité à l'auteur de l'action qui l'a créé ;
+  - M8 : la lecture de la fiche, en parallèle de celle de l'élément, coûte une requête de plus quand elle existe (oracle de temps faible) ;
+  - M9 : une revue née sans auteur (avis perdu) peut être validée par l'auteur du changement de prix ;
+  - M10 : plafonds de 500 et 1 000 fiches sans signal dans le panier et les soldes ; date du jour en UTC pour les rappels.
+- **Cycle 2 (dernier)** : I2, I3, I4, M1, M6 jugés justes ; I1 juste pour un élément seul. Visa refusé en l'état pour **N1** (une compensation confirmée par un participant devenu destinataire lui apprenait l'achat et le montant d'un cadeau qui lui est destiné), avec visa accordé dès N1 corrigé et testé, sans troisième cycle. Fait : N1 (CPT-68 : seulement les parts que les deux voient, proposition caduque sinon, test d'intégration), N3 (niveau de la réponse décidé par le juge), N4 (`FOR NO KEY UPDATE`), N6 (double en mémoire). **Visa SEC-40 accordé.** Restes :
+  - N2 : `mutateMany` (compensation) verrouille fiche par fiche, alors que la purge d'une liste verrouille tous ses éléments d'abord ; un interblocage reste possible entre une compensation et la purge d'une liste qui contient deux des éléments ;
+  - N5 : un événement surprise supprimé avant l'élément ou la liste ne laisse plus relever ses honorés au détachement ; à trancher avec le sort des giftlists après EVT-39.
+
+Restes :
+
+- **Écran de confirmation d'une compensation** : l'API confirme, mais aucune route ne liste les propositions reçues ; la personne sollicitée ne peut pas encore confirmer depuis l'interface.
+- Avis de compta pour un participant qui ne voit plus l'élément (VIS-37) ou dont l'élément a disparu (CPT-73) : aucun en v1 (CPT-74) ; donc pas d'avis LST-15 « souhait réservé retiré ».
+- Achat, décocher et justificatif d'une fiche détachée : seuls les règlements et la compensation passent par la fiche ; les routes d'achat restent sur l'élément.
+- EVT-26 (avis de reprise d'un souhait réservé) et la mention « événement annulé » sur les participations (EVT-34) : non faits.
+- Écrans : options de compta, demande de changement d'acheteur, justificatif, budgets et règlements ne sont pas encore dans l'interface (l'API est prête) ; animation du total (CPT-43) et tiroir mobile (CPT-41) à faire avec la passe de motion de la phase 6 ; parcours Playwright et relecture `design:ux-copy` non faits.
+- File hors ligne des mutations de compta (clé d'idempotence prête) : phase 6.
+- Test d'intégration `identity-transfers` (« plus de 100 détachements ») : échoue sur une base locale qui a accumulé des passages échus des exécutions précédentes ; sans lien avec la phase (la CI part d'une base neuve).
 
 ## Phase 6 — Hors ligne, installation, motion
 

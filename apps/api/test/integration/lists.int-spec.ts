@@ -73,6 +73,30 @@ async function itemIds(user: SignedIn, listId: string): Promise<string[]> {
 }
 
 describe('Listes en base (VIS-31)', () => {
+  it('VIS-35 (R4 de la phase 4) : changer la seule position ne fait pas bouger la version', async () => {
+    const marie = await person();
+    const listId = await personal(marie);
+    const a = await addItem(marie, listId);
+    await addItem(marie, listId);
+    const before = await prisma.listItem.findUniqueOrThrow({ where: { id: a } });
+    await http()
+      .patch(`/api/v1/items/${a}`)
+      .set({ ...marie.mutation, 'If-Match': String(before.version) })
+      .send({ position: 1 })
+      .expect(200);
+    const moved = await prisma.listItem.findUniqueOrThrow({ where: { id: a } });
+    expect(moved.position).not.toBe(before.position);
+    expect(moved.version).toBe(before.version);
+    await http()
+      .patch(`/api/v1/items/${a}`)
+      .set({ ...marie.mutation, 'If-Match': String(before.version) })
+      .send({ note: 'n' })
+      .expect(200);
+    expect((await prisma.listItem.findUniqueOrThrow({ where: { id: a } })).version).toBe(
+      before.version + 1,
+    );
+  }, 30_000);
+
   it('« Mes envies » une seule fois, même en lectures concurrentes (WSH-06)', async () => {
     const marie = await person();
     await Promise.all(
@@ -243,4 +267,45 @@ describe('Listes en base (VIS-31)', () => {
     expect(await app.get(PurgeListTrash).execute()).toBeGreaterThanOrEqual(1);
     expect(await prisma.list.count({ where: { id } })).toBe(0);
   });
+});
+
+describe('Engagements lus dans la compta (VIS-16, VIS-37, ADR 0019)', () => {
+  it('un offreur engagé n’est pas écarté par un autre offreur, mais l’est par la destinataire', async () => {
+    const papa = await person();
+    const marie = await person();
+    const tonton = await person();
+    await link(papa, marie);
+    await link(papa, tonton);
+    await link(marie, tonton);
+    const listId = await personal(marie);
+    const itemId = await addItem(marie, listId);
+    await prisma.listMember.create({
+      data: { id: randomUUID(), listId, profileId: papa.profileId!, role: 'OWNER' },
+    });
+    await prisma.list.update({ where: { id: listId }, data: { visibilityEditRole: 'OWNER' } });
+    const accountingId = randomUUID();
+    await prisma.itemAccounting.create({
+      data: { id: accountingId, itemId, currency: 'EUR', plannedTotalMinor: 1000n },
+    });
+    await prisma.contribution.create({
+      data: {
+        id: randomUUID(),
+        accountingId,
+        profileId: tonton.profileId,
+        mode: 'FULL',
+        amountMinor: 1000n,
+        rank: 1,
+      },
+    });
+    const rule = async (user: SignedIn) => {
+      const version = (await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } })).version;
+      return http()
+        .put(`/api/v1/items/${itemId}/visibility`)
+        .set({ ...user.mutation, 'If-Match': String(version) })
+        .send({ mode: 'EXCEPT', profileIds: [tonton.profileId] });
+    };
+    const byPapa = await rule(papa);
+    expect(byPapa.body.code).toBe('VISIBILITY_ENGAGED_PROFILE');
+    expect((await rule(marie)).status).toBe(200);
+  }, 30_000);
 });

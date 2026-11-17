@@ -37,6 +37,8 @@ export class NoticeSubscriber implements OnModuleInit, OnModuleDestroy {
             return this.route.event(event);
           case 'product.extracted':
             return this.route.product(event);
+          case 'accounting.changed':
+            return this.route.accounting(event);
           default:
             return undefined;
         }

@@ -6,6 +6,7 @@ export {
   type EventChanged,
   type EventNotice,
   type ItemActivity,
+  type AccountingChanged,
   type ItemChanged,
   type ListChanged,
   type NotificationCreated,

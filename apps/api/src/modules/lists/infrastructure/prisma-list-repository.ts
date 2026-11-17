@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../platform/prisma/prisma.service';
 import type { ItemCriteria, ItemRecord, ListCandidateCriteria, ListRole } from '../../visibility';
-import type { ItemChanges, ItemSort, ListRecord, WithdrawnReason } from '../domain/list';
+import {
+  itemChangesBumpVersion,
+  type ItemChanges,
+  type ItemSort,
+  type ListRecord,
+  type WithdrawnReason,
+} from '../domain/list';
 import {
   type CarryCandidate,
   EngagementReader,
@@ -692,7 +698,7 @@ export class PrismaItemRepository extends ItemRepository {
         ...(changes.shownToRecipient !== undefined
           ? { shownToRecipient: changes.shownToRecipient }
           : {}),
-        version: { increment: 1 },
+        ...(itemChangesBumpVersion(changes) ? { version: { increment: 1 } } : {}),
       },
     });
     const row = await this.prisma.listItem.findUnique({
@@ -819,10 +825,22 @@ export class PrismaVisibilityLogRepository extends VisibilityLogRepository {
   }
 }
 
-/** VIS-16 : aucun engagement avant la compta (phase 5). */
+/**
+ * VIS-16, EVT-37 : profils engagés sur un élément, lus dans la compta (phase 5, ADR 0019). Lecture
+ * seule des tables de `accounting` : l'inverse d'une dépendance de module, qui ferait un cycle.
+ */
 @Injectable()
-export class NoEngagementReader extends EngagementReader {
-  engagedProfiles(): Promise<string[]> {
-    return Promise.resolve([]);
+export class PrismaEngagementReader extends EngagementReader {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async engagedProfiles(itemId: string): Promise<string[]> {
+    const rows = await this.prisma.contribution.findMany({
+      where: { accounting: { itemId }, profileId: { not: null } },
+      select: { profileId: true },
+      orderBy: { rank: 'asc' },
+    });
+    return rows.flatMap((row) => (row.profileId ? [row.profileId] : []));
   }
 }

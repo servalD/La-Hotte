@@ -28,8 +28,10 @@ erDiagram
     LIST }o--o| EVENT : rattachee
     PRODUCT ||--o{ LIST_ITEM : reference
     LIST_ITEM ||--o{ ITEM_VISIBILITY_PROFILE : regle
-    LIST_ITEM ||--o{ CONTRIBUTION : recoit
-    LIST_ITEM ||--o| PURCHASE : fait_objet
+    LIST_ITEM |o--o| ITEM_ACCOUNTING : compte
+    ITEM_ACCOUNTING ||--o{ CONTRIBUTION : recoit
+    ITEM_ACCOUNTING ||--o| PURCHASE : fait_objet
+    ITEM_ACCOUNTING ||--o{ LEDGER_ENTRY : journalise
     LIST_ITEM ||--o{ COMMENT : porte
     EVENT ||--o{ EVENT_PARTICIPANT : reunit
     PROFILE ||--o{ EVENT_PARTICIPANT : participe
@@ -81,11 +83,15 @@ Le coût total d'un élément n'est pas stocké : `quantity × unit_price_minor`
 
 | Table              | Champs principaux                                                                                                                                                                                                 | Contraintes                                                                                                            |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `contribution`     | `item_id`, `profile_id`, `mode` (`FULL`/`PERCENT`/`FIXED`), `percent_bp?` (points de base), `amount_minor`, `settlement` (`NONE`/`DUE`/`CLAIMED`/`SETTLED`), `settled_at?`, `settlement_note?`, `idempotency_key` | (`item_id`, `profile_id`) unique ; somme des montants ≤ coût total, garantie par transaction avec verrou sur l'élément |
-| `purchase`         | `item_id`, `buyer_profile_id`, `purchased_at?`, `actual_total_minor?`, `receipt_key?`                                                                                                                             | un par élément                                                                                                         |
-| `shortfall_notice` | `item_id`, `author_profile_id`, `amount_minor`, `notified_profile_ids`, `at`                                                                                                                                      | reste à couvrir et personnes prévenues (CPT-19) ; lisible par son seul auteur                                          |
-| `ledger_entry`     | `item_id`, `actor_profile_id`, `kind`, `payload` (avant, après), `idempotency_key`, `at`                                                                                                                          | ajout seul ; `idempotency_key` unique                                                                                  |
-| `budget`           | `profile_id`, `event_id?`, `recipient_profile_id?`, `amount_minor`, `currency`                                                                                                                                    | (`profile_id`, `event_id`, `recipient_profile_id`) unique                                                              |
+| `item_accounting`  | `item_id?`, `currency`, `planned_total_minor?` (coût prévu, CPT-57 ; absent sans prix, CPT-55), `buyer_profile_id?`, `review_enabled`, `receipt_enabled` (CPT-58), `next_rank`, `detached_title?`, `detached_event_id?`, `detached_at?`, `version` | fiche de compta d'un élément, créée à la première participation ; `item_id` unique, `SET NULL` ; un déclencheur `BEFORE DELETE` sur `list_item` relève le titre de la fiche et l'événement de la liste (CPT-73) ; `detached_at` présent si et seulement si `item_id` absent |
+| `contribution`     | `accounting_id`, `profile_id?`, `mode` (`FULL`/`PERCENT`/`FIXED`), `share_num?`, `share_den?` (fraction exacte, CPT-53), `units?` (CPT-56), `amount_minor?`, `pre_purchase_minor?`, `rank`, `settled_minor`, `settlement` (`NONE`/`DUE`/`CLAIMED`/`SETTLED`), `settled_at?`, `settlement_note?`, `reminded_7_at?`, `reminded_event_at?`, `nudged_at?` | (`accounting_id`, `profile_id`) unique ; `CHECK` : fraction présente si et seulement si `PERCENT`, `0 < num ≤ den` ; montant absent seulement en `FULL` ; montants ≥ 0 ; somme des montants ≤ coût prévu, garantie par transaction avec verrou sur la fiche (`SELECT … FOR UPDATE`) ; `profile_id` vidé à la suppression du profil (DAT-06) |
+| `purchase`         | `accounting_id`, `buyer_profile_id?`, `purchased_at`, `planned_total_minor?`, `actual_total_minor?`, `receipt_key?`, `raise_until`                                                                                | un par fiche ; supprimé quand l'achat est décoché (le journal le garde) ; `raise_until` = fin de la fenêtre de CPT-18 |
+| `accounting_review`| `accounting_id`, `kind` (`COST`/`OPTIONS`), `author_profile_id?`, `proposed`, `status` (`PENDING`/`APPROVED`/`REFUSED`/`REPLACED`/`CLOSED`), `decided_by?`, `decided_at?`                                          | une demande `PENDING` par fiche et par genre (index unique partiel) ; lue par les seuls participants (CPT-58) |
+| `buyer_request`    | `accounting_id`, `candidate_profile_id`, `status` (`PENDING`/`ACCEPTED`/`REFUSED`/`CANCELLED`), `decided_by?`, `decided_at?`                                                                                    | une demande `PENDING` par fiche (CPT-61)                                                                                |
+| `shortfall_notice` | `accounting_id`, `author_profile_id`, `amount_minor`, `notified_profile_ids`, `at`                                                                                                                                | reste à couvrir et personnes prévenues (CPT-19) ; lisible par son seul auteur                                          |
+| `offset_proposal`  | `proposer_profile_id`, `counterpart_profile_id`, `currency`, `snapshot` (parts et montants dus), `status` (`PENDING`/`CONFIRMED`/`DECLINED`/`STALE`), `decided_at?`                                              | une proposition `PENDING` par paire et par devise (CPT-68)                                                             |
+| `ledger_entry`     | `accounting_id`, `actor_profile_id?`, `kind`, `target_id?`, `before?`, `after?`, `operation_id`, `at`                                                                                                           | ajout seul (DAT-02) ; une écriture par ligne touchée (CPT-70) ; `operation_id` regroupe les écritures d'une même requête |
+| `budget`           | `profile_id`, `event_id`, `recipient_profile_id?`, `amount_minor`, `currency`                                                                                                                                     | (`profile_id`, `event_id`, `recipient_profile_id`) unique, `NULLS NOT DISTINCT` ; `amount_minor > 0` (CPT-69)          |
 
 ## Échanges
 
@@ -110,7 +116,7 @@ Le coût total d'un élément n'est pas stocké : `quantity × unit_price_minor`
 | `report`             | `reporter_profile_id`, `target_kind`, `target_id`, `reason`, `status`, `handled_by?`, `decision?` |                         |
 | `audit_log`          | `actor_account_id`, `action`, `target_kind`, `target_id`, `reason`, `ip`, `at`                    | ajout seul              |
 | `security_log`       | `account_id?`, `profile_id?`, `transfer_id?`, `event`, `ip`, `user_agent`, `at` (identifiants sans clé étrangère : une ligne survit au compte, au profil et à la demande, PRO-14) | ajout seul              |
-| `idempotency_record` | `key`, `profile_id`, `request_hash`, `response`, `expires_at`                                     | `key` unique            |
+| `idempotency_record` | `key`, `profile_id`, `request_hash`, `status`, `response`, `expires_at`                           | (`profile_id`, `key`) unique ; 30 jours (CPT-71) |
 | `extraction_cache`   | `normalized_url`, `result`, `expires_at`                                                          | `normalized_url` unique |
 
 ## Contraintes transversales
@@ -119,14 +125,14 @@ Le coût total d'un élément n'est pas stocké : `quantity × unit_price_minor`
 - **DAT-02** Les tables en ajout seul (`ledger_entry`, `audit_log`, `security_log`, `visibility_change_log`) n'accordent ni `UPDATE` ni `DELETE` au rôle de base de données de l'application. Les privilèges par défaut de l'environnement accordent ces droits sur toute nouvelle table : **la migration qui crée une table en ajout seul les retire explicitement** au rôle applicatif (`REVOKE UPDATE, DELETE`), et un test d'intégration le vérifie pour chaque table de cette liste. Le rôle applicatif n'a aucun droit d'écriture sur `_prisma_migrations`.
 - **DAT-03** Deux rôles de base de données : un pour l'application, un pour les migrations. L'application n'a pas le droit de modifier le schéma.
 - **DAT-04** Le fil `GIVERS` et le fil `PUBLIC` sont dans la même table mais ne sont jamais lus par la même requête : le dépôt expose deux méthodes distinctes, et celle du fil des offreurs exige une preuve que le demandeur n'est pas destinataire.
-- **DAT-05** Sécurité au niveau des lignes (RLS) de PostgreSQL en **défense supplémentaire** sur `comment`, `contribution`, `purchase` et `list_item` : la session de base porte l'identifiant du profil actif, et une politique interdit à un destinataire la lecture des lignes d'offreurs. Le moteur de visibilité reste la barrière principale.
+- **DAT-05** Sécurité au niveau des lignes (RLS) de PostgreSQL en **défense supplémentaire** sur `comment`, `contribution`, `purchase` et `list_item` : la session de base porte l'identifiant du profil actif, et une politique interdit à un destinataire la lecture des lignes d'offreurs. Le moteur de visibilité reste la barrière principale. Reportée à la phase 7 (ADR 0019) : la compta ne se lit que par des dépôts qui exigent la preuve d'une lecture en offreur.
 - **DAT-06** Suppression de profil : anonymisation des lignes référencées par d'autres (`contribution`, `comment`, `ledger_entry`), suppression du reste.
 - **DAT-07** Les migrations sont versionnées, rejouables, et toute migration destructive se fait en deux déploiements (ajout, puis retrait).
 
 ## Index à prévoir
 
 - `list_item (list_id, position)`, `list_item (status)` partiel sur les éléments ouverts.
-- `contribution (profile_id, settlement)` pour la vue Comptes.
+- `contribution (profile_id, settlement)` pour la vue Comptes ; `item_accounting (buyer_profile_id)` pour le panier ; `ledger_entry (accounting_id, at)` pour la reconstitution.
 - `event_participant (profile_id)`, `list_member (profile_id)`, `list_recipient (profile_id)`.
 - `notification (profile_id, seq)`.
 - Recherche plein texte sur `product (title, description)` avec dictionnaire français, limitée aux champs non soumis à la règle de surprise (VIS-40).

@@ -39,6 +39,14 @@ export function applyRealtimeEvent(queryClient: QueryClient, event: RealtimeEven
     case 'list.updated':
       void queryClient.invalidateQueries({ predicate: mentions(event.data.listId) });
       return;
+    case 'accounting.changed':
+      // CPT-59 : la compta de l'élément, et les vues qui en dépendent (panier, comptes, vue latérale).
+      void queryClient.invalidateQueries({ predicate: mentions(event.data.itemId) });
+      void queryClient.invalidateQueries({
+        predicate: (query) =>
+          /cart|balances|accounting\/overview/.test(JSON.stringify(query.queryKey)),
+      });
+      break;
     case 'comment.created':
     case 'comment.updated':
     case 'comment.deleted':
