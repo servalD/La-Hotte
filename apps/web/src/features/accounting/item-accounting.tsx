@@ -20,7 +20,8 @@ import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogTitle, DialogTrigger, SheetContent } from '@/components/ui/dialog';
+import { AnimatedAmount, Confirmed, DragToClose, FundingGauge, haptic } from '@/lib/motion/moments';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatMinor } from '@/features/lists/format';
@@ -63,10 +64,17 @@ export function ItemAccountingButton({ itemId, title }: { itemId: string; title:
       <DialogTrigger asChild>
         <Button variant="secondary">{t('open')}</Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogTitle>{t('title', { item: title })}</DialogTitle>
-        {open ? <ItemAccounting itemId={itemId} /> : null}
-      </DialogContent>
+      <SheetContent>
+        {/* PWA-10, « Tiroirs et panneaux » : glisser vers le bas referme ; Échap et le fond aussi. */}
+        <DragToClose
+          onClose={() => {
+            setOpen(false);
+          }}
+        >
+          <DialogTitle>{t('title', { item: title })}</DialogTitle>
+          {open ? <ItemAccounting itemId={itemId} /> : null}
+        </DragToClose>
+      </SheetContent>
     </Dialog>
   );
 }
@@ -104,7 +112,9 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
           </>
         ) : null}
         <dt>{t('covered')}</dt>
-        <dd>{money(view.coveredMinor)}</dd>
+        <dd>
+          <AnimatedAmount value={view.coveredMinor} format={money} />
+        </dd>
         {view.remainingMinor !== null ? (
           <>
             <dt>{t('remaining')}</dt>
@@ -115,8 +125,18 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
         <dd>{view.buyer?.displayName ?? t('noBuyer')}</dd>
         <dt>{t('state')}</dt>
         {/* Couleur jamais seule : un libellé dit l'état (WCAG). */}
-        <dd>{view.purchased ? t('purchased') : t('notPurchased')}</dd>
+        <dd>
+          <Confirmed stateKey={view.purchased ? 'purchased' : 'open'}>
+            {view.purchased ? t('purchased') : t('notPurchased')}
+          </Confirmed>
+        </dd>
       </dl>
+      {/* « Jauge de financement » : le chiffre reste écrit au-dessus (A11Y-03). */}
+      <FundingGauge
+        covered={view.coveredMinor}
+        total={view.remainingMinor === null ? null : view.coveredMinor + view.remainingMinor}
+        label={t('gauge')}
+      />
       <ul aria-label={t('participants')} className="flex flex-col gap-1 text-sm">
         {view.view === 'participant'
           ? view.participants.map((line) => (
@@ -218,6 +238,7 @@ function ContributeForm({
     perform(offlineActions.contribute(itemId, data, amountMinor))
       .then(() => {
         setValue('');
+        haptic();
         announceMoment('reservation');
         onDone();
       })
@@ -388,6 +409,7 @@ function ParticipantActions({
             onClick={() => {
               const actualTotalMinor = paid.trim() === '' ? null : parseAmount(paid);
               // Cas d'usage d'OFF-10 : cocher l'achat en magasin, sans réseau.
+              haptic();
               act(offlineActions.purchase(itemId, actualTotalMinor));
             }}
           >

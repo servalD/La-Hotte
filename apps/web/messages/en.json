@@ -1395,7 +1395,9 @@
       "item_delete": "Removal waiting to be sent.",
       "item_received": "Received, to be confirmed.",
       "item_unreceived": "Receipt unchecked, to be confirmed."
-    }
+    },
+    "gauge": "Gift funding",
+    "budgetGauge": "Share of budget committed"
   },
   "offlineActions": {
     "title": "Waiting actions",

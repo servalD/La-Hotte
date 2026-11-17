@@ -13,6 +13,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatMinor } from '@/features/lists/format';
+import { AnimatedAmount, FundingGauge } from '@/lib/motion/moments';
 import { BudgetEditor, OffsetProposals, SettlementActions } from './accounting-extras';
 
 /** CPT-11 : panier de l'acheteur, par événement puis par destinataire. */
@@ -180,9 +181,20 @@ export function OverviewScreen({ eventId }: { eventId?: string }) {
       ) : null}
       {data.engaged.map((m) => (
         <p key={m.currency}>
-          {t('engaged', { amount: formatMinor(m.amountMinor, m.currency, locale) })}
+          {/* CPT-43 : le total s'incrémente jusqu'à sa nouvelle valeur. */}
+          <AnimatedAmount
+            value={m.amountMinor}
+            format={(v) => t('engaged', { amount: formatMinor(v, m.currency, locale) })}
+          />
         </p>
       ))}
+      {data.budget && engaged && engaged.currency === data.budget.currency ? (
+        <FundingGauge
+          covered={engaged.amountMinor}
+          total={data.budget.amountMinor}
+          label={t('budgetGauge')}
+        />
+      ) : null}
       {data.event ? (
         <BudgetEditor
           eventId={data.event.id}

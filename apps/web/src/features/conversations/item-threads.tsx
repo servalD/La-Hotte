@@ -20,6 +20,8 @@ import { type SyntheticEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { AnimatePresence, motion } from 'motion/react';
+import { useMotionPreset } from '@/lib/motion/presets';
 import { offlineActions } from '@/lib/offline/actions';
 import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { cn } from '@/lib/utils/cn';
@@ -162,6 +164,7 @@ function ThreadView({
   const params = { thread };
   const { data, isPending } = useListItemComments(itemId, params);
   const perform = useOfflineAction();
+  const arrive = useMotionPreset('arriveFromBelow');
   const [sending, setSending] = useState(false);
   // OFF-10, UX-32 : un commentaire écrit hors ligne s'affiche « en attente d'envoi ».
   const waiting = usePendingFor(itemId).filter(
@@ -216,11 +219,20 @@ function ThreadView({
         <p className="text-sm text-foreground-muted">{t('empty')}</p>
       ) : null}
       <ol className="flex flex-col gap-2">
-        {messages.map((comment) => (
-          <li key={comment.id}>
-            <Message comment={comment} onChanged={refresh} />
-          </li>
-        ))}
+        {/* « Nouveau commentaire en direct » : glisse depuis le bas ; pas au premier affichage. */}
+        <AnimatePresence initial={false}>
+          {messages.map((comment) => (
+            <motion.li
+              key={comment.id}
+              variants={arrive}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <Message comment={comment} onChanged={refresh} />
+            </motion.li>
+          ))}
+        </AnimatePresence>
         {waiting.map((action) => (
           <li key={action.id} className="rounded-md border border-dashed border-border p-2 text-sm">
             <p className="break-words whitespace-pre-wrap">{String(action.display.body ?? '')}</p>

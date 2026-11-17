@@ -31,6 +31,32 @@ export function DialogContent({
   );
 }
 
+/**
+ * PWA-10 : panneau en tiroir sur téléphone (bas de l'écran, marges sûres), fenêtre centrée au-delà.
+ * Mêmes garanties de focus que `DialogContent` (A11Y-02).
+ */
+export function SheetContent({
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Content>) {
+  return (
+    <DialogPrimitive.Portal>
+      <DialogPrimitive.Overlay className="fixed inset-0 bg-black/40" />
+      <DialogPrimitive.Content
+        className={cn(
+          'fixed inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-xl border border-border bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lg',
+          'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[32rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg',
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+}
+
 export function DialogTitle({ className, ...props }: ComponentProps<typeof DialogPrimitive.Title>) {
   return <DialogPrimitive.Title className={cn('text-lg font-semibold', className)} {...props} />;
 }

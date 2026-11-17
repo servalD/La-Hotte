@@ -1395,7 +1395,9 @@
       "item_delete": "Retrait en attente d'envoi.",
       "item_received": "Reçu, à confirmer.",
       "item_unreceived": "Réception décochée, à confirmer."
-    }
+    },
+    "gauge": "Financement du cadeau",
+    "budgetGauge": "Part du budget engagée"
   },
   "offlineActions": {
     "title": "Actions en attente",
