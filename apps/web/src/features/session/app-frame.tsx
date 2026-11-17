@@ -1,7 +1,13 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { getGetSessionQueryKey, useLockSession, useSignOut } from '@wishlist/api-client';
+import {
+  AccountRole,
+  getGetSessionQueryKey,
+  useGetAccount,
+  useLockSession,
+  useSignOut,
+} from '@wishlist/api-client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -18,9 +24,18 @@ import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 import { NotificationsLink } from '@/features/notifications/notifications-screen';
 
-type Area = 'profile' | 'account';
+type Area = 'profile' | 'account' | 'admin';
 
-const LINKS: Record<Area, { href: string; key: string }[]> = {
+/** RBAC-02 : les liens d'un modérateur ; un administrateur a aussi les autres. */
+const ADMIN_LINKS: { href: string; key: string; adminOnly: boolean }[] = [
+  { href: '/admin', key: 'adminHome', adminOnly: false },
+  { href: '/admin/moderation', key: 'adminModeration', adminOnly: false },
+  { href: '/admin/accounts', key: 'adminAccounts', adminOnly: true },
+  { href: '/admin/settings', key: 'adminSettings', adminOnly: true },
+  { href: '/admin/audit', key: 'adminAudit', adminOnly: true },
+];
+
+const LINKS: Record<Exclude<Area, 'admin'>, { href: string; key: string }[]> = {
   profile: [
     { href: '/', key: 'home' },
     { href: '/lists', key: 'lists' },
@@ -50,6 +65,17 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   const lock = useLockSession();
   const signOut = useSignOut();
   const waiting = useQueuedActions().length;
+  // Le rôle n'est lu que hors profil : l'espace Compte et l'administration (RBAC-01).
+  const account = useGetAccount({ query: { enabled: area !== 'profile' } });
+  const role = account.data?.role ?? AccountRole.USER;
+  const staff = role !== AccountRole.USER;
+  const links =
+    area === 'admin'
+      ? ADMIN_LINKS.filter((link) => !link.adminOnly || role === AccountRole.ADMIN)
+      : [
+          ...LINKS[area],
+          ...(area === 'account' && staff ? [{ href: '/admin', key: 'admin' }] : []),
+        ];
 
   function onLock() {
     lock.mutate(undefined, {
@@ -84,7 +110,12 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
       <header className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-lg font-bold">{t('app')}</span>
         <nav aria-label={t('label')} className="flex flex-wrap items-center gap-1">
-          {LINKS[area].map((link) => (
+          {area === 'admin' ? (
+            <Button asChild variant="ghost">
+              <Link href="/account">{t('account')}</Link>
+            </Button>
+          ) : null}
+          {links.map((link) => (
             <Button key={link.href} asChild variant="ghost">
               <Link href={link.href}>{t(link.key)}</Link>
             </Button>

@@ -1,5 +1,6 @@
 'use client';
 
+import { ReportButton } from '@/features/moderation/report-button';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CommentReaction,
@@ -278,6 +279,7 @@ function ThreadView({
 
 function Message({ comment, onChanged }: { comment: CommentView; onChanged: () => void }) {
   const t = useTranslations('threads');
+  const tm = useTranslations('moderationNotice');
   const format = useFormatter();
   const locale = useLocale();
   const remove = useDeleteOneComment();
@@ -316,10 +318,13 @@ function Message({ comment, onChanged }: { comment: CommentView; onChanged: () =
       </p>
       {comment.deleted ? (
         <p className="text-sm text-foreground-muted italic">{t('deleted')}</p>
+      ) : comment.moderation !== 'NONE' ? (
+        // MOD-08, MOD-10 : l'API rend un texte vide ; l'interface dit pourquoi.
+        <p className="text-sm text-foreground-muted italic">{tm(comment.moderation)}</p>
       ) : (
         <LightMarkdown text={comment.body} />
       )}
-      {!comment.deleted ? (
+      {!comment.deleted && comment.moderation === 'NONE' ? (
         <div className="flex flex-wrap items-center gap-1">
           {(Object.keys(REACTION_ICONS) as (keyof typeof CommentReaction)[]).map((reaction) => {
             const count = comment.reactions.find((r) => r.reaction === reaction);
@@ -342,6 +347,7 @@ function Message({ comment, onChanged }: { comment: CommentView; onChanged: () =
               </Button>
             );
           })}
+          {!comment.mine ? <ReportButton targetKind="COMMENT" targetId={comment.id} /> : null}
           {comment.canDelete ? (
             <Button
               variant="ghost"

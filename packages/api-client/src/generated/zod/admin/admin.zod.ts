@@ -269,7 +269,11 @@ export const getModerationQueueResponse = zod.object({
           imageKey: zod.string().nullable(),
           merchant: zod.string().nullable(),
           sourceUrl: zod.string().nullable(),
-          status: zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+          status: zod
+            .enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED'])
+            .describe(
+              'MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.',
+            ),
         }),
         reports: zod
           .object({
@@ -323,7 +327,11 @@ export const getModerationQueueResponse = zod.object({
             imageKey: zod.string().nullable(),
             merchant: zod.string().nullable(),
             sourceUrl: zod.string().nullable(),
-            status: zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+            status: zod
+              .enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED'])
+              .describe(
+                'MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.',
+              ),
           })
           .nullable(),
         comment: zod

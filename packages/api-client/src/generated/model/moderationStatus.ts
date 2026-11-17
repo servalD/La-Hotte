@@ -6,6 +6,9 @@
  * OpenAPI spec version: 1
  */
 
+/**
+ * MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.
+ */
 export type ModerationStatus = (typeof ModerationStatus)[keyof typeof ModerationStatus];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare

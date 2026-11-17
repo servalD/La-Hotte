@@ -83,6 +83,10 @@ export const listOwnProductsResponse = zod.object({
       sourceUrl: zod.string().nullable(),
       source: zod.enum(['LINK', 'PHOTO', 'MANUAL']),
       shareLevel: zod.enum(['PRIVATE', 'CIRCLE', 'GLOBAL']),
+      moderationStatus: zod
+        .enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED'])
+        .describe('MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.')
+        .describe('MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.'),
       extractionStatus: zod.enum(['NONE', 'PENDING', 'DONE', 'FAILED']),
       uncertainFields: zod.array(zod.string()).describe('EXT-07 : champs incertains du brouillon.'),
       extractionTruncated: zod.boolean().describe('EXT-34 : « page partiellement analysée ».'),
@@ -109,6 +113,10 @@ export const getOwnProductResponse = zod.object({
   sourceUrl: zod.string().nullable(),
   source: zod.enum(['LINK', 'PHOTO', 'MANUAL']),
   shareLevel: zod.enum(['PRIVATE', 'CIRCLE', 'GLOBAL']),
+  moderationStatus: zod
+    .enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED'])
+    .describe('MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.')
+    .describe('MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.'),
   extractionStatus: zod.enum(['NONE', 'PENDING', 'DONE', 'FAILED']),
   uncertainFields: zod.array(zod.string()).describe('EXT-07 : champs incertains du brouillon.'),
   extractionTruncated: zod.boolean().describe('EXT-34 : « page partiellement analysée ».'),
@@ -167,6 +175,10 @@ export const updateProductResponse = zod.object({
   sourceUrl: zod.string().nullable(),
   source: zod.enum(['LINK', 'PHOTO', 'MANUAL']),
   shareLevel: zod.enum(['PRIVATE', 'CIRCLE', 'GLOBAL']),
+  moderationStatus: zod
+    .enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED'])
+    .describe('MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.')
+    .describe('MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.'),
   extractionStatus: zod.enum(['NONE', 'PENDING', 'DONE', 'FAILED']),
   uncertainFields: zod.array(zod.string()).describe('EXT-07 : champs incertains du brouillon.'),
   extractionTruncated: zod.boolean().describe('EXT-34 : « page partiellement analysée ».'),

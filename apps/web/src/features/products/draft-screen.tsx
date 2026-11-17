@@ -229,20 +229,26 @@ const FIELD_KEYS = {
   image: 1,
 } as const;
 
-/** REP-02, REP-06 : publier au cercle ; une fiche liée à un élément caché exige un choix. */
+/**
+ * REP-02, REP-06, MOD-06, MOD-12 : publier au cercle ou au catalogue ouvert à tous ; une fiche liée
+ * à un élément caché exige un choix.
+ */
 function ShareCard({ product, onChanged }: { product: ProductView; onChanged: () => void }) {
   const t = useTranslations('draft.share');
+  const tg = useTranslations('shareGlobal');
   const te = useTranslations('lists.errors');
+  const [level, setLevel] = useState<ShareLevel>(ShareLevel.CIRCLE);
   const share = useShareProduct();
   const [choice, setChoice] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function publish(hiddenItemChoice?: HiddenItemChoice) {
+  function publish(target: ShareLevel, hiddenItemChoice?: HiddenItemChoice) {
     setError(null);
+    setLevel(target);
     share.mutate(
       {
         id: product.id,
-        data: { level: ShareLevel.CIRCLE, ...(hiddenItemChoice ? { hiddenItemChoice } : {}) },
+        data: { level: target, ...(hiddenItemChoice ? { hiddenItemChoice } : {}) },
       },
       {
         onSuccess: () => {
@@ -252,18 +258,46 @@ function ShareCard({ product, onChanged }: { product: ProductView; onChanged: ()
         onError: (e) => {
           if (e instanceof ApiError && e.problem.code === 'HIDDEN_ITEM_REQUIRES_CHOICE')
             setChoice(true);
+          else if (
+            e instanceof ApiError &&
+            (e.problem.code === 'CHILD_PUBLICATION_FORBIDDEN' ||
+              e.problem.code === 'PUBLICATION_SUSPENDED')
+          )
+            setError(tg(e.problem.code));
           else setError(te(listErrorKey(e)));
         },
       },
     );
   }
 
-  const shared = product.shareLevel === ShareLevel.CIRCLE;
+  const shared = product.shareLevel !== ShareLevel.PRIVATE;
+  const status =
+    product.shareLevel === ShareLevel.GLOBAL
+      ? product.moderationStatus === 'APPROVED'
+        ? tg('GLOBAL')
+        : tg('PENDING')
+      : product.moderationStatus === 'REJECTED'
+        ? tg('REJECTED')
+        : shared
+          ? t('CIRCLE')
+          : t('PRIVATE');
   return (
     <Card>
       <CardTitle>{t('title')}</CardTitle>
-      <CardDescription className="mt-1">{shared ? t('CIRCLE') : t('PRIVATE')}</CardDescription>
-      <div className="mt-3 flex gap-2">
+      <CardDescription className="mt-1">{status}</CardDescription>
+      <p className="mt-1 text-sm text-foreground-muted">{tg('who')}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {product.shareLevel !== ShareLevel.GLOBAL ? (
+          <Button
+            variant={shared ? 'primary' : 'secondary'}
+            disabled={share.isPending}
+            onClick={() => {
+              publish(ShareLevel.GLOBAL);
+            }}
+          >
+            {tg('publish')}
+          </Button>
+        ) : null}
         {shared ? (
           <Button
             variant="secondary"
@@ -286,7 +320,7 @@ function ShareCard({ product, onChanged }: { product: ProductView; onChanged: ()
           <Button
             disabled={share.isPending}
             onClick={() => {
-              publish();
+              publish(ShareLevel.CIRCLE);
             }}
           >
             {t('publish')}
@@ -305,7 +339,7 @@ function ShareCard({ product, onChanged }: { product: ProductView; onChanged: ()
           <div className="mt-4 flex flex-col gap-2">
             <Button
               onClick={() => {
-                publish(HiddenItemChoice.MAKE_VISIBLE_TO_ALL);
+                publish(level, HiddenItemChoice.MAKE_VISIBLE_TO_ALL);
               }}
               disabled={share.isPending}
             >

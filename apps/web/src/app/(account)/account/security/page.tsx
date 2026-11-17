@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { AdminActionsSection } from '@/features/account/admin-actions-section';
 import { DevicesSection } from '@/features/account/devices-section';
 import { TotpSection } from '@/features/account/totp-section';
 
@@ -12,6 +13,7 @@ export default async function Page() {
       </header>
       <TotpSection />
       <DevicesSection />
+      <AdminActionsSection />
     </>
   );
 }

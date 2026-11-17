@@ -13702,7 +13702,8 @@
           "PENDING",
           "APPROVED",
           "REJECTED"
-        ]
+        ],
+        "description": "MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire."
       },
       "MoneyView": {
         "type": "object",
@@ -14723,6 +14724,14 @@
               }
             ]
           },
+          "moderationStatus": {
+            "description": "MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModerationStatus"
+              }
+            ]
+          },
           "extractionStatus": {
             "allOf": [
               {
@@ -14766,6 +14775,7 @@
           "sourceUrl",
           "source",
           "shareLevel",
+          "moderationStatus",
           "extractionStatus",
           "uncertainFields",
           "extractionTruncated",

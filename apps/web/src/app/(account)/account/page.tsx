@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { AgeAttestation } from '@/features/account/age-attestation';
+import { AccountDeletionSection } from '@/features/account/account-deletion';
 import { CredentialsSection } from '@/features/account/credentials-section';
 
 export default async function Page() {
@@ -12,6 +13,7 @@ export default async function Page() {
       </header>
       <CredentialsSection />
       <AgeAttestation />
+      <AccountDeletionSection />
     </>
   );
 }

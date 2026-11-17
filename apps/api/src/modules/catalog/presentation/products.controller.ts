@@ -66,6 +66,7 @@ export function toProductView(product: Product): ProductView {
     sourceUrl: product.sourceUrl,
     source: product.source,
     shareLevel: product.shareLevel,
+    moderationStatus: product.moderationStatus,
     extractionStatus: product.extractionStatus,
     uncertainFields: [...product.uncertainFields],
     extractionTruncated: product.extractionTruncated,

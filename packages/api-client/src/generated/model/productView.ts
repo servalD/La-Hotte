@@ -7,6 +7,7 @@
  */
 import type { ProductSource } from './productSource';
 import type { ShareLevel } from './shareLevel';
+import type { ModerationStatus } from './moderationStatus';
 import type { ExtractionStatus } from './extractionStatus';
 
 export interface ProductView {
@@ -27,6 +28,8 @@ export interface ProductView {
   sourceUrl: string | null;
   source: ProductSource;
   shareLevel: ShareLevel;
+  /** MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire. */
+  moderationStatus: ModerationStatus;
   extractionStatus: ExtractionStatus;
   /** EXT-07 : champs incertains du brouillon. */
   uncertainFields: string[];

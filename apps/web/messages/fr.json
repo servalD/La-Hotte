@@ -192,7 +192,13 @@
     "signOutQueueTitle": "Des actions ne sont pas encore envoyées",
     "signOutQueueBody": "{count, plural, one {Une action faite sans réseau sera perdue} other {# actions faites sans réseau seront perdues}} si vous vous déconnectez maintenant.",
     "signOutAnyway": "Me déconnecter quand même",
-    "cancel": "Rester connecté"
+    "cancel": "Rester connecté",
+    "admin": "Administration",
+    "adminHome": "Tableau de bord",
+    "adminModeration": "Modération",
+    "adminAccounts": "Comptes",
+    "adminSettings": "Réglages",
+    "adminAudit": "Journal"
   },
   "home": {
     "hello": "Bonjour {name}",
@@ -1481,5 +1487,245 @@
     "chooseList": "Dans quelle liste ?",
     "noList": "Vous n'avez pas encore de liste. Créez-en une depuis « Listes ».",
     "personal": "Ma liste"
+  },
+  "admin": {
+    "who": "Espace d’administration : aucune liste, aucun profil ni aucun message non signalé n’y apparaît.",
+    "reason": "Motif",
+    "reasonHint": "10 caractères au moins. Il est écrit au journal d’audit.",
+    "yes": "Oui",
+    "no": "Non",
+    "never": "Jamais",
+    "hidden": "—",
+    "errors": {
+      "generic": "L’action n’a pas abouti. Réessayez.",
+      "network": "Pas de réseau : réessayez une fois connecté.",
+      "VALIDATION_FAILED": "Vérifiez le motif : 10 à 500 caractères.",
+      "ACCOUNT_NOT_FOUND": "Ce compte n’existe plus.",
+      "ADMIN_SELF_ACTION": "Cette action ne se fait pas sur votre propre compte.",
+      "ROLE_REQUIREMENTS_NOT_MET": "Ce compte ne remplit pas les conditions de ce rôle (double authentification active, adresse vérifiée, compte autonome).",
+      "LAST_ADMIN": "Le dernier administrateur garde son rôle.",
+      "ACCOUNT_STATE_CONFLICT": "L’état du compte ne permet pas cette action.",
+      "ACCOUNT_SEARCH_RATE_LIMITED": "Trop de recherches : réessayez dans une heure.",
+      "SETTING_INVALID": "Valeur refusée pour ce réglage.",
+      "NOTHING_TO_MODERATE": "Ce contenu n’attend plus de décision.",
+      "CONTEST_SAME_MODERATOR": "Un autre modérateur doit trancher cette contestation.",
+      "DECISION_NOT_FOUND": "Cette contestation n’existe plus.",
+      "REPORT_TARGET_NOT_FOUND": "Ce contenu n’existe plus."
+    },
+    "stats": {
+      "title": "Tableau de bord",
+      "who": "Des nombres seulement. Un nombre qui porterait sur moins de 10 comptes est masqué.",
+      "active": "Comptes actifs sur 30 jours",
+      "created": "Comptes créés sur 30 jours",
+      "lists": "Listes créées sur 30 jours",
+      "catalog": "Fiches dans le catalogue ouvert à tous",
+      "reports": "Signalements ouverts",
+      "median": "Délai médian de traitement d’un signalement",
+      "hours": "{value} h",
+      "extraction": "Extractions réussies sur 30 jours",
+      "percent": "{value} %",
+      "masked": "Masqué : trop peu de comptes"
+    },
+    "moderation": {
+      "title": "Modération",
+      "who": "Vous voyez le contenu signalé, le motif et le fil, rien d’autre : ni l’auteur, ni la liste, ni les destinataires.",
+      "empty": "Rien à traiter.",
+      "product": "Fiche",
+      "comment": "Message",
+      "contest": "Contestation",
+      "thread": {
+        "PUBLIC": "Fil Public",
+        "GIVERS": "Fil des offreurs"
+      },
+      "status": {
+        "NONE": "Hors du catalogue",
+        "PENDING": "En attente",
+        "APPROVED": "Visible dans le catalogue",
+        "REJECTED": "Retirée"
+      },
+      "reports": "{count, plural, one {# signalement} other {# signalements}}",
+      "pending": "Publication en attente de vérification",
+      "notes": "Notes des signaleurs",
+      "keep": "Garder",
+      "remove": "Retirer",
+      "removeSuspend": "Retirer et suspendre la publication de l’auteur",
+      "uphold": "Maintenir le retrait",
+      "overturn": "Annuler le retrait",
+      "contestText": "Ce que l’auteur demande",
+      "contested": "Décision contestée : {action} — « {reason} »",
+      "done": "Décision enregistrée."
+    },
+    "accounts": {
+      "title": "Comptes",
+      "who": "Recherche par adresse exacte. Vous ne verrez que des dates, des nombres et des états, jamais un contenu.",
+      "email": "Adresse e-mail",
+      "search": "Rechercher",
+      "notFound": "Aucun compte avec cette adresse.",
+      "created": "Créé le",
+      "lastSignIn": "Dernière connexion",
+      "profiles": "Profils",
+      "lists": "Listes créées",
+      "role": "Rôle",
+      "status": "État",
+      "totp": "Double authentification",
+      "verified": "Adresse vérifiée",
+      "publication": "Publication au catalogue",
+      "publicationSuspended": "Suspendue",
+      "publicationOpen": "Permise",
+      "suspensions": "Historique de suspension",
+      "roles": {
+        "USER": "Utilisateur",
+        "MODERATOR": "Modérateur",
+        "ADMIN": "Administrateur"
+      },
+      "statuses": {
+        "ACTIVE": "Actif",
+        "SUSPENDED": "Suspendu",
+        "PENDING_DELETION": "Suppression demandée"
+      },
+      "events": {
+        "account_suspend": "Suspendu",
+        "account_reactivate": "Réactivé"
+      },
+      "suspend": "Suspendre",
+      "reactivate": "Réactiver",
+      "forceLogout": "Déconnecter tous les appareils",
+      "totpReset": "Envoyer un lien de réinitialisation de la double authentification",
+      "changeRole": "Changer le rôle",
+      "restorePublication": "Lever la suspension de publication",
+      "done": "Action enregistrée."
+    },
+    "settings": {
+      "title": "Réglages de la plateforme",
+      "who": "S’appliquent à tous les comptes. Chaque changement est écrit au journal avec l’ancienne et la nouvelle valeur.",
+      "registration": "Inscriptions",
+      "registrationDefault": "Valeur du serveur",
+      "OPEN": "Ouvertes à tous",
+      "INVITE_ONLY": "Sur invitation",
+      "terms": "Termes interdits au catalogue",
+      "termsHint": "Un par ligne. Une fiche qui en contient attend la vérification d’un modérateur.",
+      "domains": "Domaines bloqués au catalogue",
+      "domainsHint": "Un par ligne, sans https://. Les sous-domaines sont compris.",
+      "limit": "Extractions par compte et par jour",
+      "limitHint": "Vide : 200, la valeur par défaut.",
+      "save": "Enregistrer",
+      "saved": "Réglage enregistré."
+    },
+    "audit": {
+      "title": "Journal d’audit",
+      "who": "Toutes les actions des modérateurs et des administrateurs. Consulter ce journal y est aussi écrit.",
+      "empty": "Aucune entrée.",
+      "filter": "Action",
+      "all": "Toutes",
+      "actor": "Par",
+      "operator": "Commande d’exploitation",
+      "target": "Cible",
+      "more": "Voir les entrées plus anciennes",
+      "actions": {
+        "audit_read": "Consultation du journal",
+        "account_search": "Recherche de compte",
+        "account_suspend": "Suspension",
+        "account_reactivate": "Réactivation",
+        "account_force_logout": "Déconnexion forcée",
+        "account_totp_reset_requested": "Réinitialisation de la double authentification demandée",
+        "account_totp_reset_completed": "Double authentification réinitialisée",
+        "role_grant": "Rôle donné",
+        "role_revoke": "Rôle retiré",
+        "role_grant_by_operator": "Rôle donné par la commande d’exploitation",
+        "setting_update": "Réglage changé",
+        "moderation_decide": "Décision de modération",
+        "publication_restore": "Publication rétablie",
+        "followup_failed": "Suite d’une action en échec"
+      }
+    }
+  },
+  "report": {
+    "open": "Signaler",
+    "title": "Signaler ce contenu",
+    "who": "Seule l’équipe de modération lira ce signalement. La personne concernée ne saura pas qui l’a fait.",
+    "reason": "Motif",
+    "reasons": {
+      "SPAM": "Publicité ou indésirable",
+      "INAPPROPRIATE": "Contenu choquant",
+      "PRIVACY": "Atteinte à la vie privée",
+      "ILLEGAL": "Contenu illégal",
+      "OTHER": "Autre"
+    },
+    "note": "Précision (facultative)",
+    "send": "Envoyer le signalement",
+    "cancel": "Annuler",
+    "sent": "Merci, la modération va regarder.",
+    "errors": {
+      "generic": "Le signalement n’a pas pu être envoyé.",
+      "REPORT_OWN_CONTENT": "Vous ne pouvez pas signaler votre propre contenu.",
+      "REPORT_TARGET_NOT_FOUND": "Ce contenu n’existe plus."
+    }
+  },
+  "moderationNotice": {
+    "UNDER_REVIEW": "Message en cours de vérification",
+    "REMOVED": "Message retiré par la modération"
+  },
+  "catalog": {
+    "circle": "Mon cercle",
+    "global": "Ouvert à tous",
+    "globalWho": "Des fiches publiées par tout le monde, sans nom. Elles ont été vérifiées avant d’apparaître ici.",
+    "adopters": "{count, plural, one {Ajoutée par # personne} other {Ajoutée par # personnes}}"
+  },
+  "shareGlobal": {
+    "GLOBAL": "Tout le monde la voit dans le catalogue, sans votre nom",
+    "PENDING": "En attente de vérification avant d’apparaître dans le catalogue",
+    "REJECTED": "Retirée du catalogue par la modération",
+    "publish": "Publier dans le catalogue ouvert à tous",
+    "who": "Le catalogue ouvert à tous ne montre ni votre nom, ni vos notes, ni vos photos.",
+    "CHILD_PUBLICATION_FORBIDDEN": "Un profil enfant ne publie pas dans le catalogue ouvert à tous.",
+    "PUBLICATION_SUSPENDED": "La publication dans le catalogue est suspendue pour ce compte."
+  },
+  "myModeration": {
+    "title": "Mes contenus retirés",
+    "who": "Les décisions de la modération sur vos fiches et vos messages. Vous seul les voyez.",
+    "empty": "Aucun contenu retiré.",
+    "PRODUCT": "Une de vos fiches",
+    "COMMENT": "Un de vos messages",
+    "reason": "Motif : {reason}",
+    "contest": "Contester",
+    "contestText": "Votre explication",
+    "contestHint": "10 à 500 caractères. Un autre modérateur la lira et décidera ; sa décision sera définitive.",
+    "send": "Envoyer",
+    "sent": "Contestation envoyée.",
+    "contested": "Contestation en cours",
+    "outcome": {
+      "UPHOLD": "Retrait maintenu",
+      "OVERTURN": "Retrait annulé"
+    },
+    "CONTEST_NOT_ALLOWED": "Cette décision ne peut plus être contestée.",
+    "generic": "La contestation n’a pas pu être envoyée."
+  },
+  "myData": {
+    "title": "Mes données",
+    "who": "Un fichier avec les données de ce profil, telles que vous les voyez. Vous seul pouvez le télécharger, une fois, dans les 24 heures.",
+    "request": "Préparer mon export",
+    "download": "Télécharger le fichier",
+    "downloaded": "Fichier téléchargé.",
+    "EXPORT_RATE_LIMITED": "Un export a déjà été préparé aujourd’hui pour ce profil.",
+    "EXPORT_NOT_FOUND": "Ce fichier n’est plus disponible.",
+    "generic": "L’export n’a pas abouti."
+  },
+  "accountDeletion": {
+    "title": "Supprimer le compte",
+    "who": "Supprime le compte et tous ses profils dans 30 jours. Vos messages et vos parts restent chez les autres, sous « Profil supprimé ».",
+    "button": "Supprimer mon compte",
+    "confirmTitle": "Supprimer ce compte ?",
+    "confirmBody": "Tous les appareils seront déconnectés. Vous aurez 30 jours pour changer d’avis : il suffira de vous reconnecter.",
+    "confirm": "Supprimer dans 30 jours",
+    "cancel": "Garder mon compte",
+    "HAS_WARDS": "Ce compte est tuteur d’un autre compte : levez d’abord la tutelle.",
+    "LAST_ADMIN": "Le dernier administrateur ne peut pas supprimer son compte.",
+    "generic": "La demande n’a pas abouti."
+  },
+  "adminActions": {
+    "title": "Actions de l’équipe sur votre compte",
+    "who": "Ce que les administrateurs ont fait sur votre compte. Vous seul voyez cette liste.",
+    "empty": "Aucune action.",
+    "reason": "Motif : {reason}"
   }
 }
