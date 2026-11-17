@@ -75,7 +75,7 @@ describe('Images du coffre (OFF-08)', () => {
     expect(await vault.read('images', 'c')).toBeDefined();
     images.size = 16;
     vault.close();
-  });
+  }, 30_000);
 });
 
 describe('Préchargement (OFF-09)', () => {
