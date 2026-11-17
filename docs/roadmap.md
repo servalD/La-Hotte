@@ -664,6 +664,19 @@ Choix faits dans les silences, à relire (écrits en règles quand ils touchent 
 - un « Ne prévenir personne » (CPT-19) est enregistré comme un avis sans destinataire ;
 - RLS (DAT-05) reportée à la phase 7 (ADR 0019).
 
+- **Revue `security-reviewer` du 2026-11-17 (cycle 1)** : visa accordé sous réserve, aucun bloquant. Corrigés (commit `46d017f`), spec d'abord : I1 (interblocage suppression/achat : un seul ordre de verrous, élément puis fiche), I2 (destinataires et honorés relevés au détachement, CPT-73), I3 (second « Acheté » refusé, CPT-63), I4 (pas de changement d'acheteur avec une part avancée, CPT-61), M1 (proposition de compensation verrouillée), M6 (membres d'extension sous les membres standard). Mineurs notés :
+  - M2 : le rejeu d'une décision (revue, demande d'acheteur, compensation, retrait) rend `404` au lieu de la première réponse, la vérification d'accès passant avant la clé ;
+  - M3 : `POST /offset-proposals`, `PUT /budgets`, `DELETE /budgets/{id}` n'exigent pas `Idempotency-Key` ;
+  - M4 : `idempotency_record` n'est jamais purgé (corps de réponse gardés au-delà de 30 jours) ;
+  - M5 : le justificatif est rangé dans le magasin des images de fiche (clé jamais rendue, mais `GET /images/{key}` le servirait) ; une image est stockée avant la clé d'idempotence (orphelines possibles) ;
+  - M7 : l'avis de reste (CPT-19) n'est pas limité à l'auteur de l'action qui l'a créé ;
+  - M8 : la lecture de la fiche, en parallèle de celle de l'élément, coûte une requête de plus quand elle existe (oracle de temps faible) ;
+  - M9 : une revue née sans auteur (avis perdu) peut être validée par l'auteur du changement de prix ;
+  - M10 : plafonds de 500 et 1 000 fiches sans signal dans le panier et les soldes ; date du jour en UTC pour les rappels.
+- **Cycle 2 (dernier)** : I2, I3, I4, M1, M6 jugés justes ; I1 juste pour un élément seul. Visa refusé en l'état pour **N1** (une compensation confirmée par un participant devenu destinataire lui apprenait l'achat et le montant d'un cadeau qui lui est destiné), avec visa accordé dès N1 corrigé et testé, sans troisième cycle. Fait : N1 (CPT-68 : seulement les parts que les deux voient, proposition caduque sinon, test d'intégration), N3 (niveau de la réponse décidé par le juge), N4 (`FOR NO KEY UPDATE`), N6 (double en mémoire). **Visa SEC-40 accordé.** Restes :
+  - N2 : `mutateMany` (compensation) verrouille fiche par fiche, alors que la purge d'une liste verrouille tous ses éléments d'abord ; un interblocage reste possible entre une compensation et la purge d'une liste qui contient deux des éléments ;
+  - N5 : un événement surprise supprimé avant l'élément ou la liste ne laisse plus relever ses honorés au détachement ; à trancher avec le sort des giftlists après EVT-39.
+
 Restes :
 
 - **Écran de confirmation d'une compensation** : l'API confirme, mais aucune route ne liste les propositions reçues ; la personne sollicitée ne peut pas encore confirmer depuis l'interface.

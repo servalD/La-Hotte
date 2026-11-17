@@ -289,7 +289,16 @@ export class ManageOffsets {
       input.viewerId,
       null,
     );
-    const moves = offsetMoves(input.viewerId, input.counterpartId, input.currency, lines);
+    // CPT-68 (revue SEC-40, N1) : seulement les parts que l'autre voit aussi.
+    const theirs = await balanceLines(
+      this.repository,
+      this.items,
+      this.gate,
+      input.counterpartId,
+      null,
+    );
+    const shared = lines.filter((line) => theirs.details.has(line.contributionId));
+    const moves = offsetMoves(input.viewerId, input.counterpartId, input.currency, shared);
     if (moves.length === 0) throw new OffsetNothingError();
     const existing = await this.repository.pendingOffset(
       input.viewerId,
@@ -335,6 +344,23 @@ export class ManageOffsets {
     );
     const accountingIds = owners.flatMap((state) => (state ? [state.id] : []));
     const now = this.clock.now();
+    // CPT-68 (revue SEC-40, N1) : chaque fiche doit encore être vue par les deux, sinon la
+    // proposition est caduque et répond comme une inconnue (aucun état de la fiche n'en sort).
+    for (const state of owners) {
+      const seen =
+        state !== null &&
+        (
+          await Promise.all(
+            [proposal.proposerId, proposal.counterpartId].map((id) =>
+              gateOf(this.items, this.gate, id, state),
+            ),
+          )
+        ).every((gated) => isParticipant(gated));
+      if (!seen) {
+        await this.repository.setOffsetStatus(proposal.id, 'STALE', now);
+        throw new AccountingNotFoundError();
+      }
+    }
     try {
       await this.repository.mutateMany({
         accountingIds,

@@ -461,4 +461,70 @@ describe('Compta en base (CPT-03, CPT-70, CPT-71)', () => {
     const forPapa = await http().get('/api/v1/balances').set({ Cookie: papa.cookie }).expect(200);
     expect(forPapa.body.items).not.toEqual([]);
   }, 30_000);
+
+  it('N1 (revue SEC-40) : une compensation n’apprend rien à un participant devenu destinataire', async () => {
+    const { papa, tonton, itemId: velo } = await world();
+    const leo = await person();
+    await link(leo, papa);
+    await link(leo, tonton);
+    // Vélo de Marie : Papa achète, Tonton participe.
+    await contribute(papa, velo, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, velo, { mode: 'FIXED', amountMinor: 2_000 }).expect(200);
+    // Livre de Léo : Tonton achète, Papa participe.
+    const lists = await http().get('/api/v1/lists').set({ Cookie: leo.cookie }).expect(200);
+    const listId = (lists.body.items as Body[]).find((l) => l.personal)!.id as string;
+    const product = await http()
+      .post('/api/v1/products')
+      .set(leo.mutation)
+      .send({ title: 'Livre', unitPriceMinor: 3_500 })
+      .expect(201);
+    const livre = (
+      await http()
+        .post(`/api/v1/lists/${listId}/items`)
+        .set(leo.mutation)
+        .send({ productId: product.body.id })
+        .expect(201)
+    ).body.id as string;
+    await contribute(tonton, livre, { mode: 'FIXED', amountMinor: 2_000 }).expect(200);
+    await contribute(papa, livre, { mode: 'FIXED', amountMinor: 1_500 }).expect(200);
+    for (const [buyer, item] of [
+      [papa, velo],
+      [tonton, livre],
+    ] as const) {
+      await http()
+        .put(`/api/v1/items/${item}/purchase`)
+        .set({ ...buyer.mutation, 'Idempotency-Key': randomUUID() })
+        .send({})
+        .expect(200);
+    }
+    // Papa propose tant que Tonton voit tout ; puis Tonton devient co-destinataire du vélo.
+    const proposal = await http()
+      .post('/api/v1/offset-proposals')
+      .set(papa.mutation)
+      .send({ counterpartId: tonton.profileId, currency: 'EUR' })
+      .expect(200);
+    const veloItem = await prisma.listItem.findUniqueOrThrow({ where: { id: velo } });
+    await prisma.listRecipient.create({
+      data: { id: randomUUID(), listId: veloItem.listId, profileId: tonton.profileId! },
+    });
+    const before = await prisma.contribution.findMany({
+      where: { accounting: { itemId: { in: [velo, livre] } } },
+    });
+    await http()
+      .post(`/api/v1/offset-proposals/${proposal.body.id as string}/confirm`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': randomUUID() })
+      .expect(404);
+    const after = await prisma.contribution.findMany({
+      where: { accounting: { itemId: { in: [velo, livre] } } },
+    });
+    expect(after.map((r) => Number(r.settledMinor))).toEqual(
+      before.map((r) => Number(r.settledMinor)),
+    );
+    // Une nouvelle proposition ne porte plus que sur ce que les deux voient : rien à compenser.
+    await http()
+      .post('/api/v1/offset-proposals')
+      .set(papa.mutation)
+      .send({ counterpartId: tonton.profileId, currency: 'EUR' })
+      .expect(422);
+  }, 30_000);
 });

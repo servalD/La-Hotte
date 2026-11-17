@@ -426,8 +426,10 @@ export class PrismaAccountingRepository extends AccountingRepository {
 
   /** Verrou sur la fiche ; pour l'ouvrir, verrou sur l'élément d'abord (deux premières parts). */
   /**
-   * Revue SEC-40, I1 : un seul ordre de verrous, l'élément puis la fiche, comme la suppression d'un
-   * élément (dont le déclencheur verrouille la fiche après la ligne `list_item`).
+   * Revue SEC-40, I1 : l'élément puis la fiche, comme la suppression d'un élément (dont le
+   * déclencheur verrouille la fiche après la ligne `list_item`). `FOR NO KEY UPDATE` (N4) se
+   * sérialise avec la suppression sans retenir les clés étrangères (un commentaire n'attend pas).
+   * Reste N2 : `mutateMany` verrouille fiche par fiche, pas tous les éléments d'abord.
    */
   private async lock(tx: Tx, key: AccountingKey): Promise<AccountingState | null> {
     if ('accountingId' in key) {
@@ -436,12 +438,12 @@ export class PrismaAccountingRepository extends AccountingRepository {
         select: { itemId: true },
       });
       if (head?.itemId) {
-        await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${head.itemId}::uuid FOR UPDATE`;
+        await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${head.itemId}::uuid FOR NO KEY UPDATE`;
       }
       await tx.$queryRaw`SELECT "id" FROM "item_accounting" WHERE "id" = ${key.accountingId}::uuid FOR UPDATE`;
       return load(tx, { id: key.accountingId });
     }
-    await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${key.itemId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${key.itemId}::uuid FOR NO KEY UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "item_accounting" WHERE "item_id" = ${key.itemId}::uuid FOR UPDATE`;
     return load(tx, { itemId: key.itemId });
   }

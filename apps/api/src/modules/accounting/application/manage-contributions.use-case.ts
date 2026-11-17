@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AppEvents, type AccountingChanged, Clock, IdGenerator } from '../../../shared/domain';
 import { FollowRepository } from '../../conversations';
 import { ItemAccessReader } from '../../lists';
-import { accountingLevel, canDecideReview } from '../../visibility';
+import { canDecideReview } from '../../visibility';
 import {
   type AccountingState,
   diffAccounting,
@@ -142,16 +142,16 @@ export abstract class ItemAccountingMutation {
             },
           });
         }
-        const level = accountingLevel(
-          item?.subject ?? null,
-          { participants: participantsOf(next), buyerId: next.buyerId },
-          viewerId,
-        );
+        // N3 (revue SEC-40) : le niveau de la réponse vient du même juge, exclus compris.
+        const level = this.gate.decide(viewerId, item, next).level;
+        // Plus d'accès après le geste (VIS-37 : retrait d'une part sur un élément qui n'est plus
+        // vu) : une vue vide, sans rien de la fiche.
+        const visible = level !== 'none';
         const body = buildAccountingView({
-          level: level === 'none' ? 'giver' : level,
+          level: visible ? level : 'giver',
           viewerId,
-          item,
-          state: next,
+          item: visible ? item : null,
+          state: visible ? next : null,
           cards,
           canContribute: gated.canContribute,
         });

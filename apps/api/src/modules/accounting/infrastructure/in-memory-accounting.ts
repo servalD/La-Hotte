@@ -264,7 +264,12 @@ export class InMemoryAccountingRepository extends AccountingRepository {
   }
 
   /** CPT-73 : ce que fait le déclencheur de la base quand l'élément disparaît. */
-  detach(itemId: string, title: string, eventId: string | null): void {
+  detach(
+    itemId: string,
+    title: string,
+    eventId: string | null,
+    excluded: readonly string[] = [],
+  ): void {
     for (const state of this.states.values()) {
       if (state.itemId !== itemId) continue;
       this.states.set(state.id, {
@@ -273,6 +278,7 @@ export class InMemoryAccountingRepository extends AccountingRepository {
         detachedTitle: title,
         detachedEventId: eventId,
         detachedAt: this.now(),
+        detachedExcluded: excluded,
         version: state.version + 1,
       });
     }
