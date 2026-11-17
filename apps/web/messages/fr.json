@@ -1452,7 +1452,17 @@
   },
   "pwa": {
     "updateReady": "Une nouvelle version est prête.",
-    "reload": "Recharger"
+    "reload": "Recharger",
+    "installTitle": "Installer La Hotte",
+    "installBody": "Ajoutez l'application à votre écran d'accueil : elle s'ouvre même sans réseau, et « Partager » depuis un site ajoute un souhait en deux gestes.",
+    "installIos": "Sur iPhone : touchez Partager, puis « Sur l'écran d'accueil ».",
+    "install": "Installer",
+    "later": "Plus tard",
+    "pushTitle": "Être prévenu",
+    "pushBody": "Recevez une alerte quand quelqu'un répond ou quand un cadeau avance. Le message reste discret : il ne dit jamais ce qui se prépare.",
+    "pushEnable": "Activer les notifications",
+    "pushOn": "Notifications activées sur cet appareil.",
+    "pushFailed": "Les notifications n'ont pas pu être activées. Réessayez plus tard."
   },
   "connection": {
     "offline": "Hors ligne : vos gestes partiront au retour du réseau.",
@@ -1460,5 +1470,12 @@
     "pending": "{count, plural, one {# en attente} other {# en attente}}",
     "updating": "Mise à jour…",
     "upToDate": "À jour"
+  },
+  "share": {
+    "title": "Ajouter un souhait",
+    "noLink": "Aucun lien reçu : choisissez la liste, puis collez le lien ou saisissez le souhait.",
+    "chooseList": "Dans quelle liste ?",
+    "noList": "Vous n'avez pas encore de liste. Créez-en une depuis « Listes ».",
+    "personal": "Ma liste"
   }
 }

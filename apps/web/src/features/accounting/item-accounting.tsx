@@ -14,6 +14,7 @@ import {
   useRefuseAccountingReview,
 } from '@wishlist/api-client';
 import { offlineActions } from '@/lib/offline/actions';
+import { announceMoment } from '@/lib/pwa/engagement';
 import { kindKey, type QueuedInput } from '@/lib/offline/queue';
 import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { useLocale, useTranslations } from 'next-intl';
@@ -217,6 +218,7 @@ function ContributeForm({
     perform(offlineActions.contribute(itemId, data, amountMinor))
       .then(() => {
         setValue('');
+        announceMoment('reservation');
         onDone();
       })
       .catch(onError)

@@ -1,5 +1,6 @@
 'use client';
 
+import { useAppBadge } from '@/lib/pwa/engagement';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getCountUnreadNotificationsQueryKey,
@@ -104,6 +105,7 @@ export function NotificationsLink({ label }: { label: string }) {
   const t = useTranslations('notifications');
   const { data } = useCountUnreadNotifications();
   const count = data?.count ?? 0;
+  useAppBadge(count);
   return (
     <Button asChild variant="ghost">
       <Link href="/notifications" aria-label={count > 0 ? t('linkCount', { count }) : label}>

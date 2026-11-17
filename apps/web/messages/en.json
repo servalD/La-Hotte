@@ -1452,7 +1452,17 @@
   },
   "pwa": {
     "updateReady": "A new version is ready.",
-    "reload": "Reload"
+    "reload": "Reload",
+    "installTitle": "Install La Hotte",
+    "installBody": "Add the app to your home screen: it opens even without a connection, and \"Share\" from a website adds a wish in two taps.",
+    "installIos": "On iPhone: tap Share, then \"Add to Home Screen\".",
+    "install": "Install",
+    "later": "Later",
+    "pushTitle": "Get notified",
+    "pushBody": "Get an alert when someone replies or a gift moves forward. The message stays discreet: it never says what's being prepared.",
+    "pushEnable": "Turn on notifications",
+    "pushOn": "Notifications are on for this device.",
+    "pushFailed": "Notifications couldn't be turned on. Try again later."
   },
   "connection": {
     "offline": "Offline: what you do will be sent when you're back online.",
@@ -1460,5 +1470,12 @@
     "pending": "{count, plural, one {# waiting} other {# waiting}}",
     "updating": "Updating…",
     "upToDate": "Up to date"
+  },
+  "share": {
+    "title": "Add a wish",
+    "noLink": "No link received: choose the list, then paste the link or type the wish.",
+    "chooseList": "Which list?",
+    "noList": "You don't have a list yet. Create one from \"Lists\".",
+    "personal": "My list"
   }
 }

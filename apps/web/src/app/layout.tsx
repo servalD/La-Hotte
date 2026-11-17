@@ -15,6 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // PWA-11 : l'écran à encoche est occupé en entier ; les marges sûres sont tenues par le cadre.
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#fcfbf9' },
     { media: '(prefers-color-scheme: dark)', color: '#141210' },

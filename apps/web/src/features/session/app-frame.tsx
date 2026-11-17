@@ -10,6 +10,7 @@ import { wipeDevice } from '@/lib/offline/device';
 import { announceIdentity } from '@/lib/offline/identity-channel';
 import { forgetProfileKeys } from '@/lib/offline/keys';
 import { ConnectionStatus } from '@/lib/offline/connection-status';
+import { InstallInvite, PushInvite } from '@/lib/pwa/engagement';
 import { useQueuedActions } from '@/lib/offline/queue-context';
 import { ConfirmButton } from '@/components/confirm-button';
 import { purgeUserData } from '@/lib/session/purge';
@@ -79,7 +80,7 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 px-4 py-4">
+    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-lg font-bold">{t('app')}</span>
         <nav aria-label={t('label')} className="flex flex-wrap items-center gap-1">
@@ -122,7 +123,14 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
           )}
         </nav>
       </header>
-      {area === 'profile' ? <ConnectionStatus /> : null}
+      {area === 'profile' ? (
+        <>
+          <ConnectionStatus />
+          {/* PWA-03, PWA-04 : proposées au moment où elles servent, jamais à la première visite. */}
+          <InstallInvite />
+          <PushInvite />
+        </>
+      ) : null}
       <main id="contenu" className="flex flex-1 flex-col gap-6">
         {children}
       </main>

@@ -1,5 +1,6 @@
 'use client';
 
+import { announceMoment } from '@/lib/pwa/engagement';
 import { ProfileImage } from '@/lib/offline/profile-image';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -191,6 +192,7 @@ function DraftForm({ product, listId }: { product: ProductView; listId: string |
                   { id: listId, data: { productId: product.id } },
                   {
                     onSuccess: () => {
+                      announceMoment('wish-added');
                       router.push(`/lists/${listId}`);
                     },
                     onError,

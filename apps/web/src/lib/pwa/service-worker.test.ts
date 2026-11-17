@@ -118,6 +118,46 @@ describe('Service worker (PWA-07, OFF-24)', () => {
     expect(await unknown?.text()).toContain('page /offline');
   });
 
+  it('push (NOT-06, PWA-04) : texte borné, lien gardé dans l’application', () => {
+    const shown: { title: string; options: { body: string; data: { url: string } } }[] = [];
+    const handlers = new Map<string, (event: unknown) => void>();
+    runInNewContext(SERVICE_WORKER_SOURCE, {
+      self: {
+        location: { origin: ORIGIN },
+        addEventListener: (type: string, handler: (event: unknown) => void) =>
+          handlers.set(type, handler),
+        registration: {
+          showNotification: (title: string, options: { body: string; data: { url: string } }) => {
+            shown.push({ title, options });
+            return Promise.resolve();
+          },
+        },
+        clients: { claim: () => Promise.resolve(), matchAll: () => Promise.resolve([]) },
+      },
+      caches: {},
+      fetch: () => Promise.reject(new Error('hors test')),
+      URL,
+      Response,
+      Promise,
+      Set,
+    });
+    const push = (payload: unknown) =>
+      handlers.get('push')?.({
+        data: { json: () => payload },
+        waitUntil: () => undefined,
+      });
+    push({ title: 'Pour Léa', body: 'Un nouveau message', url: '/notifications' });
+    push({ title: 'x'.repeat(500), body: 'y', url: 'https://piege.example/' });
+    push({ title: 'z', body: 'w', url: '//piege.example/' });
+    expect(shown[0]).toMatchObject({
+      title: 'Pour Léa',
+      options: { body: 'Un nouveau message', data: { url: '/notifications' } },
+    });
+    expect(shown[1]?.title).toHaveLength(80);
+    expect(shown[1]?.options.data.url).toBe('/notifications');
+    expect(shown[2]?.options.data.url).toBe('/notifications');
+  });
+
   it('pages de connexion, de compte, de profils : jamais mises en cache', async () => {
     const sw = harness(network);
     for (const path of [

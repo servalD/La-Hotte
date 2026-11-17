@@ -8,10 +8,11 @@ import {
   useCreateProductFromPhoto,
 } from '@wishlist/api-client';
 import { offlineActions } from '@/lib/offline/actions';
+import { announceMoment } from '@/lib/pwa/engagement';
 import { useIsOnline } from '@/lib/offline/offline-provider';
 import type { QueuedInput } from '@/lib/offline/queue';
 import { useOfflineAction, useQueuedActions } from '@/lib/offline/queue-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ export function AddItemPanel({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>('link');
+  const shared = useSearchParams().get('add');
   const [error, setError] = useState<string | null>(null);
   const create = useCreateProduct();
   const fromPhoto = useCreateProductFromPhoto();
@@ -74,6 +76,7 @@ export function AddItemPanel({
       perform(input)
         .then((outcome) => {
           formElement.reset();
+          announceMoment('wish-added');
           if (!outcome.queued) {
             void queryClient.invalidateQueries({ queryKey: getListItemsQueryKey(listId) });
           }
@@ -149,6 +152,8 @@ export function AddItemPanel({
             type="url"
             required
             maxLength={2048}
+            // PWA-02 : lien reçu par la cible de partage, prérempli.
+            defaultValue={shared ?? undefined}
           />
         ) : null}
         {mode === 'link' && !online ? (

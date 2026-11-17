@@ -76,6 +76,45 @@ self.addEventListener('sync', (event) => {
   );
 });
 
+// NOT-15, PWA-04 : push au texte neutre (NOT-06), rien d'autre n'est lu du message. Un lien ne
+// mène que dans l'application.
+const inApp = (value) => (typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/notifications');
+const text = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (error) {
+    data = {};
+  }
+  event.waitUntil(
+    self.registration.showNotification(text(data.title, 80) || 'La Hotte', {
+      body: text(data.body, 240),
+      tag: text(data.tag, 80) || undefined,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: inApp(data.url) },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = inApp(event.notification.data && event.notification.data.url);
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
