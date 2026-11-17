@@ -55,6 +55,14 @@ export const editOneCommentResponse = zod.object({
     .nullable(),
   editedAt: zod.iso.datetime({}).nullable(),
   deleted: zod.boolean(),
+  moderation: zod
+    .enum(['NONE', 'UNDER_REVIEW', 'REMOVED'])
+    .describe(
+      'MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide.',
+    )
+    .describe(
+      'MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide.',
+    ),
   createdAt: zod.iso.datetime({}),
   reactions: zod.array(
     zod.object({
@@ -144,6 +152,14 @@ export const listItemCommentsResponse = zod.object({
         .nullable(),
       editedAt: zod.iso.datetime({}).nullable(),
       deleted: zod.boolean(),
+      moderation: zod
+        .enum(['NONE', 'UNDER_REVIEW', 'REMOVED'])
+        .describe(
+          'MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide.',
+        )
+        .describe(
+          'MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide.',
+        ),
       createdAt: zod.iso.datetime({}),
       reactions: zod.array(
         zod.object({

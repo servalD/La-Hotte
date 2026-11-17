@@ -5,3 +5,6 @@ export { ACTIONS_SHOWN_TO_HOLDER, REASON_SHOWN_TO_HOLDER } from './domain/accoun
 export { AuditTrail } from './domain/audit-trail';
 export { InMemoryAccountSearchQuota } from './infrastructure/account-search-quota';
 export { InMemoryAuditTrail } from './infrastructure/in-memory-audit-trail';
+export { ModerationStore } from './domain/moderation';
+export { InMemoryModerationStore } from './infrastructure/in-memory-moderation-store';
+export { EraseRemovedComments } from './application/moderate-content.use-case';

@@ -269,6 +269,44 @@ export class RequestTotpReset {
 }
 
 /**
+ * MOD-10 : publication au catalogue global suspendue pour le compte de l'auteur d'un contenu
+ * retiré. Appelé par la modération, dont la décision porte déjà l'entrée d'audit.
+ */
+@Injectable()
+export class SuspendPublication {
+  constructor(
+    private readonly administration: AccountAdministration,
+    private readonly clock: Clock,
+  ) {}
+
+  async execute(authorProfileId: string): Promise<void> {
+    await this.administration.setPublicationSuspended({
+      profileId: authorProfileId,
+      accountId: null,
+      at: this.clock.now(),
+      audit: null,
+    });
+  }
+}
+
+/** MOD-10 : un modérateur ou un administrateur lève la suspension de publication d'un compte. */
+@Injectable()
+export class RestorePublication {
+  constructor(private readonly kit: AdminActionKit) {}
+
+  async execute(input: AdminActionInput): Promise<void> {
+    const target = await this.kit.target(input);
+    const done = await this.kit.administration.setPublicationSuspended({
+      profileId: null,
+      accountId: target.accountId,
+      at: null,
+      audit: this.kit.write(input, 'publication.restore'),
+    });
+    if (!done) throw new AdminTargetNotFoundError();
+  }
+}
+
+/**
  * ADM-07 : le titulaire ouvre le lien. TOTP, codes de secours et appareils de confiance retirés,
  * toutes les sessions coupées par l'époque. Aucune session n'est ouverte.
  */

@@ -1239,6 +1239,50 @@
         ]
       }
     },
+    "/api/v1/admin/accounts/{id}/publication/restore": {
+      "post": {
+        "operationId": "restoreAccountPublication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/accounts/{id}/reactivate": {
       "post": {
         "operationId": "reactivateAccount",
@@ -1482,6 +1526,137 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuditPageView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/moderation/{kind}/{id}/decide": {
+      "post": {
+        "operationId": "decideModeration",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "products",
+                "comments"
+              ]
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/moderation/contests/{id}/decide": {
+      "post": {
+        "operationId": "decideModerationContest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContestDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/moderation/queue": {
+      "get": {
+        "operationId": "getModerationQueue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationQueueView"
                 }
               }
             }
@@ -7075,6 +7250,81 @@
         ]
       }
     },
+    "/api/v1/moderation-decisions": {
+      "get": {
+        "operationId": "listDecisionsOnMyContent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionsOnMyContentView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/api/v1/moderation-decisions/{id}/contest": {
+      "post": {
+        "operationId": "contestModerationDecision",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/api/v1/notification-preferences": {
       "get": {
         "operationId": "getNotificationPreferences",
@@ -8226,6 +8476,40 @@
         },
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/reports": {
+      "post": {
+        "operationId": "reportContent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "moderation"
         ]
       }
     },
@@ -10113,6 +10397,15 @@
           "ACTIVITY"
         ]
       },
+      "CommentModeration": {
+        "type": "string",
+        "enum": [
+          "NONE",
+          "UNDER_REVIEW",
+          "REMOVED"
+        ],
+        "description": "MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide."
+      },
       "CommentPageView": {
         "type": "object",
         "properties": {
@@ -10157,6 +10450,34 @@
           "accentColor"
         ]
       },
+      "CommentQueueEntryView": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "COMMENT"
+            ]
+          },
+          "comment": {
+            "$ref": "#/components/schemas/CommentUnderReviewView"
+          },
+          "reports": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OpenReportsView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "comment",
+          "reports"
+        ]
+      },
       "CommentReaction": {
         "type": "string",
         "enum": [
@@ -10196,6 +10517,35 @@
         "enum": [
           "PUBLIC",
           "GIVERS"
+        ]
+      },
+      "CommentUnderReviewView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "thread": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentThread"
+              }
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "thread",
+          "body",
+          "createdAt"
         ]
       },
       "CommentView": {
@@ -10259,6 +10609,14 @@
           "deleted": {
             "type": "boolean"
           },
+          "moderation": {
+            "description": "MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentModeration"
+              }
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -10290,11 +10648,134 @@
           "activity",
           "editedAt",
           "deleted",
+          "moderation",
           "createdAt",
           "reactions",
           "mine",
           "canEdit",
           "canDelete"
+        ]
+      },
+      "ContestDecisionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "outcome": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContestOutcome"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "outcome"
+        ]
+      },
+      "ContestDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "ContestedDecisionView": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "KEEP",
+              "REMOVE",
+              "REMOVE_AND_SUSPEND",
+              "CONTEST"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportTargetKind"
+              }
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "reason",
+          "at",
+          "targetKind"
+        ]
+      },
+      "ContestOutcome": {
+        "type": "string",
+        "enum": [
+          "UPHOLD",
+          "OVERTURN"
+        ]
+      },
+      "ContestQueueEntryView": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CONTEST"
+            ]
+          },
+          "contestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ContestedDecisionView"
+          },
+          "product": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductUnderReviewView"
+              }
+            ]
+          },
+          "comment": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CommentUnderReviewView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "contestId",
+          "text",
+          "decision",
+          "product",
+          "comment"
         ]
       },
       "ContributionInputMode": {
@@ -10703,6 +11184,79 @@
         },
         "required": [
           "displayName"
+        ]
+      },
+      "DecisionOnMyContentView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportTargetKind"
+              }
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModerationDecision"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "contested": {
+            "type": "boolean"
+          },
+          "contestOutcome": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContestOutcome"
+              }
+            ]
+          },
+          "canContest": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "targetKind",
+          "targetId",
+          "action",
+          "reason",
+          "at",
+          "contested",
+          "contestOutcome",
+          "canContest"
+        ]
+      },
+      "DecisionsOnMyContentView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DecisionOnMyContentView"
+            }
+          }
+        },
+        "required": [
+          "items"
         ]
       },
       "DigestFrequency": {
@@ -12912,6 +13466,71 @@
           "READER"
         ]
       },
+      "ModerationDecision": {
+        "type": "string",
+        "enum": [
+          "KEEP",
+          "REMOVE",
+          "REMOVE_AND_SUSPEND"
+        ]
+      },
+      "ModerationDecisionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "decision": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModerationDecision"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "decision"
+        ]
+      },
+      "ModerationQueueView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ProductQueueEntryView"
+                },
+                {
+                  "$ref": "#/components/schemas/CommentQueueEntryView"
+                },
+                {
+                  "$ref": "#/components/schemas/ContestQueueEntryView"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind"
+              }
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ModerationStatus": {
+        "type": "string",
+        "enum": [
+          "NONE",
+          "PENDING",
+          "APPROVED",
+          "REJECTED"
+        ]
+      },
       "MoneyView": {
         "type": "object",
         "properties": {
@@ -13098,7 +13717,9 @@
           "security.pin_reset",
           "security.login",
           "security.totp_enabled",
-          "security.totp_disabled"
+          "security.totp_disabled",
+          "moderation.removed",
+          "moderation.restored"
         ]
       },
       "NotificationView": {
@@ -13263,6 +13884,32 @@
           "proposal",
           "createdAt",
           "expiresAt"
+        ]
+      },
+      "OpenReportsView": {
+        "type": "object",
+        "properties": {
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReportReasonCountView"
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "firstAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "reasons",
+          "notes",
+          "firstAt"
         ]
       },
       "OverviewEventView": {
@@ -13733,12 +14380,83 @@
           "nextCursor"
         ]
       },
+      "ProductQueueEntryView": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PRODUCT"
+            ]
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductUnderReviewView"
+          },
+          "reports": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OpenReportsView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "product",
+          "reports"
+        ]
+      },
       "ProductSource": {
         "type": "string",
         "enum": [
           "LINK",
           "PHOTO",
           "MANUAL"
+        ]
+      },
+      "ProductUnderReviewView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "imageKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "merchant": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModerationStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "imageKey",
+          "merchant",
+          "sourceUrl",
+          "status"
         ]
       },
       "ProductView": {
@@ -14268,6 +14986,74 @@
         "enum": [
           "OPEN",
           "INVITE_ONLY"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "targetKind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportTargetKind"
+              }
+            ]
+          },
+          "targetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "targetKind",
+          "targetId",
+          "reason"
+        ]
+      },
+      "ReportReason": {
+        "type": "string",
+        "enum": [
+          "SPAM",
+          "INAPPROPRIATE",
+          "PRIVACY",
+          "ILLEGAL",
+          "OTHER"
+        ]
+      },
+      "ReportReasonCountView": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReportReason"
+              }
+            ]
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "reason",
+          "count"
+        ]
+      },
+      "ReportTargetKind": {
+        "type": "string",
+        "enum": [
+          "PRODUCT",
+          "COMMENT"
         ]
       },
       "RequestTransferDto": {

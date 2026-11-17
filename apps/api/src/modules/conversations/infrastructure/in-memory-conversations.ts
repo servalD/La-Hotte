@@ -31,6 +31,8 @@ export class InMemoryCommentRepository extends CommentRepository {
       activity: comment.activity,
       editedAt: null,
       deletedAt: null,
+      maskedAt: null,
+      moderatedAt: null,
       createdAt: comment.at,
     };
     this.comments.set(record.id, record);
@@ -86,6 +88,35 @@ export class InMemoryCommentRepository extends CommentRepository {
     const next = { ...row, body: '', mentionIds: [], deletedAt: at };
     this.comments.set(row.id, next);
     return Promise.resolve(next);
+  }
+
+  setMasked(commentId: string, at: Date | null): Promise<boolean> {
+    const row = this.comments.get(commentId);
+    if (!row || row.kind !== 'MESSAGE' || row.deletedAt || row.moderatedAt) {
+      return Promise.resolve(false);
+    }
+    this.comments.set(commentId, { ...row, maskedAt: at });
+    return Promise.resolve(true);
+  }
+
+  setModerated(commentId: string, at: Date | null): Promise<boolean> {
+    const row = this.comments.get(commentId);
+    if (!row || row.kind !== 'MESSAGE' || row.deletedAt) return Promise.resolve(false);
+    this.comments.set(commentId, { ...row, moderatedAt: at, maskedAt: null });
+    return Promise.resolve(true);
+  }
+
+  eraseModerated(ids: readonly string[], at: Date): Promise<number> {
+    let count = 0;
+    for (const id of ids) {
+      const row = this.comments.get(id);
+      if (!row?.moderatedAt || row.deletedAt) continue;
+      for (const key of [...this.reactions])
+        if (key.startsWith(`${id}|`)) this.reactions.delete(key);
+      this.comments.set(id, { ...row, body: '', mentionIds: [], deletedAt: at });
+      count += 1;
+    }
+    return Promise.resolve(count);
   }
 
   countMessages(itemId: string): Promise<Record<Thread, number>> {

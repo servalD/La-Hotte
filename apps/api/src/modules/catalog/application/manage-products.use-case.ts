@@ -168,6 +168,47 @@ export class ProductCatalog {
     return this.products.findGlobal(input);
   }
 
+  /**
+   * MOD-08, MOD-10, MOD-11 : gestes de la modération. `mask` : une fiche approuvée sort du
+   * catalogue en attendant un modérateur ; `keep` : elle y revient ; `remove` : retirée et ramenée
+   * au privé ; `overturn` : un retrait annulé sur contestation, l'auteur peut republier.
+   */
+  async moderate(
+    productId: string,
+    gesture: 'mask' | 'keep' | 'remove' | 'overturn',
+  ): Promise<void> {
+    const product = await this.products.findById(productId);
+    if (!product) return;
+    switch (gesture) {
+      case 'mask':
+        if (product.shareLevel === 'GLOBAL' && product.moderationStatus === 'APPROVED') {
+          await this.products.setModeration(productId, { moderation: 'PENDING' });
+        }
+        return;
+      case 'keep':
+        if (product.shareLevel === 'GLOBAL' && product.moderationStatus === 'PENDING') {
+          await this.products.setModeration(productId, { moderation: 'APPROVED' });
+        }
+        return;
+      case 'remove':
+        await this.products.setModeration(productId, {
+          moderation: 'REJECTED',
+          shareLevel: product.shareLevel === 'GLOBAL' ? 'PRIVATE' : product.shareLevel,
+        });
+        return;
+      case 'overturn':
+        if (product.moderationStatus === 'REJECTED') {
+          await this.products.setModeration(productId, { moderation: 'NONE' });
+        }
+        return;
+    }
+  }
+
+  /** MOD-10 : fiches en attente de la file. */
+  pendingGlobal(limit: number): Promise<Product[]> {
+    return this.products.findPendingGlobal(limit);
+  }
+
   /** MOD-12 : profil enfant, publication suspendue. */
   publisher(profileId: string): Promise<Publisher | null> {
     return this.publishers.of(profileId);

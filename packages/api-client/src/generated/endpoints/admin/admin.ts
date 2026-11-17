@@ -26,7 +26,10 @@ import type {
   AdminReasonDto,
   AuditPageView,
   ChangeRoleDto,
+  ContestDecisionDto,
   ListAuditEntriesParams,
+  ModerationDecisionDto,
+  ModerationQueueView,
   PlatformSettingKey,
   PlatformSettingsView,
   ProblemDetailsDto,
@@ -245,6 +248,89 @@ export const useForceAccountLogout = <TError = ErrorType<ProblemDetailsDto>, TCo
   TContext
 > => {
   const mutationOptions = getForceAccountLogoutMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getRestoreAccountPublicationUrl = (id: string) => {
+  return `/api/v1/admin/accounts/${id}/publication/restore`;
+};
+
+export const restoreAccountPublication = async (
+  id: string,
+  adminReasonDto: AdminReasonDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getRestoreAccountPublicationUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminReasonDto),
+  });
+};
+
+export const getRestoreAccountPublicationMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreAccountPublication>>,
+    TError,
+    { id: string; data: AdminReasonDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreAccountPublication>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationKey = ['restoreAccountPublication'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreAccountPublication>>,
+    { id: string; data: AdminReasonDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return restoreAccountPublication(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreAccountPublicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreAccountPublication>>
+>;
+export type RestoreAccountPublicationMutationBody = AdminReasonDto;
+export type RestoreAccountPublicationMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRestoreAccountPublication = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof restoreAccountPublication>>,
+      TError,
+      { id: string; data: AdminReasonDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof restoreAccountPublication>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationOptions = getRestoreAccountPublicationMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
@@ -688,6 +774,281 @@ export function useListAuditEntries<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getListAuditEntriesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getDecideModerationUrl = (kind: 'products' | 'comments', id: string) => {
+  return `/api/v1/admin/moderation/${kind}/${id}/decide`;
+};
+
+export const decideModeration = async (
+  kind: 'products' | 'comments',
+  id: string,
+  moderationDecisionDto: ModerationDecisionDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getDecideModerationUrl(kind, id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moderationDecisionDto),
+  });
+};
+
+export const getDecideModerationMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof decideModeration>>,
+    TError,
+    { kind: 'products' | 'comments'; id: string; data: ModerationDecisionDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof decideModeration>>,
+  TError,
+  { kind: 'products' | 'comments'; id: string; data: ModerationDecisionDto },
+  TContext
+> => {
+  const mutationKey = ['decideModeration'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof decideModeration>>,
+    { kind: 'products' | 'comments'; id: string; data: ModerationDecisionDto }
+  > = (props) => {
+    const { kind, id, data } = props ?? {};
+
+    return decideModeration(kind, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DecideModerationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof decideModeration>>
+>;
+export type DecideModerationMutationBody = ModerationDecisionDto;
+export type DecideModerationMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useDecideModeration = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof decideModeration>>,
+      TError,
+      { kind: 'products' | 'comments'; id: string; data: ModerationDecisionDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof decideModeration>>,
+  TError,
+  { kind: 'products' | 'comments'; id: string; data: ModerationDecisionDto },
+  TContext
+> => {
+  const mutationOptions = getDecideModerationMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getDecideModerationContestUrl = (id: string) => {
+  return `/api/v1/admin/moderation/contests/${id}/decide`;
+};
+
+export const decideModerationContest = async (
+  id: string,
+  contestDecisionDto: ContestDecisionDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getDecideModerationContestUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(contestDecisionDto),
+  });
+};
+
+export const getDecideModerationContestMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof decideModerationContest>>,
+    TError,
+    { id: string; data: ContestDecisionDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof decideModerationContest>>,
+  TError,
+  { id: string; data: ContestDecisionDto },
+  TContext
+> => {
+  const mutationKey = ['decideModerationContest'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof decideModerationContest>>,
+    { id: string; data: ContestDecisionDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return decideModerationContest(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DecideModerationContestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof decideModerationContest>>
+>;
+export type DecideModerationContestMutationBody = ContestDecisionDto;
+export type DecideModerationContestMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useDecideModerationContest = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof decideModerationContest>>,
+      TError,
+      { id: string; data: ContestDecisionDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof decideModerationContest>>,
+  TError,
+  { id: string; data: ContestDecisionDto },
+  TContext
+> => {
+  const mutationOptions = getDecideModerationContestMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getGetModerationQueueUrl = () => {
+  return `/api/v1/admin/moderation/queue`;
+};
+
+export const getModerationQueue = async (options?: RequestInit): Promise<ModerationQueueView> => {
+  return apiFetch<ModerationQueueView>(getGetModerationQueueUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetModerationQueueQueryKey = () => {
+  return [`/api/v1/admin/moderation/queue`] as const;
+};
+
+export const getGetModerationQueueQueryOptions = <
+  TData = Awaited<ReturnType<typeof getModerationQueue>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getModerationQueue>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetModerationQueueQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getModerationQueue>>> = ({ signal }) =>
+    getModerationQueue({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getModerationQueue>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetModerationQueueQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getModerationQueue>>
+>;
+export type GetModerationQueueQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetModerationQueue<
+  TData = Awaited<ReturnType<typeof getModerationQueue>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getModerationQueue>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getModerationQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getModerationQueue>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetModerationQueue<
+  TData = Awaited<ReturnType<typeof getModerationQueue>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getModerationQueue>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getModerationQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getModerationQueue>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetModerationQueue<
+  TData = Awaited<ReturnType<typeof getModerationQueue>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getModerationQueue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetModerationQueue<
+  TData = Awaited<ReturnType<typeof getModerationQueue>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getModerationQueue>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetModerationQueueQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

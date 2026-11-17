@@ -62,6 +62,9 @@ export const NOTIFICATION_TYPES = {
   'security.login': 'SECURITY',
   'security.totp_enabled': 'SECURITY',
   'security.totp_disabled': 'SECURITY',
+  // Phase 7 (MOD-11) : avis à l'auteur d'un contenu retiré, ou rétabli sur contestation.
+  'moderation.removed': 'SECURITY',
+  'moderation.restored': 'SECURITY',
 } as const satisfies Record<string, NotificationCategory>;
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
 

@@ -157,6 +157,34 @@ export class PrismaAccountAdministration extends AccountAdministration {
     });
   }
 
+  setPublicationSuspended(input: {
+    profileId: string | null;
+    accountId: string | null;
+    at: Date | null;
+    audit: AuditWrite | null;
+  }): Promise<string | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const accountId =
+        input.accountId ??
+        (input.profileId
+          ? (
+              await tx.profile.findUnique({
+                where: { id: input.profileId },
+                select: { accountId: true },
+              })
+            )?.accountId
+          : null);
+      if (!accountId) return null;
+      const { count } = await tx.account.updateMany({
+        where: { id: accountId },
+        data: { publicationSuspendedAt: input.at },
+      });
+      if (count !== 1) return null;
+      if (input.audit) await appendAudit(tx, input.audit);
+      return accountId;
+    });
+  }
+
   async recordTotpResetRequest(audit: AuditWrite): Promise<void> {
     await appendAudit(this.prisma, audit);
   }

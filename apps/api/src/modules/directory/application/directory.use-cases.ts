@@ -143,6 +143,32 @@ export class SearchDirectory {
   }
 }
 
+/**
+ * MOD-07 : une fiche se signale seulement si ce profil la voit dans le répertoire du cercle ou le
+ * catalogue global ; sinon `null`, comme une fiche inconnue (SEC-04). Sa propre fiche ne se
+ * signale pas.
+ */
+@Injectable()
+export class DirectoryEntryReader {
+  constructor(
+    private readonly catalog: ProductCatalog,
+    private readonly references: ProductReferences,
+    private readonly visibility: VisibilityService,
+  ) {}
+
+  async readable(
+    viewerId: string,
+    productId: string,
+  ): Promise<{ readonly ownerProfileId: string } | null> {
+    const product = await this.catalog.findById(productId);
+    if (!product?.ownerProfileId) return null;
+    const visible =
+      (await visibleEntries(this.visibility, this.references, viewerId, [product])).length > 0 ||
+      (await visibleGlobal(this.references, viewerId, [{ product, adopters: 0 }])).length > 0;
+    return visible ? { ownerProfileId: product.ownerProfileId } : null;
+  }
+}
+
 /** POST /directory/{productId}/copy : « ajouter à ma liste » commence par une copie (REP-05, ART-04). */
 @Injectable()
 export class CopyFromDirectory {

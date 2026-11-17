@@ -4,6 +4,7 @@ import { ListsModule } from '../lists';
 import { VisibilityModule } from '../visibility';
 import {
   CopyFromDirectory,
+  DirectoryEntryReader,
   SearchDirectory,
   SearchGlobalCatalog,
   ShareProduct,
@@ -14,6 +15,13 @@ import { DirectoryController, ProductShareController } from './presentation/dire
 @Module({
   imports: [VisibilityModule, CatalogModule, ListsModule],
   controllers: [ProductShareController, DirectoryController],
-  providers: [ShareProduct, SearchDirectory, SearchGlobalCatalog, CopyFromDirectory],
+  providers: [
+    ShareProduct,
+    SearchDirectory,
+    SearchGlobalCatalog,
+    CopyFromDirectory,
+    DirectoryEntryReader,
+  ],
+  exports: [DirectoryEntryReader],
 })
 export class DirectoryModule {}

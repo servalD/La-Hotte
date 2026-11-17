@@ -43,6 +43,12 @@ export abstract class CommentRepository {
   }): Promise<CommentRecord | null>;
   /** COM-15 : texte et mentions effacés, réactions retirées, une transaction. */
   abstract softDelete(commentId: string, at: Date): Promise<CommentRecord | null>;
+  /** MOD-08 : masque ou démasque un message vivant ; faux s'il n'en est plus un. */
+  abstract setMasked(commentId: string, at: Date | null): Promise<boolean>;
+  /** MOD-10, MOD-11 : retire (ou rétablit) un message ; le masquage tombe. */
+  abstract setModerated(commentId: string, at: Date | null): Promise<boolean>;
+  /** MOD-11 : texte d'un message retiré effacé définitivement (COM-15). */
+  abstract eraseModerated(ids: readonly string[], at: Date): Promise<number>;
   /** COM-17 : messages vivants par fil. */
   abstract countMessages(itemId: string): Promise<Record<Thread, number>>;
   abstract react(commentId: string, profileId: string, reaction: CommentReaction): Promise<void>;

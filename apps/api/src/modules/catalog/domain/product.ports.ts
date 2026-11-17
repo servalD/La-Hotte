@@ -66,6 +66,16 @@ export abstract class ProductRepository {
    * avec le nombre de comptes distincts qui ont publié cette URL ; les plus récentes d'abord.
    * `query` : recherche plein texte (VIS-40).
    */
+  /**
+   * MOD-08, MOD-10 : statut de modération posé par la modération, quel que soit le propriétaire ;
+   * `shareLevel` ramène la fiche au privé quand elle est retirée. Faux si la fiche n'existe plus.
+   */
+  abstract setModeration(
+    productId: string,
+    input: { readonly moderation: ModerationStatus; readonly shareLevel?: ShareLevel },
+  ): Promise<boolean>;
+  /** MOD-10 : fiches `GLOBAL` en attente, les plus anciennes d'abord. */
+  abstract findPendingGlobal(limit: number): Promise<Product[]>;
   abstract findGlobal(input: {
     readonly query: string | null;
     readonly limit: number;

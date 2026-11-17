@@ -28,11 +28,13 @@ export class InMemoryPublisherPolicy extends PublisherPolicy {
   readonly suspended = new Set<string>();
   /** PRO-05 : branché par le banc sur les profils en mémoire d'`identity`. */
   isChildOf: (profileId: string) => boolean = () => false;
+  /** MOD-10 : branché par le banc sur la suspension de publication du compte. */
+  isSuspendedOf: (profileId: string) => boolean = () => false;
 
   of(profileId: string): Promise<Publisher | null> {
     return Promise.resolve({
       isChild: this.isChildOf(profileId),
-      publicationSuspended: this.suspended.has(profileId),
+      publicationSuspended: this.suspended.has(profileId) || this.isSuspendedOf(profileId),
     });
   }
 }

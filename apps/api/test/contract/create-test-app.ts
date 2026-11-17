@@ -124,8 +124,11 @@ import {
   AccountDirectory,
   AccountSearchQuota,
   AuditTrail,
+  EraseRemovedComments,
   InMemoryAccountSearchQuota,
   InMemoryAuditTrail,
+  InMemoryModerationStore,
+  ModerationStore,
 } from '../../src/modules/admin/testing';
 import {
   AccountAdministration,
@@ -152,6 +155,9 @@ export interface TestAdmin {
   readonly settings: InMemoryPlatformSettings;
   readonly searchQuota: InMemoryAccountSearchQuota;
   readonly administration: InMemoryAccountAdministration;
+  readonly moderation: InMemoryModerationStore;
+  /** MOD-11 : lance l'effacement des messages retirés, comme la tâche du processus. */
+  eraseRemovedComments(): Promise<number>;
 }
 
 /** Doubles du module `accounting` (phase 5). */
@@ -276,6 +282,9 @@ export async function createTestApp(
   const sessions = new InMemorySessionStore();
   const audit = new InMemoryAuditTrail();
   const publishers = new InMemoryPublisherPolicy();
+  const moderation = new InMemoryModerationStore((write) => {
+    audit.append(write);
+  });
   const platformSettings = new InMemoryPlatformSettings((write) => {
     audit.append(write);
   });
@@ -465,6 +474,8 @@ export async function createTestApp(
     .useValue(conversations.delivery)
     .overrideProvider(DigestRepository)
     .useValue(conversations.digests)
+    .overrideProvider(ModerationStore)
+    .useValue(moderation)
     .overrideProvider(PublisherPolicy)
     .useValue(publishers)
     .overrideProvider(AuditTrail)
@@ -599,6 +610,18 @@ export async function createTestApp(
 
   products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
   publishers.isChildOf = (profileId) => accounts.profiles.get(profileId)?.isChild === true;
+  publishers.isSuspendedOf = (profileId) => {
+    const accountId = accounts.profiles.get(profileId)?.accountId;
+    return accountId !== undefined && administration.publicationSuspended.has(accountId);
+  };
+  moderation.authorOf = (target) =>
+    target.kind === 'PRODUCT'
+      ? (products.rows.get(target.id)?.ownerProfileId ?? null)
+      : (conversations.comments.comments.get(target.id)?.authorId ?? null);
+  moderation.isLiveRemovedComment = (id) => {
+    const row = conversations.comments.comments.get(id);
+    return Boolean(row?.moderatedAt) && !row?.deletedAt;
+  };
   catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
@@ -658,6 +681,13 @@ export async function createTestApp(
     events,
     conversations,
     accounting,
-    admin: { audit, settings: platformSettings, searchQuota, administration },
+    admin: {
+      audit,
+      settings: platformSettings,
+      searchQuota,
+      administration,
+      moderation,
+      eraseRemovedComments: () => app.get(EraseRemovedComments).execute(),
+    },
   };
 }

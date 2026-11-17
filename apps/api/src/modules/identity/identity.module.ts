@@ -24,7 +24,9 @@ import {
   ForceLogout,
   ReactivateAccount,
   RequestTotpReset,
+  RestorePublication,
   SuspendAccount,
+  SuspendPublication,
 } from './application/administer-accounts.use-case';
 import { AccountAdministration } from './domain/account-administration';
 import { PrismaAccountAdministration } from './infrastructure/prisma-account-administration';
@@ -264,6 +266,8 @@ import {
     ChangeAccountRole,
     RequestTotpReset,
     ConfirmTotpReset,
+    SuspendPublication,
+    RestorePublication,
     { provide: AccountAdministration, useClass: PrismaAccountAdministration },
     SessionLifecycle,
     ReportCsrfRejection,
@@ -395,6 +399,8 @@ import {
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
   exports: [
+    SuspendPublication,
+    RestorePublication,
     SuspendAccount,
     ReactivateAccount,
     ForceLogout,

@@ -40,7 +40,10 @@ La phase 7 donne aux exploitants des moyens d'agir sans leur donner celui de lir
 ### Signalement (MOD-07, MOD-08)
 
 - Le signalement vérifie la lisibilité de la cible **par le moteur** au nom du signaleur : le signalement ne devient pas un moyen de tester l'existence d'une ressource cachée (`404` identique).
-- Le masquage à trois est un état dérivé (comptage de comptes distincts), lu à chaque lecture de la cible ; il ne modifie ni le fil ni sa `version`, pour ne rien apprendre à un destinataire (VIS-35).
+- Le masquage à trois est un **état écrit** au troisième compte distinct, pas un comptage à chaque lecture : une fiche passe en `PENDING` (elle sort du catalogue sans requête de plus), un message prend `masked_at`. Il ne modifie ni le fil, ni son compteur, ni la `version` d'un élément, pour ne rien apprendre à un destinataire (VIS-35) ; un destinataire ne lit d'ailleurs jamais le fil Offreurs, il ne peut ni le signaler ni le voir masqué.
+- Un message retiré prend `moderated_at` et garde son texte, jamais servi, jusqu'à la fin de la contestation : une contestation qui aboutit doit pouvoir le rétablir. Une tâche planifiée l'efface (COM-15) 14 jours après la décision sans contestation ouverte ; un retrait maintenu l'efface aussitôt.
+- Les cibles appartiennent à d'autres modules : le module `admin` passe par leurs surfaces publiques (`DirectoryEntryReader` et `CommentModerationGate` pour la lisibilité, `ProductCatalog.moderate` et `CommentModerationGate` pour les gestes, `SuspendPublication` d'`identity`). La décision, son audit et la clôture des signalements s'écrivent dans une transaction ; les gestes suivent, et un geste manqué écrit `followup.failed` (AUD-05) plutôt que d'ouvrir une transaction qui traverserait trois modules.
+- L'avis à l'auteur passe par un événement de domaine (`moderation.notice`) que le module `notifications` route vers le seul auteur, sans texte (NOT-10).
 
 ### Export et effacement (RGPD-11, RGPD-12)
 

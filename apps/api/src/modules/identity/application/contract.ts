@@ -59,7 +59,9 @@ export {
   ForceLogout,
   ReactivateAccount,
   RequestTotpReset,
+  RestorePublication,
   SuspendAccount,
+  SuspendPublication,
 } from './administer-accounts.use-case';
 export { PLATFORM_PERMISSIONS, type PlatformPermission } from '../domain/platform-permissions';
 export type { ClientInfo } from './client-info';

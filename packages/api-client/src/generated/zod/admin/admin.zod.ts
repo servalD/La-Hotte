@@ -62,6 +62,20 @@ export const forceAccountLogoutBody = zod.object({
   reason: zod.string().min(forceAccountLogoutBodyReasonMin).max(forceAccountLogoutBodyReasonMax),
 });
 
+export const restoreAccountPublicationParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const restoreAccountPublicationBodyReasonMin = 10;
+export const restoreAccountPublicationBodyReasonMax = 500;
+
+export const restoreAccountPublicationBody = zod.object({
+  reason: zod
+    .string()
+    .min(restoreAccountPublicationBodyReasonMin)
+    .max(restoreAccountPublicationBodyReasonMax),
+});
+
 export const reactivateAccountParams = zod.object({
   id: zod.uuid(),
 });
@@ -205,6 +219,116 @@ export const listAuditEntriesResponse = zod.object({
     }),
   ),
   nextCursor: zod.string().nullable(),
+});
+
+export const decideModerationParams = zod.object({
+  kind: zod.enum(['products', 'comments']),
+  id: zod.uuid(),
+});
+
+export const decideModerationBodyReasonMin = 10;
+export const decideModerationBodyReasonMax = 500;
+
+export const decideModerationBody = zod.object({
+  reason: zod.string().min(decideModerationBodyReasonMin).max(decideModerationBodyReasonMax),
+  decision: zod.enum(['KEEP', 'REMOVE', 'REMOVE_AND_SUSPEND']),
+});
+
+export const decideModerationContestParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const decideModerationContestBodyReasonMin = 10;
+export const decideModerationContestBodyReasonMax = 500;
+
+export const decideModerationContestBody = zod.object({
+  reason: zod
+    .string()
+    .min(decideModerationContestBodyReasonMin)
+    .max(decideModerationContestBodyReasonMax),
+  outcome: zod.enum(['UPHOLD', 'OVERTURN']),
+});
+
+export const getModerationQueueResponse = zod.object({
+  items: zod.array(
+    zod.union([
+      zod.object({
+        kind: zod.enum(['PRODUCT']),
+        product: zod.object({
+          id: zod.uuid(),
+          title: zod.string(),
+          description: zod.string(),
+          imageKey: zod.string().nullable(),
+          merchant: zod.string().nullable(),
+          sourceUrl: zod.string().nullable(),
+          status: zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+        }),
+        reports: zod
+          .object({
+            reasons: zod.array(
+              zod.object({
+                reason: zod.enum(['SPAM', 'INAPPROPRIATE', 'PRIVACY', 'ILLEGAL', 'OTHER']),
+                count: zod.number(),
+              }),
+            ),
+            notes: zod.array(zod.string()),
+            firstAt: zod.iso.datetime({}),
+          })
+          .nullable(),
+      }),
+      zod.object({
+        kind: zod.enum(['COMMENT']),
+        comment: zod.object({
+          id: zod.uuid(),
+          thread: zod.enum(['PUBLIC', 'GIVERS']),
+          body: zod.string(),
+          createdAt: zod.iso.datetime({}),
+        }),
+        reports: zod
+          .object({
+            reasons: zod.array(
+              zod.object({
+                reason: zod.enum(['SPAM', 'INAPPROPRIATE', 'PRIVACY', 'ILLEGAL', 'OTHER']),
+                count: zod.number(),
+              }),
+            ),
+            notes: zod.array(zod.string()),
+            firstAt: zod.iso.datetime({}),
+          })
+          .nullable(),
+      }),
+      zod.object({
+        kind: zod.enum(['CONTEST']),
+        contestId: zod.uuid(),
+        text: zod.string(),
+        decision: zod.object({
+          action: zod.enum(['KEEP', 'REMOVE', 'REMOVE_AND_SUSPEND', 'CONTEST']),
+          reason: zod.string(),
+          at: zod.iso.datetime({}),
+          targetKind: zod.enum(['PRODUCT', 'COMMENT']),
+        }),
+        product: zod
+          .object({
+            id: zod.uuid(),
+            title: zod.string(),
+            description: zod.string(),
+            imageKey: zod.string().nullable(),
+            merchant: zod.string().nullable(),
+            sourceUrl: zod.string().nullable(),
+            status: zod.enum(['NONE', 'PENDING', 'APPROVED', 'REJECTED']),
+          })
+          .nullable(),
+        comment: zod
+          .object({
+            id: zod.uuid(),
+            thread: zod.enum(['PUBLIC', 'GIVERS']),
+            body: zod.string(),
+            createdAt: zod.iso.datetime({}),
+          })
+          .nullable(),
+      }),
+    ]),
+  ),
 });
 
 export const getPlatformSettingsResponse = zod.object({

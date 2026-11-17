@@ -110,7 +110,19 @@ export interface AccountingChanged {
   readonly profileIds?: readonly string[];
 }
 
+/**
+ * MOD-11 : avis à l'auteur d'un contenu retiré par la modération, ou rétabli sur contestation.
+ * Ni modérateur, ni signaleur, ni texte.
+ */
+export interface ModerationNotice {
+  readonly type: 'moderation.notice';
+  readonly profileId: string;
+  readonly targetKind: 'PRODUCT' | 'COMMENT';
+  readonly outcome: 'removed' | 'restored';
+}
+
 export type AppEvent =
+  | ModerationNotice
   | ItemChanged
   | AccountingChanged
   | ListChanged

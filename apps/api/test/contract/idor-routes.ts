@@ -110,4 +110,9 @@ export const PHASE7_ADMIN_ROUTES: readonly string[] = [
   'POST /api/v1/admin/accounts/:id/totp-reset',
   'PUT /api/v1/admin/accounts/:id/role',
   'PUT /api/v1/admin/settings/:key',
+  'POST /api/v1/admin/accounts/:id/publication/restore',
+  'POST /api/v1/admin/moderation/contests/:id/decide',
+  'POST /api/v1/admin/moderation/:kind/:id/decide',
+  // MOD-11 : décision d'un autre auteur, 404 comme une inconnue (`moderation.spec.ts`).
+  'POST /api/v1/moderation-decisions/:id/contest',
 ];

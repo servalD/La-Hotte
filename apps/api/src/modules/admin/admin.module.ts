@@ -1,5 +1,28 @@
 import { Module } from '@nestjs/common';
+import { CatalogModule } from '../catalog';
+import { ConversationsModule } from '../conversations';
+import { DirectoryModule } from '../directory';
 import { IdentityModule } from '../identity';
+import {
+  ContestDecision,
+  DecideContest,
+  DecideModeration,
+  DecisionRecorder,
+  EraseRemovedComments,
+  ListDecisionsOnMyContent,
+  ModerationTargets,
+  ReadModerationQueue,
+  ReportContent,
+} from './application/moderate-content.use-case';
+import { ModerationStore } from './domain/moderation';
+import { ModerationScheduler } from './infrastructure/moderation.scheduler';
+import { PrismaModerationStore } from './infrastructure/prisma-moderation-store';
+import {
+  AdminModerationController,
+  AdminPublicationController,
+  ModerationDecisionsController,
+  ReportsController,
+} from './presentation/moderation.controller';
 import {
   ListAdminActionsOnAccount,
   ReadSettings,
@@ -25,12 +48,16 @@ import { AdminAuditController } from './presentation/admin-audit.controller';
  * transaction (AUD-05).
  */
 @Module({
-  imports: [IdentityModule],
+  imports: [IdentityModule, CatalogModule, ConversationsModule, DirectoryModule],
   controllers: [
     AdminAuditController,
     AdminAccountsController,
     AdminSettingsController,
     AccountAdminActionsController,
+    ReportsController,
+    ModerationDecisionsController,
+    AdminModerationController,
+    AdminPublicationController,
   ],
   providers: [
     ReadAudit,
@@ -38,6 +65,17 @@ import { AdminAuditController } from './presentation/admin-audit.controller';
     ReadSettings,
     UpdateSetting,
     ListAdminActionsOnAccount,
+    ModerationTargets,
+    DecisionRecorder,
+    ReportContent,
+    ReadModerationQueue,
+    DecideModeration,
+    ContestDecision,
+    DecideContest,
+    ListDecisionsOnMyContent,
+    EraseRemovedComments,
+    ModerationScheduler,
+    { provide: ModerationStore, useClass: PrismaModerationStore },
     { provide: AuditTrail, useClass: PrismaAuditTrail },
     { provide: AccountDirectory, useClass: PrismaAccountDirectory },
     { provide: AccountSearchQuota, useClass: RedisAccountSearchQuota },

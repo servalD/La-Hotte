@@ -53,6 +53,8 @@ function toComment(row: CommentRow): CommentRecord {
     activity: activityOf(row),
     editedAt: row.editedAt,
     deletedAt: row.deletedAt,
+    maskedAt: row.maskedAt,
+    moderatedAt: row.moderatedAt,
     createdAt: row.createdAt,
   };
 }
@@ -146,6 +148,34 @@ export class PrismaCommentRepository extends CommentRepository {
       }),
     ]);
     return updated.count === 1 ? this.find(commentId) : null;
+  }
+
+  async setMasked(commentId: string, at: Date | null): Promise<boolean> {
+    const { count } = await this.prisma.comment.updateMany({
+      where: { id: commentId, kind: 'MESSAGE', deletedAt: null, moderatedAt: null },
+      data: { maskedAt: at },
+    });
+    return count === 1;
+  }
+
+  async setModerated(commentId: string, at: Date | null): Promise<boolean> {
+    const { count } = await this.prisma.comment.updateMany({
+      where: { id: commentId, kind: 'MESSAGE', deletedAt: null },
+      data: { moderatedAt: at, maskedAt: null },
+    });
+    return count === 1;
+  }
+
+  async eraseModerated(ids: readonly string[], at: Date): Promise<number> {
+    if (ids.length === 0) return 0;
+    const [, erased] = await this.prisma.$transaction([
+      this.prisma.commentReaction.deleteMany({ where: { commentId: { in: [...ids] } } }),
+      this.prisma.comment.updateMany({
+        where: { id: { in: [...ids] }, moderatedAt: { not: null }, deletedAt: null },
+        data: { body: '', mentionIds: [], deletedAt: at },
+      }),
+    ]);
+    return erased.count;
   }
 
   async countMessages(itemId: string): Promise<Record<Thread, number>> {

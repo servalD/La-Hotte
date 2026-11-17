@@ -138,6 +138,29 @@ export class InMemoryProductRepository extends ProductRepository {
         .slice(0, input.limit),
     );
   }
+  setModeration(
+    productId: string,
+    input: { moderation: ModerationStatus; shareLevel?: ShareLevel },
+  ): Promise<boolean> {
+    const row = this.rows.get(productId);
+    if (!row) return Promise.resolve(false);
+    this.rows.set(productId, {
+      ...row,
+      moderationStatus: input.moderation,
+      ...(input.shareLevel ? { shareLevel: input.shareLevel, version: row.version + 1 } : {}),
+    });
+    return Promise.resolve(true);
+  }
+
+  findPendingGlobal(limit: number): Promise<Product[]> {
+    return Promise.resolve(
+      [...this.rows.values()]
+        .filter((row) => row.shareLevel === 'GLOBAL' && row.moderationStatus === 'PENDING')
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .slice(0, limit),
+    );
+  }
+
   findGlobal(input: { query: string | null; limit: number }): Promise<GlobalEntry[]> {
     const words = (input.query ?? '').toLowerCase().split(/s+/).filter(Boolean);
     const published = [...this.rows.values()].filter(

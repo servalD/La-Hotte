@@ -41,6 +41,9 @@ export class CommentView {
   activity!: CommentActivityView | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) editedAt!: string | null;
   @ApiProperty() deleted!: boolean;
+  /** MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide. */
+  @ApiProperty({ enum: ['NONE', 'UNDER_REVIEW', 'REMOVED'], enumName: 'CommentModeration' })
+  moderation!: 'NONE' | 'UNDER_REVIEW' | 'REMOVED';
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: [CommentReactionView] }) reactions!: CommentReactionView[];
   @ApiProperty() mine!: boolean;

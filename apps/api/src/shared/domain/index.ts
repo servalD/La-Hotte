@@ -9,6 +9,7 @@ export {
   type AccountingChanged,
   type ItemChanged,
   type ListChanged,
+  type ModerationNotice,
   type NotificationCreated,
   type ProductExtracted,
 } from './app-events.port';

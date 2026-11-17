@@ -100,6 +100,25 @@ export class InMemoryAccountAdministration extends AccountAdministration {
     return Promise.resolve(true);
   }
 
+  /** MOD-10 : comptes dont la publication est suspendue. */
+  readonly publicationSuspended = new Set<string>();
+
+  setPublicationSuspended(input: {
+    profileId: string | null;
+    accountId: string | null;
+    at: Date | null;
+    audit: AuditWrite | null;
+  }): Promise<string | null> {
+    const accountId =
+      input.accountId ??
+      (input.profileId ? (this.accounts.profiles.get(input.profileId)?.accountId ?? null) : null);
+    if (!accountId || !this.sessions.accounts.has(accountId)) return Promise.resolve(null);
+    if (input.audit) this.audit(input.audit);
+    if (input.at) this.publicationSuspended.add(accountId);
+    else this.publicationSuspended.delete(accountId);
+    return Promise.resolve(accountId);
+  }
+
   recordTotpResetRequest(audit: AuditWrite): Promise<void> {
     this.audit(audit);
     return Promise.resolve();

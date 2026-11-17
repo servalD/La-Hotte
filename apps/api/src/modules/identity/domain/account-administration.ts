@@ -65,6 +65,17 @@ export abstract class AccountAdministration {
     readonly audit: AuditWrite;
   }): Promise<boolean>;
 
+  /**
+   * MOD-10 : publication au catalogue global suspendue (`at`) ou rétablie (`null`) pour le compte
+   * de ce profil. Rend le compte, ou `null` si le profil n'existe plus.
+   */
+  abstract setPublicationSuspended(input: {
+    readonly profileId: string | null;
+    readonly accountId: string | null;
+    readonly at: Date | null;
+    readonly audit: AuditWrite | null;
+  }): Promise<string | null>;
+
   /** ADM-07 : entrée de la demande, quand aucun rôle n'est retiré (sinon `setRole` l'écrit). */
   abstract recordTotpResetRequest(audit: AuditWrite): Promise<void>;
 }

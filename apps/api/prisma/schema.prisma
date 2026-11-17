@@ -998,6 +998,10 @@ model Comment {
   activityData    Json?         @map("activity_data")
   editedAt        DateTime?     @map("edited_at") @db.Timestamptz(3)
   deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  /// MOD-08 : masqué par trois signalements de comptes distincts, en attente d'un modérateur.
+  maskedAt        DateTime?     @map("masked_at") @db.Timestamptz(3)
+  /// MOD-10 : retiré par la modération ; texte effacé à la fin du délai de contestation (MOD-11).
+  moderatedAt     DateTime?     @map("moderated_at") @db.Timestamptz(3)
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 

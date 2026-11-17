@@ -139,6 +139,8 @@ export const listNotificationsResponse = zod.object({
         'security.login',
         'security.totp_enabled',
         'security.totp_disabled',
+        'moderation.removed',
+        'moderation.restored',
       ]),
       category: zod.enum([
         'INVITATIONS',
@@ -264,6 +266,8 @@ export const syncSinceResponse = zod.object({
         'security.login',
         'security.totp_enabled',
         'security.totp_disabled',
+        'moderation.removed',
+        'moderation.restored',
       ]),
       category: zod.enum([
         'INVITATIONS',

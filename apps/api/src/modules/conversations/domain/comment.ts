@@ -29,7 +29,24 @@ export interface CommentRecord {
   readonly activity: ItemActivity | null;
   readonly editedAt: Date | null;
   readonly deletedAt: Date | null;
+  /** MOD-08 : masqué par trois signalements, en attente d'un modérateur. */
+  readonly maskedAt: Date | null;
+  /** MOD-10 : retiré par la modération. */
+  readonly moderatedAt: Date | null;
   readonly createdAt: Date;
+}
+
+/** MOD-08, MOD-10 : ce qu'un lecteur voit de l'état de modération d'un message. */
+export type CommentModeration = 'NONE' | 'UNDER_REVIEW' | 'REMOVED';
+
+/**
+ * MOD-08 : un message masqué n'est lu en clair que par son auteur ; MOD-10 : un message retiré
+ * n'est plus lu par personne, auteur compris.
+ */
+export function moderationSeenBy(comment: CommentRecord, viewerId: string): CommentModeration {
+  if (comment.moderatedAt) return 'REMOVED';
+  if (comment.maskedAt && comment.authorId !== viewerId) return 'UNDER_REVIEW';
+  return 'NONE';
 }
 
 export interface ReactionCount {
@@ -50,6 +67,9 @@ export function canEditComment(comment: CommentRecord, viewerId: string, now: Da
   return (
     comment.kind === 'MESSAGE' &&
     comment.deletedAt === null &&
+    // MOD-08, MOD-10 : un message masqué ou retiré ne se modifie plus.
+    comment.maskedAt === null &&
+    comment.moderatedAt === null &&
     comment.authorId === viewerId &&
     now.getTime() - comment.createdAt.getTime() <= COMMENT_EDIT_WINDOW_MS
   );

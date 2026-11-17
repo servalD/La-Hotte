@@ -26,7 +26,9 @@ export {
   ForceLogout,
   ReactivateAccount,
   RequestTotpReset,
+  RestorePublication,
   SuspendAccount,
+  SuspendPublication,
 } from './application/contract';
 export type { ActiveProfile as ActiveProfileValue } from './application/authorize-profile.use-case';
 

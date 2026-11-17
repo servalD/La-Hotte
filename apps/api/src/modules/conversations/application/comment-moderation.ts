@@ -1,0 +1,70 @@
+import { Injectable } from '@nestjs/common';
+import { ItemAccessReader } from '../../lists';
+import type { Thread } from '../../visibility';
+import { CommentRepository } from '../domain/conversation.ports';
+import { gatedComment } from './manage-comments.use-case';
+
+/** Ce qu'un modérateur voit d'un message signalé (ADM-05, MOD-10) : rien d'autre. */
+export interface CommentForModeration {
+  readonly id: string;
+  readonly thread: Thread;
+  readonly body: string;
+  /** Pour l'avis à l'auteur (MOD-11) ; jamais rendu au modérateur. */
+  readonly authorId: string | null;
+  readonly masked: boolean;
+  readonly removed: boolean;
+  readonly createdAt: Date;
+}
+
+/**
+ * Surface de `conversations` pour la modération (module `admin`). La lisibilité d'un message pour
+ * le signaleur est décidée comme pour toute lecture (COM-11) : le signalement ne devient pas un
+ * moyen de tester l'existence d'un message (SEC-04).
+ */
+@Injectable()
+export class CommentModerationGate {
+  constructor(
+    private readonly reader: ItemAccessReader,
+    private readonly comments: CommentRepository,
+  ) {}
+
+  /** MOD-07 : message vivant que ce profil lit, ou `null` (même réponse qu'un inconnu). */
+  async readable(
+    viewerId: string,
+    commentId: string,
+  ): Promise<{ readonly authorId: string | null } | null> {
+    try {
+      const { comment } = await gatedComment(this.reader, this.comments, viewerId, commentId);
+      if (comment.kind !== 'MESSAGE' || comment.deletedAt || comment.moderatedAt) return null;
+      return { authorId: comment.authorId };
+    } catch {
+      return null;
+    }
+  }
+
+  async forModerator(commentId: string): Promise<CommentForModeration | null> {
+    const row = await this.comments.find(commentId);
+    if (!row || row.kind !== 'MESSAGE' || row.deletedAt) return null;
+    return {
+      id: row.id,
+      thread: row.thread,
+      body: row.body,
+      authorId: row.authorId,
+      masked: row.maskedAt !== null,
+      removed: row.moderatedAt !== null,
+      createdAt: row.createdAt,
+    };
+  }
+
+  mask(commentId: string, at: Date | null): Promise<boolean> {
+    return this.comments.setMasked(commentId, at);
+  }
+
+  remove(commentId: string, at: Date | null): Promise<boolean> {
+    return this.comments.setModerated(commentId, at);
+  }
+
+  erase(commentIds: readonly string[], at: Date): Promise<number> {
+    return this.comments.eraseModerated(commentIds, at);
+  }
+}

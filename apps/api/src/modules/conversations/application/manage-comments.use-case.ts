@@ -8,10 +8,12 @@ import {
   canReact,
   COMMENT_MENTIONS_MAX,
   COMMENT_PAGE_MAX,
+  type CommentModeration,
   type CommentReaction,
   type CommentRecord,
   decodeCursor,
   encodeCursor,
+  moderationSeenBy,
   normalizeBody,
   type ReactionCount,
 } from '../domain/comment';
@@ -41,6 +43,8 @@ export interface CommentView {
   readonly activity: ItemActivity | null;
   readonly editedAt: Date | null;
   readonly deleted: boolean;
+  /** MOD-08, MOD-10 : texte et mentions vides si le message est masqué pour ce lecteur ou retiré. */
+  readonly moderation: CommentModeration;
   readonly createdAt: Date;
   readonly reactions: readonly ReactionCount[];
   readonly mine: boolean;
@@ -123,26 +127,33 @@ export class CommentViews {
       viewerId,
     );
     const now = this.clock.now();
-    return rows.map((row) => ({
-      id: row.id,
-      itemId: row.itemId,
-      thread: row.thread,
-      kind: row.kind,
-      author: row.authorId ? (cards.get(row.authorId) ?? null) : null,
-      body: row.body,
-      mentions: row.mentionIds.flatMap((id) => {
-        const card = cards.get(id);
-        return card ? [card] : [];
-      }),
-      activity: row.activity,
-      editedAt: row.editedAt,
-      deleted: row.deletedAt !== null,
-      createdAt: row.createdAt,
-      reactions: reactions.get(row.id) ?? [],
-      mine: row.authorId !== null && row.authorId === viewerId,
-      canEdit: canWrite && canEditComment(row, viewerId, now),
-      canDelete: canWrite && canDeleteComment(row, viewerId, canModerate),
-    }));
+    return rows.map((row) => {
+      const moderation = moderationSeenBy(row, viewerId);
+      const hidden = moderation !== 'NONE';
+      return {
+        id: row.id,
+        itemId: row.itemId,
+        thread: row.thread,
+        kind: row.kind,
+        author: row.authorId ? (cards.get(row.authorId) ?? null) : null,
+        body: hidden ? '' : row.body,
+        mentions: hidden
+          ? []
+          : row.mentionIds.flatMap((id) => {
+              const card = cards.get(id);
+              return card ? [card] : [];
+            }),
+        moderation,
+        activity: row.activity,
+        editedAt: row.editedAt,
+        deleted: row.deletedAt !== null,
+        createdAt: row.createdAt,
+        reactions: reactions.get(row.id) ?? [],
+        mine: row.authorId !== null && row.authorId === viewerId,
+        canEdit: canWrite && canEditComment(row, viewerId, now),
+        canDelete: canWrite && canDeleteComment(row, viewerId, canModerate),
+      };
+    });
   }
 }
 
@@ -287,7 +298,7 @@ export class PostComment {
 }
 
 /** Message lu par un profil qui lit son fil ; sinon `404` (COM-11). */
-async function gatedComment(
+export async function gatedComment(
   reader: ItemAccessReader,
   comments: CommentRepository,
   viewerId: string,

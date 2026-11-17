@@ -198,6 +198,29 @@ export class PrismaProductRepository extends ProductRepository {
     });
     return rows.map(toProduct);
   }
+  async setModeration(
+    productId: string,
+    input: { moderation: ModerationStatus; shareLevel?: ShareLevel },
+  ): Promise<boolean> {
+    const { count } = await this.prisma.product.updateMany({
+      where: { id: productId },
+      data: {
+        moderationStatus: input.moderation,
+        ...(input.shareLevel ? { shareLevel: input.shareLevel, version: { increment: 1 } } : {}),
+      },
+    });
+    return count === 1;
+  }
+
+  async findPendingGlobal(limit: number): Promise<Product[]> {
+    const rows = await this.prisma.product.findMany({
+      where: { shareLevel: 'GLOBAL', moderationStatus: 'PENDING' },
+      orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+      take: limit,
+    });
+    return rows.map(toProduct);
+  }
+
   async findGlobal(input: { query: string | null; limit: number }): Promise<GlobalEntry[]> {
     // MOD-05 : une fiche par URL normalisée (la plus ancienne publiée) ; une fiche sans URL est
     // seule de son groupe. Le compteur compte des comptes, jamais des profils. Requête paramétrée.
