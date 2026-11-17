@@ -69,8 +69,9 @@ La phase 7 donne aux exploitants des moyens d'agir sans leur donner celui de lir
 
 ## Conséquences
 
-- Le premier administrateur se crée par une commande d'exploitation (`pnpm --filter api admin:grant <email>`), jamais par l'interface (RBAC-03) ; elle exige le TOTP actif et écrit l'audit.
-- Le dernier administrateur ne peut se retirer ni se supprimer ; sa perte de TOTP se traite par la même commande.
+- Le premier administrateur se crée par une commande d'exploitation, jamais par l'interface (RBAC-03) : `node dist/cli/admin.js grant <email>` (`pnpm --filter @wishlist/api admin grant <email>`), sur le serveur, avec `DATABASE_URL` et `REDIS_URL` de l'API. Elle exige un TOTP actif, une adresse vérifiée et un compte autonome, augmente l'époque (base puis Redis, ADR 0014) et écrit l'audit sans acteur. Sa sortie est un mot, jamais l'adresse.
+- Le dernier administrateur ne peut se retirer ni se supprimer. S'il perd son second facteur, `recover <email>` retire le TOTP, les codes de secours, les appareils de confiance et le rôle, et coupe les sessions ; il réactive un TOTP puis `grant` lui rend le rôle.
+- Le garde d'administration répond par un `NotFoundException` de Nest, que le filtre transforme exactement comme une route inconnue ; il passe **avant** le contrôle CSRF, pour qu'aucune méthode ne distingue l'espace d'une route absente.
 - La modération ne voit jamais l'auteur d'une fiche : pour notifier (MOD-11), le service d'envoi résout le compte à l'envoi, sans qu'une vue le renvoie.
 - RLS ajoute une contrainte à chaque test d'intégration : la session de test doit poser `app.profile_id`.
 

@@ -7,6 +7,8 @@ import {
 import type { Request } from 'express';
 import {
   type ActiveProfile as ActiveProfileValue,
+  type PlatformActor,
+  type PlatformPermission,
   REAUTH_MAX_AGE_MS,
   type ResolvedSession,
 } from '../application/contract';
@@ -16,7 +18,8 @@ import {
  * d'accès parmi `@Public()`, `@AccountScope()`, `@RequiresProfile()` ; un test le vérifie.
  */
 export const ACCESS_MARK = 'identity:access';
-export type AccessMark = 'public' | 'account' | 'profile';
+export type AccessMark = 'public' | 'account' | 'profile' | 'admin';
+export const PERMISSION_MARK = 'identity:platform-permission';
 export const REAUTH_MARK = 'identity:reauth-max-age';
 export const OIDC_CALLBACK_MARK = 'identity:oidc-callback';
 
@@ -34,6 +37,14 @@ export const AccountScope = (): ClassDecorator & MethodDecorator =>
 export const RequiresProfile = (): ClassDecorator & MethodDecorator =>
   SetMetadata(ACCESS_MARK, 'profile');
 
+/**
+ * Espace d'administration (RBAC-01, RBAC-04, RBAC-05) : session exigée, aucun profil, permission
+ * de plateforme relue en base à chaque requête. Sans elle, la réponse est celle d'une route
+ * inconnue (`404`) : l'espace n'existe pas pour ce compte.
+ */
+export const AdminScope = (permission: PlatformPermission): ClassDecorator & MethodDecorator =>
+  applyDecorators(SetMetadata(ACCESS_MARK, 'admin'), SetMetadata(PERMISSION_MARK, permission));
+
 /** AUTH-14 : ré-authentification de moins de 10 minutes (2 pour PIN-05). */
 export const RequiresRecentReauth = (maxAgeMs: number = REAUTH_MAX_AGE_MS): MethodDecorator =>
   applyDecorators(SetMetadata(REAUTH_MARK, maxAgeMs));
@@ -48,6 +59,8 @@ export const OidcCallback = (): MethodDecorator => SetMetadata(OIDC_CALLBACK_MAR
 export interface RequestIdentity {
   session: ResolvedSession | null;
   profile: ActiveProfileValue | null;
+  /** Compte autorisé dans l'espace d'administration, sur une route `@AdminScope()` seulement. */
+  actor?: PlatformActor;
 }
 
 const IDENTITY = Symbol('identity');
@@ -103,4 +116,13 @@ export function clientContextOf(request: Request): ClientContextValue {
 export const ClientContext = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): ClientContextValue =>
     clientContextOf(ctx.switchToHttp().getRequest<Request>()),
+);
+
+/** Compte autorisé d'une route `@AdminScope()` (RBAC-05). */
+export const CurrentPlatformActor = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): PlatformActor => {
+    const actor = identityOf(ctx.switchToHttp().getRequest<Request>())?.actor;
+    if (!actor) throw new Error('@CurrentPlatformActor() sans @AdminScope()');
+    return actor;
+  },
 );

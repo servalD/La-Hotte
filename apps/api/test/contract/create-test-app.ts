@@ -118,6 +118,8 @@ import {
   RecordingPushSender,
   SendDigests,
 } from '../../src/modules/notifications/testing';
+import { AuditTrail, InMemoryAuditTrail } from '../../src/modules/admin/testing';
+import type { AccountRole } from '../../src/modules/identity/domain/session';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 import { IdempotencyStore, InMemoryIdempotencyStore } from '../../src/platform/http/idempotency';
 import {
@@ -128,6 +130,11 @@ import {
   InMemoryAccountingRepository,
   InMemoryBudgetRepository,
 } from '../../src/modules/accounting/testing';
+
+/** Doubles du module `admin` (phase 7). */
+export interface TestAdmin {
+  readonly audit: InMemoryAuditTrail;
+}
 
 /** Doubles du module `accounting` (phase 5). */
 export interface TestAccounting {
@@ -226,6 +233,8 @@ export interface TestIdentity {
     /** PRO-05 : profil enfant. */
     isChild?: boolean;
     displayName?: string;
+    /** RBAC-01 : rôle de plateforme du compte (`USER` par défaut). */
+    role?: AccountRole;
   }): Promise<SignedIn>;
 }
 
@@ -239,11 +248,13 @@ export async function createTestApp(
   events: TestEvents;
   conversations: TestConversations;
   accounting: TestAccounting;
+  admin: TestAdmin;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
 
   const sessions = new InMemorySessionStore();
+  const audit = new InMemoryAuditTrail();
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
   const accounts = new InMemoryAccountRepository(sessions);
@@ -425,6 +436,8 @@ export async function createTestApp(
     .useValue(conversations.delivery)
     .overrideProvider(DigestRepository)
     .useValue(conversations.digests)
+    .overrideProvider(AuditTrail)
+    .useValue(audit)
     .overrideProvider(IdempotencyStore)
     .useValue(idempotency)
     .compile();
@@ -574,10 +587,11 @@ export async function createTestApp(
       withProfile = true,
       isChild = false,
       displayName,
+      role = 'USER',
     } = {}) {
       const accountId = randomUUID();
       const profileId = randomUUID();
-      sessions.addAccount(accountId);
+      sessions.addAccount(accountId, role);
       if (withProfile) profiles.set({ profileId, accountId, hasPin: pin, relock });
       const created = accounts.profiles.get(profileId);
       if (created && withProfile) {
@@ -590,5 +604,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity, catalog, events, conversations, accounting };
+  return { app, identity, catalog, events, conversations, accounting, admin: { audit } };
 }

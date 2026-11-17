@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "admin": "node dist/cli/admin.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.8.0",

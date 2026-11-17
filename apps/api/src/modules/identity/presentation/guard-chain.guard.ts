@@ -1,13 +1,20 @@
-import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
 import { AppConfig } from '../../../platform/config/env';
 import { Clock } from '../../../shared/domain';
 import {
   AuthorizeProfile,
+  CheckPlatformPermission,
   CsrfRejectedError,
   CsrfTokens,
   hasRecentReauth,
+  type PlatformPermission,
   ProfileMismatchError,
   ReauthRequiredError,
   ReportCsrfRejection,
@@ -22,6 +29,7 @@ import {
   attachIdentity,
   clientContextOf,
   OIDC_CALLBACK_MARK,
+  PERMISSION_MARK,
   REAUTH_MARK,
 } from './decorators';
 
@@ -44,6 +52,7 @@ export class IdentityGuardChain implements CanActivate {
     private readonly reflector: Reflector,
     private readonly resolveSession: ResolveSession,
     private readonly authorizeProfile: AuthorizeProfile,
+    private readonly checkPermission: CheckPlatformPermission,
     private readonly csrf: CsrfTokens,
     private readonly reportCsrfRejection: ReportCsrfRejection,
     private readonly clock: Clock,
@@ -69,6 +78,19 @@ export class IdentityGuardChain implements CanActivate {
     // pour tous les profils d'un compte : un cache HTTP ne les distinguerait pas.
     if (mark !== 'public') {
       context.switchToHttp().getResponse<Response>().setHeader('Cache-Control', 'no-store');
+    }
+
+    // 1 bis. Espace d'administration (RBAC-04, RBAC-05) : avant le CSRF, pour qu'un compte sans
+    // la permission reçoive exactement la réponse d'une route inconnue, quelle que soit la méthode.
+    if (mark === 'admin' && session) {
+      const permission = this.reflector.getAllAndOverride<PlatformPermission | undefined>(
+        PERMISSION_MARK,
+        targets,
+      );
+      if (!permission) throw new Error('Route d’administration sans permission');
+      const actor = await this.checkPermission.execute(session.record.accountId, permission);
+      if (!actor) throw new NotFoundException();
+      attachIdentity(request, { session, profile: null, actor });
     }
 
     // 2. CSRF, sur toute méthode qui n'est pas sûre.

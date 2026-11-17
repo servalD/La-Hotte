@@ -6,6 +6,7 @@ import { API_PREFIX } from '../../src/bootstrap';
 import {
   ACCESS_MARK,
   OIDC_CALLBACK_MARK,
+  PERMISSION_MARK,
 } from '../../src/modules/identity/presentation/decorators';
 
 export interface RouteInfo {
@@ -16,6 +17,8 @@ export interface RouteInfo {
   /** Marques d'accès posées sur la méthode et sur le contrôleur. */
   readonly marks: string[];
   readonly oidcCallback: boolean;
+  /** RBAC-04 : permission de plateforme d'une route `@AdminScope()`. */
+  readonly permission: string | null;
 }
 
 const join = (...parts: (string | undefined)[]): string =>
@@ -49,6 +52,10 @@ export function listRoutes(app: INestApplication): RouteInfo[] {
           controller,
           marks: [handlerMark, classMark].filter((mark): mark is string => mark !== undefined),
           oidcCallback: Reflect.getMetadata(OIDC_CALLBACK_MARK, handler) === true,
+          permission:
+            (Reflect.getMetadata(PERMISSION_MARK, handler) as string | undefined) ??
+            (Reflect.getMetadata(PERMISSION_MARK, controller) as string | undefined) ??
+            null,
         });
       }
     }

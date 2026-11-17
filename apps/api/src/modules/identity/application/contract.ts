@@ -50,6 +50,8 @@ export {
 export { CancelEmailChange } from './cancel-email-change.use-case';
 export { ChangePassword } from './change-password.use-case';
 export { CheckSessionAccess } from './check-session-access.use-case';
+export { CheckPlatformPermission, type PlatformActor } from './check-platform-permission.use-case';
+export { PLATFORM_PERMISSIONS, type PlatformPermission } from '../domain/platform-permissions';
 export type { ClientInfo } from './client-info';
 export { ConfirmPasswordReset } from './confirm-password-reset.use-case';
 export {

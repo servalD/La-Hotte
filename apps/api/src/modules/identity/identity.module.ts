@@ -16,6 +16,7 @@ import { ReportCsrfRejection } from './application/report-csrf-rejection.use-cas
 import { RequestEmailChange } from './application/request-email-change.use-case';
 import { RequestPasswordReset } from './application/request-password-reset.use-case';
 import { ResolveSession } from './application/resolve-session.use-case';
+import { CheckPlatformPermission } from './application/check-platform-permission.use-case';
 import { SessionLifecycle } from './application/session-lifecycle';
 import { SignInWithPassword } from './application/sign-in-with-password.use-case';
 import { VerifyEmail } from './application/verify-email.use-case';
@@ -244,6 +245,7 @@ import {
     ResolveSession,
     AuthorizeProfile,
     CheckSessionAccess,
+    CheckPlatformPermission,
     SessionLifecycle,
     ReportCsrfRejection,
     AccountMailer,

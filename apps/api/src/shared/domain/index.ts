@@ -23,3 +23,11 @@ export {
   type MetricAttributes,
   Metrics,
 } from './metrics.port';
+export {
+  AUDIT_ACTIONS,
+  AUDIT_TARGET_KINDS,
+  type AuditAction,
+  type AuditEntry,
+  type AuditTargetKind,
+  type AuditValue,
+} from './audit';

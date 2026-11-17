@@ -7,6 +7,8 @@ export { IdentityModule } from './identity.module';
 export {
   AccountScope,
   ActiveProfile,
+  AdminScope,
+  CurrentPlatformActor,
   activeProfileOf,
   ClientContext,
   type ClientContextValue,
@@ -16,6 +18,7 @@ export {
   RequiresProfile,
   RequiresRecentReauth,
 } from './presentation/decorators';
+export type { PlatformActor, PlatformPermission } from './application/contract';
 export type { ActiveProfile as ActiveProfileValue } from './application/authorize-profile.use-case';
 
 /**
