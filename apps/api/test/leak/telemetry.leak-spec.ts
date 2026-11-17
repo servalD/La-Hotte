@@ -1065,6 +1065,13 @@ async function playProfileScenario(app: INestApplication): Promise<void> {
     .get('/api/v1/profiles/me')
     .set({ ...headers(), Cookie: `${user.cookie}; __Host-lh_unlock=${pinSecrets.unlockNonce}` })
     .expect(200);
+  // OFF-26 (phase 6) : la clé de cache d'un profil à PIN ne sort que dans le corps de la réponse.
+  const cacheKey = await http
+    .get('/api/v1/profiles/me/cache-key')
+    .set({ ...headers(), Cookie: `${user.cookie}; __Host-lh_unlock=${pinSecrets.unlockNonce}` })
+    .expect(200);
+  if (cacheKey.body.encrypted !== true) throw new Error('clé de cache attendue');
+  pinSecrets.cacheKey = cacheKey.body.key as string;
 
   // PIN-04 : changement par l'ancien PIN, faux (compté) ; revue SEC-40, M1 : affaiblissement
   // du reverrouillage avec un PIN faux.
@@ -1648,9 +1655,10 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     }
   });
 
-  it('PIN-01 à PIN-07 : PIN, hash du PIN, nonce de déverrouillage absents de toute sortie', () => {
+  it('PIN-01 à PIN-07, OFF-26 : PIN, hash, nonce de déverrouillage, clé de cache absents de toute sortie', () => {
     expect(Object.keys(pinSecrets).sort()).toEqual(
       [
+        'cacheKey',
         'invitationPin',
         'pin',
         'transferPin',
@@ -1672,6 +1680,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     for (const route of [
       '/api/v1/session/profile',
       '/api/v1/profiles/me/pin',
+      '/api/v1/profiles/me/cache-key',
       '/api/v1/account/profiles/:id/pin/reset',
       '/api/v1/account/profiles/:id/pin',
     ]) {
@@ -1683,7 +1692,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       const leaked = new RegExp(`(?<!\\d)${pin}(?!\\d)`).test(everything);
       expect({ name, leaked }).toEqual({ name, leaked: false });
     }
-    for (const name of ['pinHash', 'pinStamp', 'unlockNonce', 'reauthToken']) {
+    for (const name of ['pinHash', 'pinStamp', 'unlockNonce', 'reauthToken', 'cacheKey']) {
       const secret = pinSecrets[name] ?? '';
       expect(secret.length).toBeGreaterThan(20);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
