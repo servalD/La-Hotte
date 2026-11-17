@@ -612,6 +612,50 @@ describe('Revue SEC-40 de la phase 2 : non-régressions', () => {
     expect(catalog.items.items.get(suggestion)?.position).toBe(1);
   });
 
+  it('R4 (phase 4) : un contributeur qui ne change que la position ne fait pas bouger la version vue du destinataire (VIS-35)', async () => {
+    const marie = await person();
+    const tonton = await person();
+    await link(marie, tonton);
+    const res = await http()
+      .post('/api/v1/lists')
+      .set(marie.mutation)
+      .send({ type: 'WISHLIST', title: 'Noël' });
+    const id = res.body.id as string;
+    await http()
+      .put(`/api/v1/lists/${id}/members/${tonton.profileId!}`)
+      .set(marie.mutation)
+      .send({ role: 'OWNER' })
+      .expect(204);
+    const add = async (title: string) => {
+      const p = await http().post('/api/v1/products').set(marie.mutation).send({ title });
+      const item = await http()
+        .post(`/api/v1/lists/${id}/items`)
+        .set(marie.mutation)
+        .send({ productId: p.body.id })
+        .expect(201);
+      return item.body.id as string;
+    };
+    const a = await add('A');
+    await add('B');
+    const before = await http().get(`/api/v1/items/${a}`).set({ Cookie: marie.cookie }).expect(200);
+    const seen = await http().get(`/api/v1/items/${a}`).set({ Cookie: tonton.cookie }).expect(200);
+    await http()
+      .patch(`/api/v1/items/${a}`)
+      .set({ ...tonton.mutation, 'If-Match': String(seen.body.version) })
+      .send({ position: 1 })
+      .expect(200);
+    const after = await http().get(`/api/v1/items/${a}`).set({ Cookie: marie.cookie }).expect(200);
+    expect(after.body.version).toBe(before.body.version);
+    // Contre-épreuve : un champ que le destinataire voit fait bouger la version.
+    await http()
+      .patch(`/api/v1/items/${a}`)
+      .set({ ...tonton.mutation, 'If-Match': String(seen.body.version) })
+      .send({ note: 'n' })
+      .expect(200);
+    const noted = await http().get(`/api/v1/items/${a}`).set({ Cookie: marie.cookie }).expect(200);
+    expect(noted.body.version).toBe(before.body.version + 1);
+  });
+
   it('R2 : un destinataire ajouté après coup ne voit pas disparaître une fiche publiée de son répertoire', async () => {
     const papa = await person();
     const marie = await person();

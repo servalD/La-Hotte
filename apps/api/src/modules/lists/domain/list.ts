@@ -113,6 +113,22 @@ export interface ItemChanges {
   readonly shownToRecipient?: boolean;
 }
 
+/**
+ * VIS-35 (revue SEC-40 de la phase 4, R4) : la version d'un élément est montrée au destinataire ;
+ * elle ne bouge pas quand seuls des champs qu'il ne voit pas changent (position, destinataire
+ * prévu). La concurrence sur ces champs reste vérifiée par la version attendue.
+ */
+const UNVERSIONED_ITEM_FIELDS: ReadonlySet<keyof ItemChanges> = new Set([
+  'position',
+  'intendedRecipientId',
+]);
+
+export function itemChangesBumpVersion(changes: ItemChanges): boolean {
+  return (Object.keys(changes) as (keyof ItemChanges)[]).some(
+    (key) => changes[key] !== undefined && !UNVERSIONED_ITEM_FIELDS.has(key),
+  );
+}
+
 export function itemChangesProblem(changes: ItemChanges): boolean {
   if (
     changes.quantity !== undefined &&

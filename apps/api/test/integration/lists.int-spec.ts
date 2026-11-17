@@ -73,6 +73,30 @@ async function itemIds(user: SignedIn, listId: string): Promise<string[]> {
 }
 
 describe('Listes en base (VIS-31)', () => {
+  it('VIS-35 (R4 de la phase 4) : changer la seule position ne fait pas bouger la version', async () => {
+    const marie = await person();
+    const listId = await personal(marie);
+    const a = await addItem(marie, listId);
+    await addItem(marie, listId);
+    const before = await prisma.listItem.findUniqueOrThrow({ where: { id: a } });
+    await http()
+      .patch(`/api/v1/items/${a}`)
+      .set({ ...marie.mutation, 'If-Match': String(before.version) })
+      .send({ position: 1 })
+      .expect(200);
+    const moved = await prisma.listItem.findUniqueOrThrow({ where: { id: a } });
+    expect(moved.position).not.toBe(before.position);
+    expect(moved.version).toBe(before.version);
+    await http()
+      .patch(`/api/v1/items/${a}`)
+      .set({ ...marie.mutation, 'If-Match': String(before.version) })
+      .send({ note: 'n' })
+      .expect(200);
+    expect((await prisma.listItem.findUniqueOrThrow({ where: { id: a } })).version).toBe(
+      before.version + 1,
+    );
+  }, 30_000);
+
   it('« Mes envies » une seule fois, même en lectures concurrentes (WSH-06)', async () => {
     const marie = await person();
     await Promise.all(
