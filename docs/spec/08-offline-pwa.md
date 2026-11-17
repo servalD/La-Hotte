@@ -67,7 +67,7 @@ L'application s'ouvre et reste utilisable sans réseau, s'installe comme une app
 - **PWA-04** Notifications push demandées au moment où elles servent (première réservation, première invitation), avec explication avant la demande du navigateur.
 - **PWA-05** Pastille sur l'icône pour les notifications non lues, sans jamais refléter une activité soumise à la règle de surprise.
 - **PWA-06** Mise à jour de l'application : la nouvelle version s'installe en arrière-plan ; un bandeau « Nouvelle version, recharger » apparaît, jamais de rechargement forcé pendant une saisie.
-- **PWA-07** **Enveloppe hors ligne** (précise OFF-01 et OFF-24). Le service worker pré-cache les fichiers statiques du build et une page d'enveloppe sans aucune donnée, servie hors ligne pour toute navigation ; l'application s'y monte et lit le cache du profil. Aucune page HTML rendue pour une session ni aucune réponse de `/api` n'entre dans le cache du service worker.
+- **PWA-07** **Enveloppe hors ligne** (précise OFF-01 et OFF-24). Le service worker garde les fichiers statiques du build et les pages de l'application déjà ouvertes, qui ne portent aucune donnée (les écrans lisent l'API dans le navigateur) ; hors ligne, il sert la page déjà ouverte, sinon une page d'enveloppe qui propose la suite. Les pages de connexion, de compte, de profils, de réglages et à jeton ne sont jamais gardées, et aucune réponse de `/api`, `/realtime` ou `/monitoring`, ni aucune requête autre que `GET`, n'entre dans ce cache commun à l'appareil.
 
 ## Interface adaptative
 

@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { wipeDevice } from '@/lib/offline/device';
 import { announceIdentity } from '@/lib/offline/identity-channel';
 import { forgetProfileKeys } from '@/lib/offline/keys';
+import { ConnectionStatus } from '@/lib/offline/connection-status';
 import { useQueuedActions } from '@/lib/offline/queue-context';
 import { ConfirmButton } from '@/components/confirm-button';
 import { purgeUserData } from '@/lib/session/purge';
@@ -121,6 +122,7 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
           )}
         </nav>
       </header>
+      {area === 'profile' ? <ConnectionStatus /> : null}
       <main id="contenu" className="flex flex-1 flex-col gap-6">
         {children}
       </main>

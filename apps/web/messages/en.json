@@ -1443,5 +1443,22 @@
       "LIST_NOT_FOUND": "This list no longer exists, or you can no longer see it.",
       "IDEMPOTENCY_KEY_REUSED": "This was already saved differently."
     }
+  },
+  "offline": {
+    "title": "You're offline",
+    "body": "This page hasn't been opened on this device yet. The lists and cart you've already viewed are still available.",
+    "lists": "My lists",
+    "cart": "My cart"
+  },
+  "pwa": {
+    "updateReady": "A new version is ready.",
+    "reload": "Reload"
+  },
+  "connection": {
+    "offline": "Offline: what you do will be sent when you're back online.",
+    "offlineSince": "Offline since {time}: what you do will be sent when you're back online.",
+    "pending": "{count, plural, one {# waiting} other {# waiting}}",
+    "updating": "Updating…",
+    "upToDate": "Up to date"
   }
 }

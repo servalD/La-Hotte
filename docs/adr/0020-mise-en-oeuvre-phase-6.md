@@ -38,8 +38,11 @@ L'ADR 0005 fixe le principe (cache local par profil, file d'actions, serveur arb
 
 ### Service worker (PWA-07, OFF-24)
 
-- Serwist (ADR 0005), pré-cache des seuls fichiers statiques du build et d'une page `/offline` statique, sans donnée ni nonce utile ; toute navigation est servie par le réseau, et par `/offline` en son absence. Aucune réponse de `/api` ni page rendue n'entre dans le cache du service worker.
-- `/offline` monte le même client que l'application, qui lit le cache du profil et pousse la route demandée.
+- **Écrit à la main** (`src/lib/pwa/service-worker-source.ts`), servi par la route statique `/sw.js`, dont la version change à chaque build (PWA-06). L'ADR 0005 prévoyait Serwist : son intégration à Next 15 passe par le plugin webpack, pour trois règles qui tiennent en cent lignes testées.
+- Fichiers statiques du build : cache d'abord. Pages de l'application : réseau d'abord ; hors ligne, la page déjà ouverte, sinon `/offline`, page d'enveloppe sans donnée qui propose la suite. Pré-cache à l'installation : `/`, `/lists`, `/events`, `/cart`, `/balances`, `/gifts`, `/notifications`, `/actions`, `/offline` et leurs fichiers statiques.
+- Jamais : `/api`, `/realtime`, `/monitoring`, une requête autre que `GET`, ni les pages de connexion, de compte, de profils, de réglages et à jeton.
+- Une page gardée rejoue son nonce de CSP (en-tête et scripts gardés ensemble). Risque accepté : ces pages ne contiennent aucun contenu d'utilisateur où injecter, et la CSP reste celle de la page.
+- Le mutateur du client rend un `Blob` pour une réponse d'image : les images d'une fiche sont lues par le coffre (OFF-08), jamais par le service worker.
 
 ### Appareil partagé (OFF-30)
 

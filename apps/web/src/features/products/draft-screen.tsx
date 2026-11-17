@@ -1,5 +1,6 @@
 'use client';
 
+import { ProfileImage } from '@/lib/offline/profile-image';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   ApiError,
@@ -24,7 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
 import { listErrorKey } from '@/features/lists/api-errors';
-import { formatMinor, imageUrl, parseMinor } from '@/features/lists/format';
+import { formatMinor, parseMinor } from '@/features/lists/format';
 
 /**
  * Brouillon d'une fiche (EXT-04 à EXT-07) : relu tant que l'extraction est en cours (le temps réel
@@ -120,10 +121,8 @@ function DraftForm({ product, listId }: { product: ProductView; listId: string |
         </p>
       ) : null}
       {product.imageKey ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl(product.imageKey)}
-          alt=""
+        <ProfileImage
+          imageKey={product.imageKey}
           width={160}
           height={160}
           className="size-40 rounded-md object-cover"

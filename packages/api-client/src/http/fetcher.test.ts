@@ -57,6 +57,18 @@ describe('apiFetch (API-21)', () => {
     expect(headersOf().has('Idempotency-Key')).toBe(false);
   });
 
+  it('OFF-08 : une image revient en Blob, pas en JSON', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/webp' },
+      }),
+    );
+    const blob = await apiFetch<Blob>('/api/v1/images/abc');
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBe(3);
+  });
+
   it('lève une ApiError avec le code stable', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ code: 'PIN_INVALID', status: 403, title: 'x', type: 'x' }), {

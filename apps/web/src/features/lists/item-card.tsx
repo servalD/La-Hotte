@@ -1,5 +1,6 @@
 'use client';
 
+import { ProfileImage } from '@/lib/offline/profile-image';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getListItemsQueryKey,
@@ -23,7 +24,7 @@ import { offlineActions } from '@/lib/offline/actions';
 import { kindKey, type QueuedInput } from '@/lib/offline/queue';
 import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { listErrorKey } from './api-errors';
-import { formatMinor, imageUrl } from './format';
+import { formatMinor } from './format';
 import { WhoSeesDialog } from './who-sees-dialog';
 
 /** LST-12, LST-13 : couleur toujours doublée d'un pictogramme et d'un libellé (A11Y). */
@@ -81,11 +82,8 @@ export function ItemCard({
     <article className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
       <div className="flex gap-4">
         {item.product.imageKey ? (
-          // EXT-47 : image servie par notre API ; pas d'optimisation de Next pour une image privée.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl(item.product.imageKey)}
-            alt=""
+          <ProfileImage
+            imageKey={item.product.imageKey}
             width={96}
             height={96}
             className="size-24 shrink-0 rounded-md object-cover"

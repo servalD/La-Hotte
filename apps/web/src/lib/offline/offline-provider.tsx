@@ -20,6 +20,7 @@ import {
   openOffline,
   openOnline,
 } from './profile-cache';
+import { prefetchUpcoming } from './prefetch';
 import { ActionQueue } from './queue';
 import { QueueContext, refreshAfter, sendStep } from './queue-context';
 import type { ProfileVault } from './vault';
@@ -250,6 +251,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
       worker?.removeEventListener('message', onMessage);
     };
   }, [queue, canReplay]);
+
+  // OFF-09 : préchargement des événements proches, seulement avec un coffre ouvert (rien n'est
+  // préchargé sur un appareil partagé, où rien ne reste).
+  useEffect(() => {
+    if (!online || state.mode !== 'online' || !state.vault) return;
+    void prefetchUpcoming(queryClient).catch(() => undefined);
+  }, [online, state.mode, state.vault, queryClient]);
 
   // OFF-30 : sur un appareil partagé, fermer l'onglet perd la file ; l'application avertit.
   const actions = useSyncExternalStore(

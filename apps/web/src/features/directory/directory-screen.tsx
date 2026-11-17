@@ -1,5 +1,6 @@
 'use client';
 
+import { ProfileImage } from '@/lib/offline/profile-image';
 import {
   useAddListItem,
   useCopyFromDirectory,
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
 import { listErrorKey } from '@/features/lists/api-errors';
-import { formatMinor, imageUrl } from '@/features/lists/format';
+import { formatMinor } from '@/features/lists/format';
 
 /** Répertoire du cercle (REP-01 à REP-05, VIS-40) : ce que l'API montre, rien d'autre. */
 export function DirectoryScreen() {
@@ -85,10 +86,8 @@ export function DirectoryScreen() {
             className="flex gap-4 rounded-lg border border-border bg-surface p-4"
           >
             {entry.imageKey ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl(entry.imageKey)}
-                alt=""
+              <ProfileImage
+                imageKey={entry.imageKey}
                 width={80}
                 height={80}
                 className="size-20 rounded-md object-cover"

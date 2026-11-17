@@ -1443,5 +1443,22 @@
       "LIST_NOT_FOUND": "Cette liste n'existe plus, ou vous ne la voyez plus.",
       "IDEMPOTENCY_KEY_REUSED": "Ce geste a déjà été enregistré autrement."
     }
+  },
+  "offline": {
+    "title": "Vous êtes hors ligne",
+    "body": "Cette page n'a pas encore été ouverte sur cet appareil. Vos listes et votre panier déjà consultés restent disponibles.",
+    "lists": "Mes listes",
+    "cart": "Mon panier"
+  },
+  "pwa": {
+    "updateReady": "Une nouvelle version est prête.",
+    "reload": "Recharger"
+  },
+  "connection": {
+    "offline": "Hors ligne : vos gestes partiront au retour du réseau.",
+    "offlineSince": "Hors ligne depuis {time} : vos gestes partiront au retour du réseau.",
+    "pending": "{count, plural, one {# en attente} other {# en attente}}",
+    "updating": "Mise à jour…",
+    "upToDate": "À jour"
   }
 }

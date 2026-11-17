@@ -120,8 +120,18 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
     }
   }
 
+  // Réponse binaire (image d'une fiche, justificatif) : rendue telle quelle, en `Blob`.
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (response.ok && /^(image\/|application\/octet-stream)/.test(contentType)) {
+    return (await response.blob()) as T;
+  }
   const text = response.status === 204 ? '' : await response.text();
-  const body: unknown = text ? JSON.parse(text) : undefined;
+  let body: unknown;
+  try {
+    body = text ? JSON.parse(text) : undefined;
+  } catch {
+    body = undefined;
+  }
 
   if (!response.ok) {
     const retry = Number(response.headers.get('Retry-After'));
