@@ -33,6 +33,7 @@ import {
 import {
   EventInvitationMail,
   EventLinkRepository,
+  EventEngagements,
   EventNotifier,
   EventPeople,
   EventRepository,
@@ -45,6 +46,7 @@ import {
   IdentityEventInvitationMail,
   ListsEventWishlistCreator,
   AppEventsEventNotifier,
+  PrismaEventEngagements,
   SleepingResponseFloor,
 } from './infrastructure/adapters';
 import {
@@ -94,6 +96,7 @@ import { EventsController } from './presentation/events.controller';
     { provide: ResponseFloor, useClass: SleepingResponseFloor },
     { provide: EventInvitationMail, useClass: IdentityEventInvitationMail },
     { provide: EventNotifier, useClass: AppEventsEventNotifier },
+    { provide: EventEngagements, useClass: PrismaEventEngagements },
     { provide: EventWishlistCreator, useClass: ListsEventWishlistCreator },
   ],
   exports: [EventAccessReader],

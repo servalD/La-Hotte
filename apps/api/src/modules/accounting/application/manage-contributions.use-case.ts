@@ -165,6 +165,8 @@ export abstract class ItemAccountingMutation {
         itemId,
         change: input.change,
         actorId: viewerId,
+        participantIds: participantsOf(result.state),
+        buyerId: result.state.buyerId,
         ...(input.profileIds ? { profileIds: input.profileIds() } : {}),
       });
     }
@@ -198,10 +200,12 @@ export class SetContribution extends ItemAccountingMutation {
     if (!gated.canContribute) throw new AccountingClosedError();
     const item = gated.item;
     const cost = itemCostOf(item);
+    // NOT-12 : « quelqu'un rejoint » seulement à la première participation.
+    const joined = !gated.state?.contributions.some((row) => row.profileId === input.viewerId);
     const view = await this.run({
       ...input,
       gated,
-      change: 'contribution',
+      change: joined ? 'joined' : 'contribution',
       operate: (state, ctx) => {
         const opened =
           state ??
@@ -404,6 +408,8 @@ export class ReconcileItemCost {
         itemId: input.itemId,
         change: 'review_opened',
         actorId: input.actorId,
+        participantIds: participantsOf(result.state),
+        buyerId: result.state.buyerId,
       });
     }
   }

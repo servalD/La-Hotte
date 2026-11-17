@@ -15,6 +15,7 @@ import {
   type ReminderCandidate,
   type ReminderKind,
   ResponseFloor,
+  EventEngagements,
 } from '../domain/event.ports';
 
 interface StoredParticipant extends EventParticipantRecord {
@@ -411,5 +412,14 @@ export class RecordingResponseFloor extends ResponseFloor {
   pad(): Promise<void> {
     this.pads += 1;
     return Promise.resolve();
+  }
+}
+
+/** Double du critère « Ne participe pas » : candidats réglés par le test. */
+export class InMemoryEventEngagements extends EventEngagements {
+  readonly candidates = new Map<string, string[]>();
+
+  withdrawalAlertCandidates(eventId: string, profileId: string): Promise<string[]> {
+    return Promise.resolve(this.candidates.get(`${eventId}:${profileId}`) ?? []);
   }
 }

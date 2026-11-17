@@ -89,6 +89,8 @@ import {
   RecordingResponseFloor,
   ResponseFloor,
   SendEventReminders,
+  EventEngagements,
+  InMemoryEventEngagements,
 } from '../../src/modules/events/testing';
 import {
   CommentRepository,
@@ -383,6 +385,8 @@ export async function createTestApp(
     .useValue(catalog.visibilityLog)
     .overrideProvider(EngagementReader)
     .useValue(catalog.engagements)
+    .overrideProvider(EventEngagements)
+    .useValue(new InMemoryEventEngagements())
     .overrideProvider(EventLookup)
     .useValue(catalog.eventLookup)
     .overrideProvider(EventRepository)

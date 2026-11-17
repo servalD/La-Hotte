@@ -28,6 +28,8 @@ export const realtimeEventSchemas = {
   ),
   'access.revoked': envelope('access.revoked', z.object({ room: z.string().max(80) }).strict()),
   'event.updated': envelope('event.updated', z.object({ eventId: id }).strict()),
+  // CPT-59 : salon des offreurs seulement ; le client relit la compta par l'API.
+  'accounting.changed': envelope('accounting.changed', z.object({ itemId: id }).strict()),
 } as const;
 
 export type RealtimeEventType = keyof typeof realtimeEventSchemas;

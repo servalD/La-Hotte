@@ -10,6 +10,7 @@ import {
   AccountingPeople,
   type BudgetRecord,
   BudgetRepository,
+  type DueReminder,
   type OffsetProposal,
   type OffsetStatus,
   AccountingRepository,
@@ -207,6 +208,18 @@ export class InMemoryAccountingRepository extends AccountingRepository {
     });
     this.queue = run.catch(() => undefined);
     return run;
+  }
+
+  /** Réglé par les tests : rappels échus à rendre au prochain passage. */
+  readonly dueReminders: DueReminder[] = [];
+  readonly shortfallAccountings: string[] = [];
+
+  claimDueReminders(): Promise<DueReminder[]> {
+    return Promise.resolve(this.dueReminders.splice(0));
+  }
+
+  shortfallsAfterEvent(): Promise<string[]> {
+    return Promise.resolve(this.shortfallAccountings.splice(0));
   }
 
   createOffset(proposal: OffsetProposal): Promise<void> {

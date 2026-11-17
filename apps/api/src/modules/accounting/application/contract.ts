@@ -24,6 +24,7 @@ export {
 } from './manage-purchase.use-case';
 /** CPT-62 : même plafond que la photo d'une fiche. */
 export const RECEIPT_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export { RunSettlementTasks } from './settlement-tasks.use-case';
 export {
   GetAccountingOverview,
   GetBalances,

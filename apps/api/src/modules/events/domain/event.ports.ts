@@ -213,6 +213,11 @@ export abstract class EventWishlistCreator {
  * EVT-41 : avis de l'événement, publiés sur le bus de domaine (ADR 0018) après l'écriture ; le
  * module `notifications` les rend par candidat à travers le moteur (NOT-10).
  */
+/** Critère « Ne participe pas » de 05 : organisateurs à alerter d'un retrait engagé (phase 5). */
+export abstract class EventEngagements {
+  abstract withdrawalAlertCandidates(eventId: string, profileId: string): Promise<string[]>;
+}
+
 export abstract class EventNotifier {
   /** EVT-34 : tous les participants, sauf l'auteur de l'annulation. */
   abstract eventCancelled(eventId: string, profileIds: readonly string[], actorId: string): void;

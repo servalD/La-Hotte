@@ -16,6 +16,7 @@ import {
   AccountingPeople,
   type BudgetRecord,
   BudgetRepository,
+  type DueReminder,
   type OffsetProposal,
   type OffsetStatus,
   type StoredResponse,
@@ -243,6 +244,71 @@ export class PrismaAccountingRepository extends AccountingRepository {
       },
       { timeout: 15_000, maxWait: 10_000 },
     );
+  }
+
+  async claimDueReminders(now: Date, today: string): Promise<DueReminder[]> {
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // CPT-23 : J+7 après l'achat, réclamé une seule fois par part.
+    const seven = await this.prisma.$queryRaw<{ id: string }[]>`
+      UPDATE "contribution" c SET "reminded_7_at" = ${now}
+        FROM "purchase" p
+       WHERE p."accounting_id" = c."accounting_id"
+         AND c."settlement" = 'DUE' AND c."reminded_7_at" IS NULL AND p."purchased_at" <= ${weekAgo}
+      RETURNING c."id"`;
+    // CPT-23 : à la date de l'événement de la liste (ou relevé à la suppression, CPT-73).
+    const atEvent = await this.prisma.$queryRaw<{ id: string }[]>`
+      UPDATE "contribution" c SET "reminded_event_at" = ${now}
+        FROM "item_accounting" a
+        LEFT JOIN "list_item" i ON i."id" = a."item_id"
+        LEFT JOIN "list" l ON l."id" = i."list_id"
+        JOIN "event" e ON e."id" = COALESCE(l."event_id", a."detached_event_id")
+       WHERE a."id" = c."accounting_id"
+         AND c."settlement" = 'DUE' AND c."reminded_event_at" IS NULL AND e."date" <= ${today}::date
+      RETURNING c."id"`;
+    const ids = [...new Set([...seven, ...atEvent].map((row) => row.id))];
+    if (ids.length === 0) return [];
+    const rows = await this.prisma.contribution.findMany({
+      where: { id: { in: ids } },
+      select: {
+        profileId: true,
+        accounting: {
+          select: {
+            id: true,
+            itemId: true,
+            buyerProfileId: true,
+            contributions: { select: { profileId: true } },
+          },
+        },
+      },
+    });
+    return rows.flatMap((row) =>
+      row.profileId
+        ? [
+            {
+              accountingId: row.accounting.id,
+              itemId: row.accounting.itemId,
+              participantId: row.profileId,
+              participantIds: row.accounting.contributions.flatMap((c) =>
+                c.profileId ? [c.profileId] : [],
+              ),
+              buyerId: row.accounting.buyerProfileId,
+            },
+          ]
+        : [],
+    );
+  }
+
+  async shortfallsAfterEvent(today: string): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT a."id" FROM "item_accounting" a
+        JOIN "purchase" p ON p."accounting_id" = a."id"
+        LEFT JOIN "list_item" i ON i."id" = a."item_id"
+        LEFT JOIN "list" l ON l."id" = i."list_id"
+        JOIN "event" e ON e."id" = COALESCE(l."event_id", a."detached_event_id")
+       WHERE e."date" < ${today}::date
+         AND COALESCE(p."actual_total_minor", p."planned_total_minor") >
+             (SELECT COALESCE(SUM(c."amount_minor"), 0) FROM "contribution" c WHERE c."accounting_id" = a."id")`;
+    return rows.map((row) => row.id);
   }
 
   async createOffset(proposal: OffsetProposal): Promise<void> {

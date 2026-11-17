@@ -249,3 +249,20 @@ export function decideBuyerRequest(
   if (!participantsOf(state).includes(request.candidateId)) throw new ContributionInvalidError();
   return { state: withSettlements({ ...cleared, buyerId: request.candidateId }), closed };
 }
+
+/**
+ * CPT-64 : au lendemain de l'événement, le reste à couvrir est ajouté à la part de l'acheteur.
+ * Sans reste, ou sans part de l'acheteur, rien ne change.
+ */
+export function absorbShortfall(state: AccountingState): AccountingState {
+  const amount = shortfallOf(state);
+  if (!state.purchase || amount <= 0 || state.buyerId === null) return state;
+  const buyer = contributionOf(state, state.buyerId);
+  if (!buyer) return state;
+  return withSettlements({
+    ...state,
+    contributions: state.contributions.map((row) =>
+      row.id === buyer.id ? { ...row, amount: (row.amount ?? 0) + amount } : row,
+    ),
+  });
+}

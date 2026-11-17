@@ -51,7 +51,7 @@ export class MarkPurchased extends ItemAccountingMutation {
     return this.run({
       ...input,
       gated,
-      change: 'purchase',
+      change: 'purchased',
       operate: (state, ctx) => {
         if (!state) throw new AccountingNotFoundError();
         const reconciled = cost ? reconcileCost(state, cost, ctx) : { state, closedReviews: [] };
@@ -81,7 +81,7 @@ export class UncheckPurchase extends ItemAccountingMutation {
     return this.run({
       ...input,
       gated,
-      change: 'purchase',
+      change: 'unchecked',
       operate: (state, ctx) => {
         if (!state) throw new AccountingNotFoundError();
         return {
@@ -133,7 +133,7 @@ export class RequestBuyer extends ItemAccountingMutation {
     return this.run({
       ...input,
       gated,
-      change: 'buyer',
+      change: 'buyer_requested',
       operate: (state, ctx) => {
         if (!state) throw new AccountingNotFoundError();
         return {

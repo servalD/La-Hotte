@@ -27,6 +27,8 @@ import { AccountingController } from './presentation/accounting.controller';
 import { ItemCostSubscriber } from './presentation/item-cost.subscriber';
 import { PurchaseController } from './presentation/purchase.controller';
 import { SettlementController } from './presentation/settlement.controller';
+import { SettlementScheduler } from './presentation/settlement.scheduler';
+import { RunSettlementTasks } from './application/settlement-tasks.use-case';
 import {
   GetAccountingOverview,
   GetBalances,
@@ -71,6 +73,8 @@ import {
     ManageOffsets,
     ManageBudgets,
     GetAccountingOverview,
+    RunSettlementTasks,
+    SettlementScheduler,
     { provide: AccountingRepository, useClass: PrismaAccountingRepository },
     { provide: AccountingPeople, useClass: PrismaAccountingPeople },
     { provide: BudgetRepository, useClass: PrismaBudgetRepository },

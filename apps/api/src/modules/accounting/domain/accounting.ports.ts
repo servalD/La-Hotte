@@ -82,10 +82,26 @@ export abstract class AccountingRepository {
     };
   }): Promise<{ readonly replayed: boolean; readonly response: StoredResponse }>;
 
+  /**
+   * CPT-23, CPT-66 : parts dues dont un rappel automatique est échu (J+7 après l'achat, puis la
+   * date de l'événement), chacune réclamée une seule fois (colonne « fait le »).
+   */
+  abstract claimDueReminders(now: Date, today: string): Promise<DueReminder[]>;
+  /** CPT-64 : fiches achetées, avec un reste, dont l'événement est passé. */
+  abstract shortfallsAfterEvent(today: string): Promise<string[]>;
+
   abstract createOffset(proposal: OffsetProposal): Promise<void>;
   abstract findOffset(id: string): Promise<OffsetProposal | null>;
   abstract pendingOffset(a: string, b: string, currency: string): Promise<OffsetProposal | null>;
   abstract setOffsetStatus(id: string, status: OffsetStatus, at: Date): Promise<void>;
+}
+
+export interface DueReminder {
+  readonly accountingId: string;
+  readonly itemId: string | null;
+  readonly participantId: string;
+  readonly participantIds: readonly string[];
+  readonly buyerId: string | null;
 }
 
 export type OffsetStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'STALE';

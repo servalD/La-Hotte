@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { configureApp } from '../../src/bootstrap';
+import { RunSettlementTasks } from '../../src/modules/accounting/application/contract';
+import { EventEngagements } from '../../src/modules/events/testing';
 import { replay, type LedgerRecord } from '../../src/modules/accounting/domain/ledger';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 import { PrismaService } from '../../src/platform/prisma/prisma.service';
@@ -316,5 +318,92 @@ describe('Compta en base (CPT-03, CPT-70, CPT-71)', () => {
       (await prisma.offsetProposal.findUniqueOrThrow({ where: { id: proposal.body.id as string } }))
         .status,
     ).toBe('CONFIRMED');
+  }, 30_000);
+
+  it('CPT-23, CPT-64 : rappels réclamés une fois ; le reste passe à l’acheteur après l’événement', async () => {
+    const { marie, papa, tonton, itemId } = await world();
+    const event = await http()
+      .post('/api/v1/events')
+      .set(marie.mutation)
+      .send({ title: 'Anniversaire', date: '2026-12-24', type: 'BIRTHDAY', mode: 'EXCHANGE' })
+      .expect(201);
+    const item = await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } });
+    await prisma.list.update({
+      where: { id: item.listId },
+      data: { personalProfileId: null, eventId: event.body.id as string },
+    });
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 7_000 }).expect(200);
+    await http()
+      .put(`/api/v1/items/${itemId}/purchase`)
+      .set({ ...papa.mutation, 'Idempotency-Key': randomUUID() })
+      .send({ actualTotalMinor: 11_000 })
+      .expect(200);
+    await http()
+      .post(`/api/v1/items/${itemId}/contribution/lower`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': randomUUID() })
+      .send({ amountMinor: 7_200 })
+      .expect(200);
+    const accounting = await prisma.itemAccounting.findUniqueOrThrow({ where: { itemId } });
+    await prisma.purchase.update({
+      where: { accountingId: accounting.id },
+      data: { purchasedAt: new Date(Date.now() - 8 * 86_400_000) },
+    });
+    await prisma.event.update({
+      where: { id: event.body.id as string },
+      data: { date: new Date(Date.now() - 2 * 86_400_000) },
+    });
+    const tasks = app.get(RunSettlementTasks);
+    const first = await tasks.execute();
+    expect(first.reminders).toBeGreaterThanOrEqual(1);
+    expect(first.absorbed).toBeGreaterThanOrEqual(1);
+    const rows = await prisma.contribution.findMany({
+      where: { accountingId: accounting.id },
+      orderBy: { rank: 'asc' },
+    });
+    expect(Number(rows[0]!.amountMinor)).toBe(3_800);
+    expect(rows[1]!.remindedSevenAt).not.toBeNull();
+    expect(rows[1]!.remindedEventAt).not.toBeNull();
+    // Réclamés une seule fois.
+    const reminded = rows[1]!.remindedSevenAt;
+    await tasks.execute();
+    const again = await prisma.contribution.findUniqueOrThrow({ where: { id: rows[1]!.id } });
+    expect(again.remindedSevenAt).toEqual(reminded);
+    expect(
+      await prisma.ledgerEntry.count({
+        where: { accountingId: accounting.id, kind: 'SHORTFALL_ABSORBED' },
+      }),
+    ).toBe(1);
+  }, 30_000);
+
+  it('critère de 05 : un retrait engagé alerte les organisateurs, jamais un destinataire (VIS-20)', async () => {
+    const { marie, papa, tonton, itemId } = await world();
+    const event = await http()
+      .post('/api/v1/events')
+      .set(papa.mutation)
+      .send({ title: 'Fête', date: '2026-12-24', type: 'OTHER', mode: 'EXCHANGE' })
+      .expect(201);
+    const eventId = event.body.id as string;
+    const item = await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } });
+    await prisma.list.update({
+      where: { id: item.listId },
+      data: { personalProfileId: null, eventId },
+    });
+    // Marie, destinataire de la liste, est aussi organisatrice.
+    await prisma.eventParticipant.create({
+      data: {
+        id: randomUUID(),
+        eventId,
+        profileId: marie.profileId!,
+        role: 'ORGANIZER',
+        rsvp: 'YES',
+      },
+    });
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 1_000 }).expect(200);
+    const engagements = app.get(EventEngagements, { strict: false });
+    expect(await engagements.withdrawalAlertCandidates(eventId, tonton.profileId!)).toEqual([
+      papa.profileId,
+    ]);
+    expect(await engagements.withdrawalAlertCandidates(eventId, papa.profileId!)).toEqual([]);
   }, 30_000);
 });

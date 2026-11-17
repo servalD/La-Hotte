@@ -128,7 +128,7 @@ export class SettleContribution extends ItemAccountingMutation {
     return this.run({
       ...input,
       gated,
-      change: 'settlement',
+      change: 'settlement_claimed',
       operate: (state) => {
         if (!state) throw new AccountingNotFoundError();
         return {
@@ -152,7 +152,7 @@ export class SettleContribution extends ItemAccountingMutation {
     return this.run({
       ...input,
       gated,
-      change: 'settlement',
+      change: 'settlement_nudged',
       operate: (state, ctx) => {
         if (!state) throw new AccountingNotFoundError();
         return {
@@ -410,6 +410,10 @@ export class ManageOffsets {
         itemId: state.itemId,
         change: 'settlement',
         actorId: input.viewerId,
+        participantIds: state.contributions.flatMap((row) =>
+          row.profileId ? [row.profileId] : [],
+        ),
+        buyerId: state.buyerId,
       });
     }
     return { status: 'CONFIRMED' };

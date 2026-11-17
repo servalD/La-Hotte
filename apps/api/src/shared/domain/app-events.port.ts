@@ -88,15 +88,24 @@ export interface AccountingChanged {
   /** Absent quand l'élément a disparu (CPT-73). */
   readonly itemId: string | null;
   readonly change:
+    | 'joined'
     | 'contribution'
     | 'options'
     | 'review_opened'
     | 'review_decided'
+    | 'buyer_requested'
     | 'buyer'
+    | 'purchased'
+    | 'unchecked'
     | 'purchase'
     | 'shortfall'
-    | 'settlement';
+    | 'settlement'
+    | 'settlement_claimed'
+    | 'settlement_nudged';
   readonly actorId: string | null;
+  /** Participants et acheteur après l'opération : les seuls candidats d'un avis de compta. */
+  readonly participantIds: readonly string[];
+  readonly buyerId: string | null;
   /** CPT-19 : personnes choisies par l'auteur ; aucune autre ne reçoit l'avis du reste. */
   readonly profileIds?: readonly string[];
 }
