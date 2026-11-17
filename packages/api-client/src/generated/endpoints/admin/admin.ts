@@ -32,6 +32,7 @@ import type {
   ModerationQueueView,
   PlatformSettingKey,
   PlatformSettingsView,
+  PlatformStatsDto,
   ProblemDetailsDto,
   SearchAccountParams,
   UpdateSettingDto,
@@ -1256,3 +1257,109 @@ export const useUpdatePlatformSetting = <TError = ErrorType<ProblemDetailsDto>, 
 
   return useMutation(mutationOptions, queryClient);
 };
+export const getGetPlatformStatsUrl = () => {
+  return `/api/v1/admin/stats`;
+};
+
+export const getPlatformStats = async (options?: RequestInit): Promise<PlatformStatsDto> => {
+  return apiFetch<PlatformStatsDto>(getGetPlatformStatsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetPlatformStatsQueryKey = () => {
+  return [`/api/v1/admin/stats`] as const;
+};
+
+export const getGetPlatformStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlatformStats>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformStats>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPlatformStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformStats>>> = ({ signal }) =>
+    getPlatformStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlatformStats>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetPlatformStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformStats>>>;
+export type GetPlatformStatsQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetPlatformStats<
+  TData = Awaited<ReturnType<typeof getPlatformStats>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformStats>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPlatformStats>>,
+          TError,
+          Awaited<ReturnType<typeof getPlatformStats>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPlatformStats<
+  TData = Awaited<ReturnType<typeof getPlatformStats>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformStats>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPlatformStats>>,
+          TError,
+          Awaited<ReturnType<typeof getPlatformStats>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPlatformStats<
+  TData = Awaited<ReturnType<typeof getPlatformStats>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformStats>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetPlatformStats<
+  TData = Awaited<ReturnType<typeof getPlatformStats>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformStats>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetPlatformStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}

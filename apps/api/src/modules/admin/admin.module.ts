@@ -30,6 +30,10 @@ import {
   UpdateSetting,
 } from './application/administer-platform.use-case';
 import { ReadAudit } from './application/read-audit.use-case';
+import { ReadPlatformStats } from './application/read-platform-stats.use-case';
+import { PlatformStatsReader } from './domain/platform-stats';
+import { PrismaPlatformStats } from './infrastructure/prisma-platform-stats';
+import { AdminStatsController } from './presentation/admin-stats.controller';
 import { AccountDirectory, AccountSearchQuota } from './domain/account-directory';
 import { AuditTrail } from './domain/audit-trail';
 import { RedisAccountSearchQuota } from './infrastructure/account-search-quota';
@@ -51,6 +55,7 @@ import { AdminAuditController } from './presentation/admin-audit.controller';
   imports: [IdentityModule, CatalogModule, ConversationsModule, DirectoryModule],
   controllers: [
     AdminAuditController,
+    AdminStatsController,
     AdminAccountsController,
     AdminSettingsController,
     AccountAdminActionsController,
@@ -61,6 +66,8 @@ import { AdminAuditController } from './presentation/admin-audit.controller';
   ],
   providers: [
     ReadAudit,
+    ReadPlatformStats,
+    { provide: PlatformStatsReader, useClass: PrismaPlatformStats },
     SearchAccount,
     ReadSettings,
     UpdateSetting,

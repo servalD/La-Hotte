@@ -33,6 +33,10 @@ export class AccountView {
   @ApiProperty({ format: 'email' })
   email!: string;
 
+  /** RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration. */
+  @ApiProperty({ enum: ['USER', 'MODERATOR', 'ADMIN'], enumName: 'AccountRole' })
+  role!: 'USER' | 'MODERATOR' | 'ADMIN';
+
   @ApiProperty()
   emailVerified!: boolean;
 

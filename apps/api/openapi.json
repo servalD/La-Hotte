@@ -1788,6 +1788,37 @@
         ]
       }
     },
+    "/api/v1/admin/stats": {
+      "get": {
+        "operationId": "getPlatformStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformStatsDto"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/auth/email": {
       "put": {
         "operationId": "requestEmailChange",
@@ -9298,7 +9329,8 @@
           "USER",
           "MODERATOR",
           "ADMIN"
-        ]
+        ],
+        "description": "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration."
       },
       "AccountSearchView": {
         "type": "object",
@@ -9409,6 +9441,14 @@
             "type": "string",
             "format": "email"
           },
+          "role": {
+            "description": "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountRole"
+              }
+            ]
+          },
           "emailVerified": {
             "type": "boolean"
           },
@@ -9431,6 +9471,7 @@
         },
         "required": [
           "email",
+          "role",
           "emailVerified",
           "hasPassword",
           "googleLinked",
@@ -14419,6 +14460,50 @@
           "forbidden_terms",
           "blocked_domains",
           "extraction_daily_limit"
+        ]
+      },
+      "PlatformStatsDto": {
+        "type": "object",
+        "properties": {
+          "activeAccounts30d": {
+            "type": "number",
+            "nullable": true
+          },
+          "accountsCreated30d": {
+            "type": "number",
+            "nullable": true
+          },
+          "listsCreated30d": {
+            "type": "number",
+            "nullable": true
+          },
+          "catalogProducts": {
+            "type": "number",
+            "nullable": true
+          },
+          "openReports": {
+            "type": "number",
+            "nullable": true
+          },
+          "medianReportHours": {
+            "type": "number",
+            "nullable": true
+          },
+          "extractionSuccessRate": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "activeAccounts30d",
+          "accountsCreated30d",
+          "listsCreated30d",
+          "catalogProducts",
+          "openReports",
+          "medianReportHours",
+          "extractionSuccessRate"
         ]
       },
       "PostCommentDto": {

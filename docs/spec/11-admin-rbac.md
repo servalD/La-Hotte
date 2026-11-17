@@ -100,7 +100,7 @@ Une action est autorisée si les deux étages l'autorisent.
 
 - **STA-01** Tableau de bord d'administration : agrégats uniquement (comptes actifs, listes créées, taux de réussite de l'extraction, coût d'extraction, erreurs, temps de réponse). Aucun agrégat sur un groupe de moins de 10 comptes.
 
-- **STA-02** **Contenu du tableau de bord.** Comptes actifs sur 30 jours, comptes créés, listes créées, fiches publiées au catalogue, signalements ouverts et délai médian de traitement, taux de réussite et coût de l'extraction, taux d'erreur et temps de réponse. Chaque agrégat porte sur au moins 10 comptes, sinon la valeur est `null` (pas zéro). Aucune ventilation par compte ni par profil.
+- **STA-02** **Contenu du tableau de bord** (`GET /admin/stats`, `MODERATOR` et `ADMIN`). Sur 30 jours : comptes actifs (connectés), comptes créés, listes créées, taux de réussite de l'extraction ; à l'instant : fiches au catalogue global, signalements ouverts ; délai médian de traitement d'un signalement. Sous 10 comptes actifs au total, tout est `null` ; un agrégat qui porte lui-même sur moins de 10 comptes est `null` (jamais zéro). Aucune ventilation par compte ni par profil. Le coût de l'extraction, le taux d'erreur et les temps de réponse sont dans les tableaux de bord d'OpenObserve (OBS-05), pas dans l'application.
 
 ## Critères d'acceptation
 

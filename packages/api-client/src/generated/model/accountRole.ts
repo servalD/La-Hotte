@@ -6,6 +6,9 @@
  * OpenAPI spec version: 1
  */
 
+/**
+ * RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.
+ */
 export type AccountRole = (typeof AccountRole)[keyof typeof AccountRole];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare

@@ -295,6 +295,7 @@ export * from './pendingOffsetsView';
 export * from './platformSettingKey';
 export * from './platformSettingsView';
 export * from './platformSettingsViewRegistrationMode';
+export * from './platformStatsDto';
 export * from './postCommentDto';
 export * from './postItemBuyerRequest200';
 export * from './postItemShortfallNotice200';

@@ -8,3 +8,5 @@ export { InMemoryAuditTrail } from './infrastructure/in-memory-audit-trail';
 export { ModerationStore } from './domain/moderation';
 export { InMemoryModerationStore } from './infrastructure/in-memory-moderation-store';
 export { EraseRemovedComments } from './application/moderate-content.use-case';
+export { PlatformStatsReader } from './domain/platform-stats';
+export { FixedPlatformStats } from './infrastructure/prisma-platform-stats';

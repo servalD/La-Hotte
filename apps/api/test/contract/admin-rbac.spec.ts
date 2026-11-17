@@ -221,3 +221,31 @@ describe('Journal d’audit (AUD-04, AUD-05, AUD-06)', () => {
     expect(res.body).not.toHaveProperty('items');
   });
 });
+
+describe('Tableau de bord (STA-01, STA-02)', () => {
+  it('un modérateur lit les agrégats ; sous 10 comptes, tout est null', async () => {
+    const mod = await identity.signIn({ role: 'MODERATOR' });
+    admin.stats.raw = { ...admin.stats.raw, accountsTotal: 3, activeAccounts30d: 3 };
+    const low = await request(app.getHttpServer())
+      .get('/api/v1/admin/stats')
+      .set('Cookie', mod.cookie)
+      .expect(200);
+    expect(Object.values(low.body as object).every((v) => v === null)).toBe(true);
+    admin.stats.raw = {
+      ...admin.stats.raw,
+      accountsTotal: 50,
+      activeAccounts30d: 20,
+      accountsCreated30d: 11,
+      listsCreated30d: 4,
+    };
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/admin/stats')
+      .set('Cookie', mod.cookie)
+      .expect(200);
+    expect(res.body).toMatchObject({
+      activeAccounts30d: 20,
+      accountsCreated30d: 11,
+      listsCreated30d: 4,
+    });
+  });
+});

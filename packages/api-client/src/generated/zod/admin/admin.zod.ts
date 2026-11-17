@@ -21,7 +21,11 @@ export const searchAccountResponse = zod.object({
       lastSignInAt: zod.iso.datetime({}).nullable(),
       profileCount: zod.number(),
       listCount: zod.number(),
-      role: zod.enum(['USER', 'MODERATOR', 'ADMIN']),
+      role: zod
+        .enum(['USER', 'MODERATOR', 'ADMIN'])
+        .describe(
+          "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+        ),
       status: zod.enum(['ACTIVE', 'SUSPENDED', 'PENDING_DELETION']),
       totpEnabled: zod.boolean(),
       emailVerified: zod.boolean(),
@@ -96,7 +100,11 @@ export const changeAccountRoleBodyReasonMax = 500;
 
 export const changeAccountRoleBody = zod.object({
   reason: zod.string().min(changeAccountRoleBodyReasonMin).max(changeAccountRoleBodyReasonMax),
-  role: zod.enum(['USER', 'MODERATOR', 'ADMIN']),
+  role: zod
+    .enum(['USER', 'MODERATOR', 'ADMIN'])
+    .describe(
+      "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+    ),
 });
 
 export const suspendAccountParams = zod.object({
@@ -377,4 +385,21 @@ export const updatePlatformSettingResponse = zod.object({
   forbidden_terms: zod.array(zod.string()),
   blocked_domains: zod.array(zod.string()),
   extraction_daily_limit: zod.number().nullable(),
+});
+
+export const getPlatformStatsResponseExtractionSuccessRateMin = 0;
+export const getPlatformStatsResponseExtractionSuccessRateMax = 1;
+
+export const getPlatformStatsResponse = zod.object({
+  activeAccounts30d: zod.number().nullable(),
+  accountsCreated30d: zod.number().nullable(),
+  listsCreated30d: zod.number().nullable(),
+  catalogProducts: zod.number().nullable(),
+  openReports: zod.number().nullable(),
+  medianReportHours: zod.number().nullable(),
+  extractionSuccessRate: zod
+    .number()
+    .min(getPlatformStatsResponseExtractionSuccessRateMin)
+    .max(getPlatformStatsResponseExtractionSuccessRateMax)
+    .nullable(),
 });

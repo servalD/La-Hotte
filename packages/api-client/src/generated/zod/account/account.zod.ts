@@ -12,6 +12,14 @@ export const getAccountResponseRecoveryCodesRemainingMax = 10;
 
 export const getAccountResponse = zod.object({
   email: zod.email(),
+  role: zod
+    .enum(['USER', 'MODERATOR', 'ADMIN'])
+    .describe(
+      "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+    )
+    .describe(
+      "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+    ),
   emailVerified: zod.boolean(),
   hasPassword: zod.boolean(),
   googleLinked: zod
