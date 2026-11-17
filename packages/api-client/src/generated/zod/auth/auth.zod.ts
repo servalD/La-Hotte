@@ -79,6 +79,8 @@ export const verifyEmailBody = zod.object({
  * @summary AUTH-03, AUTH-05, AUTH-14 : dissociation, seulement avec un mot de passe. Toutes les autres
 sessions tombent ; celle-ci est remplacée.
  */
+export const unlinkGoogleResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
+
 export const unlinkGoogleResponse = zod.object({
   authenticated: zod.boolean(),
   csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
@@ -88,6 +90,15 @@ export const unlinkGoogleResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(unlinkGoogleResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod
@@ -167,7 +178,13 @@ export const signInBodyPasswordMax = 256;
 export const signInBody = zod.object({
   email: zod.string().min(signInBodyEmailMin).max(signInBodyEmailMax),
   password: zod.string().min(1).max(signInBodyPasswordMax),
+  sharedDevice: zod
+    .boolean()
+    .optional()
+    .describe("OFF-30 : appareil partagé (session courte, aucun cache sur l'appareil)."),
 });
+
+export const signInResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
 
 export const signInResponse = zod.object({
   authenticated: zod.boolean(),
@@ -178,6 +195,15 @@ export const signInResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(signInResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod
@@ -200,6 +226,8 @@ export const changePasswordBody = zod.object({
     .max(changePasswordBodyNewPasswordMax),
 });
 
+export const changePasswordResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
+
 export const changePasswordResponse = zod.object({
   authenticated: zod.boolean(),
   csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
@@ -209,6 +237,15 @@ export const changePasswordResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(changePasswordResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod
@@ -279,6 +316,8 @@ export const reauthenticateBody = zod.object({
     .describe('AUTH-14 : exigé si le TOTP est actif (code TOTP ou de secours).'),
 });
 
+export const reauthenticateResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
+
 export const reauthenticateResponse = zod.object({
   authenticated: zod.boolean(),
   csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
@@ -288,6 +327,15 @@ export const reauthenticateResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(reauthenticateResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod
@@ -379,6 +427,7 @@ export const activateTotpBody = zod.object({
     .regex(activateTotpBodyCodeRegExp),
 });
 
+export const activateTotpResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
 export const activateTotpResponseRecoveryCodesMin = 10;
 export const activateTotpResponseRecoveryCodesMax = 10;
 
@@ -391,6 +440,15 @@ export const activateTotpResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(activateTotpResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod
@@ -407,6 +465,8 @@ export const activateTotpResponse = zod.object({
 /**
  * @summary AUTH-05, AUTH-13, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée.
  */
+export const disableTotpResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
+
 export const disableTotpResponse = zod.object({
   authenticated: zod.boolean(),
   csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
@@ -416,6 +476,15 @@ export const disableTotpResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(disableTotpResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod
@@ -455,6 +524,8 @@ export const verifySecondFactorBody = zod.object({
     .describe('« Faire confiance à cet appareil 30 jours » (AUTH-12).'),
 });
 
+export const verifySecondFactorResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
+
 export const verifySecondFactorResponse = zod.object({
   authenticated: zod.boolean(),
   csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
@@ -464,6 +535,15 @@ export const verifySecondFactorResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(verifySecondFactorResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod

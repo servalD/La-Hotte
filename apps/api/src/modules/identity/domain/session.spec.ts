@@ -35,6 +35,7 @@ function record(overrides: Partial<SessionRecord> = {}): SessionRecord {
     createdAt: at(-DAY),
     expiresAt: at(DAY),
     absoluteExpiresAt: at(10 * DAY),
+    sharedDevice: false,
     ...overrides,
   };
 }
@@ -51,6 +52,12 @@ const policy = (overrides: Partial<ProfileLockPolicy> = {}): ProfileLockPolicy =
 describe('Durées de session (AUTH-04, AUTH-05)', () => {
   it('30 jours glissants, 90 absolus ; 12 h et 24 h pour ADMIN et MODERATOR', () => {
     expect(sessionLifetime('USER')).toEqual({ slidingMs: 30 * DAY, absoluteMs: 90 * DAY });
+    // OFF-30 : appareil partagé, 2 h sans activité, 12 h au plus, quel que soit le rôle.
+    expect(sessionLifetime('USER', true)).toEqual({ slidingMs: DAY / 12, absoluteMs: DAY / 2 });
+    expect(sessionLifetime('ADMIN', true)).toEqual({ slidingMs: DAY / 12, absoluteMs: DAY / 2 });
+    expect(slideExpiry(record({ sharedDevice: true, absoluteExpiresAt: at(DAY) }), now)).toEqual(
+      at(DAY / 12),
+    );
     expect(sessionLifetime('ADMIN')).toEqual({ slidingMs: DAY / 2, absoluteMs: DAY });
     expect(sessionLifetime('MODERATOR')).toEqual({ slidingMs: DAY / 2, absoluteMs: DAY });
     expect(newSessionExpiry('USER', now)).toEqual({

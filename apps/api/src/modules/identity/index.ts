@@ -7,6 +7,7 @@ export { IdentityModule } from './identity.module';
 export {
   AccountScope,
   ActiveProfile,
+  activeProfileOf,
   ClientContext,
   type ClientContextValue,
   CurrentSession,

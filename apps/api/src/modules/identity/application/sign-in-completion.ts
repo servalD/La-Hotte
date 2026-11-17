@@ -53,20 +53,24 @@ export class SignInCompletion {
     readonly deviceId: string | null;
     readonly client: ClientInfo;
     readonly previous: SessionRef | null;
+    /** OFF-30 : case « appareil partagé » cochée à la connexion. */
+    readonly sharedDevice?: boolean;
   }): Promise<SignInResult> {
     const accountId = input.state.accountId;
+    const sharedDevice = input.sharedDevice === true;
     const privileged = requiresSecondFactor(input.state.role);
     // AUTH-13 : administrateur ou modérateur sans TOTP, refus en échec fermé.
     if (privileged && !input.totpEnabled) {
       await this.log(accountId, 'login.failed', input.client);
       throw new SecondFactorEnrollmentRequiredError();
     }
-    const dispensingDevice = privileged ? null : input.deviceId;
+    // OFF-30 : un appareil déclaré partagé ne dispense pas du second facteur.
+    const dispensingDevice = privileged || sharedDevice ? null : input.deviceId;
     if (input.totpEnabled && !dispensingDevice) {
       const pendingToken = this.tokens.generate();
       await this.pending.create(
         this.tokens.hash(pendingToken),
-        { accountId, epoch: input.state.epoch, createdAt: this.clock.now() },
+        { accountId, epoch: input.state.epoch, createdAt: this.clock.now(), sharedDevice },
         PENDING_SECOND_FACTOR_TTL_MS,
       );
       await this.log(accountId, 'login.second_factor_required', input.client);
@@ -79,6 +83,7 @@ export class SignInCompletion {
       userAgent: input.client.userAgent,
       trustedDeviceId: dispensingDevice,
       previous: input.previous,
+      sharedDevice,
     });
     await this.log(accountId, 'login.succeeded', input.client);
     return { kind: 'session', issued };

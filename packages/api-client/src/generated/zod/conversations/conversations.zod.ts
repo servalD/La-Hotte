@@ -167,6 +167,12 @@ export const postItemCommentParams = zod.object({
   id: zod.uuid(),
 });
 
+export const postItemCommentHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
 export const postItemCommentBodyBodyMax = 2000;
 
 export const postItemCommentBodyMentionIdsMax = 10;

@@ -11,12 +11,19 @@ interface Stored {
   a: string;
   e: number;
   c: number;
+  /** OFF-30 : appareil partagé. */
+  s?: 1;
 }
 
 function parse(raw: string | null): PendingSecondFactor | null {
   if (raw === null) return null;
   const value = JSON.parse(raw) as Stored;
-  return { accountId: value.a, epoch: value.e, createdAt: new Date(value.c) };
+  return {
+    accountId: value.a,
+    epoch: value.e,
+    createdAt: new Date(value.c),
+    sharedDevice: value.s === 1,
+  };
 }
 
 /**
@@ -35,6 +42,7 @@ export class RedisPendingSecondFactors extends PendingSecondFactors {
       a: pending.accountId,
       e: pending.epoch,
       c: pending.createdAt.getTime(),
+      ...(pending.sharedDevice ? { s: 1 as const } : {}),
     };
     await this.redis((r) => r.set(key(tokenHash), JSON.stringify(value), 'PX', ttlMs));
   }

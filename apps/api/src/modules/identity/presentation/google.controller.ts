@@ -15,6 +15,7 @@ import {
   StartGoogleFlow,
   UnlinkGoogle,
 } from '../application/contract';
+import { CacheKeys } from '../application/contract';
 import {
   clearPendingCookie,
   clearPresessionCookie,
@@ -56,6 +57,7 @@ export class GoogleController {
   private readonly webOrigin: string;
 
   constructor(
+    private readonly cacheKeys: CacheKeys,
     private readonly start: StartGoogleFlow,
     private readonly complete: CompleteGoogleFlow,
     private readonly unlink: UnlinkGoogle,
@@ -223,6 +225,8 @@ export class GoogleController {
         activeProfileId: profile.profileId,
         profileUnlocked: profile.unlocked,
         expiresAt: issued.record.expiresAt.toISOString(),
+        sharedDevice: issued.record.sharedDevice,
+        accountTag: this.cacheKeys.accountTag(issued.record.accountId),
       },
       secondFactorPending: false,
     };

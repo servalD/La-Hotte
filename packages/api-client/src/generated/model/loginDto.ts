@@ -17,4 +17,6 @@ export interface LoginDto {
    * @maxLength 256
    */
   password: string;
+  /** OFF-30 : appareil partagé (session courte, aucun cache sur l'appareil). */
+  sharedDevice?: boolean;
 }

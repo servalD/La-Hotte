@@ -44,6 +44,8 @@ export class SignInWithPassword {
     readonly previous: SessionRef | null;
     /** Cookie `__Host-lh_device`, tel que reçu. */
     readonly deviceToken: string | null;
+    /** OFF-30 : case « appareil partagé ». */
+    readonly sharedDevice?: boolean;
   }): Promise<SignInResult> {
     const email = normalizeEmail(input.email);
     const device = await this.trustedDeviceFor(email, input.deviceToken);
@@ -91,6 +93,7 @@ export class SignInWithPassword {
       deviceId: device?.accountId === account.accountId ? device.id : null,
       client: input.client,
       previous: input.previous,
+      sharedDevice: input.sharedDevice === true,
     });
   }
 

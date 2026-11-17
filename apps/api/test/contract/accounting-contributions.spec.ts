@@ -219,9 +219,10 @@ describe('Retirer (CPT-06, CPT-65)', () => {
 describe('Idempotence (CPT-51, CPT-71)', () => {
   it('sans clé : 422 ; rejouée : même réponse, une seule écriture ; autre requête : 409', async () => {
     const { papa, itemId } = await world();
+    const { 'Idempotency-Key': _withKey, ...withoutKey } = papa.mutation;
     const missing = await http()
       .put(`/api/v1/items/${itemId}/contribution`)
-      .set(papa.mutation)
+      .set(withoutKey)
       .send({ mode: 'FULL' });
     expect({ status: missing.status, code: missing.body.code }).toEqual({
       status: 422,

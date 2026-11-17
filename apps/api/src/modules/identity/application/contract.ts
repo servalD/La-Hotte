@@ -6,7 +6,7 @@ export {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
 } from '../domain/account';
-export { CsrfTokens, SecretTokens, type SessionRef } from '../domain/ports';
+export { CacheKeys, CsrfTokens, SecretTokens, type SessionRef } from '../domain/ports';
 export {
   hasRecentReauth,
   PIN_RELOCK_MODES,
@@ -33,9 +33,11 @@ export {
   SetProfileChildMarker,
 } from './manage-account-profiles.use-case';
 export { GetOwnProfile, SetOwnPin, UpdateOwnProfile } from './manage-own-profile.use-case';
+export { type CacheKeyResult, GetCacheKey } from './get-cache-key.use-case';
 export { LockSession, type ProfileSelection, SelectProfile } from './select-profile.use-case';
 export {
   CsrfRejectedError,
+  ProfileLockedError,
   ReauthRequiredError,
   SessionRequiredError,
 } from '../domain/session.errors';

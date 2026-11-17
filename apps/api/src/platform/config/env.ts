@@ -19,6 +19,9 @@ const envSchema = z.object({
   // ADR 0013. Secrets de 32 caractères au moins ; des clés distinctes, jamais réutilisées.
   CSRF_SECRET: z.string().min(32),
   KEY_HMAC_SECRET: z.string().min(32),
+  // OFF-26, ADR 0020 : dérivation des clés de cache des profils à PIN. Exigée en production ;
+  // ailleurs, sans elle, la clé se dérive de KEY_HMAC_SECRET sous une étiquette distincte.
+  CACHE_KEY_SECRET: z.string().min(32).optional(),
   // SEC-22, AUTH-11 : trousseau de chiffrement applicatif (secrets TOTP), hors base. Forme
   // `id:clé[,id:clé…]`, `id` entier de 0 à 255, clé de 32 octets en base64 ; la première chiffre,
   // toutes déchiffrent (rotation). L'identifiant 0 est réservé au développement, aux tests et à
@@ -106,6 +109,13 @@ export function parseEnv(source: NodeJS.ProcessEnv): Env {
   if (result.data.CSRF_SECRET === result.data.KEY_HMAC_SECRET) {
     throw new Error('Configuration invalide : CSRF_SECRET, KEY_HMAC_SECRET');
   }
+  const cacheSecret = result.data.CACHE_KEY_SECRET;
+  if (
+    cacheSecret !== undefined &&
+    (cacheSecret === result.data.CSRF_SECRET || cacheSecret === result.data.KEY_HMAC_SECRET)
+  ) {
+    throw new Error('Configuration invalide : CACHE_KEY_SECRET');
+  }
   // Google : l'identifiant et le secret vont ensemble.
   if (
     (result.data.GOOGLE_CLIENT_ID === undefined) !==
@@ -148,6 +158,9 @@ function productionProblems(source: NodeJS.ProcessEnv, env: Env): string[] {
   }
   if (NON_PRODUCTION_SECRET.test(env.CSRF_SECRET)) problems.push('CSRF_SECRET');
   if (NON_PRODUCTION_SECRET.test(env.KEY_HMAC_SECRET)) problems.push('KEY_HMAC_SECRET');
+  if (env.CACHE_KEY_SECRET === undefined || NON_PRODUCTION_SECRET.test(env.CACHE_KEY_SECRET)) {
+    problems.push('CACHE_KEY_SECRET');
+  }
   if (
     env.SECRET_ENCRYPTION_KEYS.some(
       (k) => k.id === 0 || NON_PRODUCTION_SECRET.test(k.key.toString('latin1')),

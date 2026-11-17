@@ -89,6 +89,9 @@ export const updateOneItemParams = zod.object({
 
 export const updateOneItemHeader = zod.object({
   'If-Match': zod.string().describe('Version lue (API-17).'),
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
 });
 
 export const updateOneItemBodyQuantityMax = 999;
@@ -199,6 +202,12 @@ export const deleteOneItemParams = zod.object({
   id: zod.uuid(),
 });
 
+export const deleteOneItemHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
 /**
  * @summary ART-04 : copie de la fiche dans mes fiches.
  */
@@ -211,6 +220,12 @@ export const copyItemProductParams = zod.object({
  */
 export const markItemReceivedParams = zod.object({
   id: zod.uuid(),
+});
+
+export const markItemReceivedHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
 });
 
 export const markItemReceivedResponse = zod.object({
@@ -243,6 +258,12 @@ export const markItemReceivedResponse = zod.object({
 
 export const unmarkItemReceivedParams = zod.object({
   id: zod.uuid(),
+});
+
+export const unmarkItemReceivedHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
 });
 
 export const unmarkItemReceivedResponse = zod.object({

@@ -13,4 +13,11 @@ export interface SessionSummaryView {
   /** Profil actif présent et déverrouillé (PIN-02). */
   profileUnlocked: boolean;
   expiresAt: string;
+  /** OFF-30 : appareil partagé, le client n'écrit rien sur le disque. */
+  sharedDevice: boolean;
+  /**
+   * OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.
+   * @pattern ^[0-9a-f]{32}$
+   */
+  accountTag: string;
 }

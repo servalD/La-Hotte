@@ -190,9 +190,13 @@ describe('GET /api/v1/session (API-21)', () => {
         activeProfileId: user.profileId,
         profileUnlocked: true,
         expiresAt: expect.any(String),
+        // OFF-28, OFF-30 : étiquette opaque du compte, jamais son identifiant.
+        sharedDevice: false,
+        accountTag: expect.stringMatching(/^[0-9a-f]{32}$/),
       },
       secondFactorPending: false,
     });
+    expect(res.text).not.toContain(user.accountId);
     expect(res.text).not.toContain(user.token);
     expect(res.text).not.toContain(user.tokenHash);
     expect(identity.sessions.cache.get(user.tokenHash)?.unlock?.at).toEqual(unlockedAt);

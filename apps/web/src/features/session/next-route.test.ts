@@ -7,6 +7,8 @@ const session = {
   activeProfileId: '00000000-0000-4000-8000-000000000002',
   profileUnlocked: true,
   expiresAt: '2030-01-01T00:00:00Z',
+  sharedDevice: false,
+  accountTag: '0'.repeat(32),
 };
 
 const base: SessionStatusView = {

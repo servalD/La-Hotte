@@ -3,6 +3,7 @@ import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import {
   AuthorizeProfile,
+  CacheKeys,
   CsrfTokens,
   LockSession,
   type ResolvedSession,
@@ -45,6 +46,7 @@ export class SessionController {
     private readonly tokens: SecretTokens,
     private readonly selectProfileUseCase: SelectProfile,
     private readonly lockSessionUseCase: LockSession,
+    private readonly cacheKeys: CacheKeys,
   ) {}
 
   /**
@@ -80,6 +82,8 @@ export class SessionController {
           activeProfileId: profile.profileId,
           profileUnlocked: profile.unlocked,
           expiresAt: session.record.expiresAt.toISOString(),
+          sharedDevice: session.record.sharedDevice,
+          accountTag: this.cacheKeys.accountTag(session.record.accountId),
         },
         secondFactorPending,
       };

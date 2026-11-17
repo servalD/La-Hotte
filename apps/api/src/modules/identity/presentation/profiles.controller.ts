@@ -27,8 +27,10 @@ import {
   CreateAccountProfile,
   DeleteAccountProfile,
   DisableProfilePin,
+  GetCacheKey,
   GetOwnProfile,
   ListAccountProfiles,
+  ProfileLockedError,
   type ProfileDetails,
   REAUTH_PIN_MAX_AGE_MS,
   ResetProfilePin,
@@ -61,7 +63,12 @@ import {
   SetOwnPinDto,
   UpdateProfileDto,
 } from './dto/profile.dto';
-import { AccountProfileListView, AccountProfileView, ProfileView } from './dto/profile.view';
+import {
+  AccountProfileListView,
+  AccountProfileView,
+  CacheKeyView,
+  ProfileView,
+} from './dto/profile.view';
 
 function toView(profile: ProfileDetails): ProfileView {
   return {
@@ -109,6 +116,7 @@ export class ProfilesController {
     private readonly setEmailUseCase: SetOwnEmail,
     private readonly clearEmailUseCase: ClearOwnEmail,
     private readonly childNoticeUseCase: ReadChildNotice,
+    private readonly cacheKeyUseCase: GetCacheKey,
   ) {}
 
   @Get()
@@ -120,6 +128,25 @@ export class ProfilesController {
     const details = await this.getUseCase.execute(profile);
     response.setHeader('ETag', `"${details.version}"`);
     return toView(details);
+  }
+
+  /**
+   * OFF-26, ADR 0020 : clé de cache du profil actif. Profil sans PIN : `encrypted: false`, sans
+   * clé. Jamais mise en cache (`no-store`), jamais journalisée.
+   */
+  @Get('cache-key')
+  @ApiOkResponse({ type: CacheKeyView })
+  async getOwnCacheKey(
+    @ActiveProfile() profile: ActiveProfileValue,
+    @CurrentSession() session: ResolvedSession | null,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<CacheKeyView> {
+    response.setHeader('Cache-Control', 'no-store');
+    if (!session) throw new ProfileLockedError();
+    const result = await this.cacheKeyUseCase.execute(session, profile);
+    return result.encrypted
+      ? { encrypted: true, keyId: result.keyId, key: result.key }
+      : { encrypted: false, keyId: null, key: null };
   }
 
   /** PRO-03 : sans marqueur enfant. Version dépassée : `412`, le client relit le profil. */

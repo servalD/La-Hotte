@@ -66,6 +66,7 @@ import {
   PasswordHasher,
 } from './domain/account.ports';
 import {
+  CacheKeys,
   CsrfTokens,
   EventThrottle,
   IdentityEvents,
@@ -84,7 +85,8 @@ import {
   SmtpMailSender,
 } from './infrastructure/adapters';
 import { Argon2PasswordHasher } from './infrastructure/argon2-password-hasher';
-import { CryptoSecretTokens, HmacCsrfTokens } from './infrastructure/crypto-tokens';
+import { CryptoSecretTokens, HmacCacheKeys, HmacCsrfTokens } from './infrastructure/crypto-tokens';
+import { GetCacheKey } from './application/get-cache-key.use-case';
 import { HibpBreachChecker } from './infrastructure/hibp-breach-checker';
 import {
   EnvIdentitySettings,
@@ -341,6 +343,8 @@ import {
     { provide: SessionStore, useClass: RedisSessionStore },
     { provide: SecretTokens, useClass: CryptoSecretTokens },
     { provide: CsrfTokens, useClass: HmacCsrfTokens },
+    { provide: CacheKeys, useClass: HmacCacheKeys },
+    GetCacheKey,
     { provide: RateLimiter, useClass: RedisRateLimiter },
     { provide: EventThrottle, useClass: RedisEventThrottle },
     { provide: SecurityLogStore, useClass: PrismaSecurityLog },

@@ -1,9 +1,15 @@
 import { Global, Module } from '@nestjs/common';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { AppEvents, Clock, IdGenerator, Metrics } from '../shared/domain';
 import { InProcessAppEvents } from './events/in-process-app-events';
 import { AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
+import {
+  IdempotencyInterceptor,
+  IdempotencyStore,
+  PrismaIdempotencyStore,
+} from './http/idempotency';
+import { IdempotencyPurgeScheduler } from './http/idempotency.scheduler';
 import { ProblemDetailsFilter } from './http/problem-details.filter';
 import { createValidationPipe } from './http/validation';
 import { SystemClock, UuidV7IdGenerator } from './ids/system.providers';
@@ -39,8 +45,12 @@ class ConfigModule {}
     TelemetryShutdown,
     { provide: APP_FILTER, useClass: ProblemDetailsFilter },
     { provide: APP_PIPE, useFactory: createValidationPipe },
+    { provide: IdempotencyStore, useClass: PrismaIdempotencyStore },
+    { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
+    IdempotencyPurgeScheduler,
   ],
   exports: [
+    IdempotencyStore,
     PrismaService,
     RedisService,
     IdGenerator,

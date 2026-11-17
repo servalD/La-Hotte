@@ -546,6 +546,12 @@ export const addListItemParams = zod.object({
   id: zod.uuid(),
 });
 
+export const addListItemHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
 export const addListItemBodyQuantityDefault = 1;
 export const addListItemBodyQuantityMax = 999;
 

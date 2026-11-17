@@ -176,6 +176,19 @@ export const updateOwnProfileResponse = zod.object({
 });
 
 /**
+ * @summary OFF-26, ADR 0020 : clé de cache du profil actif. Profil sans PIN : `encrypted: false`, sans
+clé. Jamais mise en cache (`no-store`), jamais journalisée.
+ */
+export const getOwnCacheKeyResponseKeyIdRegExp = new RegExp('^[0-9a-f]{32}$');
+export const getOwnCacheKeyResponseKeyRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+export const getOwnCacheKeyResponse = zod.object({
+  encrypted: zod.boolean(),
+  keyId: zod.string().regex(getOwnCacheKeyResponseKeyIdRegExp).nullable(),
+  key: zod.string().regex(getOwnCacheKeyResponseKeyRegExp).nullable(),
+});
+
+/**
  * @summary PRO-10 : adresse du profil, écrite seulement à sa vérification par le lien envoyé. Refusée à
 un profil enfant. Jamais un identifiant de connexion.
  */

@@ -73,7 +73,16 @@ export function session(
     accountId,
     profileId,
     cookie,
-    mutation: { Cookie: cookie, 'X-CSRF-Token': csrf, Origin: WEB_ORIGIN },
+    // API-16 : chaque accès porte une clé d'idempotence neuve, comme une nouvelle intention du
+    // client ; un test d'idempotence fixe la sienne par-dessus.
+    get mutation() {
+      return {
+        Cookie: cookie,
+        'X-CSRF-Token': csrf,
+        Origin: WEB_ORIGIN,
+        'Idempotency-Key': randomUUID(),
+      };
+    },
   };
 }
 

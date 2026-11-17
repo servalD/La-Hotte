@@ -7,6 +7,12 @@
  */
 import * as zod from 'zod';
 
+export const createProductHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
 export const createProductBodyUrlMax = 2048;
 
 export const createProductBodyTitleMax = 200;

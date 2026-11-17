@@ -90,9 +90,15 @@ async function currentCsrf(): Promise<string | null> {
 export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? 'GET').toUpperCase();
   const mutating = !SAFE_METHODS.has(method);
+  // API-16 : une mutation sans clé fixée par l'appelant en reçoit une, la même pour le nouvel
+  // essai après un refus CSRF. Une intention qui doit survivre à une coupure (file hors ligne,
+  // compta) fixe la sienne.
+  const given = new Headers(init.headers).get('Idempotency-Key');
+  const idempotencyKey = mutating && !given ? crypto.randomUUID() : null;
 
   const send = async (token: string | null): Promise<Response> => {
     const headers = new Headers(init.headers);
+    if (idempotencyKey) headers.set('Idempotency-Key', idempotencyKey);
     headers.set('Accept', 'application/json');
     // API-21 : toute mutation porte le jeton CSRF et signale une action de l'utilisateur. Une
     // lecture ne pose `X-User-Activity` que si l'appelant le demande (navigation).

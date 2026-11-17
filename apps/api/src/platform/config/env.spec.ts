@@ -52,6 +52,7 @@ describe('parseEnv', () => {
       TRUSTED_PROXY_HOPS: '1',
       CSRF_SECRET: 'p'.repeat(40),
       KEY_HMAC_SECRET: 'q'.repeat(40),
+      CACHE_KEY_SECRET: 'r'.repeat(40),
       SMTP_URL: 'smtps://smtp.example:465',
       SECRET_ENCRYPTION_KEYS: `1:${Buffer.alloc(32, 9).toString('base64')}`,
     };
@@ -69,6 +70,29 @@ describe('parseEnv', () => {
     ).toContain('requireTLS');
   });
 
+  it('OFF-26 : CACHE_KEY_SECRET facultatif hors production, exigé et distinct en production', () => {
+    expect(parseEnv(valid).CACHE_KEY_SECRET).toBeUndefined();
+    expect(() => parseEnv({ ...valid, CACHE_KEY_SECRET: valid.KEY_HMAC_SECRET })).toThrowError(
+      /CACHE_KEY_SECRET/,
+    );
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      TRUSTED_PROXY_HOPS: '1',
+      CSRF_SECRET: 'p'.repeat(40),
+      KEY_HMAC_SECRET: 'q'.repeat(40),
+      SMTP_URL: 'smtps://smtp.example:465',
+      SECRET_ENCRYPTION_KEYS: `1:${Buffer.alloc(32, 9).toString('base64')}`,
+    };
+    expect(() => parseEnv(production)).toThrowError(/CACHE_KEY_SECRET/);
+    expect(() =>
+      parseEnv({ ...production, CACHE_KEY_SECRET: 'dev-only-cache-key-secret-0123456789abcdef' }),
+    ).toThrowError(/CACHE_KEY_SECRET/);
+    expect(parseEnv({ ...production, CACHE_KEY_SECRET: 'r'.repeat(40) }).CACHE_KEY_SECRET).toBe(
+      'r'.repeat(40),
+    );
+  });
+
   it('AUTH-03 : Google facultatif, identifiant et secret ensemble ; émetteur Google seul en production', () => {
     expect(parseEnv(valid).GOOGLE_CLIENT_ID).toBeUndefined();
     expect(() => parseEnv({ ...valid, GOOGLE_CLIENT_ID: 'id' })).toThrowError(/GOOGLE_CLIENT_ID/);
@@ -78,6 +102,7 @@ describe('parseEnv', () => {
       TRUSTED_PROXY_HOPS: '1',
       CSRF_SECRET: 'p'.repeat(40),
       KEY_HMAC_SECRET: 'q'.repeat(40),
+      CACHE_KEY_SECRET: 'r'.repeat(40),
       SMTP_URL: 'smtps://smtp.example:465',
       SECRET_ENCRYPTION_KEYS: `1:${Buffer.alloc(32, 9).toString('base64')}`,
     };
@@ -114,6 +139,7 @@ describe('parseEnv', () => {
       TRUSTED_PROXY_HOPS: '1',
       CSRF_SECRET: 'p'.repeat(40),
       KEY_HMAC_SECRET: 'q'.repeat(40),
+      CACHE_KEY_SECRET: 'r'.repeat(40),
       SMTP_URL: 'smtps://smtp.example:465',
     };
     expect(() => parseEnv({ ...production, SECRET_ENCRYPTION_KEYS: `0:${key(3)}` })).toThrowError(

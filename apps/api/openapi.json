@@ -4211,6 +4211,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -4273,6 +4282,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -4571,6 +4589,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -5229,6 +5256,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5268,6 +5304,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -6138,6 +6183,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -6839,7 +6893,17 @@
     "/api/v1/products": {
       "post": {
         "operationId": "createProduct",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -7242,6 +7306,38 @@
           }
         },
         "summary": "PRO-03 : sans marqueur enfant. Version dépassée : `412`, le client relit le profil.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/cache-key": {
+      "get": {
+        "operationId": "getOwnCacheKey",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheKeyView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "OFF-26, ADR 0020 : clé de cache du profil actif. Profil sans PIN : `encrypted: false`, sans\nclé. Jamais mise en cache (`no-store`), jamais journalisée.",
         "tags": [
           "profiles"
         ]
@@ -8666,6 +8762,29 @@
           "mine",
           "canDecide",
           "createdAt"
+        ]
+      },
+      "CacheKeyView": {
+        "type": "object",
+        "properties": {
+          "encrypted": {
+            "type": "boolean"
+          },
+          "keyId": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "key": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "encrypted",
+          "keyId",
+          "key"
         ]
       },
       "CarriedFromEventView": {
@@ -11739,6 +11858,10 @@
             "minLength": 1,
             "maxLength": 256,
             "format": "password"
+          },
+          "sharedDevice": {
+            "type": "boolean",
+            "description": "OFF-30 : appareil partagé (session courte, aucun cache sur l'appareil)."
           }
         },
         "required": [
@@ -13327,13 +13450,24 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sharedDevice": {
+            "type": "boolean",
+            "description": "OFF-30 : appareil partagé, le client n'écrit rien sur le disque."
+          },
+          "accountTag": {
+            "type": "string",
+            "description": "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+            "pattern": "^[0-9a-f]{32}$"
           }
         },
         "required": [
           "id",
           "activeProfileId",
           "profileUnlocked",
-          "expiresAt"
+          "expiresAt",
+          "sharedDevice",
+          "accountTag"
         ]
       },
       "SetChildMarkerDto": {
