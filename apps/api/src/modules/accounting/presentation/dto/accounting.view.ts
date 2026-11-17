@@ -62,6 +62,16 @@ export class AccountingReviewView {
   @ApiProperty() canDecide!: boolean;
 }
 
+/** CPT-61 : demande de changement d'acheteur en attente. */
+export class BuyerRequestView {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ type: AccountingPersonView, nullable: true })
+  candidate!: AccountingPersonView | null;
+  @ApiProperty() mine!: boolean;
+  @ApiProperty() canDecide!: boolean;
+  @ApiProperty({ format: 'date-time' }) createdAt!: string;
+}
+
 class AccountingCommonFields {
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) accountingId!: string | null;
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) itemId!: string | null;
@@ -92,6 +102,8 @@ export class ItemAccountingParticipantView extends AccountingCommonFields {
   @ApiProperty() reviewEnabled!: boolean;
   @ApiProperty() receiptEnabled!: boolean;
   @ApiProperty({ type: [AccountingReviewView] }) reviews!: AccountingReviewView[];
+  @ApiProperty({ type: BuyerRequestView, nullable: true }) buyerRequest!: BuyerRequestView | null;
+  @ApiProperty() hasReceipt!: boolean;
 }
 
 export const ACCOUNTING_VIEW_SCHEMA = {

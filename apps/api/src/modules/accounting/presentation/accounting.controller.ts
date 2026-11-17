@@ -113,6 +113,17 @@ export function toView(model: AccountingViewModel): ItemAccountingViewDto {
       createdAt: review.createdAt,
       canDecide: review.canDecide,
     })),
+    // Une réponse rejouée (CPT-71) peut dater d'avant ces champs.
+    buyerRequest: model.buyerRequest
+      ? {
+          id: model.buyerRequest.id,
+          candidate: person(model.buyerRequest.candidate),
+          mine: model.buyerRequest.mine,
+          canDecide: model.buyerRequest.canDecide,
+          createdAt: model.buyerRequest.createdAt,
+        }
+      : null,
+    hasReceipt: model.hasReceipt ?? false,
   };
 }
 

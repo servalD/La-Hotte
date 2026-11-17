@@ -1289,6 +1289,52 @@
     "iBuy": "j'achète",
     "payTo": "à régler à {name}",
     "nothingYet": "Rien encore pour",
+    "options": {
+      "title": "Options",
+      "summary": "revue {review, select, on {activée} other {désactivée}}, justificatif {receipt, select, on {demandé} other {non demandé}}",
+      "whoSees": "Réglées et lues par les seuls participants, jamais par le destinataire.",
+      "review": "Un autre participant valide les changements de prix et d'options",
+      "receipt": "L'acheteur joint une photo du ticket",
+      "needsReview": "Avec la revue activée, votre changement attendra l'accord d'un autre participant.",
+      "save": "Enregistrer les options"
+    },
+    "buyerRequest": {
+      "title": "Changement d'acheteur",
+      "ask": "Je préfère l'acheter moi-même",
+      "mine": "Vous avez proposé de devenir l'acheteur. En attente de réponse.",
+      "other": "{name} propose de devenir l'acheteur.",
+      "cancel": "Retirer ma demande",
+      "waiting": "L'acheteur actuel répond d'abord."
+    },
+    "receipt": {
+      "title": "Justificatif",
+      "view": "Voir le justificatif",
+      "none": "Pas encore de justificatif.",
+      "add": "Joindre une photo du ticket",
+      "replace": "Remplacer la photo",
+      "privacy": "La photo est nettoyée de ses métadonnées et n'est montrée qu'aux participants."
+    },
+    "settle": {
+      "mark": "Marquer réglée",
+      "undo": "Annuler le règlement",
+      "nudge": "Relancer",
+      "claim": "J'ai payé"
+    },
+    "offset": {
+      "title": "Compensations en attente",
+      "received": "{name} propose de compenser {amount} entre vous.",
+      "sent": "Vous avez proposé à {name} de compenser {amount}.",
+      "confirm": "Confirmer",
+      "decline": "Refuser",
+      "withdraw": "Retirer la proposition",
+      "stale": "Les comptes ont changé depuis la proposition : elle n'est plus valable. Proposez-en une nouvelle."
+    },
+    "budgets": {
+      "title": "Mon budget",
+      "event": "Pour tout l'événement",
+      "save": "Enregistrer",
+      "remove": "Retirer"
+    },
     "mode": {
       "FULL": "tout",
       "PERCENT": "pourcentage",

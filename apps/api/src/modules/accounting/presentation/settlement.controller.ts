@@ -30,6 +30,7 @@ import {
   BudgetView,
   OffsetDecisionView,
   OffsetProposalView,
+  PendingOffsetsView,
   ProposeOffsetDto,
   PutBudgetDto,
   SetSettlementDto,
@@ -155,6 +156,25 @@ export class SettlementController {
           owedMinor: l.owedMinor,
           settlement: l.settlement,
         })),
+      })),
+    };
+  }
+
+  /** CPT-75 */
+  @Get('offset-proposals')
+  @ApiOkResponse({ type: PendingOffsetsView })
+  async listOffsetProposals(
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<PendingOffsetsView> {
+    const rows = await this.offsets.list(profile.id);
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        direction: row.direction,
+        other: row.other ? person(row.other) : null,
+        currency: row.currency,
+        amountMinor: row.amountMinor,
+        createdAt: row.createdAt.toISOString(),
       })),
     };
   }

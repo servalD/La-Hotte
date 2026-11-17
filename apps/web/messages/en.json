@@ -1289,6 +1289,52 @@
     "iBuy": "I buy",
     "payTo": "to pay back to {name}",
     "nothingYet": "Nothing yet for",
+    "options": {
+      "title": "Options",
+      "summary": "review {review, select, on {on} other {off}}, receipt {receipt, select, on {requested} other {not requested}}",
+      "whoSees": "Set and read by participants only, never by the recipient.",
+      "review": "Another participant approves price and option changes",
+      "receipt": "The buyer attaches a photo of the receipt",
+      "needsReview": "With review on, your change will wait for another participant to agree.",
+      "save": "Save options"
+    },
+    "buyerRequest": {
+      "title": "Change of buyer",
+      "ask": "I'd rather buy it myself",
+      "mine": "You offered to become the buyer. Waiting for an answer.",
+      "other": "{name} offers to become the buyer.",
+      "cancel": "Withdraw my request",
+      "waiting": "The current buyer answers first."
+    },
+    "receipt": {
+      "title": "Receipt",
+      "view": "View the receipt",
+      "none": "No receipt yet.",
+      "add": "Attach a photo of the receipt",
+      "replace": "Replace the photo",
+      "privacy": "The photo is stripped of its metadata and shown to participants only."
+    },
+    "settle": {
+      "mark": "Mark as paid",
+      "undo": "Undo payment",
+      "nudge": "Send a reminder",
+      "claim": "I've paid"
+    },
+    "offset": {
+      "title": "Pending offsets",
+      "received": "{name} offers to offset {amount} between you.",
+      "sent": "You offered {name} to offset {amount}.",
+      "confirm": "Confirm",
+      "decline": "Decline",
+      "withdraw": "Withdraw the offer",
+      "stale": "The balances changed since the offer: it is no longer valid. Make a new one."
+    },
+    "budgets": {
+      "title": "My budget",
+      "event": "For the whole event",
+      "save": "Save",
+      "remove": "Remove"
+    },
     "mode": {
       "FULL": "all",
       "PERCENT": "percentage",

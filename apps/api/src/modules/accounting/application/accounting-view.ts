@@ -65,6 +65,19 @@ export interface ReviewLine {
   readonly canDecide: boolean;
 }
 
+/** CPT-61 : demande de changement d'acheteur en attente. */
+export interface BuyerRequestLine {
+  readonly id: string;
+  readonly candidate: PersonCard | null;
+  readonly mine: boolean;
+  /** Indication pour l'interface ; le serveur revérifie à la décision (organisateur compris). */
+  readonly canDecide: boolean;
+  readonly createdAt: string;
+}
+
+/** CPT-61 : passé ce délai, un autre participant peut accepter la demande. */
+const BUYER_REQUEST_DELAY_MS = 48 * 60 * 60 * 1000;
+
 export type AccountingViewModel =
   | ({ readonly view: 'giver'; readonly participants: readonly GiverLine[] } & Common)
   | ({
@@ -75,6 +88,9 @@ export type AccountingViewModel =
       readonly reviewEnabled: boolean;
       readonly receiptEnabled: boolean;
       readonly reviews: readonly ReviewLine[];
+      /** Absents d'une réponse rejouée (CPT-71) enregistrée avant la phase 6. */
+      readonly buyerRequest?: BuyerRequestLine | null;
+      readonly hasReceipt?: boolean;
     } & Common);
 
 /** Personnes à charger pour construire la vue. */
@@ -84,6 +100,7 @@ export function peopleOf(state: AccountingState | null): string[] {
   for (const row of state.contributions) if (row.profileId) ids.add(row.profileId);
   if (state.buyerId) ids.add(state.buyerId);
   for (const review of state.reviews) if (review.authorId) ids.add(review.authorId);
+  if (state.buyerRequest) ids.add(state.buyerRequest.candidateId);
   return [...ids];
 }
 
@@ -94,6 +111,7 @@ export function buildAccountingView(input: {
   readonly state: AccountingState | null;
   readonly cards: readonly PersonCard[];
   readonly canContribute: boolean;
+  readonly now: Date;
 }): AccountingViewModel {
   const { state, item } = input;
   const card = (id: string | null) => (id ? (input.cards.find((c) => c.id === id) ?? null) : null);
@@ -174,5 +192,26 @@ export function buildAccountingView(input: {
       createdAt: review.createdAt.toISOString(),
       canDecide: canDecideReview(input.level, input.viewerId, review.authorId),
     })),
+    buyerRequest: buyerRequestLine(state, input.viewerId, card, input.now),
+    hasReceipt: (state?.purchase?.receiptKey ?? null) !== null,
+  };
+}
+
+function buyerRequestLine(
+  state: AccountingState | null,
+  viewerId: string,
+  card: (id: string | null) => PersonCard | null,
+  now: Date,
+): BuyerRequestLine | null {
+  const request = state?.buyerRequest;
+  if (!state || request?.status !== 'PENDING') return null;
+  const mine = request.candidateId === viewerId;
+  const late = now.getTime() - request.createdAt.getTime() >= BUYER_REQUEST_DELAY_MS;
+  return {
+    id: request.id,
+    candidate: card(request.candidateId),
+    mine,
+    canDecide: !mine && (state.buyerId === viewerId || late),
+    createdAt: request.createdAt.toISOString(),
   };
 }

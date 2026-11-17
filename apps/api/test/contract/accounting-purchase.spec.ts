@@ -190,9 +190,22 @@ describe('Changement d’acheteur (CPT-10, CPT-61)', () => {
     const { marie, papa, tonton, itemId } = await world();
     await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
     await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
-    await post(tonton, `/api/v1/items/${itemId}/buyer-requests`).expect(200);
+    const asked = await post(tonton, `/api/v1/items/${itemId}/buyer-requests`).expect(200);
     const state = await accounting.repository.findByItem(itemId);
     const requestId = state!.buyerRequest!.id;
+    // La demande se lit dans la vue participant : le candidat la voit sienne, l'acheteur décide.
+    expect(asked.body.buyerRequest).toMatchObject({ id: requestId, mine: true, canDecide: false });
+    const forBuyer = await http()
+      .get(`/api/v1/items/${itemId}/accounting`)
+      .set({ Cookie: papa.cookie })
+      .expect(200);
+    expect(forBuyer.body.buyerRequest).toMatchObject({
+      id: requestId,
+      mine: false,
+      canDecide: true,
+      candidate: expect.objectContaining({ id: tonton.profileId }),
+    });
+    expect(forBuyer.body.hasReceipt).toBe(false);
     await post(marie, `/api/v1/buyer-requests/${requestId}/accept`).expect(404);
     const own = await post(tonton, `/api/v1/buyer-requests/${requestId}/accept`);
     expect(own.status).toBe(403);

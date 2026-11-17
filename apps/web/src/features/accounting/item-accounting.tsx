@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatMinor } from '@/features/lists/format';
+import { AccountingOptions, BuyerRequestSection, ReceiptSection } from './accounting-extras';
+import { parseAmount } from './parse-amount';
 import { useIdempotencyKey } from './use-idempotency-key';
 
 /** Codes d'erreur traduits (API-14) ; les autres tombent sur un message général. */
@@ -45,13 +47,7 @@ function errorKey(error: unknown): string {
   return 'errors.generic';
 }
 
-/** Montant saisi en unités (« 23,50 ») → unités mineures entières (invariant 4). */
-export function parseAmount(text: string): number | null {
-  const normalized = text.replace(/\s/g, '').replace(',', '.');
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
-  const [units = '0', cents = ''] = normalized.split('.');
-  return Number(units) * 100 + Number(cents.padEnd(2, '0'));
-}
+export { parseAmount };
 
 /**
  * Bouton « Offrir » d'un élément vu en offreur (CPT-02). N'est monté que pour la forme offreur ;
@@ -150,6 +146,19 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
           onError={onError}
           onShortfall={setShortfallFor}
         />
+      ) : null}
+      {view.view === 'participant' ? (
+        <>
+          <BuyerRequestSection itemId={itemId} view={view} onDone={refresh} onError={onError} />
+          <ReceiptSection itemId={itemId} view={view} onDone={refresh} onError={onError} />
+          <AccountingOptions
+            key={`${String(view.reviewEnabled)}-${String(view.receiptEnabled)}`}
+            itemId={itemId}
+            view={view}
+            onDone={refresh}
+            onError={onError}
+          />
+        </>
       ) : null}
       {view.view === 'participant' && shortfallFor !== null ? (
         <ShortfallWindow

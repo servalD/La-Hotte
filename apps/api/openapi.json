@@ -6663,6 +6663,36 @@
       }
     },
     "/api/v1/offset-proposals": {
+      "get": {
+        "operationId": "listOffsetProposals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingOffsetsView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-75",
+        "tags": [
+          "accounting"
+        ]
+      },
       "post": {
         "operationId": "proposeOffset",
         "parameters": [],
@@ -8601,6 +8631,41 @@
           "recipientId",
           "amountMinor",
           "currency"
+        ]
+      },
+      "BuyerRequestView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidate": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "canDecide": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "candidate",
+          "mine",
+          "canDecide",
+          "createdAt"
         ]
       },
       "CarriedFromEventView": {
@@ -10683,6 +10748,18 @@
             "items": {
               "$ref": "#/components/schemas/AccountingReviewView"
             }
+          },
+          "buyerRequest": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BuyerRequestView"
+              }
+            ]
+          },
+          "hasReceipt": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -10703,7 +10780,9 @@
           "isBuyer",
           "reviewEnabled",
           "receiptEnabled",
-          "reviews"
+          "reviews",
+          "buyerRequest",
+          "hasReceipt"
         ]
       },
       "ItemCollectionView": {
@@ -12010,6 +12089,13 @@
           "status"
         ]
       },
+      "OffsetDirection": {
+        "type": "string",
+        "enum": [
+          "SENT",
+          "RECEIVED"
+        ]
+      },
       "OffsetProposalView": {
         "type": "object",
         "properties": {
@@ -12337,6 +12423,63 @@
         "required": [
           "newPassword",
           "token"
+        ]
+      },
+      "PendingOffsetsView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingOffsetView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "PendingOffsetView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OffsetDirection"
+              }
+            ]
+          },
+          "other": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "amountMinor": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "other",
+          "currency",
+          "amountMinor",
+          "createdAt"
         ]
       },
       "PostCommentDto": {

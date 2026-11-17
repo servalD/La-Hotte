@@ -12,6 +12,7 @@ import {
   type BudgetRecord,
   BudgetRepository,
   type IdempotencyInput,
+  type OffsetProposal,
   type PersonCard,
 } from '../domain/accounting.ports';
 import { isMinor } from '../domain/money';
@@ -185,6 +186,16 @@ export interface BalanceSummary {
   readonly lines: readonly BalanceDetail[];
 }
 
+/** CPT-75 : proposition de compensation en attente, vue par l'un des deux profils. */
+export interface OffsetSummary {
+  readonly id: string;
+  readonly direction: 'SENT' | 'RECEIVED';
+  readonly other: PersonCard | null;
+  readonly currency: string;
+  readonly amountMinor: number;
+  readonly createdAt: Date;
+}
+
 /** Lignes de solde lisibles par `viewerId` (CPT-52, CPT-59, CPT-67). */
 async function balanceLines(
   repository: AccountingRepository,
@@ -274,7 +285,45 @@ export class ManageOffsets {
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
     private readonly events: AppEvents,
+    private readonly people: AccountingPeople,
   ) {}
+
+  /**
+   * GET /offset-proposals (CPT-75) : propositions en attente, reçues ou envoyées. Le montant est
+   * recalculé sur les seules parts que le demandeur voit encore (CPT-68, revue N1) ; une
+   * proposition dont une part lui échappe désormais est caduque et n'est pas listée.
+   */
+  async list(viewerId: string): Promise<OffsetSummary[]> {
+    const proposals = await this.repository.pendingOffsetsOf(viewerId);
+    if (proposals.length === 0) return [];
+    const { lines } = await balanceLines(this.repository, this.items, this.gate, viewerId, null);
+    const byId = new Map(lines.map((line) => [line.contributionId, line]));
+    const kept: { proposal: OffsetProposal; amount: number }[] = [];
+    for (const proposal of proposals) {
+      const own = proposal.snapshot.map((entry) => byId.get(entry.contributionId));
+      if (own.some((line) => line === undefined)) continue;
+      const moves = offsetMoves(
+        proposal.proposerId,
+        proposal.counterpartId,
+        proposal.currency,
+        own.flatMap((line) => (line ? [line] : [])),
+      );
+      const amount = moves.reduce((sum, move) => sum + move.add, 0) / 2;
+      if (amount > 0 && Number.isInteger(amount)) kept.push({ proposal, amount });
+    }
+    const others = kept.map(({ proposal }) =>
+      proposal.proposerId === viewerId ? proposal.counterpartId : proposal.proposerId,
+    );
+    const cards = await this.people.cards(others);
+    return kept.map(({ proposal, amount }, index) => ({
+      id: proposal.id,
+      direction: proposal.proposerId === viewerId ? 'SENT' : 'RECEIVED',
+      other: cards.find((card) => card.id === others[index]) ?? null,
+      currency: proposal.currency,
+      amountMinor: amount,
+      createdAt: proposal.createdAt,
+    }));
+  }
 
   async propose(input: {
     viewerId: string;

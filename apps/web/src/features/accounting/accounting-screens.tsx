@@ -1,15 +1,19 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
+  getListOffsetProposalsQueryKey,
   useGetAccountingOverview,
   useGetBalances,
   useGetCart,
+  useGetSession,
   useProposeOffset,
 } from '@wishlist/api-client';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatMinor } from '@/features/lists/format';
+import { BudgetEditor, OffsetProposals, SettlementActions } from './accounting-extras';
 
 /** CPT-11 : panier de l'acheteur, par événement puis par destinataire. */
 export function CartScreen() {
@@ -73,21 +77,33 @@ export function CartScreen() {
 export function BalancesScreen() {
   const t = useTranslations('accounting');
   const locale = useLocale();
+  const queryClient = useQueryClient();
   const { data } = useGetBalances();
+  const { data: session } = useGetSession();
+  const viewerId = session?.authenticated ? (session.session?.activeProfileId ?? null) : null;
   const [proposalId, setProposalId] = useState<string | null>(null);
   const propose = useProposeOffset({
     mutation: {
       onSuccess: (r) => {
         setProposalId(r.id);
+        void queryClient.invalidateQueries({ queryKey: getListOffsetProposalsQueryKey() });
       },
     },
   });
   if (!data) return <p className="text-foreground-muted">{t('loading')}</p>;
-  if (data.items.length === 0) return <p>{t('balancesEmpty')}</p>;
+  if (data.items.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p>{t('balancesEmpty')}</p>
+        <OffsetProposals />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">{t('balances')}</h1>
       <p className="text-sm text-foreground-muted">{t('balancesPrivate')}</p>
+      <OffsetProposals />
       <ul className="flex flex-col gap-3">
         {data.items.map((balance) => {
           const name = balance.other?.displayName ?? t('someone');
@@ -104,6 +120,18 @@ export function BalancesScreen() {
                     ? t('owesYou', { name, amount })
                     : t('even', { name })}
               </p>
+              {/* CPT-20 à CPT-23 : chaque part, avec le geste qui revient au profil. */}
+              <ul className="flex flex-col gap-2 py-2 text-sm">
+                {balance.lines.map((line) => (
+                  <li key={line.contributionId} className="flex flex-col gap-1">
+                    <span>
+                      {line.title} · {formatMinor(line.owedMinor, balance.currency, locale)} ·{' '}
+                      {t(`settlement.${line.settlement}`)}
+                    </span>
+                    {viewerId ? <SettlementActions line={line} viewerId={viewerId} /> : null}
+                  </li>
+                ))}
+              </ul>
               {balance.iOweMinor > 0 && balance.owesMeMinor > 0 && balance.other ? (
                 <Button
                   variant="secondary"
@@ -155,6 +183,13 @@ export function OverviewScreen({ eventId }: { eventId?: string }) {
           {t('engaged', { amount: formatMinor(m.amountMinor, m.currency, locale) })}
         </p>
       ))}
+      {data.event ? (
+        <BudgetEditor
+          eventId={data.event.id}
+          currency={data.budget?.currency ?? data.engaged[0]?.currency ?? 'EUR'}
+          groups={data.groups}
+        />
+      ) : null}
       {data.groups.map((group, index) => (
         <section key={index} className="flex flex-col gap-1">
           <h2 className="font-medium">

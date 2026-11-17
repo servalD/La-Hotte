@@ -93,6 +93,8 @@ export abstract class AccountingRepository {
   abstract createOffset(proposal: OffsetProposal): Promise<void>;
   abstract findOffset(id: string): Promise<OffsetProposal | null>;
   abstract pendingOffset(a: string, b: string, currency: string): Promise<OffsetProposal | null>;
+  /** CPT-75 : propositions en attente dont le profil est l'auteur ou le destinataire. */
+  abstract pendingOffsetsOf(profileId: string): Promise<OffsetProposal[]>;
   abstract setOffsetStatus(id: string, status: OffsetStatus, at: Date): Promise<void>;
 }
 
