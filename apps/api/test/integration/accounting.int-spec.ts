@@ -254,4 +254,67 @@ describe('Compta en base (CPT-03, CPT-70, CPT-71)', () => {
       expect(kinds).toContain(kind);
     }
   }, 30_000);
+
+  it('CPT-68 : la compensation règle les deux sens en une transaction, journal compris', async () => {
+    const { papa, tonton, itemId: velo } = await world();
+    const leo = await person();
+    await link(leo, papa);
+    await link(leo, tonton);
+    await contribute(papa, velo, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, velo, { mode: 'FIXED', amountMinor: 2_000 }).expect(200);
+    await http()
+      .put(`/api/v1/items/${velo}/purchase`)
+      .set({ ...papa.mutation, 'Idempotency-Key': randomUUID() })
+      .send({})
+      .expect(200);
+    const lists = await http().get('/api/v1/lists').set({ Cookie: leo.cookie }).expect(200);
+    const listId = (lists.body.items as Body[]).find((l) => l.personal)!.id as string;
+    const product = await http()
+      .post('/api/v1/products')
+      .set(leo.mutation)
+      .send({ title: 'Livre', unitPriceMinor: 3_500 })
+      .expect(201);
+    const livre = (
+      await http()
+        .post(`/api/v1/lists/${listId}/items`)
+        .set(leo.mutation)
+        .send({ productId: product.body.id })
+        .expect(201)
+    ).body.id as string;
+    await contribute(tonton, livre, { mode: 'FIXED', amountMinor: 2_000 }).expect(200);
+    await contribute(papa, livre, { mode: 'FIXED', amountMinor: 1_500 }).expect(200);
+    await http()
+      .put(`/api/v1/items/${livre}/purchase`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': randomUUID() })
+      .send({})
+      .expect(200);
+    const proposal = await http()
+      .post('/api/v1/offset-proposals')
+      .set(papa.mutation)
+      .send({ counterpartId: tonton.profileId, currency: 'EUR' })
+      .expect(200);
+    await http()
+      .post(`/api/v1/offset-proposals/${proposal.body.id as string}/confirm`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': randomUUID() })
+      .expect(200);
+    const settled = await prisma.contribution.findMany({
+      where: { accounting: { itemId: { in: [velo, livre] } }, settledMinor: { gt: 0 } },
+      select: { settledMinor: true, profileId: true },
+    });
+    expect(settled.map((r) => [r.profileId, Number(r.settledMinor)]).sort()).toEqual(
+      [
+        [papa.profileId, 1_500],
+        [tonton.profileId, 1_500],
+      ].sort(),
+    );
+    expect(
+      await prisma.ledgerEntry.count({
+        where: { kind: 'SETTLEMENT_OFFSET', accounting: { itemId: { in: [velo, livre] } } },
+      }),
+    ).toBe(2);
+    expect(
+      (await prisma.offsetProposal.findUniqueOrThrow({ where: { id: proposal.body.id as string } }))
+        .status,
+    ).toBe('CONFIRMED');
+  }, 30_000);
 });

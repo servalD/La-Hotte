@@ -120,14 +120,17 @@ import { InProcessAppEvents } from '../../src/platform/events/in-process-app-eve
 import {
   AccountingPeople,
   AccountingRepository,
+  BudgetRepository,
   InMemoryAccountingPeople,
   InMemoryAccountingRepository,
+  InMemoryBudgetRepository,
 } from '../../src/modules/accounting/testing';
 
 /** Doubles du module `accounting` (phase 5). */
 export interface TestAccounting {
   readonly repository: InMemoryAccountingRepository;
   readonly people: InMemoryAccountingPeople;
+  readonly budgets: InMemoryBudgetRepository;
 }
 
 /** Doubles du module `conversations` (phase 4). */
@@ -310,6 +313,7 @@ export async function createTestApp(
       if (row && row.status !== 'WITHDRAWN') catalog.items.items.set(itemId, { ...row, status });
     }),
     people: new InMemoryAccountingPeople(),
+    budgets: new InMemoryBudgetRepository(),
   };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -395,6 +399,8 @@ export async function createTestApp(
     .useValue(accounting.repository)
     .overrideProvider(AccountingPeople)
     .useValue(accounting.people)
+    .overrideProvider(BudgetRepository)
+    .useValue(accounting.budgets)
     .overrideProvider(FollowRepository)
     .useValue(conversations.follows)
     .overrideProvider(ConversationPeople)

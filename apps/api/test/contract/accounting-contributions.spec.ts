@@ -485,9 +485,20 @@ describe('IDOR de la compta (SEC-03, VIS-34)', () => {
         });
       }
       expect(JSON.stringify([...accounting.repository.states.values()])).toBe(before);
-      expect(PHASE5_IDOR_ROUTES.filter((route) => !table.some((r) => r.route === route))).toEqual(
-        [],
-      );
+      // Tranche 6 : routes couvertes par `accounting-settlements.spec.ts`.
+      const settlementRoutes = [
+        'PUT /api/v1/contributions/:id/settlement',
+        'POST /api/v1/contributions/:id/claim',
+        'POST /api/v1/contributions/:id/nudge',
+        'POST /api/v1/offset-proposals/:id/confirm',
+        'POST /api/v1/offset-proposals/:id/decline',
+        'DELETE /api/v1/budgets/:id',
+      ];
+      expect(
+        PHASE5_IDOR_ROUTES.filter(
+          (route) => !table.some((r) => r.route === route) && !settlementRoutes.includes(route),
+        ),
+      ).toEqual([]);
     }
   });
 });

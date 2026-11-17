@@ -24,19 +24,33 @@ import type {
 import type {
   AcceptBuyerRequest200,
   AccountingOptionsDto,
+  AccountingOverviewView,
   ApproveAccountingReview200,
+  BalancesView,
+  BudgetView,
+  BudgetsView,
   CancelBuyerRequest200,
   CartView,
+  ClaimContributionSettlement200,
   DeleteItemContribution200,
   DeleteItemPurchase200,
   DeleteItemPurchaseParams,
+  GetAccountingOverviewParams,
+  GetBalancesParams,
   GetItemAccounting200,
+  ListBudgetsParams,
   LowerContributionDto,
   LowerItemContribution200,
   MarkPurchasedDto,
+  NudgeContribution200,
+  OffsetDecisionView,
+  OffsetProposalView,
   PostItemBuyerRequest200,
   PostItemShortfallNotice200,
   ProblemDetailsDto,
+  ProposeOffsetDto,
+  PutBudgetDto,
+  PutContributionSettlement200,
   PutItemAccountingOptions200,
   PutItemContribution200,
   PutItemPurchase200,
@@ -45,6 +59,7 @@ import type {
   RefuseAccountingReview200,
   RefuseBuyerRequest200,
   SetContributionDto,
+  SetSettlementDto,
   ShortfallNoticeDto,
 } from '../../model';
 
@@ -222,6 +237,581 @@ export const useRefuseAccountingReview = <
   TContext
 > => {
   const mutationOptions = getRefuseAccountingReviewMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-41 à CPT-45
+ */
+export const getGetAccountingOverviewUrl = (params?: GetAccountingOverviewParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/accounting/overview?${stringifiedParams}`
+    : `/api/v1/accounting/overview`;
+};
+
+export const getAccountingOverview = async (
+  params?: GetAccountingOverviewParams,
+  options?: RequestInit,
+): Promise<AccountingOverviewView> => {
+  return apiFetch<AccountingOverviewView>(getGetAccountingOverviewUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetAccountingOverviewQueryKey = (params?: GetAccountingOverviewParams) => {
+  return [`/api/v1/accounting/overview`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAccountingOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAccountingOverview>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetAccountingOverviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAccountingOverviewQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountingOverview>>> = ({ signal }) =>
+    getAccountingOverview(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAccountingOverview>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetAccountingOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAccountingOverview>>
+>;
+export type GetAccountingOverviewQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetAccountingOverview<
+  TData = Awaited<ReturnType<typeof getAccountingOverview>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: undefined | GetAccountingOverviewParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountingOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountingOverview>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetAccountingOverview<
+  TData = Awaited<ReturnType<typeof getAccountingOverview>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetAccountingOverviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAccountingOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getAccountingOverview>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetAccountingOverview<
+  TData = Awaited<ReturnType<typeof getAccountingOverview>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetAccountingOverviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary CPT-41 à CPT-45
+ */
+
+export function useGetAccountingOverview<
+  TData = Awaited<ReturnType<typeof getAccountingOverview>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetAccountingOverviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetAccountingOverviewQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary CPT-30 à CPT-33, CPT-67
+ */
+export const getGetBalancesUrl = (params?: GetBalancesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/balances?${stringifiedParams}`
+    : `/api/v1/balances`;
+};
+
+export const getBalances = async (
+  params?: GetBalancesParams,
+  options?: RequestInit,
+): Promise<BalancesView> => {
+  return apiFetch<BalancesView>(getGetBalancesUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetBalancesQueryKey = (params?: GetBalancesParams) => {
+  return [`/api/v1/balances`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetBalancesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBalances>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetBalancesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBalances>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBalancesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBalances>>> = ({ signal }) =>
+    getBalances(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBalances>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetBalancesQueryResult = NonNullable<Awaited<ReturnType<typeof getBalances>>>;
+export type GetBalancesQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetBalances<
+  TData = Awaited<ReturnType<typeof getBalances>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: undefined | GetBalancesParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBalances>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBalances>>,
+          TError,
+          Awaited<ReturnType<typeof getBalances>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetBalances<
+  TData = Awaited<ReturnType<typeof getBalances>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetBalancesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBalances>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBalances>>,
+          TError,
+          Awaited<ReturnType<typeof getBalances>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetBalances<
+  TData = Awaited<ReturnType<typeof getBalances>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetBalancesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBalances>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary CPT-30 à CPT-33, CPT-67
+ */
+
+export function useGetBalances<
+  TData = Awaited<ReturnType<typeof getBalances>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: GetBalancesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getBalances>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetBalancesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary CPT-40, CPT-69
+ */
+export const getListBudgetsUrl = (params?: ListBudgetsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/budgets?${stringifiedParams}` : `/api/v1/budgets`;
+};
+
+export const listBudgets = async (
+  params?: ListBudgetsParams,
+  options?: RequestInit,
+): Promise<BudgetsView> => {
+  return apiFetch<BudgetsView>(getListBudgetsUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListBudgetsQueryKey = (params?: ListBudgetsParams) => {
+  return [`/api/v1/budgets`, ...(params ? [params] : [])] as const;
+};
+
+export const getListBudgetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBudgets>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: ListBudgetsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListBudgetsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listBudgets>>> = ({ signal }) =>
+    listBudgets(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBudgets>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListBudgetsQueryResult = NonNullable<Awaited<ReturnType<typeof listBudgets>>>;
+export type ListBudgetsQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListBudgets<
+  TData = Awaited<ReturnType<typeof listBudgets>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: undefined | ListBudgetsParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listBudgets>>,
+          TError,
+          Awaited<ReturnType<typeof listBudgets>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListBudgets<
+  TData = Awaited<ReturnType<typeof listBudgets>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: ListBudgetsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listBudgets>>,
+          TError,
+          Awaited<ReturnType<typeof listBudgets>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListBudgets<
+  TData = Awaited<ReturnType<typeof listBudgets>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: ListBudgetsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary CPT-40, CPT-69
+ */
+
+export function useListBudgets<
+  TData = Awaited<ReturnType<typeof listBudgets>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: ListBudgetsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listBudgets>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListBudgetsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary CPT-40, CPT-69
+ */
+export const getPutBudgetUrl = () => {
+  return `/api/v1/budgets`;
+};
+
+export const putBudget = async (
+  putBudgetDto: PutBudgetDto,
+  options?: RequestInit,
+): Promise<BudgetView> => {
+  return apiFetch<BudgetView>(getPutBudgetUrl(), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(putBudgetDto),
+  });
+};
+
+export const getPutBudgetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putBudget>>,
+    TError,
+    { data: PutBudgetDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putBudget>>,
+  TError,
+  { data: PutBudgetDto },
+  TContext
+> => {
+  const mutationKey = ['putBudget'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putBudget>>,
+    { data: PutBudgetDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return putBudget(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutBudgetMutationResult = NonNullable<Awaited<ReturnType<typeof putBudget>>>;
+export type PutBudgetMutationBody = PutBudgetDto;
+export type PutBudgetMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-40, CPT-69
+ */
+export const usePutBudget = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof putBudget>>,
+      TError,
+      { data: PutBudgetDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof putBudget>>,
+  TError,
+  { data: PutBudgetDto },
+  TContext
+> => {
+  const mutationOptions = getPutBudgetMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-40
+ */
+export const getDeleteBudgetUrl = (id: string) => {
+  return `/api/v1/budgets/${id}`;
+};
+
+export const deleteBudget = async (id: string, options?: RequestInit): Promise<void> => {
+  return apiFetch<void>(getDeleteBudgetUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteBudgetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteBudget>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteBudget>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteBudget'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBudget>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return deleteBudget(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteBudgetMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBudget>>>;
+
+export type DeleteBudgetMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-40
+ */
+export const useDeleteBudget = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteBudget>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteBudget>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getDeleteBudgetMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };
@@ -587,6 +1177,264 @@ export function useGetCart<
   return query;
 }
 
+/**
+ * @summary CPT-22
+ */
+export const getClaimContributionSettlementUrl = (id: string) => {
+  return `/api/v1/contributions/${id}/claim`;
+};
+
+export const claimContributionSettlement = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ClaimContributionSettlement200> => {
+  return apiFetch<ClaimContributionSettlement200>(getClaimContributionSettlementUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getClaimContributionSettlementMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof claimContributionSettlement>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof claimContributionSettlement>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['claimContributionSettlement'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof claimContributionSettlement>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return claimContributionSettlement(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClaimContributionSettlementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof claimContributionSettlement>>
+>;
+
+export type ClaimContributionSettlementMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-22
+ */
+export const useClaimContributionSettlement = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof claimContributionSettlement>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof claimContributionSettlement>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getClaimContributionSettlementMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-23, CPT-66
+ */
+export const getNudgeContributionUrl = (id: string) => {
+  return `/api/v1/contributions/${id}/nudge`;
+};
+
+export const nudgeContribution = async (
+  id: string,
+  options?: RequestInit,
+): Promise<NudgeContribution200> => {
+  return apiFetch<NudgeContribution200>(getNudgeContributionUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getNudgeContributionMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof nudgeContribution>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof nudgeContribution>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['nudgeContribution'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof nudgeContribution>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return nudgeContribution(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type NudgeContributionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof nudgeContribution>>
+>;
+
+export type NudgeContributionMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-23, CPT-66
+ */
+export const useNudgeContribution = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof nudgeContribution>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof nudgeContribution>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getNudgeContributionMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-20, CPT-21, CPT-24, CPT-65
+ */
+export const getPutContributionSettlementUrl = (id: string) => {
+  return `/api/v1/contributions/${id}/settlement`;
+};
+
+export const putContributionSettlement = async (
+  id: string,
+  setSettlementDto: SetSettlementDto,
+  options?: RequestInit,
+): Promise<PutContributionSettlement200> => {
+  return apiFetch<PutContributionSettlement200>(getPutContributionSettlementUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setSettlementDto),
+  });
+};
+
+export const getPutContributionSettlementMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putContributionSettlement>>,
+    TError,
+    { id: string; data: SetSettlementDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putContributionSettlement>>,
+  TError,
+  { id: string; data: SetSettlementDto },
+  TContext
+> => {
+  const mutationKey = ['putContributionSettlement'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putContributionSettlement>>,
+    { id: string; data: SetSettlementDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return putContributionSettlement(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutContributionSettlementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putContributionSettlement>>
+>;
+export type PutContributionSettlementMutationBody = SetSettlementDto;
+export type PutContributionSettlementMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-20, CPT-21, CPT-24, CPT-65
+ */
+export const usePutContributionSettlement = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof putContributionSettlement>>,
+      TError,
+      { id: string; data: SetSettlementDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof putContributionSettlement>>,
+  TError,
+  { id: string; data: SetSettlementDto },
+  TContext
+> => {
+  const mutationOptions = getPutContributionSettlementMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 /**
  * @summary CPT-59
  */
@@ -1633,6 +2481,249 @@ export const usePostItemShortfallNotice = <
   TContext
 > => {
   const mutationOptions = getPostItemShortfallNoticeMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-31, CPT-68
+ */
+export const getProposeOffsetUrl = () => {
+  return `/api/v1/offset-proposals`;
+};
+
+export const proposeOffset = async (
+  proposeOffsetDto: ProposeOffsetDto,
+  options?: RequestInit,
+): Promise<OffsetProposalView> => {
+  return apiFetch<OffsetProposalView>(getProposeOffsetUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(proposeOffsetDto),
+  });
+};
+
+export const getProposeOffsetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof proposeOffset>>,
+    TError,
+    { data: ProposeOffsetDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof proposeOffset>>,
+  TError,
+  { data: ProposeOffsetDto },
+  TContext
+> => {
+  const mutationKey = ['proposeOffset'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof proposeOffset>>,
+    { data: ProposeOffsetDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return proposeOffset(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ProposeOffsetMutationResult = NonNullable<Awaited<ReturnType<typeof proposeOffset>>>;
+export type ProposeOffsetMutationBody = ProposeOffsetDto;
+export type ProposeOffsetMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-31, CPT-68
+ */
+export const useProposeOffset = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof proposeOffset>>,
+      TError,
+      { data: ProposeOffsetDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof proposeOffset>>,
+  TError,
+  { data: ProposeOffsetDto },
+  TContext
+> => {
+  const mutationOptions = getProposeOffsetMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-68 : confirmée par l'autre profil seulement.
+ */
+export const getConfirmOffsetUrl = (id: string) => {
+  return `/api/v1/offset-proposals/${id}/confirm`;
+};
+
+export const confirmOffset = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OffsetDecisionView> => {
+  return apiFetch<OffsetDecisionView>(getConfirmOffsetUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getConfirmOffsetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmOffset>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmOffset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['confirmOffset'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmOffset>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return confirmOffset(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmOffsetMutationResult = NonNullable<Awaited<ReturnType<typeof confirmOffset>>>;
+
+export type ConfirmOffsetMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-68 : confirmée par l'autre profil seulement.
+ */
+export const useConfirmOffset = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof confirmOffset>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof confirmOffset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getConfirmOffsetMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-68
+ */
+export const getDeclineOffsetUrl = (id: string) => {
+  return `/api/v1/offset-proposals/${id}/decline`;
+};
+
+export const declineOffset = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OffsetDecisionView> => {
+  return apiFetch<OffsetDecisionView>(getDeclineOffsetUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getDeclineOffsetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof declineOffset>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof declineOffset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['declineOffset'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof declineOffset>>, { id: string }> = (
+    props,
+  ) => {
+    const { id } = props ?? {};
+
+    return declineOffset(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeclineOffsetMutationResult = NonNullable<Awaited<ReturnType<typeof declineOffset>>>;
+
+export type DeclineOffsetMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-68
+ */
+export const useDeclineOffset = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof declineOffset>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof declineOffset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getDeclineOffsetMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

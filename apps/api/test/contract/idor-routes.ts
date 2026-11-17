@@ -92,4 +92,10 @@ export const PHASE5_IDOR_ROUTES: readonly string[] = [
   'DELETE /api/v1/buyer-requests/:id',
   'PUT /api/v1/items/:id/purchase/receipt',
   'GET /api/v1/items/:id/purchase/receipt',
+  'PUT /api/v1/contributions/:id/settlement',
+  'POST /api/v1/contributions/:id/claim',
+  'POST /api/v1/contributions/:id/nudge',
+  'POST /api/v1/offset-proposals/:id/confirm',
+  'POST /api/v1/offset-proposals/:id/decline',
+  'DELETE /api/v1/budgets/:id',
 ];

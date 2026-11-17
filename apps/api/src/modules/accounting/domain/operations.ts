@@ -222,6 +222,7 @@ export function setContribution(
         settlement: 'NONE',
         settledAt: null,
         settlementNote: null,
+        nudgedAt: null,
         createdAt: ctx.now,
       };
   const contributions = mine

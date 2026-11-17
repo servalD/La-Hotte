@@ -61,6 +61,60 @@ export abstract class AccountingRepository {
   abstract findByPendingBuyerRequest(requestId: string): Promise<AccountingState | null>;
   /** CPT-11 : fiches dont le profil est acheteur, plus récentes d'abord. */
   abstract findByBuyer(profileId: string): Promise<AccountingState[]>;
+  /** CPT-20 à CPT-23 : fiche d'une participation. */
+  abstract findByContribution(contributionId: string): Promise<AccountingState | null>;
+  /** CPT-30, CPT-41 : fiches où le profil participe ou achète. */
+  abstract findByProfile(profileId: string): Promise<AccountingState[]>;
+
+  /**
+   * CPT-68 : plusieurs fiches dans une seule transaction, verrouillées dans l'ordre de leurs
+   * identifiants ; la proposition de compensation change d'état dans la même transaction.
+   */
+  abstract mutateMany(input: {
+    readonly accountingIds: readonly string[];
+    readonly actorId: string;
+    readonly operationId: string;
+    readonly idempotency: IdempotencyInput;
+    readonly proposal: { readonly id: string; readonly status: OffsetStatus };
+    readonly work: (states: ReadonlyMap<string, AccountingState>) => {
+      readonly works: readonly AccountingWork[];
+      readonly response: StoredResponse;
+    };
+  }): Promise<{ readonly replayed: boolean; readonly response: StoredResponse }>;
+
+  abstract createOffset(proposal: OffsetProposal): Promise<void>;
+  abstract findOffset(id: string): Promise<OffsetProposal | null>;
+  abstract pendingOffset(a: string, b: string, currency: string): Promise<OffsetProposal | null>;
+  abstract setOffsetStatus(id: string, status: OffsetStatus, at: Date): Promise<void>;
+}
+
+export type OffsetStatus = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'STALE';
+
+/** CPT-68 : proposition de compensation, avec les montants dus relevés à la proposition. */
+export interface OffsetProposal {
+  readonly id: string;
+  readonly proposerId: string;
+  readonly counterpartId: string;
+  readonly currency: string;
+  readonly snapshot: readonly { readonly contributionId: string; readonly owed: number }[];
+  readonly status: OffsetStatus;
+  readonly createdAt: Date;
+}
+
+export interface BudgetRecord {
+  readonly id: string;
+  readonly profileId: string;
+  readonly eventId: string;
+  readonly recipientId: string | null;
+  readonly amountMinor: number;
+  readonly currency: string;
+}
+
+/** CPT-40, CPT-69 : budgets privés, lus et écrits pour leur seul profil. */
+export abstract class BudgetRepository {
+  abstract list(profileId: string, eventId: string | null): Promise<BudgetRecord[]>;
+  abstract upsert(budget: BudgetRecord): Promise<BudgetRecord>;
+  abstract delete(profileId: string, id: string): Promise<boolean>;
 }
 
 export interface PersonCard {

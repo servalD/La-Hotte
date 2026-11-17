@@ -22,6 +22,8 @@ export interface ContributionRow {
   readonly settlement: SettlementState;
   readonly settledAt: Date | null;
   readonly settlementNote: string | null;
+  /** CPT-23 : dernière relance à la main. */
+  readonly nudgedAt: Date | null;
   readonly createdAt: Date;
 }
 

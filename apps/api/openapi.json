@@ -1046,6 +1046,48 @@
         ]
       }
     },
+    "/api/v1/accounting/overview": {
+      "get": {
+        "operationId": "getAccountingOverview",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountingOverviewView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-41 à CPT-45",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/accounts/setup": {
       "post": {
         "operationId": "setupAccount",
@@ -1759,6 +1801,48 @@
         ]
       }
     },
+    "/api/v1/balances": {
+      "get": {
+        "operationId": "getBalances",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalancesView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-30 à CPT-33, CPT-67",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/blocks": {
       "get": {
         "operationId": "listBlocks",
@@ -1853,6 +1937,123 @@
         },
         "tags": [
           "blocks"
+        ]
+      }
+    },
+    "/api/v1/budgets": {
+      "get": {
+        "operationId": "listBudgets",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetsView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-40, CPT-69",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "put": {
+        "operationId": "putBudget",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutBudgetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-40, CPT-69",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/budgets/{id}": {
+      "delete": {
+        "operationId": "deleteBudget",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-40",
+        "tags": [
+          "accounting"
         ]
       }
     },
@@ -2279,6 +2480,211 @@
         },
         "tags": [
           "conversations"
+        ]
+      }
+    },
+    "/api/v1/contributions/{id}/claim": {
+      "post": {
+        "operationId": "claimContributionSettlement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-22",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/contributions/{id}/nudge": {
+      "post": {
+        "operationId": "nudgeContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-23, CPT-66",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/contributions/{id}/settlement": {
+      "put": {
+        "operationId": "putContributionSettlement",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSettlementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-20, CPT-21, CPT-24, CPT-65",
+        "tags": [
+          "accounting"
         ]
       }
     },
@@ -6256,6 +6662,150 @@
         ]
       }
     },
+    "/api/v1/offset-proposals": {
+      "post": {
+        "operationId": "proposeOffset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposeOffsetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetProposalView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-31, CPT-68",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/offset-proposals/{id}/confirm": {
+      "post": {
+        "operationId": "confirmOffset",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetDecisionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-68 : confirmée par l'autre profil seulement.",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/offset-proposals/{id}/decline": {
+      "post": {
+        "operationId": "declineOffset",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsetDecisionView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-68",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/products": {
       "post": {
         "operationId": "createProduct",
@@ -7413,6 +7963,54 @@
           "receiptEnabled"
         ]
       },
+      "AccountingOverviewView": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OverviewEventView"
+              }
+            ]
+          },
+          "budget": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MoneyView"
+              }
+            ]
+          },
+          "engaged": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MoneyView"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverviewGroupView"
+            }
+          },
+          "nothingYet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountingPersonView"
+            }
+          }
+        },
+        "required": [
+          "event",
+          "budget",
+          "engaged",
+          "groups",
+          "nothingYet"
+        ]
+      },
       "AccountingPersonView": {
         "type": "object",
         "properties": {
@@ -7759,6 +8357,109 @@
           "eventId"
         ]
       },
+      "BalanceLineView": {
+        "type": "object",
+        "properties": {
+          "contributionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "buyerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owedMinor": {
+            "type": "number"
+          },
+          "settlement": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettlementState"
+              }
+            ]
+          }
+        },
+        "required": [
+          "contributionId",
+          "accountingId",
+          "itemId",
+          "title",
+          "participantId",
+          "buyerId",
+          "owedMinor",
+          "settlement"
+        ]
+      },
+      "BalancesView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BalanceView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BalanceView": {
+        "type": "object",
+        "properties": {
+          "other": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "iOweMinor": {
+            "type": "number"
+          },
+          "owesMeMinor": {
+            "type": "number"
+          },
+          "netMinor": {
+            "type": "number"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BalanceLineView"
+            }
+          }
+        },
+        "required": [
+          "other",
+          "currency",
+          "iOweMinor",
+          "owesMeMinor",
+          "netMinor",
+          "lines"
+        ]
+      },
       "BirthdayDto": {
         "type": "object",
         "properties": {
@@ -7855,6 +8556,51 @@
         },
         "required": [
           "profileId"
+        ]
+      },
+      "BudgetsView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BudgetView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BudgetView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recipientId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "amountMinor": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "recipientId",
+          "amountMinor",
+          "currency"
         ]
       },
       "CarriedFromEventView": {
@@ -10971,6 +11717,21 @@
           "READER"
         ]
       },
+      "MoneyView": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "amountMinor": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency",
+          "amountMinor"
+        ]
+      },
       "MyContributionView": {
         "type": "object",
         "properties": {
@@ -11225,6 +11986,33 @@
           "createdAt"
         ]
       },
+      "OffsetDecisionView": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "CONFIRMED",
+              "DECLINED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "OffsetProposalView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
       "OpenInvitationView": {
         "type": "object",
         "properties": {
@@ -11264,6 +12052,125 @@
           "proposal",
           "createdAt",
           "expiresAt"
+        ]
+      },
+      "OverviewEventView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "OverviewGroupView": {
+        "type": "object",
+        "properties": {
+          "recipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountingPersonView"
+            }
+          },
+          "month": {
+            "type": "string",
+            "nullable": true
+          },
+          "budgetMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MoneyView"
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OverviewLineView"
+            }
+          }
+        },
+        "required": [
+          "recipients",
+          "month",
+          "budgetMinor",
+          "totals",
+          "lines"
+        ]
+      },
+      "OverviewLineView": {
+        "type": "object",
+        "properties": {
+          "accountingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContributionMode"
+              }
+            ]
+          },
+          "amountMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "isBuyer": {
+            "type": "boolean"
+          },
+          "buyer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "purchased": {
+            "type": "boolean"
+          },
+          "settlement": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettlementState"
+              }
+            ]
+          }
+        },
+        "required": [
+          "accountingId",
+          "itemId",
+          "title",
+          "currency",
+          "mode",
+          "amountMinor",
+          "isBuyer",
+          "buyer",
+          "purchased",
+          "settlement"
         ]
       },
       "OwnTransferStateView": {
@@ -11807,6 +12714,23 @@
           "version"
         ]
       },
+      "ProposeOffsetDto": {
+        "type": "object",
+        "properties": {
+          "counterpartId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          }
+        },
+        "required": [
+          "counterpartId",
+          "currency"
+        ]
+      },
       "PushDetailsDto": {
         "type": "object",
         "properties": {
@@ -11884,6 +12808,34 @@
         "required": [
           "endpoint",
           "keys"
+        ]
+      },
+      "PutBudgetDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recipientId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "amountMinor": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000000000000
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          }
+        },
+        "required": [
+          "eventId",
+          "amountMinor",
+          "currency"
         ]
       },
       "ReauthDto": {
@@ -12349,6 +13301,22 @@
         },
         "required": [
           "newPin"
+        ]
+      },
+      "SetSettlementDto": {
+        "type": "object",
+        "properties": {
+          "settled": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "settled"
         ]
       },
       "SettlementState": {

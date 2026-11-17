@@ -14,6 +14,11 @@ import {
 import {
   type AccountingKey,
   AccountingPeople,
+  type BudgetRecord,
+  BudgetRepository,
+  type OffsetProposal,
+  type OffsetStatus,
+  type StoredResponse,
   AccountingRepository,
   type AccountingWork,
   type IdempotencyInput,
@@ -55,6 +60,7 @@ function toContribution(row: StateRow['contributions'][number]): ContributionRow
     settlement: row.settlement,
     settledAt: row.settledAt,
     settlementNote: row.settlementNote,
+    nudgedAt: row.nudgedAt,
     createdAt: row.createdAt,
   };
 }
@@ -172,6 +178,108 @@ export class PrismaAccountingRepository extends AccountingRepository {
       select: { accountingId: true },
     });
     return request ? load(this.prisma, { id: request.accountingId }) : null;
+  }
+
+  async findByContribution(contributionId: string): Promise<AccountingState | null> {
+    const row = await this.prisma.contribution.findUnique({
+      where: { id: contributionId },
+      select: { accountingId: true },
+    });
+    return row ? load(this.prisma, { id: row.accountingId }) : null;
+  }
+
+  async findByProfile(profileId: string): Promise<AccountingState[]> {
+    const rows = await this.prisma.itemAccounting.findMany({
+      where: { OR: [{ buyerProfileId: profileId }, { contributions: { some: { profileId } } }] },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    });
+    const states = await Promise.all(rows.map((row) => load(this.prisma, { id: row.id })));
+    return states.filter((state): state is AccountingState => state !== null);
+  }
+
+  mutateMany(input: {
+    readonly accountingIds: readonly string[];
+    readonly actorId: string;
+    readonly operationId: string;
+    readonly idempotency: IdempotencyInput;
+    readonly proposal: { readonly id: string; readonly status: OffsetStatus };
+    readonly work: (states: ReadonlyMap<string, AccountingState>) => {
+      readonly works: readonly AccountingWork[];
+      readonly response: StoredResponse;
+    };
+  }): Promise<{ readonly replayed: boolean; readonly response: StoredResponse }> {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const replay = await this.claimKey(tx, input.idempotency);
+        if (replay) return { replayed: true, response: replay.response };
+        const states = new Map<string, AccountingState>();
+        for (const id of [...new Set(input.accountingIds)].sort()) {
+          const state = await this.lock(tx, { accountingId: id });
+          if (state) states.set(id, state);
+        }
+        const result = input.work(states);
+        for (const work of result.works) {
+          await this.write(
+            tx,
+            states.get(work.next.id) ?? null,
+            work,
+            input.actorId,
+            input.operationId,
+          );
+        }
+        await tx.offsetProposal.update({
+          where: { id: input.proposal.id },
+          data: { status: input.proposal.status, decidedAt: new Date() },
+        });
+        await tx.idempotencyRecord.update({
+          where: {
+            profileId_key: { profileId: input.idempotency.profileId, key: input.idempotency.key },
+          },
+          data: { status: result.response.status, response: json(result.response.body) },
+        });
+        return { replayed: false, response: result.response };
+      },
+      { timeout: 15_000, maxWait: 10_000 },
+    );
+  }
+
+  async createOffset(proposal: OffsetProposal): Promise<void> {
+    await this.prisma.offsetProposal.create({
+      data: {
+        id: proposal.id,
+        proposerProfileId: proposal.proposerId,
+        counterpartProfileId: proposal.counterpartId,
+        currency: proposal.currency,
+        snapshot: json(proposal.snapshot),
+        status: proposal.status,
+        createdAt: proposal.createdAt,
+      },
+    });
+  }
+
+  async findOffset(id: string): Promise<OffsetProposal | null> {
+    const row = await this.prisma.offsetProposal.findUnique({ where: { id } });
+    return row ? toOffset(row) : null;
+  }
+
+  async pendingOffset(a: string, b: string, currency: string): Promise<OffsetProposal | null> {
+    const row = await this.prisma.offsetProposal.findFirst({
+      where: {
+        status: 'PENDING',
+        currency,
+        OR: [
+          { proposerProfileId: a, counterpartProfileId: b },
+          { proposerProfileId: b, counterpartProfileId: a },
+        ],
+      },
+    });
+    return row ? toOffset(row) : null;
+  }
+
+  async setOffsetStatus(id: string, status: OffsetStatus, at: Date): Promise<void> {
+    await this.prisma.offsetProposal.update({ where: { id }, data: { status, decidedAt: at } });
   }
 
   async findByBuyer(profileId: string): Promise<AccountingState[]> {
@@ -301,6 +409,7 @@ export class PrismaAccountingRepository extends AccountingRepository {
         settlement: row.settlement,
         settledAt: row.settledAt,
         settlementNote: row.settlementNote,
+        nudgedAt: row.nudgedAt,
       };
       await tx.contribution.upsert({
         where: { id: row.id },
@@ -402,4 +511,82 @@ export class PrismaAccountingPeople extends AccountingPeople {
       select: { id: true, displayName: true, avatar: true, accentColor: true },
     });
   }
+}
+
+function toOffset(row: Prisma.OffsetProposalGetPayload<object>): OffsetProposal {
+  const snapshot = Array.isArray(row.snapshot)
+    ? row.snapshot.flatMap((entry) =>
+        entry !== null &&
+        typeof entry === 'object' &&
+        !Array.isArray(entry) &&
+        typeof entry.contributionId === 'string' &&
+        typeof entry.owed === 'number'
+          ? [{ contributionId: entry.contributionId, owed: entry.owed }]
+          : [],
+      )
+    : [];
+  return {
+    id: row.id,
+    proposerId: row.proposerProfileId,
+    counterpartId: row.counterpartProfileId,
+    currency: row.currency,
+    snapshot,
+    status: row.status,
+    createdAt: row.createdAt,
+  };
+}
+
+/** CPT-40, CPT-69 : budgets privés. */
+@Injectable()
+export class PrismaBudgetRepository extends BudgetRepository {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async list(profileId: string, eventId: string | null): Promise<BudgetRecord[]> {
+    const rows = await this.prisma.budget.findMany({
+      where: { profileId, ...(eventId ? { eventId } : {}) },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map(toBudget);
+  }
+
+  async upsert(budget: BudgetRecord): Promise<BudgetRecord> {
+    const existing = await this.prisma.budget.findFirst({
+      where: {
+        profileId: budget.profileId,
+        eventId: budget.eventId,
+        recipientProfileId: budget.recipientId,
+      },
+    });
+    const data = { amountMinor: BigInt(budget.amountMinor), currency: budget.currency };
+    const row = existing
+      ? await this.prisma.budget.update({ where: { id: existing.id }, data })
+      : await this.prisma.budget.create({
+          data: {
+            id: budget.id,
+            profileId: budget.profileId,
+            eventId: budget.eventId,
+            recipientProfileId: budget.recipientId,
+            ...data,
+          },
+        });
+    return toBudget(row);
+  }
+
+  async delete(profileId: string, id: string): Promise<boolean> {
+    const result = await this.prisma.budget.deleteMany({ where: { id, profileId } });
+    return result.count > 0;
+  }
+}
+
+function toBudget(row: Prisma.BudgetGetPayload<object>): BudgetRecord {
+  return {
+    id: row.id,
+    profileId: row.profileId,
+    eventId: row.eventId,
+    recipientId: row.recipientProfileId,
+    amountMinor: Number(row.amountMinor),
+    currency: row.currency,
+  };
 }

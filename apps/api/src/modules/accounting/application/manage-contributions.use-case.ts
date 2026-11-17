@@ -91,7 +91,8 @@ export abstract class ItemAccountingMutation {
 
   protected async run(input: {
     readonly viewerId: string;
-    readonly itemId: string;
+    /** Absent pour une fiche détachée (CPT-73) : la clé est alors la fiche. */
+    readonly itemId?: string | null;
     readonly idempotency: IdempotencyInput;
     readonly gated: GatedAccounting;
     readonly change: AccountingChanged['change'];
@@ -99,13 +100,15 @@ export abstract class ItemAccountingMutation {
     /** CPT-19 : profils choisis, portés par l'avis (lus après l'opération). */
     readonly profileIds?: () => readonly string[];
   }): Promise<AccountingResponse> {
-    const { gated, viewerId, itemId } = input;
-    if (!gated.item) throw new AccountingNotFoundError();
+    const { gated, viewerId } = input;
     const item = gated.item;
+    const itemId = item?.itemId ?? null;
+    if (!item && !gated.state) throw new AccountingNotFoundError();
+    const key = item ? { itemId: item.itemId } : { accountingId: gated.state?.id ?? '' };
     const cards = await this.people.cards([...peopleOf(gated.state), viewerId]);
     const ctx = this.context();
     const result: MutateResult = await this.repository.mutate({
-      key: { itemId },
+      key,
       actorId: viewerId,
       operationId: this.ids.next(),
       idempotency: input.idempotency,
@@ -140,7 +143,7 @@ export abstract class ItemAccountingMutation {
           });
         }
         const level = accountingLevel(
-          item.subject,
+          item?.subject ?? null,
           { participants: participantsOf(next), buyerId: next.buyerId },
           viewerId,
         );

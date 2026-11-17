@@ -10,3 +10,5 @@ export {
   ItemAccessReader,
   type ItemSummary,
 } from './application/item-access-reader';
+/** CPT-44 : destinataires d'un événement que le lecteur voit en offreur (EVT-37). */
+export { GetEventProgress } from './application/event-progress.use-case';

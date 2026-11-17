@@ -8,6 +8,10 @@ import {
 import {
   type AccountingKey,
   AccountingPeople,
+  type BudgetRecord,
+  BudgetRepository,
+  type OffsetProposal,
+  type OffsetStatus,
   AccountingRepository,
   type AccountingWork,
   type IdempotencyInput,
@@ -135,6 +139,101 @@ export class InMemoryAccountingRepository extends AccountingRepository {
     return Promise.resolve(null);
   }
 
+  readonly offsets = new Map<string, OffsetProposal>();
+
+  findByContribution(contributionId: string): Promise<AccountingState | null> {
+    for (const state of this.states.values()) {
+      if (state.contributions.some((row) => row.id === contributionId))
+        return Promise.resolve(state);
+    }
+    return Promise.resolve(null);
+  }
+
+  findByProfile(profileId: string): Promise<AccountingState[]> {
+    return Promise.resolve(
+      [...this.states.values()].filter(
+        (state) =>
+          state.buyerId === profileId ||
+          state.contributions.some((row) => row.profileId === profileId),
+      ),
+    );
+  }
+
+  mutateMany(input: {
+    readonly accountingIds: readonly string[];
+    readonly actorId: string;
+    readonly operationId: string;
+    readonly idempotency: IdempotencyInput;
+    readonly proposal: { readonly id: string; readonly status: OffsetStatus };
+    readonly work: (states: ReadonlyMap<string, AccountingState>) => {
+      readonly works: readonly AccountingWork[];
+      readonly response: StoredResponse;
+    };
+  }): Promise<{ readonly replayed: boolean; readonly response: StoredResponse }> {
+    const run = this.queue.then(() => {
+      const idem = input.idempotency;
+      const idemKey = `${idem.profileId}:${idem.key}`;
+      const known = this.idempotency.get(idemKey);
+      if (known) {
+        if (known.hash !== idem.requestHash) throw new IdempotencyKeyReusedError();
+        return { replayed: true, response: known.response };
+      }
+      const states = new Map<string, AccountingState>();
+      for (const id of input.accountingIds) {
+        const state = this.states.get(id);
+        if (state) states.set(id, state);
+      }
+      const result = input.work(states);
+      const at = this.now();
+      for (const work of result.works) {
+        const prev = this.states.get(work.next.id);
+        this.states.set(work.next.id, { ...work.next, version: (prev?.version ?? 0) + 1 });
+        for (const draft of work.diff.ledger) {
+          this.sequence += 1;
+          this.ledger.push({
+            ...draft,
+            id: String(this.sequence).padStart(12, '0'),
+            accountingId: work.next.id,
+            actorId: input.actorId,
+            operationId: input.operationId,
+            at,
+          });
+        }
+      }
+      const proposal = this.offsets.get(input.proposal.id);
+      if (proposal) this.offsets.set(proposal.id, { ...proposal, status: input.proposal.status });
+      this.idempotency.set(idemKey, { hash: idem.requestHash, response: result.response });
+      return { replayed: false, response: result.response };
+    });
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  createOffset(proposal: OffsetProposal): Promise<void> {
+    this.offsets.set(proposal.id, proposal);
+    return Promise.resolve();
+  }
+
+  findOffset(id: string): Promise<OffsetProposal | null> {
+    return Promise.resolve(this.offsets.get(id) ?? null);
+  }
+
+  pendingOffset(a: string, b: string, currency: string): Promise<OffsetProposal | null> {
+    for (const p of this.offsets.values()) {
+      const pair = [p.proposerId, p.counterpartId].sort().join();
+      if (p.status === 'PENDING' && p.currency === currency && pair === [a, b].sort().join()) {
+        return Promise.resolve(p);
+      }
+    }
+    return Promise.resolve(null);
+  }
+
+  setOffsetStatus(id: string, status: OffsetStatus): Promise<void> {
+    const p = this.offsets.get(id);
+    if (p) this.offsets.set(id, { ...p, status });
+    return Promise.resolve();
+  }
+
   findByBuyer(profileId: string): Promise<AccountingState[]> {
     return Promise.resolve(
       [...this.states.values()].filter((state) => state.buyerId === profileId),
@@ -179,5 +278,40 @@ export class InMemoryAccountingPeople extends AccountingPeople {
           },
       ),
     );
+  }
+}
+
+export class InMemoryBudgetRepository extends BudgetRepository {
+  readonly budgets = new Map<string, BudgetRecord>();
+
+  list(profileId: string, eventId: string | null): Promise<BudgetRecord[]> {
+    return Promise.resolve(
+      [...this.budgets.values()].filter(
+        (b) => b.profileId === profileId && (eventId === null || b.eventId === eventId),
+      ),
+    );
+  }
+
+  upsert(budget: BudgetRecord): Promise<BudgetRecord> {
+    for (const existing of this.budgets.values()) {
+      if (
+        existing.profileId === budget.profileId &&
+        existing.eventId === budget.eventId &&
+        existing.recipientId === budget.recipientId
+      ) {
+        const next = { ...budget, id: existing.id };
+        this.budgets.set(existing.id, next);
+        return Promise.resolve(next);
+      }
+    }
+    this.budgets.set(budget.id, budget);
+    return Promise.resolve(budget);
+  }
+
+  delete(profileId: string, id: string): Promise<boolean> {
+    const budget = this.budgets.get(id);
+    if (budget?.profileId !== profileId) return Promise.resolve(false);
+    this.budgets.delete(id);
+    return Promise.resolve(true);
   }
 }

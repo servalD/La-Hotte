@@ -13,14 +13,27 @@ import {
   SetAccountingOptions,
   SetContribution,
 } from './application/manage-contributions.use-case';
-import { AccountingPeople, AccountingRepository } from './domain/accounting.ports';
+import {
+  AccountingPeople,
+  AccountingRepository,
+  BudgetRepository,
+} from './domain/accounting.ports';
 import {
   PrismaAccountingPeople,
   PrismaAccountingRepository,
+  PrismaBudgetRepository,
 } from './infrastructure/prisma-accounting';
 import { AccountingController } from './presentation/accounting.controller';
 import { ItemCostSubscriber } from './presentation/item-cost.subscriber';
 import { PurchaseController } from './presentation/purchase.controller';
+import { SettlementController } from './presentation/settlement.controller';
+import {
+  GetAccountingOverview,
+  GetBalances,
+  ManageBudgets,
+  ManageOffsets,
+  SettleContribution,
+} from './application/manage-settlements.use-case';
 import {
   DecideBuyerRequest,
   GetCart,
@@ -35,7 +48,7 @@ import {
 /** Module `accounting` : participations, acheteur, achat, règlements, soldes (07, ADR 0019). */
 @Module({
   imports: [ListsModule, VisibilityModule, ConversationsModule, EventsModule, CatalogModule],
-  controllers: [AccountingController, PurchaseController],
+  controllers: [AccountingController, PurchaseController, SettlementController],
   providers: [
     AccountingGate,
     AccountingViews,
@@ -53,8 +66,14 @@ import {
     NotifyShortfall,
     PurchaseReceipts,
     GetCart,
+    SettleContribution,
+    GetBalances,
+    ManageOffsets,
+    ManageBudgets,
+    GetAccountingOverview,
     { provide: AccountingRepository, useClass: PrismaAccountingRepository },
     { provide: AccountingPeople, useClass: PrismaAccountingPeople },
+    { provide: BudgetRepository, useClass: PrismaBudgetRepository },
   ],
   exports: [AccountingRepository],
 })
