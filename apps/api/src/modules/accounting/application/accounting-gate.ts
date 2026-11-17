@@ -25,7 +25,7 @@ export class AccountingGate {
   async forItem(viewerId: string, itemId: string): Promise<GatedAccounting> {
     const [item, state] = await Promise.all([
       this.items.accountingSubject(viewerId, itemId),
-      this.accounting.findByItem(itemId),
+      this.accounting.findByItemAs(viewerId, itemId),
     ]);
     return this.decide(viewerId, item, state);
   }

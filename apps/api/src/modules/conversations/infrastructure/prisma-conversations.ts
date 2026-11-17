@@ -95,28 +95,32 @@ export class PrismaCommentRepository extends CommentRepository {
   }
 
   async page(input: {
+    viewerId: string;
     itemId: string;
     thread: Thread;
     before: CommentCursor | null;
     limit: number;
   }): Promise<CommentRecord[]> {
     const { before } = input;
-    const rows = await this.prisma.comment.findMany({
-      where: {
-        itemId: input.itemId,
-        thread: input.thread,
-        ...(before
-          ? {
-              OR: [
-                { createdAt: { lt: before.createdAt } },
-                { createdAt: before.createdAt, id: { lt: before.id } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: input.limit,
-    });
+    // DAT-05 : lu au nom du lecteur ; la base n'ouvre jamais le fil des offreurs à un destinataire.
+    const rows = await this.prisma.asViewer(input.viewerId, (tx) =>
+      tx.comment.findMany({
+        where: {
+          itemId: input.itemId,
+          thread: input.thread,
+          ...(before
+            ? {
+                OR: [
+                  { createdAt: { lt: before.createdAt } },
+                  { createdAt: before.createdAt, id: { lt: before.id } },
+                ],
+              }
+            : {}),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: input.limit,
+      }),
+    );
     return rows.map(toComment);
   }
 

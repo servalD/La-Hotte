@@ -50,6 +50,8 @@ enum AccountRole {
 enum AccountStatus {
   ACTIVE
   SUSPENDED
+  /// RGPD-12 : effacement demandé, effectif 30 jours après `deletion_requested_at`.
+  PENDING_DELETION
 
   @@map("account_status")
 }
@@ -151,6 +153,12 @@ model Account {
   /// AUTH-09, LNK-08 : invitation à consommer à la vérification de l'e-mail.
   pendingInvitationId        String?       @map("pending_invitation_id") @db.Uuid
   authEpoch                  Int           @default(0) @map("auth_epoch")
+  /// RGPD-13 : dernière connexion réussie ; ADM-04.
+  lastSignInAt               DateTime?     @map("last_sign_in_at") @db.Timestamptz(3)
+  /// MOD-10 : publication au catalogue global suspendue.
+  publicationSuspendedAt     DateTime?     @map("publication_suspended_at") @db.Timestamptz(3)
+  /// RGPD-12 : présent si et seulement si `status = PENDING_DELETION` (`CHECK`).
+  deletionRequestedAt        DateTime?     @map("deletion_requested_at") @db.Timestamptz(3)
   createdAt                  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                  DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -168,6 +176,8 @@ model Account {
 
   @@index([pendingInvitationId])
   @@index([guardianAccountId])
+  @@index([deletionRequestedAt])
+  @@index([lastSignInAt])
   @@map("account")
 }
 
@@ -354,6 +364,8 @@ model Profile {
   budgets         Budget[]                  @relation("BudgetOwner")
   budgetsFor      Budget[]                  @relation("BudgetRecipient")
   idempotency     IdempotencyRecord[]
+  reports         Report[]
+  exports         ExportRequest[]
 
   @@index([accountId])
   @@map("profile")
@@ -1444,4 +1456,132 @@ model IdempotencyRecord {
   @@unique([profileId, key])
   @@index([expiresAt])
   @@map("idempotency_record")
+}
+
+// --- Exploitation : administration, modération, RGPD (docs/spec/11, 09 ; phase 7, ADR 0021) ---
+
+enum ReportTargetKind {
+  PRODUCT
+  COMMENT
+
+  @@map("report_target_kind")
+}
+
+/// MOD-07 : motifs en liste fermée.
+enum ReportReason {
+  SPAM
+  INAPPROPRIATE
+  PRIVACY
+  ILLEGAL
+  OTHER
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  OPEN
+  DECIDED
+
+  @@map("report_status")
+}
+
+/// MOD-10, MOD-11 : décisions, et contestation de l'auteur (ligne liée, jamais une modification).
+enum ModerationAction {
+  KEEP
+  REMOVE
+  REMOVE_AND_SUSPEND
+  CONTEST
+
+  @@map("moderation_action")
+}
+
+/// MOD-07, MOD-08. `target_id` sans clé étrangère : la cible peut disparaître.
+model Report {
+  id                String           @id @db.Uuid
+  reporterProfileId String           @map("reporter_profile_id") @db.Uuid
+  /// MOD-08 : le seuil compte des comptes distincts.
+  reporterAccountId String           @map("reporter_account_id") @db.Uuid
+  targetKind        ReportTargetKind @map("target_kind")
+  targetId          String           @map("target_id") @db.Uuid
+  reason            ReportReason
+  note              String?          @db.VarChar(500)
+  status            ReportStatus     @default(OPEN)
+  decidedAt         DateTime?        @map("decided_at") @db.Timestamptz(3)
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  reporter Profile @relation(fields: [reporterProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterProfileId, targetKind, targetId])
+  @@index([targetKind, targetId, status])
+  @@index([status, createdAt])
+  @@map("report")
+}
+
+/// MOD-10, MOD-11 : ajout seul (DAT-02). Une contestation (`CONTEST`) a pour parent la décision
+/// contestée ; la décision qui la tranche a pour parent la contestation.
+model ModerationDecision {
+  id             String           @id @db.Uuid
+  targetKind     ReportTargetKind @map("target_kind")
+  targetId       String           @map("target_id") @db.Uuid
+  action         ModerationAction
+  /// Motif du modérateur, ou texte de la contestation (500 caractères au plus).
+  reason         String           @db.VarChar(500)
+  actorAccountId String           @map("actor_account_id") @db.Uuid
+  parentId       String?          @map("parent_id") @db.Uuid
+  at             DateTime         @default(now()) @db.Timestamptz(3)
+
+  parent   ModerationDecision?  @relation("ModerationThread", fields: [parentId], references: [id], onDelete: Restrict)
+  children ModerationDecision[] @relation("ModerationThread")
+
+  @@index([targetKind, targetId, at])
+  @@index([parentId])
+  @@map("moderation_decision")
+}
+
+/// ADM-09 : clés en liste fermée, validées par le domaine.
+model PlatformSetting {
+  key                String   @id @db.VarChar(64)
+  value              Json
+  updatedByAccountId String   @map("updated_by_account_id") @db.Uuid
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("platform_setting")
+}
+
+/// RGPD-11 : fichier chiffré (SEC-22), effacé au téléchargement ou à l'expiration.
+model ExportRequest {
+  id           String    @id @db.Uuid
+  profileId    String    @map("profile_id") @db.Uuid
+  requestedAt  DateTime  @default(now()) @map("requested_at") @db.Timestamptz(3)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  readyAt      DateTime? @map("ready_at") @db.Timestamptz(3)
+  downloadedAt DateTime? @map("downloaded_at") @db.Timestamptz(3)
+  payloadEnc   Bytes?    @map("payload_enc")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, requestedAt])
+  @@index([expiresAt])
+  @@map("export_request")
+}
+
+/// AUD-01, AUD-06 : ajout seul (DAT-02), sans clé étrangère, aucun contenu.
+model AuditLog {
+  id             String   @id @db.Uuid
+  actorAccountId String?  @map("actor_account_id") @db.Uuid
+  action         String   @db.VarChar(64)
+  targetKind     String?  @map("target_kind") @db.VarChar(32)
+  targetId       String?  @map("target_id") @db.Uuid
+  reason         String?  @db.VarChar(500)
+  ip             String?  @db.Inet
+  /// ADM-09 : ancienne et nouvelle valeur d'un réglage ; jamais un contenu d'utilisateur.
+  before         Json?
+  after          Json?
+  at             DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([at])
+  @@index([actorAccountId, at])
+  @@index([targetId, at])
+  @@map("audit_log")
 }

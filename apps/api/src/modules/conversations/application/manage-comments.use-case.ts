@@ -206,6 +206,7 @@ export class ListComments {
     if (input.cursor && !before) throw new CommentInvalidError();
     const limit = Math.min(Math.max(input.limit ?? COMMENT_PAGE_MAX, 1), COMMENT_PAGE_MAX);
     const rows = await this.comments.page({
+      viewerId: input.viewerId,
       itemId: input.itemId,
       thread: input.thread,
       before,

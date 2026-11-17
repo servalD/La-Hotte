@@ -162,6 +162,10 @@ export class PrismaAccountingRepository extends AccountingRepository {
     return load(this.prisma, { itemId });
   }
 
+  findByItemAs(viewerId: string, itemId: string): Promise<AccountingState | null> {
+    return this.prisma.asViewer(viewerId, (tx) => load(tx, { itemId }));
+  }
+
   findById(accountingId: string): Promise<AccountingState | null> {
     return load(this.prisma, { id: accountingId });
   }

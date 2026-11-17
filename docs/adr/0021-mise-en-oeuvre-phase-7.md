@@ -33,7 +33,7 @@ La phase 7 donne aux exploitants des moyens d'agir sans leur donner celui de lir
 
 ### Catalogue global (MOD-05, MOD-06)
 
-- `catalog_entry` porte l'URL normalisée et le compteur ; la fiche d'un utilisateur reste la sienne (REP-05 : « ajouter à ma liste » copie). La publication `GLOBAL` crée ou rejoint une entrée ; la dépublication décrémente. Le compteur compte des **comptes** distincts, pas des profils : trois profils d'une même famille ne font pas « trois personnes ».
+- Le dédoublonnage et le compteur sont **calculés à la lecture**, sans table : parmi les fiches `GLOBAL` et `APPROVED`, une par URL normalisée (la plus ancienne), et le compteur est le nombre de **comptes** distincts qui ont publié cette URL. Aucun état à tenir à jour à la publication, la dépublication, la modération ou l'effacement d'un compte. Trois profils d'une même famille ne font pas « trois personnes ». Une fiche sans URL (saisie à la main) n'est pas dédoublonnée. La fiche d'un utilisateur reste la sienne (REP-05 : « ajouter à ma liste » copie).
 - L'API du catalogue ne sérialise jamais `owner_profile_id`, ni la note, ni une photo de l'utilisateur : vue dédiée, sans ces membres (champs absents, pas vides).
 - Le contrôle MOD-09 est un service de domaine pur (listes lues dans `platform_setting`), testé par propriétés (comparaison sans accent ni casse).
 
@@ -49,7 +49,11 @@ La phase 7 donne aux exploitants des moyens d'agir sans leur donner celui de lir
 
 ### Sécurité des lignes (DAT-05, reportée par l'ADR 0019)
 
-- RLS en défense supplémentaire sur `comment`, `contribution`, `purchase`, `list_item`. La session de base porte `app.profile_id` posé par une transaction (`SET LOCAL`) ; une politique interdit à un destinataire la lecture des lignes d'offreurs. Le rôle propriétaire (migrations) n'est pas soumis aux politiques ; le rôle applicatif l'est. Essai préalable sur `comment` ; si le coût dans l'ORM se révèle disproportionné pour les trois autres, ce sera noté en reste, pas masqué.
+- RLS en défense supplémentaire sur `comment`, `contribution`, `purchase`, `list_item`. `PrismaService.asViewer(profil, lecture)` ouvre une transaction et pose `app.profile_id` par `set_config(…, true)` (portée de la transaction, jamais de la connexion du pool). Chaque table a une politique permissive ouverte et une politique **restrictive en lecture** : sans `app.profile_id`, rien n'est écarté, si bien que les écritures, les déclencheurs et les tâches de fond ne changent pas de comportement.
+- Le prédicat « le lecteur est destinataire de la liste de l'élément » est une fonction `SECURITY DEFINER` : elle lit `list_item` sans sa propre politique, sinon une suggestion (invisible du destinataire) ferait échapper son fil des offreurs au contrôle. Une fiche de compta détachée (`item_id` vide) n'est jugée que par le moteur (CPT-68, CPT-73).
+- `list_item` : seules les suggestions sont des lignes d'offreur ; l'état réel est une colonne, hors de portée de la RLS.
+- Câblage : lecture d'un fil (`CommentRepository.page`) et compta d'un élément (`AccountingGate`, `findByItemAs`). Les autres lectures restent sous le seul moteur ; les y ajouter n'est pas une obligation de cette phase.
+- Le rôle propriétaire (migrations) n'est pas soumis aux politiques (pas de `FORCE`) ; le rôle applicatif l'est.
 
 ### Production (ADR 0008)
 
