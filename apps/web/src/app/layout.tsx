@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
+import { ServiceWorkerUpdates } from '@/lib/pwa/service-worker';
 import { Providers } from './providers';
 import './globals.css';
 
@@ -14,6 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // PWA-11 : l'écran à encoche est occupé en entier ; les marges sûres sont tenues par le cadre.
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#fcfbf9' },
     { media: '(prefers-color-scheme: dark)', color: '#141210' },
@@ -37,7 +40,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {t('skipToContent')}
         </a>
         <NextIntlClientProvider>
-          <Providers nonce={nonce}>{children}</Providers>
+          <Providers nonce={nonce}>
+            {children}
+            {/* PWA-06, PWA-07 : service worker et proposition de mise à jour. */}
+            <ServiceWorkerUpdates />
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>

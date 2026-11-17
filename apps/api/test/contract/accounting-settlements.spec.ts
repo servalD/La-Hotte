@@ -173,6 +173,32 @@ describe('Soldes et compensation (CPT-30, CPT-31, CPT-67, CPT-68)', () => {
       .send({ counterpartId: tonton.profileId, currency: 'EUR' })
       .expect(200);
     const id = proposal.body.id as string;
+    // CPT-75 : chacun retrouve la proposition, avec le montant compensé ; la destinataire, rien.
+    const received = await http()
+      .get('/api/v1/offset-proposals')
+      .set({ Cookie: tonton.cookie })
+      .expect(200);
+    expect(received.body.items).toEqual([
+      expect.objectContaining({
+        id,
+        direction: 'RECEIVED',
+        currency: 'EUR',
+        amountMinor: 1_500,
+        other: expect.objectContaining({ id: papa.profileId }),
+      }),
+    ]);
+    const sent = await http()
+      .get('/api/v1/offset-proposals')
+      .set({ Cookie: papa.cookie })
+      .expect(200);
+    expect(sent.body.items).toEqual([
+      expect.objectContaining({ id, direction: 'SENT', amountMinor: 1_500 }),
+    ]);
+    const none = await http()
+      .get('/api/v1/offset-proposals')
+      .set({ Cookie: marie.cookie })
+      .expect(200);
+    expect(none.body.items).toEqual([]);
     // Seule l'autre partie confirme.
     await post(papa, `/api/v1/offset-proposals/${id}/confirm`).expect(404);
     await post(marie, `/api/v1/offset-proposals/${id}/confirm`).expect(404);
@@ -183,6 +209,11 @@ describe('Soldes et compensation (CPT-30, CPT-31, CPT-67, CPT-68)', () => {
       owesMeMinor: 0,
       netMinor: 500,
     });
+    const done = await http()
+      .get('/api/v1/offset-proposals')
+      .set({ Cookie: tonton.cookie })
+      .expect(200);
+    expect(done.body.items).toEqual([]);
   });
 
   it('CPT-68 : une part changée entre proposition et confirmation rend la proposition caduque', async () => {

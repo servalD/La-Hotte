@@ -21,6 +21,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../identity';
+import { Idempotent } from '../../../platform/http/idempotency';
 import {
   type CommentReaction,
   type CommentView as CommentModel,
@@ -143,6 +144,7 @@ export class CommentsController {
 
   /** COM-11 à COM-13 */
   @Post('items/:id/comments')
+  @Idempotent('comment.post')
   @ApiParam({ name: 'id', ...UUID_PARAM })
   @ApiCreatedResponse({ type: CommentView })
   async postItemComment(

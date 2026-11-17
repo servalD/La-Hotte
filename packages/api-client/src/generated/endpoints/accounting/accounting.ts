@@ -45,6 +45,7 @@ import type {
   NudgeContribution200,
   OffsetDecisionView,
   OffsetProposalView,
+  PendingOffsetsView,
   PostItemBuyerRequest200,
   PostItemShortfallNotice200,
   ProblemDetailsDto,
@@ -2484,6 +2485,129 @@ export const usePostItemShortfallNotice = <
 
   return useMutation(mutationOptions, queryClient);
 };
+/**
+ * @summary CPT-75
+ */
+export const getListOffsetProposalsUrl = () => {
+  return `/api/v1/offset-proposals`;
+};
+
+export const listOffsetProposals = async (options?: RequestInit): Promise<PendingOffsetsView> => {
+  return apiFetch<PendingOffsetsView>(getListOffsetProposalsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListOffsetProposalsQueryKey = () => {
+  return [`/api/v1/offset-proposals`] as const;
+};
+
+export const getListOffsetProposalsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOffsetProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listOffsetProposals>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListOffsetProposalsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listOffsetProposals>>> = ({ signal }) =>
+    listOffsetProposals({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOffsetProposals>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListOffsetProposalsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOffsetProposals>>
+>;
+export type ListOffsetProposalsQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListOffsetProposals<
+  TData = Awaited<ReturnType<typeof listOffsetProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listOffsetProposals>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listOffsetProposals>>,
+          TError,
+          Awaited<ReturnType<typeof listOffsetProposals>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListOffsetProposals<
+  TData = Awaited<ReturnType<typeof listOffsetProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listOffsetProposals>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listOffsetProposals>>,
+          TError,
+          Awaited<ReturnType<typeof listOffsetProposals>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListOffsetProposals<
+  TData = Awaited<ReturnType<typeof listOffsetProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listOffsetProposals>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary CPT-75
+ */
+
+export function useListOffsetProposals<
+  TData = Awaited<ReturnType<typeof listOffsetProposals>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listOffsetProposals>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListOffsetProposalsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
 /**
  * @summary CPT-31, CPT-68
  */

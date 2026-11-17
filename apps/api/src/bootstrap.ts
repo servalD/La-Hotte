@@ -93,6 +93,7 @@ export function configureApp(app: INestApplication): void {
       'X-Request-Id',
       'X-CSRF-Token', // API-21
       'X-User-Activity', // API-21
+      'X-Expected-Profile', // OFF-18
     ],
     exposedHeaders: ['ETag', 'X-Request-Id'],
   });

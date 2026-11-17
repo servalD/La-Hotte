@@ -4211,6 +4211,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -4273,6 +4282,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -4571,6 +4589,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -5229,6 +5256,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5268,6 +5304,15 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -6138,6 +6183,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -6663,6 +6717,36 @@
       }
     },
     "/api/v1/offset-proposals": {
+      "get": {
+        "operationId": "listOffsetProposals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingOffsetsView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-75",
+        "tags": [
+          "accounting"
+        ]
+      },
       "post": {
         "operationId": "proposeOffset",
         "parameters": [],
@@ -6809,7 +6893,17 @@
     "/api/v1/products": {
       "post": {
         "operationId": "createProduct",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "API-16 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -7212,6 +7306,38 @@
           }
         },
         "summary": "PRO-03 : sans marqueur enfant. Version dépassée : `412`, le client relit le profil.",
+        "tags": [
+          "profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/me/cache-key": {
+      "get": {
+        "operationId": "getOwnCacheKey",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CacheKeyView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "OFF-26, ADR 0020 : clé de cache du profil actif. Profil sans PIN : `encrypted: false`, sans\nclé. Jamais mise en cache (`no-store`), jamais journalisée.",
         "tags": [
           "profiles"
         ]
@@ -8601,6 +8727,64 @@
           "recipientId",
           "amountMinor",
           "currency"
+        ]
+      },
+      "BuyerRequestView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidate": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "mine": {
+            "type": "boolean"
+          },
+          "canDecide": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "candidate",
+          "mine",
+          "canDecide",
+          "createdAt"
+        ]
+      },
+      "CacheKeyView": {
+        "type": "object",
+        "properties": {
+          "encrypted": {
+            "type": "boolean"
+          },
+          "keyId": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "key": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "encrypted",
+          "keyId",
+          "key"
         ]
       },
       "CarriedFromEventView": {
@@ -10683,6 +10867,18 @@
             "items": {
               "$ref": "#/components/schemas/AccountingReviewView"
             }
+          },
+          "buyerRequest": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BuyerRequestView"
+              }
+            ]
+          },
+          "hasReceipt": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -10703,7 +10899,9 @@
           "isBuyer",
           "reviewEnabled",
           "receiptEnabled",
-          "reviews"
+          "reviews",
+          "buyerRequest",
+          "hasReceipt"
         ]
       },
       "ItemCollectionView": {
@@ -11660,6 +11858,10 @@
             "minLength": 1,
             "maxLength": 256,
             "format": "password"
+          },
+          "sharedDevice": {
+            "type": "boolean",
+            "description": "OFF-30 : appareil partagé (session courte, aucun cache sur l'appareil)."
           }
         },
         "required": [
@@ -12010,6 +12212,13 @@
           "status"
         ]
       },
+      "OffsetDirection": {
+        "type": "string",
+        "enum": [
+          "SENT",
+          "RECEIVED"
+        ]
+      },
       "OffsetProposalView": {
         "type": "object",
         "properties": {
@@ -12337,6 +12546,63 @@
         "required": [
           "newPassword",
           "token"
+        ]
+      },
+      "PendingOffsetsView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingOffsetView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "PendingOffsetView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "direction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OffsetDirection"
+              }
+            ]
+          },
+          "other": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "amountMinor": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "other",
+          "currency",
+          "amountMinor",
+          "createdAt"
         ]
       },
       "PostCommentDto": {
@@ -13184,13 +13450,24 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "sharedDevice": {
+            "type": "boolean",
+            "description": "OFF-30 : appareil partagé, le client n'écrit rien sur le disque."
+          },
+          "accountTag": {
+            "type": "string",
+            "description": "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+            "pattern": "^[0-9a-f]{32}$"
           }
         },
         "required": [
           "id",
           "activeProfileId",
           "profileUnlocked",
-          "expiresAt"
+          "expiresAt",
+          "sharedDevice",
+          "accountTag"
         ]
       },
       "SetChildMarkerDto": {

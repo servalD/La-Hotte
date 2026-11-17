@@ -22,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../identity';
+import { Idempotent } from '../../../platform/http/idempotency';
 import { parseIfMatch } from '../../../platform/http/if-match';
 import {
   AddItem,
@@ -342,6 +343,7 @@ export class ListsController {
   }
 
   @Post(':id/items')
+  @Idempotent('item.add')
   @ApiParam({ name: 'id', ...UUID_PARAM })
   @ApiCreatedResponse({ schema: ITEM_VIEW_SCHEMA })
   async addListItem(
@@ -440,6 +442,7 @@ export class ItemsController {
   }
 
   @Patch(':id')
+  @Idempotent('item.update')
   @ApiParam({ name: 'id', ...UUID_PARAM })
   @ApiHeader({ name: 'If-Match', required: true, description: 'Version lue (API-17).' })
   @ApiOkResponse({ schema: ITEM_VIEW_SCHEMA })
@@ -471,6 +474,7 @@ export class ItemsController {
   }
 
   @Delete(':id')
+  @Idempotent('item.delete')
   @HttpCode(204)
   @ApiParam({ name: 'id', ...UUID_PARAM })
   @ApiNoContentResponse()
@@ -483,6 +487,7 @@ export class ItemsController {
 
   /** LST-13, LST-18 */
   @Post(':id/received')
+  @Idempotent('item.received')
   @HttpCode(200)
   @ApiParam({ name: 'id', ...UUID_PARAM })
   @ApiOkResponse({ type: ItemRecipientView })
@@ -496,6 +501,7 @@ export class ItemsController {
   }
 
   @Delete(':id/received')
+  @Idempotent('item.unreceived')
   @HttpCode(200)
   @ApiParam({ name: 'id', ...UUID_PARAM })
   @ApiOkResponse({ type: ItemRecipientView })

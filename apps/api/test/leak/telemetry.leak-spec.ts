@@ -207,6 +207,10 @@ async function playScenario(app: INestApplication): Promise<void> {
     Cookie: `${user.cookie}; session=${MARKER}`,
     'X-CSRF-Token': user.csrf,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
 
   // Pré-session (GET /session public) : identifiant et jeton CSRF de pré-session.
@@ -328,6 +332,10 @@ async function playAccountingScenario(app: INestApplication): Promise<void> {
       Cookie: `${signed.cookie}; session=${MARKER}`,
       'X-CSRF-Token': signed.csrf,
       Origin: 'http://localhost:3000',
+      // API-16 : une clé neuve à chaque requête.
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
     };
   };
   const me = await headersOf(owner);
@@ -444,6 +452,10 @@ async function playExchangesScenario(app: INestApplication): Promise<void> {
       Cookie: `${signed.cookie}; session=${MARKER}`,
       'X-CSRF-Token': signed.csrf,
       Origin: 'http://localhost:3000',
+      // API-16 : une clé neuve à chaque requête.
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
     };
   };
   const me = await headersOf(owner);
@@ -553,6 +565,10 @@ async function playTransferScenario(app: INestApplication): Promise<void> {
       Cookie: `${s.cookie}; session=${MARKER}`,
       'X-CSRF-Token': s.csrf,
       Origin: 'http://localhost:3000',
+      // API-16 : une clé neuve à chaque requête.
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
     };
   };
 
@@ -662,6 +678,10 @@ async function playProfileInvitationScenario(app: INestApplication): Promise<voi
     Cookie: `${signed.cookie}; session=${MARKER}`,
     'X-CSRF-Token': signed.csrf,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
   const pre = await http.get('/api/v1/session').set(markedHeaders).expect(200);
   const anonymous = {
@@ -672,6 +692,10 @@ async function playProfileInvitationScenario(app: INestApplication): Promise<voi
         ?.split(';')[0] ?? '',
     'X-CSRF-Token': pre.body.csrfToken as string,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
 
   profileInvitationSecrets.profileEmail = `profil_${MARKER}@example.test`.toLowerCase();
@@ -750,6 +774,10 @@ async function playWardScenario(app: INestApplication): Promise<void> {
     Cookie: `${session.cookie}; session=${MARKER}`,
     'X-CSRF-Token': session.csrf,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   });
 
   wardSecrets.wardEmail = `pupille_${MARKER}@example.test`.toLowerCase();
@@ -780,6 +808,10 @@ async function playWardScenario(app: INestApplication): Promise<void> {
     Cookie: presession,
     'X-CSRF-Token': pre.body.csrfToken as string,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
   // Jeton forgé, puis installation légitime, puis rejeu : refus commun.
   await http
@@ -845,6 +877,10 @@ async function playLinkScenario(app: INestApplication): Promise<void> {
     Cookie: `${signed.cookie}; session=${MARKER}`,
     'X-CSRF-Token': signed.csrf,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   });
 
   // LNK-01 : invitation avec adresse ; jeton rendu une fois, hash en base.
@@ -975,6 +1011,10 @@ async function playProfileScenario(app: INestApplication): Promise<void> {
     Cookie: `${user.cookie}; session=${MARKER}`,
     'X-CSRF-Token': user.csrf,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   });
   pinSecrets.pin = randomPin();
   pinSecrets.wrongPin = randomPin();
@@ -1025,6 +1065,13 @@ async function playProfileScenario(app: INestApplication): Promise<void> {
     .get('/api/v1/profiles/me')
     .set({ ...headers(), Cookie: `${user.cookie}; __Host-lh_unlock=${pinSecrets.unlockNonce}` })
     .expect(200);
+  // OFF-26 (phase 6) : la clé de cache d'un profil à PIN ne sort que dans le corps de la réponse.
+  const cacheKey = await http
+    .get('/api/v1/profiles/me/cache-key')
+    .set({ ...headers(), Cookie: `${user.cookie}; __Host-lh_unlock=${pinSecrets.unlockNonce}` })
+    .expect(200);
+  if (cacheKey.body.encrypted !== true) throw new Error('clé de cache attendue');
+  pinSecrets.cacheKey = cacheKey.body.key as string;
 
   // PIN-04 : changement par l'ancien PIN, faux (compté) ; revue SEC-40, M1 : affaiblissement
   // du reverrouillage avec un PIN faux.
@@ -1120,6 +1167,10 @@ async function playGoogleScenario(app: INestApplication): Promise<void> {
     Cookie: `${presession}; session=${MARKER}`,
     'X-CSRF-Token': pre.body.csrfToken as string,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
   googleSecrets.displayName = `Prénom ${MARKER} Google`;
   const started = await http
@@ -1179,6 +1230,10 @@ async function playGoogleScenario(app: INestApplication): Promise<void> {
     Cookie: `${sessionCookie}; session=${MARKER}`,
     'X-CSRF-Token': status.body.csrfToken as string,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
   const reauth = await http.post('/api/v1/auth/google/reauth').set(session).expect(200);
   const reauthUrl = new URL(reauth.body.authorizationUrl as string);
@@ -1227,6 +1282,10 @@ async function playAuthScenario(
     Cookie: `${presessionCookie}; session=${MARKER}`,
     'X-CSRF-Token': presessionCsrf,
     Origin: 'http://localhost:3000',
+    // API-16 : une clé neuve à chaque requête.
+    get 'Idempotency-Key'() {
+      return randomUUID();
+    },
   };
 
   await http
@@ -1285,6 +1344,10 @@ async function playAuthScenario(
       Cookie: `${token ?? ''}; session=${MARKER}`,
       'X-CSRF-Token': res.body.csrfToken as string,
       Origin: 'http://localhost:3000',
+      // API-16 : une clé neuve à chaque requête.
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
     };
   };
   const relogged = await http
@@ -1592,9 +1655,10 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     }
   });
 
-  it('PIN-01 à PIN-07 : PIN, hash du PIN, nonce de déverrouillage absents de toute sortie', () => {
+  it('PIN-01 à PIN-07, OFF-26 : PIN, hash, nonce de déverrouillage, clé de cache absents de toute sortie', () => {
     expect(Object.keys(pinSecrets).sort()).toEqual(
       [
+        'cacheKey',
         'invitationPin',
         'pin',
         'transferPin',
@@ -1616,6 +1680,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
     for (const route of [
       '/api/v1/session/profile',
       '/api/v1/profiles/me/pin',
+      '/api/v1/profiles/me/cache-key',
       '/api/v1/account/profiles/:id/pin/reset',
       '/api/v1/account/profiles/:id/pin',
     ]) {
@@ -1627,7 +1692,7 @@ describe('OBS-26 non-fuite de la télémétrie, application montée', () => {
       const leaked = new RegExp(`(?<!\\d)${pin}(?!\\d)`).test(everything);
       expect({ name, leaked }).toEqual({ name, leaked: false });
     }
-    for (const name of ['pinHash', 'pinStamp', 'unlockNonce', 'reauthToken']) {
+    for (const name of ['pinHash', 'pinStamp', 'unlockNonce', 'reauthToken', 'cacheKey']) {
       const secret = pinSecrets[name] ?? '';
       expect(secret.length).toBeGreaterThan(20);
       expect({ name, leaked: everything.includes(secret) }).toEqual({ name, leaked: false });
@@ -1785,6 +1850,10 @@ async function playCatalogScenario(app: INestApplication): Promise<void> {
       Cookie: `${signed.cookie}; session=${MARKER}`,
       'X-CSRF-Token': signed.csrf,
       Origin: 'http://localhost:3000',
+      // API-16 : une clé neuve à chaque requête.
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
     };
   };
   const me = await headersOf(owner);
@@ -1874,6 +1943,10 @@ async function playEventsScenario(app: INestApplication): Promise<void> {
       Cookie: `${signed.cookie}; session=${MARKER}`,
       'X-CSRF-Token': signed.csrf,
       Origin: 'http://localhost:3000',
+      // API-16 : une clé neuve à chaque requête.
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
     };
   };
   const me = await headersOf(owner);

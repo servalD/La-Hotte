@@ -6,6 +6,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
+import { wipeDevice } from '@/lib/offline/device';
+import { announceIdentity } from '@/lib/offline/identity-channel';
+import { forgetProfileKeys } from '@/lib/offline/keys';
+import { ConnectionStatus } from '@/lib/offline/connection-status';
+import { InstallInvite, PushInvite } from '@/lib/pwa/engagement';
+import { useQueuedActions } from '@/lib/offline/queue-context';
+import { ConfirmButton } from '@/components/confirm-button';
 import { purgeUserData } from '@/lib/session/purge';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/theme-switcher';
@@ -42,10 +49,13 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   const queryClient = useQueryClient();
   const lock = useLockSession();
   const signOut = useSignOut();
+  const waiting = useQueuedActions().length;
 
   function onLock() {
     lock.mutate(undefined, {
       onSuccess: () => {
+        // OFF-21 : après verrouillage, la clé du coffre n'est plus en mémoire.
+        forgetProfileKeys();
         purgeUserData(queryClient);
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() }).then(() => {
           router.replace('/profiles/unlock');
@@ -57,15 +67,20 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   function onSignOut() {
     signOut.mutate(undefined, {
       onSettled: () => {
-        // Rien du compte ne reste dans le cache du navigateur.
+        // Rien du compte ne reste dans le cache du navigateur, ni sur l'appareil (OFF-22), ni
+        // dans les autres onglets (OFF-29).
+        forgetProfileKeys();
         queryClient.clear();
-        router.replace('/auth/login');
+        announceIdentity(null);
+        void wipeDevice().finally(() => {
+          router.replace('/auth/login');
+        });
       },
     });
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 px-4 py-4">
+    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-lg font-bold">{t('app')}</span>
         <nav aria-label={t('label')} className="flex flex-wrap items-center gap-1">
@@ -85,11 +100,37 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
               </Button>
             </>
           ) : null}
-          <Button variant="secondary" onClick={onSignOut} disabled={signOut.isPending}>
-            {t('signOut')}
-          </Button>
+          {waiting > 0 ? (
+            <Button asChild variant="ghost">
+              <Link href="/actions">{t('actions', { count: waiting })}</Link>
+            </Button>
+          ) : null}
+          {waiting > 0 ? (
+            // OFF-22 : la déconnexion efface la file ; l'utilisateur est prévenu avant.
+            <ConfirmButton
+              variant="secondary"
+              label={t('signOut')}
+              title={t('signOutQueueTitle')}
+              description={t('signOutQueueBody', { count: waiting })}
+              confirmLabel={t('signOutAnyway')}
+              cancelLabel={t('cancel')}
+              onConfirm={onSignOut}
+            />
+          ) : (
+            <Button variant="secondary" onClick={onSignOut} disabled={signOut.isPending}>
+              {t('signOut')}
+            </Button>
+          )}
         </nav>
       </header>
+      {area === 'profile' ? (
+        <>
+          <ConnectionStatus />
+          {/* PWA-03, PWA-04 : proposées au moment où elles servent, jamais à la première visite. */}
+          <InstallInvite />
+          <PushInvite />
+        </>
+      ) : null}
       <main id="contenu" className="flex flex-1 flex-col gap-6">
         {children}
       </main>

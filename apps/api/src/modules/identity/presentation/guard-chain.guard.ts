@@ -8,6 +8,7 @@ import {
   CsrfRejectedError,
   CsrfTokens,
   hasRecentReauth,
+  ProfileMismatchError,
   ReauthRequiredError,
   ReportCsrfRejection,
   type ResolvedSession,
@@ -27,6 +28,8 @@ import {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const CSRF_HEADER = 'x-csrf-token';
 export const USER_ACTIVITY_HEADER = 'x-user-activity';
+/** OFF-18 : profil qui a fait la requête ; ne fait que restreindre, le profil vient de la session. */
+export const EXPECTED_PROFILE_HEADER = 'x-expected-profile';
 
 /**
  * Chaîne de gardes globale (ADR 0013), dans cet ordre, refus par défaut (SEC-01) :
@@ -80,6 +83,12 @@ export class IdentityGuardChain implements CanActivate {
     // 3. Profil actif déverrouillé.
     let profile = null;
     if (mark === 'profile' && session) {
+      // OFF-18 : avant toute prolongation du déverrouillage (API-21), le profil annoncé doit être
+      // celui de la session. L'en-tête ne fait que restreindre.
+      const expected = request.headers[EXPECTED_PROFILE_HEADER];
+      if (typeof expected === 'string' && expected !== session.record.activeProfileId) {
+        throw new ProfileMismatchError();
+      }
       profile = await this.authorizeProfile.execute({
         session,
         userActivity: request.headers[USER_ACTIVITY_HEADER] === '1',

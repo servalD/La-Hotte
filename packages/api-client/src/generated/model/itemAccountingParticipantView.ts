@@ -10,6 +10,7 @@ import type { ItemAccountingParticipantViewView } from './itemAccountingParticip
 import type { ParticipantContributionLineView } from './participantContributionLineView';
 import type { ItemAccountingParticipantViewMine } from './itemAccountingParticipantViewMine';
 import type { AccountingReviewView } from './accountingReviewView';
+import type { ItemAccountingParticipantViewBuyerRequest } from './itemAccountingParticipantViewBuyerRequest';
 
 export interface ItemAccountingParticipantView {
   /** @nullable */
@@ -41,4 +42,7 @@ export interface ItemAccountingParticipantView {
   reviewEnabled: boolean;
   receiptEnabled: boolean;
   reviews: AccountingReviewView[];
+  /** @nullable */
+  buyerRequest: ItemAccountingParticipantViewBuyerRequest;
+  hasReceipt: boolean;
 }

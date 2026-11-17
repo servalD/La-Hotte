@@ -12,6 +12,8 @@ import * as zod from 'zod';
 pré-session (CSRF de connexion). Dit aussi si un second facteur est attendu (AUTH-12). Ne
 prolonge jamais le déverrouillage du profil.
  */
+export const getSessionResponseSessionAccountTagRegExp = new RegExp('^[0-9a-f]{32}$');
+
 export const getSessionResponse = zod.object({
   authenticated: zod.boolean(),
   csrfToken: zod.string().describe('À renvoyer dans l’en-tête X-CSRF-Token de chaque mutation.'),
@@ -21,6 +23,15 @@ export const getSessionResponse = zod.object({
       activeProfileId: zod.uuid().nullable(),
       profileUnlocked: zod.boolean().describe('Profil actif présent et déverrouillé (PIN-02).'),
       expiresAt: zod.iso.datetime({}),
+      sharedDevice: zod
+        .boolean()
+        .describe("OFF-30 : appareil partagé, le client n'écrit rien sur le disque."),
+      accountTag: zod
+        .string()
+        .regex(getSessionResponseSessionAccountTagRegExp)
+        .describe(
+          "OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil.",
+        ),
     })
     .nullable(),
   secondFactorPending: zod

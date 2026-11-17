@@ -244,6 +244,8 @@ model Session {
   lastSeenAt        DateTime  @map("last_seen_at") @db.Timestamptz(3)
   expiresAt         DateTime  @map("expires_at") @db.Timestamptz(3)
   absoluteExpiresAt DateTime  @map("absolute_expires_at") @db.Timestamptz(3)
+  /// OFF-30 : appareil partagé (12 h au plus, 2 h sans activité, aucun appareil de confiance).
+  sharedDevice      Boolean   @default(false) @map("shared_device")
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

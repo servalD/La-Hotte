@@ -121,3 +121,15 @@ export class ProfileSelectionView {
   @ApiProperty({ minimum: 0 })
   failedPinAttempts!: number;
 }
+
+/** OFF-26 : clé de cache du profil actif ; absente pour un profil sans PIN. */
+export class CacheKeyView {
+  @ApiProperty()
+  encrypted!: boolean;
+
+  @ApiProperty({ type: String, nullable: true, pattern: '^[0-9a-f]{32}$' })
+  keyId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true, pattern: '^[A-Za-z0-9_-]{43}$' })
+  key!: string | null;
+}

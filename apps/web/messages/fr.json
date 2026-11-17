@@ -27,7 +27,9 @@
       "who": "Personne d’autre ne voit ce que vous saisissez ici.",
       "submit": "Se connecter",
       "submitting": "Connexion…",
-      "google": "Continuer avec Google"
+      "google": "Continuer avec Google",
+      "sharedDevice": "Appareil partagé ou emprunté",
+      "sharedDeviceHint": "Rien n’est gardé sur cet appareil et la session est courte (12 heures au plus, 2 heures sans activité). Les actions en attente sont perdues si vous fermez l’onglet."
     },
     "register": {
       "title": "Créer un compte",
@@ -159,6 +161,8 @@
   "session": {
     "loading": "Chargement",
     "unreachable": "Le serveur ne répond pas. Vérifiez votre connexion, puis rechargez la page.",
+    "offlinePinNeedsNetwork": "Vous êtes hors ligne. Ce profil est protégé par un code : pour le rouvrir, il faut une connexion.",
+    "offlineNothing": "Vous êtes hors ligne et rien n'a encore été enregistré sur cet appareil. Reconnectez-vous pour commencer.",
     "profileUnreadable": "Impossible de vérifier ce profil. Par prudence, son contenu n’est pas affiché. Vérifiez votre connexion, puis réessayez.",
     "retry": "Réessayer"
   },
@@ -183,7 +187,12 @@
     "notifications": "Notifications",
     "cart": "Panier",
     "balances": "Comptes",
-    "gifts": "Mes cadeaux"
+    "gifts": "Mes cadeaux",
+    "actions": "En attente ({count})",
+    "signOutQueueTitle": "Des actions ne sont pas encore envoyées",
+    "signOutQueueBody": "{count, plural, one {Une action faite sans réseau sera perdue} other {# actions faites sans réseau seront perdues}} si vous vous déconnectez maintenant.",
+    "signOutAnyway": "Me déconnecter quand même",
+    "cancel": "Rester connecté"
   },
   "home": {
     "hello": "Bonjour {name}",
@@ -888,6 +897,19 @@
       "price": "Prix unitaire",
       "manyWelcome": "Plusieurs exemplaires bienvenus",
       "shown": "Montrer au destinataire"
+    },
+    "pending": {
+      "comment_post": "Commentaire en attente d'envoi",
+      "item_add": "Ajout en attente d'envoi",
+      "item_update": "Modification à confirmer",
+      "item_delete": "Retrait en attente d'envoi",
+      "item_received": "Reçu, à confirmer",
+      "item_unreceived": "Réception décochée, à confirmer",
+      "contribution_put": "Participation à confirmer",
+      "contribution_delete": "Retrait de participation à confirmer",
+      "purchase_put": "Acheté, à confirmer",
+      "settlement_put": "Règlement à confirmer",
+      "settlement_claim": "« J'ai payé », à confirmer"
     }
   },
   "whoSees": {
@@ -920,7 +942,11 @@
     "price": "Prix (facultatif)",
     "priceHint": "Sans prix, chacun participe du montant qu’il veut.",
     "submit": "Continuer",
-    "adding": "Envoi…"
+    "adding": "Envoi…",
+    "offlineLink": "Hors ligne : le lien est enregistré et la fiche sera analysée au retour du réseau.",
+    "offlinePhoto": "L'ajout par photo demande une connexion.",
+    "waitingLabel": "Souhaits en attente d'envoi",
+    "waiting": "en attente d'envoi"
   },
   "draft": {
     "title": "Fiche article",
@@ -1165,7 +1191,8 @@
       "WOW": "Surprenant",
       "PARTY": "Bravo",
       "THANKS": "Merci"
-    }
+    },
+    "pendingSend": "En attente d'envoi"
   },
   "notifications": {
     "title": "Notifications",
@@ -1289,6 +1316,53 @@
     "iBuy": "j'achète",
     "payTo": "à régler à {name}",
     "nothingYet": "Rien encore pour",
+    "options": {
+      "title": "Options",
+      "summary": "revue {review, select, on {activée} other {désactivée}}, justificatif {receipt, select, on {demandé} other {non demandé}}",
+      "whoSees": "Réglées et lues par les seuls participants, jamais par le destinataire.",
+      "review": "Un autre participant valide les changements de prix et d'options",
+      "receipt": "L'acheteur joint une photo du ticket",
+      "needsReview": "Avec la revue activée, votre changement attendra l'accord d'un autre participant.",
+      "save": "Enregistrer les options"
+    },
+    "buyerRequest": {
+      "title": "Changement d'acheteur",
+      "ask": "Je préfère l'acheter moi-même",
+      "mine": "Vous avez proposé de devenir l'acheteur. En attente de réponse.",
+      "other": "{name} propose de devenir l'acheteur.",
+      "cancel": "Retirer ma demande",
+      "waiting": "L'acheteur actuel répond d'abord."
+    },
+    "receipt": {
+      "title": "Justificatif",
+      "view": "Voir le justificatif",
+      "none": "Pas encore de justificatif.",
+      "add": "Joindre une photo du ticket",
+      "replace": "Remplacer la photo",
+      "privacy": "La photo est nettoyée de ses métadonnées et n'est montrée qu'aux participants."
+    },
+    "settle": {
+      "mark": "Marquer réglée",
+      "undo": "Annuler le règlement",
+      "nudge": "Relancer",
+      "claim": "J'ai payé",
+      "pending": "À confirmer"
+    },
+    "offset": {
+      "title": "Compensations en attente",
+      "received": "{name} propose de compenser {amount} entre vous.",
+      "sent": "Vous avez proposé à {name} de compenser {amount}.",
+      "confirm": "Confirmer",
+      "decline": "Refuser",
+      "withdraw": "Retirer la proposition",
+      "stale": "Les comptes ont changé depuis la proposition : elle n'est plus valable. Proposez-en une nouvelle."
+    },
+    "budgets": {
+      "title": "Mon budget",
+      "event": "Pour tout l'événement",
+      "save": "Enregistrer",
+      "remove": "Retirer"
+    },
     "mode": {
       "FULL": "tout",
       "PERCENT": "pourcentage",
@@ -1309,6 +1383,103 @@
       "ACCOUNTING_ACTION_FORBIDDEN": "Ce geste revient à quelqu'un d'autre.",
       "PURCHASE_UNCHECK_CONFIRM": "L'achat date de plus de 24 heures : confirmez pour le décocher.",
       "generic": "L'action n'a pas abouti. Réessayez."
+    },
+    "pendingTitle": "En attente de confirmation",
+    "pending": {
+      "contribution_put": "Votre participation {amount} est à confirmer : elle ne compte pas encore.",
+      "contribution_delete": "Le retrait de votre participation est à confirmer.",
+      "purchase_put": "Acheté, à confirmer.",
+      "settlement_put": "Règlement à confirmer.",
+      "settlement_claim": "« J'ai payé », à confirmer.",
+      "comment_post": "Commentaire en attente d'envoi.",
+      "item_add": "Ajout en attente d'envoi.",
+      "item_update": "Modification à confirmer.",
+      "item_delete": "Retrait en attente d'envoi.",
+      "item_received": "Reçu, à confirmer.",
+      "item_unreceived": "Réception décochée, à confirmer."
+    },
+    "gauge": "Financement du cadeau",
+    "budgetGauge": "Part du budget engagée"
+  },
+  "offlineActions": {
+    "title": "Actions en attente",
+    "intro": "Ce que vous avez fait sans réseau part dès que la connexion revient. Rien n'est perdu sans explication.",
+    "empty": "Tout est à jour.",
+    "stuck": "Non enregistrées",
+    "waiting": "En attente d'envoi",
+    "redo": "Refaire",
+    "discard": "Abandonner",
+    "useRemaining": "Participer avec le reste ({amount})",
+    "loadingCurrent": "Lecture de la version actuelle…",
+    "chooseFields": "Quelqu'un a modifié ce souhait entre-temps. Choisissez, champ par champ, la valeur à garder.",
+    "sameNow": "Les deux versions sont maintenant identiques.",
+    "mine": "La vôtre",
+    "current": "L'actuelle",
+    "applyChoice": "Enregistrer ce choix",
+    "yes": "oui",
+    "no": "non",
+    "none": "vide",
+    "kinds": {
+      "comment_post": "Commentaire",
+      "item_add": "Ajout d'un souhait",
+      "item_update": "Modification d'un souhait",
+      "item_delete": "Retrait d'un souhait",
+      "item_received": "Réception confirmée",
+      "item_unreceived": "Réception décochée",
+      "contribution_put": "Participation",
+      "contribution_delete": "Retrait de participation",
+      "purchase_put": "Achat coché",
+      "settlement_put": "Part réglée",
+      "settlement_claim": "« J'ai payé »"
+    },
+    "reasons": {
+      "expired": "Restée en attente plus de 30 jours : elle n'a pas été envoyée, pour ne pas risquer de compter deux fois.",
+      "conflict": "Quelqu'un a modifié la même chose entre-temps.",
+      "gone": "Ce souhait n'existe plus, ou vous ne le voyez plus.",
+      "forbidden": "Vous ne pouvez plus faire ce geste.",
+      "refused": "Le serveur n'a pas accepté ce geste.",
+      "CONTRIBUTION_EXCEEDS_REMAINING": "Quelqu'un a complété entre-temps : il ne restait plus autant à couvrir.",
+      "ACCOUNTING_CLOSED": "Ce cadeau n'accepte plus de participation.",
+      "CONTRIBUTION_FROZEN": "L'achat est déjà coché : demandez à l'acheteur.",
+      "CONTRIBUTION_SETTLED": "Une partie est déjà réglée : l'acheteur doit d'abord l'annuler.",
+      "PURCHASE_REQUIRED": "L'achat n'est pas encore coché.",
+      "ITEM_NOT_FOUND": "Ce souhait n'existe plus, ou vous ne le voyez plus.",
+      "LIST_NOT_FOUND": "Cette liste n'existe plus, ou vous ne la voyez plus.",
+      "IDEMPOTENCY_KEY_REUSED": "Ce geste a déjà été enregistré autrement."
     }
+  },
+  "offline": {
+    "title": "Vous êtes hors ligne",
+    "body": "Cette page n'a pas encore été ouverte sur cet appareil. Vos listes et votre panier déjà consultés restent disponibles.",
+    "lists": "Mes listes",
+    "cart": "Mon panier"
+  },
+  "pwa": {
+    "updateReady": "Une nouvelle version est prête.",
+    "reload": "Recharger",
+    "installTitle": "Installer La Hotte",
+    "installBody": "Ajoutez l'application à votre écran d'accueil : elle s'ouvre même sans réseau, et « Partager » depuis un site ajoute un souhait en deux gestes.",
+    "installIos": "Sur iPhone : touchez Partager, puis « Sur l'écran d'accueil ».",
+    "install": "Installer",
+    "later": "Plus tard",
+    "pushTitle": "Être prévenu",
+    "pushBody": "Recevez une alerte quand quelqu'un répond ou quand un cadeau avance. Le message reste discret : il ne dit jamais ce qui se prépare.",
+    "pushEnable": "Activer les notifications",
+    "pushOn": "Notifications activées sur cet appareil.",
+    "pushFailed": "Les notifications n'ont pas pu être activées. Réessayez plus tard."
+  },
+  "connection": {
+    "offline": "Hors ligne : vos gestes partiront au retour du réseau.",
+    "offlineSince": "Hors ligne depuis {time} : vos gestes partiront au retour du réseau.",
+    "pending": "{count, plural, one {# en attente} other {# en attente}}",
+    "updating": "Mise à jour…",
+    "upToDate": "À jour"
+  },
+  "share": {
+    "title": "Ajouter un souhait",
+    "noLink": "Aucun lien reçu : choisissez la liste, puis collez le lien ou saisissez le souhait.",
+    "chooseList": "Dans quelle liste ?",
+    "noList": "Vous n'avez pas encore de liste. Créez-en une depuis « Listes ».",
+    "personal": "Ma liste"
   }
 }

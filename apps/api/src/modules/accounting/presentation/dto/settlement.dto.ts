@@ -62,6 +62,21 @@ export class OffsetProposalView {
   @ApiProperty({ format: 'uuid' }) id!: string;
 }
 
+/** CPT-75 : proposition en attente, reçue ou envoyée. */
+export class PendingOffsetView {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ enum: ['SENT', 'RECEIVED'], enumName: 'OffsetDirection' })
+  direction!: 'SENT' | 'RECEIVED';
+  @ApiProperty({ type: AccountingPersonView, nullable: true }) other!: AccountingPersonView | null;
+  @ApiProperty() currency!: string;
+  @ApiProperty() amountMinor!: number;
+  @ApiProperty({ format: 'date-time' }) createdAt!: string;
+}
+
+export class PendingOffsetsView {
+  @ApiProperty({ type: [PendingOffsetView] }) items!: PendingOffsetView[];
+}
+
 export class OffsetDecisionView {
   @ApiProperty({ enum: ['CONFIRMED', 'DECLINED'] }) status!: 'CONFIRMED' | 'DECLINED';
 }

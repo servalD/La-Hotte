@@ -1,5 +1,6 @@
 'use client';
 
+import { announceMoment } from '@/lib/pwa/engagement';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   CircleMemberViewSource,
@@ -74,6 +75,7 @@ export function InvitationsScreen() {
       {
         onSuccess: (view) => {
           setCreated(view);
+          announceMoment('invitation');
           refresh();
         },
         onError: (e) => {

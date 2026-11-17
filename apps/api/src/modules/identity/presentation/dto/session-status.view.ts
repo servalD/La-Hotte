@@ -14,6 +14,14 @@ export class SessionSummaryView {
 
   @ApiProperty({ format: 'date-time' })
   expiresAt!: string;
+
+  /** OFF-30 : appareil partagé, le client n'écrit rien sur le disque. */
+  @ApiProperty()
+  sharedDevice!: boolean;
+
+  /** OFF-28, OFF-29 : étiquette opaque du compte, pour cloisonner les bases de l'appareil. */
+  @ApiProperty({ pattern: '^[0-9a-f]{32}$' })
+  accountTag!: string;
 }
 
 /** `GET /session` (API-21) : état de session et jeton CSRF à renvoyer dans `X-CSRF-Token`. */

@@ -1,5 +1,6 @@
 'use client';
 
+import { ProfileImage } from '@/lib/offline/profile-image';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getListItemsQueryKey,
@@ -7,10 +8,6 @@ import {
   ItemPriority,
   type ListPermissionsView,
   useCopyItemProduct,
-  useDeleteOneItem,
-  useMarkItemReceived,
-  useUnmarkItemReceived,
-  useUpdateOneItem,
   useWithdrawItem,
   WithdrawnReason,
 } from '@wishlist/api-client';
@@ -23,8 +20,12 @@ import { Field } from '@/features/auth/field';
 import { ItemAccountingButton } from '@/features/accounting/item-accounting';
 import { ItemThreadsButton } from '@/features/conversations/item-threads';
 import { text } from '@/features/auth/form-data';
+import { Celebration, Confirmed, haptic, Highlight } from '@/lib/motion/moments';
+import { offlineActions } from '@/lib/offline/actions';
+import { kindKey, type QueuedInput } from '@/lib/offline/queue';
+import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { listErrorKey } from './api-errors';
-import { formatMinor, imageUrl } from './format';
+import { formatMinor } from './format';
 import { WhoSeesDialog } from './who-sees-dialog';
 
 /** LST-12, LST-13 : couleur toujours doublée d'un pictogramme et d'un libellé (A11Y). */
@@ -51,15 +52,24 @@ export function ItemCard({
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
   const refresh = () =>
     void queryClient.invalidateQueries({ queryKey: getListItemsQueryKey(listId) });
   const onError = (e: unknown) => {
     setMessage(te(listErrorKey(e)));
   };
-  const received = useMarkItemReceived();
-  const unreceived = useUnmarkItemReceived();
+  const perform = useOfflineAction();
+  // UX-32, OFF-13 : un geste fait hors ligne s'affiche « à confirmer » jusqu'à la réponse.
+  const pending = usePendingFor(item.id);
+  const act = (input: QueuedInput) => {
+    setMessage(null);
+    perform(input)
+      .then((outcome) => {
+        if (!outcome.queued) refresh();
+      })
+      .catch(onError);
+  };
   const withdraw = useWithdrawItem();
-  const remove = useDeleteOneItem();
   const copy = useCopyItemProduct();
 
   const giver = item.view === 'giver' ? item : null;
@@ -71,195 +81,213 @@ export function ItemCard({
       : formatMinor(item.unitPriceMinor, item.currency, locale);
 
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
-      <div className="flex gap-4">
-        {item.product.imageKey ? (
-          // EXT-47 : image servie par notre API ; pas d'optimisation de Next pour une image privée.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl(item.product.imageKey)}
-            alt=""
-            width={96}
-            height={96}
-            className="size-24 shrink-0 rounded-md object-cover"
-          />
-        ) : null}
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h3 className="font-semibold break-words">{item.product.title}</h3>
-          <p className="text-sm">
-            {price}
-            {item.quantity > 1 ? ` · ${t('quantity', { count: item.quantity })}` : ''}
-            {item.quantity > 1 && item.unitPriceMinor !== null
-              ? ` · ${t('total', { amount: formatMinor(item.unitPriceMinor * item.quantity, item.currency, locale) })}`
-              : ''}
-          </p>
-          <p className="text-sm text-foreground-muted">
-            {t(`priority.${item.priority}`)}
-            {item.manyWelcome ? ` · ${t('manyWelcome')}` : ''}
-            {item.hidden ? ` · ${t('hidden')}` : ''}
-          </p>
-          {item.note ? <p className="text-sm break-words">{item.note}</p> : null}
-          {recipient?.received ? (
-            <p className="text-sm font-medium text-success">
-              <span aria-hidden="true">✓ </span>
-              {t('received')}
+    // « Élément mis à jour par quelqu'un d'autre » : halo bref à chaque nouvelle version.
+    <Highlight trigger={item.version} className="rounded-lg">
+      <article className="relative flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+        {/* « Réception confirmée » côté destinataire : confettis discrets (MOT-04 : aucun en mouvement réduit). */}
+        <Celebration active={celebrate} />
+        <div className="flex gap-4">
+          {item.product.imageKey ? (
+            <ProfileImage
+              imageKey={item.product.imageKey}
+              width={96}
+              height={96}
+              className="size-24 shrink-0 rounded-md object-cover"
+            />
+          ) : null}
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <h3 className="font-semibold break-words">{item.product.title}</h3>
+            <p className="text-sm">
+              {price}
+              {item.quantity > 1 ? ` · ${t('quantity', { count: item.quantity })}` : ''}
+              {item.quantity > 1 && item.unitPriceMinor !== null
+                ? ` · ${t('total', { amount: formatMinor(item.unitPriceMinor * item.quantity, item.currency, locale) })}`
+                : ''}
             </p>
-          ) : null}
-          {giver ? (
-            <p className="text-sm font-medium">
-              <span aria-hidden="true">{STATUS_ICON[giver.status]} </span>
-              {t(`status.${giver.status}`)}
-              {giver.isSuggestion ? ` · ${t('suggestion')}` : ''}
+            <p className="text-sm text-foreground-muted">
+              {t(`priority.${item.priority}`)}
+              {item.manyWelcome ? ` · ${t('manyWelcome')}` : ''}
+              {item.hidden ? ` · ${t('hidden')}` : ''}
             </p>
-          ) : null}
-          {item.product.sourceUrl ? (
-            <a
-              href={item.product.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm underline"
-            >
-              {t('openSource')}
-            </a>
-          ) : null}
+            {item.note ? <p className="text-sm break-words">{item.note}</p> : null}
+            {recipient?.received ? (
+              <p className="text-sm font-medium text-success">
+                <span aria-hidden="true">✓ </span>
+                {t('received')}
+              </p>
+            ) : null}
+            {giver ? (
+              <p className="text-sm font-medium">
+                <Confirmed stateKey={giver.status}>
+                  <span aria-hidden="true">{STATUS_ICON[giver.status]} </span>
+                  {t(`status.${giver.status}`)}
+                </Confirmed>
+                {giver.isSuggestion ? ` · ${t('suggestion')}` : ''}
+              </p>
+            ) : null}
+            {item.product.sourceUrl ? (
+              <a
+                href={item.product.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm underline"
+              >
+                {t('openSource')}
+              </a>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      {message ? (
-        <p role="status" className="text-sm">
-          {message}
-        </p>
-      ) : null}
+        {message ? (
+          <p role="status" className="text-sm">
+            {message}
+          </p>
+        ) : null}
+        {pending.length > 0 ? (
+          <p className="text-sm text-foreground-muted">
+            <span aria-hidden="true">⏳ </span>
+            {pending.map((action) => t(`pending.${kindKey(action.kind)}`)).join(' · ')}
+          </p>
+        ) : null}
 
-      {editing ? (
-        <EditForm
-          item={item}
-          isGiftlist={isGiftlist}
-          onDone={() => {
-            setEditing(false);
-            refresh();
-          }}
-          onError={onError}
-        />
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <ItemThreadsButton itemId={item.id} title={item.product.title} />
-          {/* CPT-02, CPT-59 : seulement sous la forme offreur. */}
-          {giver ? <ItemAccountingButton itemId={item.id} title={item.product.title} /> : null}
-          {recipient && !isGiftlist ? (
-            <>
+        {editing ? (
+          <EditForm
+            item={item}
+            listId={listId}
+            isGiftlist={isGiftlist}
+            onDone={() => {
+              setEditing(false);
+              refresh();
+            }}
+            onError={onError}
+          />
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <ItemThreadsButton itemId={item.id} title={item.product.title} />
+            {/* CPT-02, CPT-59 : seulement sous la forme offreur. */}
+            {giver ? <ItemAccountingButton itemId={item.id} title={item.product.title} /> : null}
+            {recipient && !isGiftlist ? (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (!recipient.received) {
+                      haptic();
+                      setCelebrate(true);
+                    }
+                    act(offlineActions.received(item.id, listId, !recipient.received));
+                  }}
+                >
+                  {recipient.received ? t('unmarkReceived') : t('markReceived')}
+                </Button>
+                <ConfirmButton
+                  variant="secondary"
+                  label={t('withdraw.action')}
+                  title={t('withdraw.title')}
+                  description={t('withdraw.body')}
+                  confirmLabel={t('withdraw.noLonger')}
+                  cancelLabel={t('cancel')}
+                  onConfirm={() => {
+                    withdraw.mutate(
+                      { id: item.id, data: { reason: WithdrawnReason.NO_LONGER_WANTED } },
+                      { onSuccess: refresh, onError },
+                    );
+                  }}
+                />
+              </>
+            ) : null}
+            {canEdit ? (
               <Button
-                variant="secondary"
+                variant="ghost"
                 onClick={() => {
-                  (recipient.received ? unreceived : received).mutate(
+                  setEditing(true);
+                }}
+              >
+                {t('edit')}
+              </Button>
+            ) : null}
+            {permissions.editRules || item.mine ? (
+              <WhoSeesDialog itemId={item.id} listId={listId} />
+            ) : null}
+            {!item.mine ? (
+              <Button
+                variant="ghost"
+                disabled={copy.isPending}
+                onClick={() => {
+                  copy.mutate(
                     { id: item.id },
-                    { onSuccess: refresh, onError },
+                    {
+                      onSuccess: () => {
+                        setMessage(t('copied'));
+                      },
+                      onError,
+                    },
                   );
                 }}
               >
-                {recipient.received ? t('unmarkReceived') : t('markReceived')}
+                {t('copy')}
               </Button>
+            ) : null}
+            {canEdit ? (
               <ConfirmButton
                 variant="secondary"
-                label={t('withdraw.action')}
-                title={t('withdraw.title')}
-                description={t('withdraw.body')}
-                confirmLabel={t('withdraw.noLonger')}
+                label={t('delete')}
+                title={t('deleteTitle')}
+                description={t('deleteBody')}
+                confirmLabel={t('delete')}
                 cancelLabel={t('cancel')}
                 onConfirm={() => {
-                  withdraw.mutate(
-                    { id: item.id, data: { reason: WithdrawnReason.NO_LONGER_WANTED } },
-                    { onSuccess: refresh, onError },
-                  );
+                  act(offlineActions.deleteItem(item.id, listId, item.product.title));
                 }}
               />
-            </>
-          ) : null}
-          {canEdit ? (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setEditing(true);
-              }}
-            >
-              {t('edit')}
-            </Button>
-          ) : null}
-          {permissions.editRules || item.mine ? (
-            <WhoSeesDialog itemId={item.id} listId={listId} />
-          ) : null}
-          {!item.mine ? (
-            <Button
-              variant="ghost"
-              disabled={copy.isPending}
-              onClick={() => {
-                copy.mutate(
-                  { id: item.id },
-                  {
-                    onSuccess: () => {
-                      setMessage(t('copied'));
-                    },
-                    onError,
-                  },
-                );
-              }}
-            >
-              {t('copy')}
-            </Button>
-          ) : null}
-          {canEdit ? (
-            <ConfirmButton
-              variant="secondary"
-              label={t('delete')}
-              title={t('deleteTitle')}
-              description={t('deleteBody')}
-              confirmLabel={t('delete')}
-              cancelLabel={t('cancel')}
-              onConfirm={() => {
-                remove.mutate({ id: item.id }, { onSuccess: refresh, onError });
-              }}
-            />
-          ) : null}
-        </div>
-      )}
-    </article>
+            ) : null}
+          </div>
+        )}
+      </article>
+    </Highlight>
   );
 }
 
 function EditForm({
   item,
+  listId,
   isGiftlist,
   onDone,
   onError,
 }: {
   item: ItemCollectionViewItemsItem;
+  listId: string;
   isGiftlist: boolean;
   onDone: () => void;
   onError: (e: unknown) => void;
 }) {
   const t = useTranslations('item');
-  const update = useUpdateOneItem({ request: { headers: { 'If-Match': `"${item.version}"` } } });
+  const perform = useOfflineAction();
+  const [saving, setSaving] = useState(false);
   const [priority, setPriority] = useState(item.priority);
 
   function onSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const quantity = Number(form.get('quantity'));
-    update.mutate(
-      {
-        id: item.id,
-        data: {
-          quantity: Number.isInteger(quantity) && quantity >= 1 ? quantity : item.quantity,
-          priority,
-          note: text(form, 'note'),
-          manyWelcome: form.get('manyWelcome') === 'on',
-          ...(isGiftlist && item.view === 'giver'
-            ? { shownToRecipient: form.get('shown') === 'on' }
-            : {}),
-        },
-      },
-      { onSuccess: onDone, onError },
-    );
+    setSaving(true);
+    // OFF-14 : la version lue part avec la modification ; dépassée au rejeu, c'est un conflit.
+    perform(
+      offlineActions.updateItem(item.id, listId, item.version, {
+        quantity: Number.isInteger(quantity) && quantity >= 1 ? quantity : item.quantity,
+        priority,
+        note: text(form, 'note'),
+        manyWelcome: form.get('manyWelcome') === 'on',
+        ...(isGiftlist && item.view === 'giver'
+          ? { shownToRecipient: form.get('shown') === 'on' }
+          : {}),
+      }),
+    )
+      .then(onDone)
+      .catch(onError)
+      .finally(() => {
+        setSaving(false);
+      });
   }
 
   return (
@@ -304,7 +332,7 @@ function EditForm({
         <Button type="button" variant="secondary" onClick={onDone}>
           {t('cancel')}
         </Button>
-        <Button type="submit" disabled={update.isPending}>
+        <Button type="submit" disabled={saving}>
           {t('save')}
         </Button>
       </div>

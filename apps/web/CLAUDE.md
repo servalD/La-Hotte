@@ -42,6 +42,8 @@ src/styles/         jetons (couleurs, espacements, durées, courbes)
 ## Hors ligne
 
 - Persistance TanStack Query en IndexedDB, **une base par profil** ; fermée au changement de profil, effacée à la déconnexion.
+- Code : `src/lib/offline/` (ADR 0020). `vault.ts` (coffre d'un profil, chiffré AES-GCM pour un profil à PIN), `device.ts` (base de l'appareil : comptes et coffres, purges OFF-07, OFF-29), `persist.ts` (**liste fermée** des lectures conservées, OFF-06 : une nouvelle lecture à garder hors ligne s'y ajoute), `keys.ts` (clés en mémoire seulement), `profile-cache.ts` (ouverture en ligne et hors ligne), `offline-provider.tsx` (suit la session ; `useOffline()`, `useIsOnline()`), `identity-channel.ts` (purge des autres onglets). Tests avec `fake-indexeddb`, environnement `node`.
+- Une restauration ne verse jamais les lectures d'un profil sous un autre : `isCurrent()` est vérifié juste avant l'hydratation (les clés de requête ne portent pas le profil).
 - Mutations hors ligne par la file prévue, avec clé d'idempotence. Ne pas créer d'autre mécanisme de mise en attente.
 - Une réservation ou participation non confirmée s'affiche « à confirmer » (OFF-13).
 - Actions exigeant le réseau (OFF-10) : grisées, avec la raison.

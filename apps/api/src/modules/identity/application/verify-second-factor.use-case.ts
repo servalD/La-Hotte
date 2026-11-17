@@ -97,9 +97,11 @@ export class VerifySecondFactor {
     // peut pas effacer les échecs (AUTH-11). Sa réservation expire seule.
     await this.limiter.recordSuccess(subjects, check.reservation);
 
-    // AUTH-12 : jamais pour un administrateur ou un modérateur (AUTH-13).
+    // AUTH-12 : jamais pour un administrateur ou un modérateur (AUTH-13), ni sur un appareil
+    // partagé (OFF-30).
+    const sharedDevice = pending.sharedDevice === true;
     const trusted =
-      input.trustDevice && !requiresSecondFactor(state.role)
+      input.trustDevice && !sharedDevice && !requiresSecondFactor(state.role)
         ? await this.trustDevice(accountId, input.client)
         : null;
     let issued: IssuedSession;
@@ -110,6 +112,7 @@ export class VerifySecondFactor {
         userAgent: input.client.userAgent,
         trustedDeviceId: trusted?.id ?? null,
         previous: input.previous,
+        sharedDevice,
       });
     } catch (error) {
       if (trusted) await this.devices.revoke(accountId, trusted.id, this.clock.now());

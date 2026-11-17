@@ -46,6 +46,7 @@ export class AccountingViews {
   constructor(
     private readonly gate: AccountingGate,
     private readonly people: AccountingPeople,
+    private readonly clock: Clock,
   ) {}
 
   /** CPT-59 : `404` à qui n'a pas la compta, destinataire compris (VIS-20, VIS-34). */
@@ -60,6 +61,7 @@ export class AccountingViews {
       state: gated.state,
       cards,
       canContribute: gated.canContribute,
+      now: this.clock.now(),
     });
   }
 }
@@ -154,6 +156,7 @@ export abstract class ItemAccountingMutation {
           state: visible ? next : null,
           cards,
           canContribute: gated.canContribute,
+          now: ctx.now,
         });
         return { next, diff, response: { status: 200, body }, ...(notice ? { notice } : {}) };
       },

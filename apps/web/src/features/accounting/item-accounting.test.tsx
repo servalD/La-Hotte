@@ -10,9 +10,10 @@ import { ItemAccounting, parseAmount, ShortfallWindow } from './item-accounting'
 // CPT-02, CPT-19, CPT-43, CPT-59 : l'écran montre ce que l'API rend ; l'offreur ne reçoit aucun
 // montant individuel ; la fenêtre du reste coche tout le monde par défaut et dit qui saura.
 
-const state = vi.hoisted((): { accounting: unknown; cart: unknown } => ({
+const state = vi.hoisted((): { accounting: unknown; cart: unknown; offsets: unknown } => ({
   accounting: null,
   cart: null,
+  offsets: null,
 }));
 
 vi.mock('@wishlist/api-client', async (importOriginal) => {
@@ -30,6 +31,15 @@ vi.mock('@wishlist/api-client', async (importOriginal) => {
     useApproveAccountingReview: mutation,
     useRefuseAccountingReview: mutation,
     usePostItemShortfallNotice: mutation,
+    usePutItemAccountingOptions: mutation,
+    usePostItemBuyerRequest: mutation,
+    useAcceptBuyerRequest: mutation,
+    useRefuseBuyerRequest: mutation,
+    useCancelBuyerRequest: mutation,
+    usePutItemPurchaseReceipt: mutation,
+    useListOffsetProposals: () => ({ data: state.offsets }),
+    useConfirmOffset: mutation,
+    useDeclineOffset: mutation,
   };
 });
 
@@ -117,12 +127,71 @@ describe('ItemAccounting', () => {
           canDecide: false,
         },
       ],
+      buyerRequest: null,
+      hasReceipt: false,
     };
     wrap(<ItemAccounting itemId="i" />);
     expect(screen.getByRole('list', { name: 'Participants' }).textContent).toContain('40,00');
     expect(screen.getByText('Prix affiché maintenant')).toBeTruthy();
     expect(screen.getByText('En attente d’un autre participant'.replace('’', "'"))).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Acheté' })).toBeTruthy();
+    // CPT-58 : options repliées, résumé en une ligne (UX-03).
+    expect(screen.getByText(/revue activée, justificatif non demandé/)).toBeTruthy();
+  });
+
+  it('CPT-61 : l’acheteur voit la demande de Tonton et peut l’accepter', () => {
+    state.accounting = {
+      view: 'participant',
+      ...common,
+      participants: [],
+      mine: null,
+      isBuyer: true,
+      reviewEnabled: true,
+      receiptEnabled: false,
+      reviews: [],
+      buyerRequest: {
+        id: 'b',
+        candidate: person('t', 'Tonton'),
+        mine: false,
+        canDecide: true,
+        createdAt: '2026-11-17T10:00:00.000Z',
+      },
+      hasReceipt: false,
+    };
+    wrap(<ItemAccounting itemId="i" />);
+    const section = screen.getByRole('region', { name: 'Changement d’acheteur'.replace('’', "'") });
+    expect(section.textContent).toContain('Tonton propose de devenir l');
+    expect(screen.getAllByRole('button', { name: 'Valider' }).length).toBeGreaterThan(0);
+  });
+});
+
+describe('OffsetProposals (CPT-75)', () => {
+  it('une proposition reçue se confirme ; une envoyée se retire', async () => {
+    const { OffsetProposals } = await import('./accounting-extras');
+    state.offsets = {
+      items: [
+        {
+          id: 'o1',
+          direction: 'RECEIVED',
+          other: person('p', 'Papa'),
+          currency: 'EUR',
+          amountMinor: 1_500,
+          createdAt: '2026-11-17T10:00:00.000Z',
+        },
+        {
+          id: 'o2',
+          direction: 'SENT',
+          other: person('m', 'Mamie'),
+          currency: 'EUR',
+          amountMinor: 500,
+          createdAt: '2026-11-17T10:00:00.000Z',
+        },
+      ],
+    };
+    wrap(<OffsetProposals />);
+    expect(screen.getByText(/Papa propose de compenser 15,00/)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Confirmer' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Retirer la proposition' })).toBeTruthy();
   });
 });
 
@@ -171,6 +240,8 @@ describe('ShortfallWindow (CPT-19)', () => {
           reviewEnabled: true,
           receiptEnabled: false,
           reviews: [],
+          buyerRequest: null,
+          hasReceipt: false,
         }}
       />,
     );

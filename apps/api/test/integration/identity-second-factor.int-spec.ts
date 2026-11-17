@@ -243,7 +243,11 @@ describe('RedisPendingSecondFactors (ADR 0013)', () => {
     const hash = hex64();
     const value = { accountId: randomUUID(), epoch: 3, createdAt: new Date() };
     await pending.create(hash, value, 300_000);
-    expect(await pending.find(hash)).toEqual(value);
+    expect(await pending.find(hash)).toEqual({ ...value, sharedDevice: false });
+    // OFF-30 : la case « appareil partagé » traverse le second facteur.
+    const sharedHash = hex64();
+    await pending.create(sharedHash, { ...value, sharedDevice: true }, 300_000);
+    expect((await pending.find(sharedHash))?.sharedDevice).toBe(true);
     const results = await Promise.all(Array.from({ length: 6 }, () => pending.consume(hash)));
     expect(results.filter((r) => r !== null)).toHaveLength(1);
     expect(await pending.find(hash)).toBeNull();

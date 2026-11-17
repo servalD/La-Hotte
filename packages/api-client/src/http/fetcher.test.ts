@@ -42,6 +42,33 @@ describe('apiFetch (API-21)', () => {
     expect(headersOf().get('X-User-Activity')).toBe('1');
   });
 
+  it('API-16 : une mutation reçoit une clé d’idempotence, sauf si l’appelant fixe la sienne', async () => {
+    await apiFetch('/api/v1/products', { method: 'POST', body: '{}' });
+    expect(headersOf().get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/);
+    fetchMock.mockClear();
+    await apiFetch('/api/v1/products', {
+      method: 'POST',
+      body: '{}',
+      headers: { 'Idempotency-Key': 'cle-fixee-par-la-file' },
+    });
+    expect(headersOf().get('Idempotency-Key')).toBe('cle-fixee-par-la-file');
+    fetchMock.mockClear();
+    await apiFetch('/api/v1/session', { method: 'GET' });
+    expect(headersOf().has('Idempotency-Key')).toBe(false);
+  });
+
+  it('OFF-08 : une image revient en Blob, pas en JSON', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/webp' },
+      }),
+    );
+    const blob = await apiFetch<Blob>('/api/v1/images/abc');
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.size).toBe(3);
+  });
+
   it('lève une ApiError avec le code stable', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ code: 'PIN_INVALID', status: 403, title: 'x', type: 'x' }), {

@@ -146,6 +146,23 @@ export const approveAccountingReviewResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -288,6 +305,23 @@ export const refuseAccountingReviewResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -593,6 +627,23 @@ export const cancelBuyerRequestResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -735,6 +786,23 @@ export const acceptBuyerRequestResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -877,6 +945,23 @@ export const refuseBuyerRequestResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1064,6 +1149,23 @@ export const claimContributionSettlementResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1206,6 +1308,23 @@ export const nudgeContributionResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1355,6 +1474,23 @@ export const putContributionSettlementResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1491,6 +1627,23 @@ export const getItemAccountingResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1638,6 +1791,23 @@ export const putItemAccountingOptionsResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1780,6 +1950,23 @@ export const postItemBuyerRequestResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -1949,6 +2136,23 @@ export const putItemContributionResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -2091,6 +2295,23 @@ export const deleteItemContributionResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -2243,6 +2464,23 @@ export const lowerItemContributionResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -2396,6 +2634,23 @@ export const putItemPurchaseResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -2542,6 +2797,23 @@ export const deleteItemPurchaseResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -2688,6 +2960,23 @@ export const putItemPurchaseReceiptResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
 
@@ -2843,8 +3132,48 @@ export const postItemShortfallNoticeResponse = zod.union([
         canDecide: zod.boolean(),
       }),
     ),
+    buyerRequest: zod
+      .object({
+        id: zod.uuid(),
+        candidate: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mine: zod.boolean(),
+        canDecide: zod.boolean(),
+        createdAt: zod.iso.datetime({}),
+      })
+      .nullable(),
+    hasReceipt: zod.boolean(),
   }),
 ]);
+
+/**
+ * @summary CPT-75
+ */
+export const listOffsetProposalsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.uuid(),
+      direction: zod.enum(['SENT', 'RECEIVED']),
+      other: zod
+        .object({
+          id: zod.uuid(),
+          displayName: zod.string(),
+          avatar: zod.string().nullable(),
+          accentColor: zod.string(),
+        })
+        .nullable(),
+      currency: zod.string(),
+      amountMinor: zod.number(),
+      createdAt: zod.iso.datetime({}),
+    }),
+  ),
+});
 
 /**
  * @summary CPT-31, CPT-68

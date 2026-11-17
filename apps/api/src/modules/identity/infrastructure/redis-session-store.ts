@@ -90,6 +90,8 @@ interface CacheJson {
   expiresAt: number;
   absoluteExpiresAt: number;
   createdAt: number;
+  /** Absent d'un cache d'avant OFF-30 : appareil ordinaire. */
+  sharedDevice?: boolean;
   persistedAt: number;
   unlock: { profileId: string; at: number; nonce: string | null; pinStamp?: string | null } | null;
 }
@@ -135,6 +137,7 @@ function toJson(record: SessionRecord, unlock: Unlock | null, persistedAt: Date)
     expiresAt: ms(record.expiresAt),
     absoluteExpiresAt: ms(record.absoluteExpiresAt),
     createdAt: ms(record.createdAt),
+    sharedDevice: record.sharedDevice,
     persistedAt: ms(persistedAt),
     unlock: unlock
       ? {
@@ -164,6 +167,7 @@ function fromJson(tokenHash: string, raw: string): CachedSession {
       expiresAt: new Date(json.expiresAt),
       absoluteExpiresAt: new Date(json.absoluteExpiresAt),
       createdAt: new Date(json.createdAt),
+      sharedDevice: json.sharedDevice ?? false,
     },
     unlock: json.unlock
       ? {
@@ -211,6 +215,7 @@ type SessionRow = {
   expiresAt: Date;
   absoluteExpiresAt: Date;
   createdAt: Date;
+  sharedDevice: boolean;
   account: { role: AccountRole; status: 'ACTIVE' | 'SUSPENDED'; authEpoch: number };
 };
 
@@ -233,6 +238,7 @@ function rowToRecord(row: SessionRow): SessionRecord {
     expiresAt: row.expiresAt,
     absoluteExpiresAt: row.absoluteExpiresAt,
     createdAt: row.createdAt,
+    sharedDevice: row.sharedDevice,
   };
 }
 
@@ -265,6 +271,7 @@ export class RedisSessionStore extends SessionStore {
         expiresAt: record.expiresAt,
         absoluteExpiresAt: record.absoluteExpiresAt,
         createdAt: record.createdAt,
+        sharedDevice: record.sharedDevice,
       },
     });
     await this.writeCache(record, null, now);

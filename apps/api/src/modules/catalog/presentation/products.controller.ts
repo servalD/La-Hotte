@@ -27,6 +27,7 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../identity';
+import { Idempotent } from '../../../platform/http/idempotency';
 import { parseIfMatch } from '../../../platform/http/if-match';
 import {
   CreateProduct,
@@ -89,6 +90,7 @@ export class ProductsController {
   ) {}
 
   @Post()
+  @Idempotent('product.create')
   @ApiCreatedResponse({ type: ProductView })
   async createProduct(
     @Body() body: CreateProductDto,

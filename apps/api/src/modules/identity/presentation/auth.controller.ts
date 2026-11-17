@@ -26,6 +26,7 @@ import {
   VerifyEmail,
   VerifySecondFactor,
 } from '../application/contract';
+import { CacheKeys } from '../application/contract';
 import {
   clearDeviceCookie,
   clearPendingCookie,
@@ -75,6 +76,7 @@ import { SessionStatusView } from './dto/session-status.view';
 @Controller('auth')
 export class AuthController {
   constructor(
+    private readonly cacheKeys: CacheKeys,
     private readonly register: RegisterAccount,
     private readonly signInWithPassword: SignInWithPassword,
     private readonly signOutUseCase: SignOut,
@@ -139,6 +141,7 @@ export class AuthController {
       email: body.email,
       password: body.password,
       client,
+      sharedDevice: body.sharedDevice === true,
       previous: current ? sessionRef(current.record) : null,
       deviceToken: readCookie(request, DEVICE_COOKIE),
     });
@@ -407,6 +410,8 @@ export class AuthController {
         activeProfileId: profile.profileId,
         profileUnlocked: profile.unlocked,
         expiresAt: issued.record.expiresAt.toISOString(),
+        sharedDevice: issued.record.sharedDevice,
+        accountTag: this.cacheKeys.accountTag(issued.record.accountId),
       },
       secondFactorPending: false,
     };

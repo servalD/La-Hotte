@@ -159,6 +159,24 @@ export abstract class CsrfTokens {
   abstract matches(expected: string, received: string): boolean;
 }
 
+/**
+ * OFF-26, ADR 0020 : clé de cache d'un profil à PIN, dérivée d'un secret serveur, du profil, de son
+ * compte et de l'empreinte du PIN. `keyId` vient d'une dérivation distincte : il ne dit rien de
+ * `key` et peut être écrit sur l'appareil.
+ */
+export abstract class CacheKeys {
+  abstract derive(input: {
+    readonly profileId: string;
+    readonly accountId: string;
+    readonly pinStamp: string;
+  }): { readonly keyId: string; readonly key: string };
+  /**
+   * OFF-28, OFF-29 : étiquette opaque et stable du compte, pour que l'appareil sache si les bases
+   * locales sont à lui sans en connaître l'identifiant.
+   */
+  abstract accountTag(accountId: string): string;
+}
+
 /** Réglage de verrouillage d'un profil du compte ; `null` si absent ou d'un autre compte. */
 export abstract class ProfileLockPolicies {
   abstract find(accountId: string, profileId: string): Promise<ProfileLockPolicy | null>;

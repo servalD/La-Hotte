@@ -96,6 +96,8 @@ export interface PendingSecondFactor {
   readonly accountId: string;
   readonly epoch: number;
   readonly createdAt: Date;
+  /** OFF-30 : case « appareil partagé » cochée au premier facteur. */
+  readonly sharedDevice?: boolean;
 }
 
 /** Secret TOTP en attente d'activation ou actif. */

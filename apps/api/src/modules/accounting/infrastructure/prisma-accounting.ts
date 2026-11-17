@@ -350,6 +350,18 @@ export class PrismaAccountingRepository extends AccountingRepository {
     return row ? toOffset(row) : null;
   }
 
+  async pendingOffsetsOf(profileId: string): Promise<OffsetProposal[]> {
+    const rows = await this.prisma.offsetProposal.findMany({
+      where: {
+        status: 'PENDING',
+        OR: [{ proposerProfileId: profileId }, { counterpartProfileId: profileId }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    return rows.map(toOffset);
+  }
+
   async setOffsetStatus(id: string, status: OffsetStatus, at: Date): Promise<void> {
     await this.prisma.offsetProposal.update({ where: { id }, data: { status, decidedAt: at } });
   }

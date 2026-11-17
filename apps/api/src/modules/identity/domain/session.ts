@@ -13,8 +13,15 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** Durées glissante et absolue selon le rôle (AUTH-04, AUTH-05). */
-export function sessionLifetime(role: AccountRole): { slidingMs: number; absoluteMs: number } {
+/**
+ * Durées glissante et absolue selon le rôle (AUTH-04, AUTH-05). Appareil partagé (OFF-30) :
+ * 2 heures sans activité, 12 heures au plus, quel que soit le rôle.
+ */
+export function sessionLifetime(
+  role: AccountRole,
+  sharedDevice = false,
+): { slidingMs: number; absoluteMs: number } {
+  if (sharedDevice) return { slidingMs: 2 * HOUR, absoluteMs: 12 * HOUR };
   return role === 'USER'
     ? { slidingMs: 30 * DAY, absoluteMs: 90 * DAY }
     : { slidingMs: 12 * HOUR, absoluteMs: 24 * HOUR };
@@ -49,6 +56,8 @@ export interface SessionRecord {
   readonly expiresAt: Date;
   readonly absoluteExpiresAt: Date;
   readonly createdAt: Date;
+  /** OFF-30 : session ouverte sur un appareil partagé (durées courtes, rien sur le disque). */
+  readonly sharedDevice: boolean;
 }
 
 /**
@@ -93,7 +102,7 @@ export function rejectSession(
 
 /** Nouvelle échéance glissante, jamais au-delà de la durée absolue. */
 export function slideExpiry(record: SessionRecord, now: Date): Date {
-  const { slidingMs } = sessionLifetime(record.role);
+  const { slidingMs } = sessionLifetime(record.role, record.sharedDevice);
   return new Date(Math.min(now.getTime() + slidingMs, record.absoluteExpiresAt.getTime()));
 }
 
@@ -101,8 +110,9 @@ export function slideExpiry(record: SessionRecord, now: Date): Date {
 export function newSessionExpiry(
   role: AccountRole,
   now: Date,
+  sharedDevice = false,
 ): { expiresAt: Date; absoluteExpiresAt: Date } {
-  const { slidingMs, absoluteMs } = sessionLifetime(role);
+  const { slidingMs, absoluteMs } = sessionLifetime(role, sharedDevice);
   return {
     expiresAt: new Date(now.getTime() + slidingMs),
     absoluteExpiresAt: new Date(now.getTime() + absoluteMs),
@@ -120,7 +130,7 @@ export interface ProfileLockPolicy {
 }
 
 /** Comparaison en temps constant de deux chaînes (nonce de déverrouillage). */
-function sameSecret(a: string, b: string): boolean {
+export function sameSecret(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);

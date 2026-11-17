@@ -689,19 +689,45 @@ Restes :
 
 ## Phase 6 — Hors ligne, installation, motion
 
-Spec : `08`, `10`. ADR 0005.
+Spec : `08`, `10`. ADR 0005, ADR 0020.
 
-| Tâche                                                                   | Modèle             |
-| ----------------------------------------------------------------------- | ------------------ |
-| Conception du cache cloisonné et chiffré, file de mutations, purge      | opus               |
-| Service worker, persistance, rejeu, écran des actions non synchronisées | sonnet, revue opus |
-| Résolution de conflits                                                  | sonnet             |
-| Manifeste, cible de partage, installation, pastille                     | sonnet             |
-| Passe de motion design sur tous les moments de `10`, mouvement réduit   | sonnet             |
-| Audit d'accessibilité et corrections                                    | sonnet             |
-| Tests de bout en bout hors ligne                                        | sonnet             |
+**Découpage fait le 2026-11-17** (opus). Branche `feat/phase-6`. Même rythme que les phases 2 à 5, reconduit par l'utilisateur : tranches enchaînées, `security-reviewer` une seule fois en fin de phase sur `main..HEAD`, 2 cycles au plus. Décisions de l'utilisateur : réseau requis pour rouvrir un profil à PIN (OFF-26, pas de vérification locale) ; tranche 0 = écran de compensation et écrans de compta restants de la phase 5.
+
+| #   | Tranche                       | Modèle | Contenu                                                                                                                                                                                                                         | Sortie et tests attendus                                                                                              |
+| --- | ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 0   | Restes de la phase 5          | opus   | `GET /offset-proposals` (CPT-75), vue participant enrichie (demande d'acheteur, justificatif) ; écrans : options, demande d'acheteur, justificatif, règlements, compensation, budgets                                          | Contrat et composants                                                                                                 |
+| 1   | Spec et ADR                   | opus   | Silences de `08` écrits en règles (OFF-06 à OFF-09, OFF-17 à OFF-19, OFF-26 à OFF-30, PWA-07), ADR 0020                                                                                                                         | Relecture                                                                                                             |
+| 2   | API                           | opus   | Idempotence générale par intercepteur (API-16) sur les actions en file ; clé de cache (OFF-26) ; appareil partagé (OFF-30) ; purge des clés d'idempotence échues (M4)                                                          | Rejeu sans effet, clé changée avec le PIN, clé refusée sans déverrouillage, non-fuite (clé absente de la télémétrie) |
+| 3   | Cache cloisonné               | opus   | Bases par profil, chiffrement, persistance filtrée des lectures, réouverture hors ligne, purges, canal entre onglets (OFF-02, OFF-06, OFF-07, OFF-20 à OFF-23, OFF-27 à OFF-29 ; restes M-b, M-c de la phase 1)               | Base d'un profil à PIN illisible sans la clé ; aucune donnée après déconnexion ; changement de profil purgé partout  |
+| 4   | File d'actions                | opus   | File, rejeu, actions en attente affichées, écran des actions non synchronisées, conflit champ par champ (OFF-10 à OFF-19, UX-32)                                                                                                | Une action rejouée trois fois n'agit qu'une fois ; refus expliqué ; jamais rejouée sous un autre profil               |
+| 5   | Service worker                | opus   | Serwist, enveloppe `/offline`, images du profil (OFF-08), indicateur d'état (OFF-04, UX-33), mise à jour (PWA-06), préchargement (OFF-09)                                                                                       | Aucune réponse d'API dans le cache du service worker ; CSP inchangée                                                  |
+| 6   | Installation                  | sonnet | Manifeste et raccourcis (PWA-01), cible de partage (PWA-02), invitation à installer (PWA-03), demande de notifications au bon moment (PWA-04), pastille (PWA-05)                                                               | Composants testés                                                                                                     |
+| 7   | Motion                        | sonnet | Moments de `10` (MOT-01 à MOT-12), tiroir mobile de la vue latérale (CPT-41), total animé (CPT-43), mouvement réduit                                                                                                           | Aucun déplacement avec `prefers-reduced-motion`                                                                       |
+| 8   | Accessibilité et parcours     | sonnet | Audit axe des écrans principaux, corrections, parcours Playwright hors ligne et parcours clés, textes relus (`design:ux-copy`)                                                                                                  | Critères de `08` et `10`                                                                                              |
+| 9   | Tests transverses et revue    | opus   | Balayage des routes nouvelles (CSRF, sans session, IDOR), OBS-26 étendu, `security-reviewer` sur `main..HEAD`, 2 cycles au plus                                                                                                | Sortie de la phase                                                                                                    |
 
 Sortie : critères de `08` ; Lighthouse ≥ 90 ; les six parcours clés tenus.
+
+**Tranches 0 à 9 faites le 2026-11-17** (opus), d'affilée. API : idempotence générale par intercepteur, clé de cache, appareil partagé, `GET /offset-proposals`. Web : coffre par profil chiffré pour un profil à PIN, file d'actions et écran `/actions`, service worker écrit à la main, images en coffre, manifeste et cible de partage, invitations à installer et aux notifications, moments animés. Playwright : parcours « mode avion » (achat et commentaire rejoués une seule fois), déconnexion qui efface tout, axe sur les nouveaux écrans, bureau et mobile. Test OBS-26 étendu à la clé de cache.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- clé de cache dérivée de l'empreinte du PIN du déverrouillage et du compte, sans colonne d'époque (OFF-26, ADR 0020) ;
+- l'appareil reçoit une étiquette opaque du compte (`accountTag`), jamais son identifiant ;
+- service worker écrit à la main plutôt que Serwist ; pages de l'application (sans donnée) gardées pour l'ouverture hors ligne, nonce de CSP rejoué (PWA-07, ADR 0020) ;
+- idempotence générale par réservation de clé : un arrêt du serveur entre l'écriture et l'enregistrement de la réponse peut laisser rejouer une seule fois une action non monétaire (ADR 0020) ; le mutateur pose une clé neuve sur toute mutation qui n'en a pas ;
+- les actions en attente s'affichent par-dessus les lectures (« à confirmer »), le cache de lecture n'est jamais modifié par avance ;
+- un lien collé hors ligne crée la fiche par l'URL au rejeu, sans passer par le brouillon (OFF-17).
+
+Restes :
+
+- Connexion Google sur un appareil partagé : la case n'est portée que par la connexion par mot de passe (et son second facteur).
+- Motion : carte qui devient la page (élément partagé), réorganisation au doigt, fondu au changement de profil, transitions de page par l'API View Transitions.
+- Déconnexion : l'abonnement push de l'appareil n'est pas retiré côté client (le serveur le retire avec la session, NOT-15 ?) ; à vérifier.
+- iOS : repli par copier-coller détecté à l'ouverture (PWA-02) non fait.
+- Relecture `design:ux-copy` des nouveaux textes, mesure Lighthouse (≥ 90) et test avec cinq personnes non techniciennes : non faits.
+- Résolution de conflit (OFF-14) pour la modification d'un élément seulement ; les autres refus passent par « Refaire » ou « Abandonner ».
+- Revue SEC-40, cycle 1 : corrigés H1, H2, M1 à M4, F1 (`X-Expected-Profile` sur le rejeu de la file, OFF-18 ; l'en-tête n'est pas posé sur les lectures, qui sont protégées côté coffre par `isOwner` et l'arrêt sans écriture). Cycle 2 : corrigés la réouverture du coffre après abandon, l'écriture suspendue entre une purge et la relecture de la session, la comparaison de l'en-tête avant toute prolongation du déverrouillage, `X-User-Activity: 0` au rejeu (API-21), CORS, spec 13, appareil partagé sans aucun coffre (OFF-25). Restes assumés : l'en-tête n'est toujours pas posé sur les lectures (la fenêtre entre onglets sans `BroadcastChannel` reste ouverte ; piste : le poser dans le mutateur et traiter `423 PROFILE_MISMATCH` dans `QueryCache.onError`) ; pas de test du câblage `isOwner` ni de `sendStep`. Notés sans correction : F2 (nonce de CSP rejoué par le service worker, défense en profondeur) ; F4 (le rejeu d'idempotence rend le corps gardé sans revérifier l'accès actuel : données déjà reçues par le même profil).
 
 ## Phase 7 — Administration, catalogue global, mise en production
 

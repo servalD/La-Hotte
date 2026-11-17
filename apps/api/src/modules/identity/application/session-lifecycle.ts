@@ -66,11 +66,18 @@ export class SessionLifecycle {
     userAgent: string;
     trustedDeviceId?: string | null;
     previous?: SessionRef | null;
+    /** OFF-30 : absent, repris de la session remplacée (changement de mot de passe, etc.). */
+    sharedDevice?: boolean;
   }): Promise<IssuedSession> {
     const account = await this.store.accountState(input.accountId);
     if (!account?.active || account.epoch !== input.observedEpoch) {
       throw new SessionRequiredError();
     }
+    const sharedDevice =
+      input.sharedDevice ??
+      (input.previous
+        ? ((await this.store.findById(input.previous.id))?.record.sharedDevice ?? false)
+        : false);
     if (input.previous) await this.revoke(input.previous);
     // PRO-04 : un profil unique est sélectionné d'office, quel que soit le moyen de connexion. Il
     // reste verrouillé s'il a un PIN (le déverrouillage ne vit que dans le cache, jamais ici).
@@ -87,11 +94,13 @@ export class SessionLifecycle {
       authEpoch: account.epoch,
       activeProfileId: soleProfileId,
       reauthAt: null,
-      trustedDeviceId: input.trustedDeviceId ?? null,
+      // OFF-30 : aucun appareil de confiance sur un appareil partagé.
+      trustedDeviceId: sharedDevice ? null : (input.trustedDeviceId ?? null),
       userAgent: input.userAgent.slice(0, USER_AGENT_MAX),
       lastSeenAt: now,
       createdAt: now,
-      ...newSessionExpiry(account.role, now),
+      sharedDevice,
+      ...newSessionExpiry(account.role, now, sharedDevice),
     };
     await this.store.insert(record, now);
     return { token, record };

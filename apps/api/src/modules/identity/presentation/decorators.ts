@@ -60,6 +60,14 @@ export function identityOf(request: Request): RequestIdentity | undefined {
   return (request as Request & { [IDENTITY]?: RequestIdentity })[IDENTITY];
 }
 
+/**
+ * Profil actif déverrouillé d'une requête déjà passée par la chaîne de gardes, ou `null`. Pour la
+ * plateforme (idempotence, API-16), qui n'a pas de paramètre de route.
+ */
+export function activeProfileOf(request: Request): ActiveProfileValue | null {
+  return identityOf(request)?.profile ?? null;
+}
+
 /** Session de la requête (API-11). Absente sur une route publique sans session. */
 export const CurrentSession = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): ResolvedSession | null =>

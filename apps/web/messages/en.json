@@ -27,7 +27,9 @@
       "who": "Nobody else sees what you type here.",
       "submit": "Sign in",
       "submitting": "Signing in…",
-      "google": "Continue with Google"
+      "google": "Continue with Google",
+      "sharedDevice": "Shared or borrowed device",
+      "sharedDeviceHint": "Nothing is kept on this device and the session is short (12 hours at most, 2 hours without activity). Pending actions are lost if you close the tab."
     },
     "register": {
       "title": "Create an account",
@@ -159,6 +161,8 @@
   "session": {
     "loading": "Loading",
     "unreachable": "The server is not responding. Check your connection, then reload the page.",
+    "offlinePinNeedsNetwork": "You're offline. This profile is protected by a code: reopening it needs a connection.",
+    "offlineNothing": "You're offline and nothing has been saved on this device yet. Reconnect to get started.",
     "profileUnreadable": "Unable to check this profile. As a precaution, its content is not shown. Check your connection, then try again.",
     "retry": "Try again"
   },
@@ -183,7 +187,12 @@
     "notifications": "Notifications",
     "cart": "Basket",
     "balances": "Accounts",
-    "gifts": "My gifts"
+    "gifts": "My gifts",
+    "actions": "Waiting ({count})",
+    "signOutQueueTitle": "Some actions haven't been sent yet",
+    "signOutQueueBody": "{count, plural, one {One action made offline will be lost} other {# actions made offline will be lost}} if you sign out now.",
+    "signOutAnyway": "Sign out anyway",
+    "cancel": "Stay signed in"
   },
   "home": {
     "hello": "Hello {name}",
@@ -888,6 +897,19 @@
       "price": "Unit price",
       "manyWelcome": "Several welcome",
       "shown": "Show to the recipient"
+    },
+    "pending": {
+      "comment_post": "Comment waiting to be sent",
+      "item_add": "Addition waiting to be sent",
+      "item_update": "Change to be confirmed",
+      "item_delete": "Removal waiting to be sent",
+      "item_received": "Received, to be confirmed",
+      "item_unreceived": "Receipt unchecked, to be confirmed",
+      "contribution_put": "Contribution to be confirmed",
+      "contribution_delete": "Contribution withdrawal to be confirmed",
+      "purchase_put": "Bought, to be confirmed",
+      "settlement_put": "Payment to be confirmed",
+      "settlement_claim": "\"I've paid\", to be confirmed"
     }
   },
   "whoSees": {
@@ -920,7 +942,11 @@
     "price": "Price (optional)",
     "priceHint": "Without a price, everyone contributes what they want.",
     "submit": "Continue",
-    "adding": "Sending…"
+    "adding": "Sending…",
+    "offlineLink": "Offline: the link is saved and the item will be read when you're back online.",
+    "offlinePhoto": "Adding by photo needs a connection.",
+    "waitingLabel": "Wishes waiting to be sent",
+    "waiting": "waiting to be sent"
   },
   "draft": {
     "title": "Product",
@@ -1165,7 +1191,8 @@
       "WOW": "Wow",
       "PARTY": "Well done",
       "THANKS": "Thanks"
-    }
+    },
+    "pendingSend": "Waiting to be sent"
   },
   "notifications": {
     "title": "Notifications",
@@ -1289,6 +1316,53 @@
     "iBuy": "I buy",
     "payTo": "to pay back to {name}",
     "nothingYet": "Nothing yet for",
+    "options": {
+      "title": "Options",
+      "summary": "review {review, select, on {on} other {off}}, receipt {receipt, select, on {requested} other {not requested}}",
+      "whoSees": "Set and read by participants only, never by the recipient.",
+      "review": "Another participant approves price and option changes",
+      "receipt": "The buyer attaches a photo of the receipt",
+      "needsReview": "With review on, your change will wait for another participant to agree.",
+      "save": "Save options"
+    },
+    "buyerRequest": {
+      "title": "Change of buyer",
+      "ask": "I'd rather buy it myself",
+      "mine": "You offered to become the buyer. Waiting for an answer.",
+      "other": "{name} offers to become the buyer.",
+      "cancel": "Withdraw my request",
+      "waiting": "The current buyer answers first."
+    },
+    "receipt": {
+      "title": "Receipt",
+      "view": "View the receipt",
+      "none": "No receipt yet.",
+      "add": "Attach a photo of the receipt",
+      "replace": "Replace the photo",
+      "privacy": "The photo is stripped of its metadata and shown to participants only."
+    },
+    "settle": {
+      "mark": "Mark as paid",
+      "undo": "Undo payment",
+      "nudge": "Send a reminder",
+      "claim": "I've paid",
+      "pending": "To be confirmed"
+    },
+    "offset": {
+      "title": "Pending offsets",
+      "received": "{name} offers to offset {amount} between you.",
+      "sent": "You offered {name} to offset {amount}.",
+      "confirm": "Confirm",
+      "decline": "Decline",
+      "withdraw": "Withdraw the offer",
+      "stale": "The balances changed since the offer: it is no longer valid. Make a new one."
+    },
+    "budgets": {
+      "title": "My budget",
+      "event": "For the whole event",
+      "save": "Save",
+      "remove": "Remove"
+    },
     "mode": {
       "FULL": "all",
       "PERCENT": "percentage",
@@ -1309,6 +1383,103 @@
       "ACCOUNTING_ACTION_FORBIDDEN": "This action belongs to someone else.",
       "PURCHASE_UNCHECK_CONFIRM": "The purchase is more than 24 hours old: confirm to uncheck it.",
       "generic": "That didn't work. Try again."
+    },
+    "pendingTitle": "Waiting for confirmation",
+    "pending": {
+      "contribution_put": "Your contribution {amount} is to be confirmed: it doesn't count yet.",
+      "contribution_delete": "Withdrawing your contribution is to be confirmed.",
+      "purchase_put": "Bought, to be confirmed.",
+      "settlement_put": "Payment to be confirmed.",
+      "settlement_claim": "\"I've paid\", to be confirmed.",
+      "comment_post": "Comment waiting to be sent.",
+      "item_add": "Addition waiting to be sent.",
+      "item_update": "Change to be confirmed.",
+      "item_delete": "Removal waiting to be sent.",
+      "item_received": "Received, to be confirmed.",
+      "item_unreceived": "Receipt unchecked, to be confirmed."
+    },
+    "gauge": "Gift funding",
+    "budgetGauge": "Share of budget committed"
+  },
+  "offlineActions": {
+    "title": "Waiting actions",
+    "intro": "What you did without a connection is sent as soon as it's back. Nothing is lost without an explanation.",
+    "empty": "Everything is up to date.",
+    "stuck": "Not saved",
+    "waiting": "Waiting to be sent",
+    "redo": "Do it again",
+    "discard": "Drop",
+    "useRemaining": "Contribute the remainder ({amount})",
+    "loadingCurrent": "Reading the current version…",
+    "chooseFields": "Someone changed this wish in the meantime. Choose, field by field, which value to keep.",
+    "sameNow": "Both versions are now the same.",
+    "mine": "Yours",
+    "current": "Current",
+    "applyChoice": "Save this choice",
+    "yes": "yes",
+    "no": "no",
+    "none": "empty",
+    "kinds": {
+      "comment_post": "Comment",
+      "item_add": "Wish added",
+      "item_update": "Wish changed",
+      "item_delete": "Wish removed",
+      "item_received": "Receipt confirmed",
+      "item_unreceived": "Receipt unchecked",
+      "contribution_put": "Contribution",
+      "contribution_delete": "Contribution withdrawn",
+      "purchase_put": "Marked as bought",
+      "settlement_put": "Share paid",
+      "settlement_claim": "\"I've paid\""
+    },
+    "reasons": {
+      "expired": "Waited more than 30 days: it was not sent, so it can't count twice.",
+      "conflict": "Someone changed the same thing in the meantime.",
+      "gone": "This wish no longer exists, or you can no longer see it.",
+      "forbidden": "You can no longer do this.",
+      "refused": "The server did not accept this.",
+      "CONTRIBUTION_EXCEEDS_REMAINING": "Someone completed it in the meantime: there was less left to cover.",
+      "ACCOUNTING_CLOSED": "This gift no longer accepts contributions.",
+      "CONTRIBUTION_FROZEN": "The purchase is already checked: ask the buyer.",
+      "CONTRIBUTION_SETTLED": "Part of it is already paid: the buyer must undo it first.",
+      "PURCHASE_REQUIRED": "The purchase isn't checked yet.",
+      "ITEM_NOT_FOUND": "This wish no longer exists, or you can no longer see it.",
+      "LIST_NOT_FOUND": "This list no longer exists, or you can no longer see it.",
+      "IDEMPOTENCY_KEY_REUSED": "This was already saved differently."
     }
+  },
+  "offline": {
+    "title": "You're offline",
+    "body": "This page hasn't been opened on this device yet. The lists and cart you've already viewed are still available.",
+    "lists": "My lists",
+    "cart": "My cart"
+  },
+  "pwa": {
+    "updateReady": "A new version is ready.",
+    "reload": "Reload",
+    "installTitle": "Install La Hotte",
+    "installBody": "Add the app to your home screen: it opens even without a connection, and \"Share\" from a website adds a wish in two taps.",
+    "installIos": "On iPhone: tap Share, then \"Add to Home Screen\".",
+    "install": "Install",
+    "later": "Later",
+    "pushTitle": "Get notified",
+    "pushBody": "Get an alert when someone replies or a gift moves forward. The message stays discreet: it never says what's being prepared.",
+    "pushEnable": "Turn on notifications",
+    "pushOn": "Notifications are on for this device.",
+    "pushFailed": "Notifications couldn't be turned on. Try again later."
+  },
+  "connection": {
+    "offline": "Offline: what you do will be sent when you're back online.",
+    "offlineSince": "Offline since {time}: what you do will be sent when you're back online.",
+    "pending": "{count, plural, one {# waiting} other {# waiting}}",
+    "updating": "Updating…",
+    "upToDate": "Up to date"
+  },
+  "share": {
+    "title": "Add a wish",
+    "noLink": "No link received: choose the list, then paste the link or type the wish.",
+    "chooseList": "Which list?",
+    "noList": "You don't have a list yet. Create one from \"Lists\".",
+    "personal": "My list"
   }
 }

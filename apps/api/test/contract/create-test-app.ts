@@ -119,6 +119,7 @@ import {
   SendDigests,
 } from '../../src/modules/notifications/testing';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
+import { IdempotencyStore, InMemoryIdempotencyStore } from '../../src/platform/http/idempotency';
 import {
   AccountingPeople,
   AccountingRepository,
@@ -317,6 +318,7 @@ export async function createTestApp(
     people: new InMemoryAccountingPeople(),
     budgets: new InMemoryBudgetRepository(),
   };
+  const idempotency = new InMemoryIdempotencyStore();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
     controllers: options.controllers ?? [],
@@ -423,6 +425,8 @@ export async function createTestApp(
     .useValue(conversations.delivery)
     .overrideProvider(DigestRepository)
     .useValue(conversations.digests)
+    .overrideProvider(IdempotencyStore)
+    .useValue(idempotency)
     .compile();
 
   // Doubles des événements reliés à ceux d'`identity` et des listes.

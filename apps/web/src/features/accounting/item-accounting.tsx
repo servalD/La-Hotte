@@ -5,23 +5,28 @@ import {
   ApiError,
   type GetItemAccounting200,
   type ItemAccountingParticipantView,
+  type SetContributionDto,
   useApproveAccountingReview,
-  useDeleteItemContribution,
   useDeleteItemPurchase,
   useGetItemAccounting,
   useLowerItemContribution,
   usePostItemShortfallNotice,
-  usePutItemContribution,
-  usePutItemPurchase,
   useRefuseAccountingReview,
 } from '@wishlist/api-client';
+import { offlineActions } from '@/lib/offline/actions';
+import { announceMoment } from '@/lib/pwa/engagement';
+import { kindKey, type QueuedInput } from '@/lib/offline/queue';
+import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogTitle, DialogTrigger, SheetContent } from '@/components/ui/dialog';
+import { AnimatedAmount, Confirmed, DragToClose, FundingGauge, haptic } from '@/lib/motion/moments';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatMinor } from '@/features/lists/format';
+import { AccountingOptions, BuyerRequestSection, ReceiptSection } from './accounting-extras';
+import { parseAmount } from './parse-amount';
 import { useIdempotencyKey } from './use-idempotency-key';
 
 /** Codes d'erreur traduits (API-14) ; les autres tombent sur un message général. */
@@ -45,13 +50,7 @@ function errorKey(error: unknown): string {
   return 'errors.generic';
 }
 
-/** Montant saisi en unités (« 23,50 ») → unités mineures entières (invariant 4). */
-export function parseAmount(text: string): number | null {
-  const normalized = text.replace(/\s/g, '').replace(',', '.');
-  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
-  const [units = '0', cents = ''] = normalized.split('.');
-  return Number(units) * 100 + Number(cents.padEnd(2, '0'));
-}
+export { parseAmount };
 
 /**
  * Bouton « Offrir » d'un élément vu en offreur (CPT-02). N'est monté que pour la forme offreur ;
@@ -65,10 +64,17 @@ export function ItemAccountingButton({ itemId, title }: { itemId: string; title:
       <DialogTrigger asChild>
         <Button variant="secondary">{t('open')}</Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogTitle>{t('title', { item: title })}</DialogTitle>
-        {open ? <ItemAccounting itemId={itemId} /> : null}
-      </DialogContent>
+      <SheetContent>
+        {/* PWA-10, « Tiroirs et panneaux » : glisser vers le bas referme ; Échap et le fond aussi. */}
+        <DragToClose
+          onClose={() => {
+            setOpen(false);
+          }}
+        >
+          <DialogTitle>{t('title', { item: title })}</DialogTitle>
+          {open ? <ItemAccounting itemId={itemId} /> : null}
+        </DragToClose>
+      </SheetContent>
     </Dialog>
   );
 }
@@ -80,6 +86,7 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
   const { data } = useGetItemAccounting(itemId);
   const [error, setError] = useState<string | null>(null);
   const [shortfallFor, setShortfallFor] = useState<number | null>(null);
+  const pending = usePendingFor(itemId);
   if (!data) return <p className="text-foreground-muted">{t('loading')}</p>;
   const view: GetItemAccounting200 = data;
   const money = (minor: number) => formatMinor(minor, view.currency, locale);
@@ -105,7 +112,9 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
           </>
         ) : null}
         <dt>{t('covered')}</dt>
-        <dd>{money(view.coveredMinor)}</dd>
+        <dd>
+          <AnimatedAmount value={view.coveredMinor} format={money} />
+        </dd>
         {view.remainingMinor !== null ? (
           <>
             <dt>{t('remaining')}</dt>
@@ -116,8 +125,18 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
         <dd>{view.buyer?.displayName ?? t('noBuyer')}</dd>
         <dt>{t('state')}</dt>
         {/* Couleur jamais seule : un libellé dit l'état (WCAG). */}
-        <dd>{view.purchased ? t('purchased') : t('notPurchased')}</dd>
+        <dd>
+          <Confirmed stateKey={view.purchased ? 'purchased' : 'open'}>
+            {view.purchased ? t('purchased') : t('notPurchased')}
+          </Confirmed>
+        </dd>
       </dl>
+      {/* « Jauge de financement » : le chiffre reste écrit au-dessus (A11Y-03). */}
+      <FundingGauge
+        covered={view.coveredMinor}
+        total={view.remainingMinor === null ? null : view.coveredMinor + view.remainingMinor}
+        label={t('gauge')}
+      />
       <ul aria-label={t('participants')} className="flex flex-col gap-1 text-sm">
         {view.view === 'participant'
           ? view.participants.map((line) => (
@@ -134,6 +153,22 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
               </li>
             ))}
       </ul>
+      {pending.length > 0 ? (
+        // OFF-13 : rien n'est acquis tant que le serveur n'a pas répondu.
+        <ul aria-label={t('pendingTitle')} className="flex flex-col gap-1 text-sm">
+          {pending.map((action) => (
+            <li key={action.id} className="rounded-md border border-dashed border-border p-2">
+              <span aria-hidden="true">⏳ </span>
+              {t(`pending.${kindKey(action.kind)}`, {
+                amount:
+                  typeof action.display.amountMinor === 'number'
+                    ? money(action.display.amountMinor)
+                    : '',
+              })}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
@@ -150,6 +185,19 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
           onError={onError}
           onShortfall={setShortfallFor}
         />
+      ) : null}
+      {view.view === 'participant' ? (
+        <>
+          <BuyerRequestSection itemId={itemId} view={view} onDone={refresh} onError={onError} />
+          <ReceiptSection itemId={itemId} view={view} onDone={refresh} onError={onError} />
+          <AccountingOptions
+            key={`${String(view.reviewEnabled)}-${String(view.receiptEnabled)}`}
+            itemId={itemId}
+            view={view}
+            onDone={refresh}
+            onError={onError}
+          />
+        </>
       ) : null}
       {view.view === 'participant' && shortfallFor !== null ? (
         <ShortfallWindow
@@ -180,20 +228,25 @@ function ContributeForm({
 }) {
   const t = useTranslations('accounting');
   const locale = useLocale();
-  const { request, renew } = useIdempotencyKey();
+  const perform = useOfflineAction();
+  const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'PERCENT' | 'FIXED'>('FIXED');
   const [value, setValue] = useState('');
-  const contribute = usePutItemContribution({
-    request,
-    mutation: {
-      onSuccess: () => {
-        renew();
+  // OFF-13 : en ligne, la réponse vient tout de suite ; hors ligne, la part est « à confirmer ».
+  const contribute = (data: SetContributionDto, amountMinor: number | null) => {
+    setBusy(true);
+    perform(offlineActions.contribute(itemId, data, amountMinor))
+      .then(() => {
         setValue('');
+        haptic();
+        announceMoment('reservation');
         onDone();
-      },
-      onError,
-    },
-  });
+      })
+      .catch(onError)
+      .finally(() => {
+        setBusy(false);
+      });
+  };
   const entamé = view.coveredMinor > 0;
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
@@ -203,7 +256,7 @@ function ContributeForm({
         onError(null);
         return;
       }
-      contribute.mutate({ id: itemId, data: { mode: 'FIXED', amountMinor } });
+      contribute({ mode: 'FIXED', amountMinor }, amountMinor);
       return;
     }
     // CPT-53 : un pour cent au centième, en fraction exacte sur 10 000.
@@ -212,17 +265,14 @@ function ContributeForm({
       onError(null);
       return;
     }
-    contribute.mutate({
-      id: itemId,
-      data: { mode: 'PERCENT', shareNum: hundredths, shareDen: 10_000 },
-    });
+    contribute({ mode: 'PERCENT', shareNum: hundredths, shareDen: 10_000 }, null);
   };
   return (
     <div className="flex flex-col gap-2">
       <Button
-        disabled={contribute.isPending}
+        disabled={busy}
         onClick={() => {
-          contribute.mutate({ id: itemId, data: { mode: 'FULL' } });
+          contribute({ mode: 'FULL' }, view.remainingMinor);
         }}
       >
         {entamé && view.remainingMinor !== null
@@ -259,7 +309,7 @@ function ContributeForm({
             }}
           />
         </div>
-        <Button type="submit" variant="secondary" disabled={contribute.isPending}>
+        <Button type="submit" variant="secondary" disabled={busy}>
           {t('confirm')}
         </Button>
       </form>
@@ -281,8 +331,17 @@ function ParticipantActions({
   onShortfall: (amount: number) => void;
 }) {
   const t = useTranslations('accounting');
-  const withdrawKey = useIdempotencyKey();
-  const purchaseKey = useIdempotencyKey();
+  const perform = useOfflineAction();
+  const [busy, setBusy] = useState(false);
+  const act = (input: QueuedInput) => {
+    setBusy(true);
+    perform(input)
+      .then(onDone)
+      .catch(onError)
+      .finally(() => {
+        setBusy(false);
+      });
+  };
   const uncheckKey = useIdempotencyKey();
   const lowerKey = useIdempotencyKey();
   const reviewKey = useIdempotencyKey();
@@ -298,8 +357,6 @@ function ParticipantActions({
       onError,
     },
   });
-  const withdraw = useDeleteItemContribution(options(withdrawKey));
-  const purchase = usePutItemPurchase(options(purchaseKey));
   const uncheck = useDeleteItemPurchase(options(uncheckKey));
   const approve = useApproveAccountingReview(options(reviewKey));
   const refuse = useRefuseAccountingReview(options(reviewKey));
@@ -326,9 +383,9 @@ function ParticipantActions({
       {!view.purchased && mine ? (
         <Button
           variant="ghost"
-          disabled={withdraw.isPending}
+          disabled={busy}
           onClick={() => {
-            withdraw.mutate({ id: itemId });
+            act(offlineActions.withdrawContribution(itemId));
           }}
         >
           {t('withdraw')}
@@ -348,10 +405,12 @@ function ParticipantActions({
             />
           </div>
           <Button
-            disabled={purchase.isPending}
+            disabled={busy}
             onClick={() => {
               const actualTotalMinor = paid.trim() === '' ? null : parseAmount(paid);
-              purchase.mutate({ id: itemId, data: { actualTotalMinor } });
+              // Cas d'usage d'OFF-10 : cocher l'achat en magasin, sans réseau.
+              haptic();
+              act(offlineActions.purchase(itemId, actualTotalMinor));
             }}
           >
             {t('markPurchased')}

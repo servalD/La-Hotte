@@ -22,6 +22,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CacheKeyView,
   EmailDto,
   EmailTokenDto,
   OwnTransferStateView,
@@ -310,6 +311,121 @@ export const useUpdateOwnProfile = <TError = ErrorType<ProblemDetailsDto>, TCont
 
   return useMutation(mutationOptions, queryClient);
 };
+/**
+ * @summary OFF-26, ADR 0020 : clé de cache du profil actif. Profil sans PIN : `encrypted: false`, sans
+clé. Jamais mise en cache (`no-store`), jamais journalisée.
+ */
+export const getGetOwnCacheKeyUrl = () => {
+  return `/api/v1/profiles/me/cache-key`;
+};
+
+export const getOwnCacheKey = async (options?: RequestInit): Promise<CacheKeyView> => {
+  return apiFetch<CacheKeyView>(getGetOwnCacheKeyUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetOwnCacheKeyQueryKey = () => {
+  return [`/api/v1/profiles/me/cache-key`] as const;
+};
+
+export const getGetOwnCacheKeyQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOwnCacheKey>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnCacheKey>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOwnCacheKeyQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnCacheKey>>> = ({ signal }) =>
+    getOwnCacheKey({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnCacheKey>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetOwnCacheKeyQueryResult = NonNullable<Awaited<ReturnType<typeof getOwnCacheKey>>>;
+export type GetOwnCacheKeyQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetOwnCacheKey<
+  TData = Awaited<ReturnType<typeof getOwnCacheKey>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnCacheKey>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOwnCacheKey>>,
+          TError,
+          Awaited<ReturnType<typeof getOwnCacheKey>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetOwnCacheKey<
+  TData = Awaited<ReturnType<typeof getOwnCacheKey>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnCacheKey>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getOwnCacheKey>>,
+          TError,
+          Awaited<ReturnType<typeof getOwnCacheKey>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetOwnCacheKey<
+  TData = Awaited<ReturnType<typeof getOwnCacheKey>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnCacheKey>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary OFF-26, ADR 0020 : clé de cache du profil actif. Profil sans PIN : `encrypted: false`, sans
+clé. Jamais mise en cache (`no-store`), jamais journalisée.
+ */
+
+export function useGetOwnCacheKey<
+  TData = Awaited<ReturnType<typeof getOwnCacheKey>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getOwnCacheKey>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetOwnCacheKeyQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
 /**
  * @summary PRO-09 : le profil a lu la notice du changement de son marqueur enfant.
  */

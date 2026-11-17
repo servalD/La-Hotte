@@ -244,6 +244,17 @@ export class InMemoryAccountingRepository extends AccountingRepository {
     return Promise.resolve(null);
   }
 
+  pendingOffsetsOf(profileId: string): Promise<OffsetProposal[]> {
+    return Promise.resolve(
+      [...this.offsets.values()]
+        .filter(
+          (p) =>
+            p.status === 'PENDING' && (p.proposerId === profileId || p.counterpartId === profileId),
+        )
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    );
+  }
+
   setOffsetStatus(id: string, status: OffsetStatus): Promise<void> {
     const p = this.offsets.get(id);
     if (p) this.offsets.set(id, { ...p, status });

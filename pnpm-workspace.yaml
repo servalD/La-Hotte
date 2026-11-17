@@ -27,3 +27,8 @@ auditConfig:
     # Même échéance : zod 3 embarqué par eslint-plugin-react-hooks (outil de lint, jamais livré ni
     # exécuté en production). Le code applicatif est passé à zod 4.
     - GHSA-mrhx-c7xc-m3w5
+    # Même échéance : picomatch (ReDoS, GHSA-fc5q-39xc-vjpf, aucune version corrigée publiée à la
+    # date du 2026-11-17). Chemins : eslint-plugin-next > fast-glob et @sentry/nextjs >
+    # @rollup/plugin-commonjs, soit des outils de lint et de build qui lisent nos propres motifs ;
+    # aucun motif d'utilisateur n'atteint picomatch en exécution. À lever dès qu'un correctif sort.
+    - GHSA-fc5q-39xc-vjpf

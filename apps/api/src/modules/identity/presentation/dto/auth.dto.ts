@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   Equals,
@@ -85,6 +85,12 @@ export class LoginDto {
   @Length(1, PASSWORD_MAX_LENGTH)
   @ApiProperty({ minLength: 1, maxLength: PASSWORD_MAX_LENGTH, format: 'password' })
   password!: string;
+
+  /** OFF-30 : appareil partagé (session courte, aucun cache sur l'appareil). */
+  @IsOptional()
+  @IsBoolean()
+  @ApiPropertyOptional()
+  sharedDevice?: boolean;
 }
 
 /**
