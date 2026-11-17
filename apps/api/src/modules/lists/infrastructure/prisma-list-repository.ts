@@ -825,10 +825,22 @@ export class PrismaVisibilityLogRepository extends VisibilityLogRepository {
   }
 }
 
-/** VIS-16 : aucun engagement avant la compta (phase 5). */
+/**
+ * VIS-16, EVT-37 : profils engagés sur un élément, lus dans la compta (phase 5, ADR 0019). Lecture
+ * seule des tables de `accounting` : l'inverse d'une dépendance de module, qui ferait un cycle.
+ */
 @Injectable()
-export class NoEngagementReader extends EngagementReader {
-  engagedProfiles(): Promise<string[]> {
-    return Promise.resolve([]);
+export class PrismaEngagementReader extends EngagementReader {
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  async engagedProfiles(itemId: string): Promise<string[]> {
+    const rows = await this.prisma.contribution.findMany({
+      where: { accounting: { itemId }, profileId: { not: null } },
+      select: { profileId: true },
+      orderBy: { rank: 'asc' },
+    });
+    return rows.flatMap((row) => (row.profileId ? [row.profileId] : []));
   }
 }

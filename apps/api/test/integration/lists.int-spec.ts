@@ -268,3 +268,44 @@ describe('Listes en base (VIS-31)', () => {
     expect(await prisma.list.count({ where: { id } })).toBe(0);
   });
 });
+
+describe('Engagements lus dans la compta (VIS-16, VIS-37, ADR 0019)', () => {
+  it('un offreur engagé n’est pas écarté par un autre offreur, mais l’est par la destinataire', async () => {
+    const papa = await person();
+    const marie = await person();
+    const tonton = await person();
+    await link(papa, marie);
+    await link(papa, tonton);
+    await link(marie, tonton);
+    const listId = await personal(marie);
+    const itemId = await addItem(marie, listId);
+    await prisma.listMember.create({
+      data: { id: randomUUID(), listId, profileId: papa.profileId!, role: 'OWNER' },
+    });
+    await prisma.list.update({ where: { id: listId }, data: { visibilityEditRole: 'OWNER' } });
+    const accountingId = randomUUID();
+    await prisma.itemAccounting.create({
+      data: { id: accountingId, itemId, currency: 'EUR', plannedTotalMinor: 1000n },
+    });
+    await prisma.contribution.create({
+      data: {
+        id: randomUUID(),
+        accountingId,
+        profileId: tonton.profileId,
+        mode: 'FULL',
+        amountMinor: 1000n,
+        rank: 1,
+      },
+    });
+    const rule = async (user: SignedIn) => {
+      const version = (await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } })).version;
+      return http()
+        .put(`/api/v1/items/${itemId}/visibility`)
+        .set({ ...user.mutation, 'If-Match': String(version) })
+        .send({ mode: 'EXCEPT', profileIds: [tonton.profileId] });
+    };
+    const byPapa = await rule(papa);
+    expect(byPapa.body.code).toBe('VISIBILITY_ENGAGED_PROFILE');
+    expect((await rule(marie)).status).toBe(200);
+  }, 30_000);
+});

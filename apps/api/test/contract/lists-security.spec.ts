@@ -653,7 +653,7 @@ describe('Revue SEC-40 de la phase 2 : non-régressions', () => {
       .send({ note: 'n' })
       .expect(200);
     const noted = await http().get(`/api/v1/items/${a}`).set({ Cookie: marie.cookie }).expect(200);
-    expect(noted.body.version).toBe(before.body.version + 1);
+    expect(noted.body.version).toBe((before.body.version as number) + 1);
   });
 
   it('R2 : un destinataire ajouté après coup ne voit pas disparaître une fiche publiée de son répertoire', async () => {
