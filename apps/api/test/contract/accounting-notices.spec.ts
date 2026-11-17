@@ -138,3 +138,74 @@ describe('Avis de compta (NOT-12, CPT-19, VIS-20)', () => {
     expect(await types(papa)).not.toContain('gift.settlement_reminder');
   });
 });
+
+describe('Critère de sortie (VIS-20, CPT-52) : la destinataire ne peut rien observer de la compta', () => {
+  it('toutes ses lectures sont identiques avant et après participations, achat, reste et règlements', async () => {
+    const { marie, papa, tonton, mamie, itemId } = await world();
+    const listId = (
+      (await http().get('/api/v1/lists').set({ Cookie: marie.cookie })).body.items as Body[]
+    ).find((l) => l.personal)!.id as string;
+    const reads = [
+      '/api/v1/lists',
+      `/api/v1/lists/${listId}`,
+      `/api/v1/lists/${listId}/items`,
+      `/api/v1/items/${itemId}`,
+      `/api/v1/items/${itemId}/threads`,
+      `/api/v1/items/${itemId}/accounting`,
+      '/api/v1/notifications',
+      '/api/v1/notifications/unread-count',
+      '/api/v1/directory?scope=circle',
+      '/api/v1/cart',
+      '/api/v1/balances',
+      '/api/v1/accounting/overview',
+      '/api/v1/budgets',
+    ];
+    const snapshot = async () => {
+      await conversations.settle();
+      const out: unknown[] = [];
+      for (const path of reads) {
+        const res = await http().get(path).set({ Cookie: marie.cookie });
+        const body = { ...(res.body as Body) };
+        delete body.requestId;
+        out.push([path, res.status, body]);
+      }
+      return out;
+    };
+    const before = await snapshot();
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 6_000 }).expect(200);
+    await contribute(mamie, itemId, { mode: 'FIXED', amountMinor: 1_000 }).expect(200);
+    await http()
+      .put(`/api/v1/items/${itemId}/accounting/options`)
+      .set({ ...papa.mutation, 'Idempotency-Key': key() })
+      .send({ reviewEnabled: false, receiptEnabled: true })
+      .expect(200);
+    await http()
+      .put(`/api/v1/items/${itemId}/purchase`)
+      .set({ ...papa.mutation, 'Idempotency-Key': key() })
+      .send({ actualTotalMinor: 11_000 })
+      .expect(200);
+    await http()
+      .post(`/api/v1/items/${itemId}/contribution/lower`)
+      .set({ ...mamie.mutation, 'Idempotency-Key': key() })
+      .send({ amountMinor: 1_200 })
+      .expect(200);
+    await http()
+      .post(`/api/v1/items/${itemId}/shortfall-notice`)
+      .set({ ...mamie.mutation, 'Idempotency-Key': key() })
+      .send({ profileIds: [papa.profileId, tonton.profileId] })
+      .expect(200);
+    const state = (await accounting.repository.findByItem(itemId))!;
+    const tontonPart = state.contributions.find((c) => c.profileId === tonton.profileId)!;
+    await http()
+      .post(`/api/v1/contributions/${tontonPart.id}/claim`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': key() })
+      .expect(200);
+    await http()
+      .put(`/api/v1/contributions/${tontonPart.id}/settlement`)
+      .set({ ...papa.mutation, 'Idempotency-Key': key() })
+      .send({ settled: true })
+      .expect(200);
+    expect(await snapshot()).toEqual(before);
+  });
+});
