@@ -22,15 +22,30 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcceptBuyerRequest200,
   AccountingOptionsDto,
   ApproveAccountingReview200,
+  CancelBuyerRequest200,
+  CartView,
   DeleteItemContribution200,
+  DeleteItemPurchase200,
+  DeleteItemPurchaseParams,
   GetItemAccounting200,
+  LowerContributionDto,
+  LowerItemContribution200,
+  MarkPurchasedDto,
+  PostItemBuyerRequest200,
+  PostItemShortfallNotice200,
   ProblemDetailsDto,
   PutItemAccountingOptions200,
   PutItemContribution200,
+  PutItemPurchase200,
+  PutItemPurchaseReceipt200,
+  PutItemPurchaseReceiptBody,
   RefuseAccountingReview200,
+  RefuseBuyerRequest200,
   SetContributionDto,
+  ShortfallNoticeDto,
 } from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
@@ -210,6 +225,368 @@ export const useRefuseAccountingReview = <
 
   return useMutation(mutationOptions, queryClient);
 };
+/**
+ * @summary CPT-61 : le candidat retire sa demande.
+ */
+export const getCancelBuyerRequestUrl = (id: string) => {
+  return `/api/v1/buyer-requests/${id}`;
+};
+
+export const cancelBuyerRequest = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CancelBuyerRequest200> => {
+  return apiFetch<CancelBuyerRequest200>(getCancelBuyerRequestUrl(id), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getCancelBuyerRequestMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelBuyerRequest>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['cancelBuyerRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelBuyerRequest>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cancelBuyerRequest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelBuyerRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof cancelBuyerRequest>>
+>;
+
+export type CancelBuyerRequestMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-61 : le candidat retire sa demande.
+ */
+export const useCancelBuyerRequest = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof cancelBuyerRequest>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof cancelBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getCancelBuyerRequestMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-61
+ */
+export const getAcceptBuyerRequestUrl = (id: string) => {
+  return `/api/v1/buyer-requests/${id}/accept`;
+};
+
+export const acceptBuyerRequest = async (
+  id: string,
+  options?: RequestInit,
+): Promise<AcceptBuyerRequest200> => {
+  return apiFetch<AcceptBuyerRequest200>(getAcceptBuyerRequestUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getAcceptBuyerRequestMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acceptBuyerRequest>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acceptBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['acceptBuyerRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acceptBuyerRequest>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return acceptBuyerRequest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AcceptBuyerRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acceptBuyerRequest>>
+>;
+
+export type AcceptBuyerRequestMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-61
+ */
+export const useAcceptBuyerRequest = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof acceptBuyerRequest>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof acceptBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getAcceptBuyerRequestMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-61
+ */
+export const getRefuseBuyerRequestUrl = (id: string) => {
+  return `/api/v1/buyer-requests/${id}/refuse`;
+};
+
+export const refuseBuyerRequest = async (
+  id: string,
+  options?: RequestInit,
+): Promise<RefuseBuyerRequest200> => {
+  return apiFetch<RefuseBuyerRequest200>(getRefuseBuyerRequestUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getRefuseBuyerRequestMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof refuseBuyerRequest>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof refuseBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['refuseBuyerRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof refuseBuyerRequest>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return refuseBuyerRequest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RefuseBuyerRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof refuseBuyerRequest>>
+>;
+
+export type RefuseBuyerRequestMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-61
+ */
+export const useRefuseBuyerRequest = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof refuseBuyerRequest>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof refuseBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getRefuseBuyerRequestMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-11
+ */
+export const getGetCartUrl = () => {
+  return `/api/v1/cart`;
+};
+
+export const getCart = async (options?: RequestInit): Promise<CartView> => {
+  return apiFetch<CartView>(getGetCartUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetCartQueryKey = () => {
+  return [`/api/v1/cart`] as const;
+};
+
+export const getGetCartQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCart>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCart>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCartQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCart>>> = ({ signal }) =>
+    getCart({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCart>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetCartQueryResult = NonNullable<Awaited<ReturnType<typeof getCart>>>;
+export type GetCartQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetCart<
+  TData = Awaited<ReturnType<typeof getCart>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCart>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCart>>,
+          TError,
+          Awaited<ReturnType<typeof getCart>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetCart<
+  TData = Awaited<ReturnType<typeof getCart>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCart>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCart>>,
+          TError,
+          Awaited<ReturnType<typeof getCart>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetCart<
+  TData = Awaited<ReturnType<typeof getCart>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCart>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary CPT-11
+ */
+
+export function useGetCart<
+  TData = Awaited<ReturnType<typeof getCart>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getCart>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetCartQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
 /**
  * @summary CPT-59
  */
@@ -425,6 +802,89 @@ export const usePutItemAccountingOptions = <
   return useMutation(mutationOptions, queryClient);
 };
 /**
+ * @summary CPT-61
+ */
+export const getPostItemBuyerRequestUrl = (id: string) => {
+  return `/api/v1/items/${id}/buyer-requests`;
+};
+
+export const postItemBuyerRequest = async (
+  id: string,
+  options?: RequestInit,
+): Promise<PostItemBuyerRequest200> => {
+  return apiFetch<PostItemBuyerRequest200>(getPostItemBuyerRequestUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getPostItemBuyerRequestMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postItemBuyerRequest>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postItemBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['postItemBuyerRequest'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postItemBuyerRequest>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return postItemBuyerRequest(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostItemBuyerRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postItemBuyerRequest>>
+>;
+
+export type PostItemBuyerRequestMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-61
+ */
+export const usePostItemBuyerRequest = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postItemBuyerRequest>>,
+      TError,
+      { id: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof postItemBuyerRequest>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationOptions = getPostItemBuyerRequestMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary CPT-01 à CPT-07, CPT-53 à CPT-57, CPT-60
  */
 export const getPutItemContributionUrl = (id: string) => {
@@ -593,6 +1053,586 @@ export const useDeleteItemContribution = <
   TContext
 > => {
   const mutationOptions = getDeleteItemContributionMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-18
+ */
+export const getLowerItemContributionUrl = (id: string) => {
+  return `/api/v1/items/${id}/contribution/lower`;
+};
+
+export const lowerItemContribution = async (
+  id: string,
+  lowerContributionDto: LowerContributionDto,
+  options?: RequestInit,
+): Promise<LowerItemContribution200> => {
+  return apiFetch<LowerItemContribution200>(getLowerItemContributionUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(lowerContributionDto),
+  });
+};
+
+export const getLowerItemContributionMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof lowerItemContribution>>,
+    TError,
+    { id: string; data: LowerContributionDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof lowerItemContribution>>,
+  TError,
+  { id: string; data: LowerContributionDto },
+  TContext
+> => {
+  const mutationKey = ['lowerItemContribution'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof lowerItemContribution>>,
+    { id: string; data: LowerContributionDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return lowerItemContribution(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LowerItemContributionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof lowerItemContribution>>
+>;
+export type LowerItemContributionMutationBody = LowerContributionDto;
+export type LowerItemContributionMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-18
+ */
+export const useLowerItemContribution = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof lowerItemContribution>>,
+      TError,
+      { id: string; data: LowerContributionDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof lowerItemContribution>>,
+  TError,
+  { id: string; data: LowerContributionDto },
+  TContext
+> => {
+  const mutationOptions = getLowerItemContributionMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-12, CPT-13, CPT-16, CPT-17, CPT-55
+ */
+export const getPutItemPurchaseUrl = (id: string) => {
+  return `/api/v1/items/${id}/purchase`;
+};
+
+export const putItemPurchase = async (
+  id: string,
+  markPurchasedDto: MarkPurchasedDto,
+  options?: RequestInit,
+): Promise<PutItemPurchase200> => {
+  return apiFetch<PutItemPurchase200>(getPutItemPurchaseUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(markPurchasedDto),
+  });
+};
+
+export const getPutItemPurchaseMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putItemPurchase>>,
+    TError,
+    { id: string; data: MarkPurchasedDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putItemPurchase>>,
+  TError,
+  { id: string; data: MarkPurchasedDto },
+  TContext
+> => {
+  const mutationKey = ['putItemPurchase'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putItemPurchase>>,
+    { id: string; data: MarkPurchasedDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return putItemPurchase(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutItemPurchaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putItemPurchase>>
+>;
+export type PutItemPurchaseMutationBody = MarkPurchasedDto;
+export type PutItemPurchaseMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-12, CPT-13, CPT-16, CPT-17, CPT-55
+ */
+export const usePutItemPurchase = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof putItemPurchase>>,
+      TError,
+      { id: string; data: MarkPurchasedDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof putItemPurchase>>,
+  TError,
+  { id: string; data: MarkPurchasedDto },
+  TContext
+> => {
+  const mutationOptions = getPutItemPurchaseMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-14, CPT-63
+ */
+export const getDeleteItemPurchaseUrl = (id: string, params?: DeleteItemPurchaseParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/items/${id}/purchase?${stringifiedParams}`
+    : `/api/v1/items/${id}/purchase`;
+};
+
+export const deleteItemPurchase = async (
+  id: string,
+  params?: DeleteItemPurchaseParams,
+  options?: RequestInit,
+): Promise<DeleteItemPurchase200> => {
+  return apiFetch<DeleteItemPurchase200>(getDeleteItemPurchaseUrl(id, params), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteItemPurchaseMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteItemPurchase>>,
+    TError,
+    { id: string; params?: DeleteItemPurchaseParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteItemPurchase>>,
+  TError,
+  { id: string; params?: DeleteItemPurchaseParams },
+  TContext
+> => {
+  const mutationKey = ['deleteItemPurchase'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteItemPurchase>>,
+    { id: string; params?: DeleteItemPurchaseParams }
+  > = (props) => {
+    const { id, params } = props ?? {};
+
+    return deleteItemPurchase(id, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteItemPurchaseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteItemPurchase>>
+>;
+
+export type DeleteItemPurchaseMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-14, CPT-63
+ */
+export const useDeleteItemPurchase = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteItemPurchase>>,
+      TError,
+      { id: string; params?: DeleteItemPurchaseParams },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteItemPurchase>>,
+  TError,
+  { id: string; params?: DeleteItemPurchaseParams },
+  TContext
+> => {
+  const mutationOptions = getDeleteItemPurchaseMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-15, CPT-62 : photo ré-encodée sans métadonnées, par l'acheteur.
+ */
+export const getPutItemPurchaseReceiptUrl = (id: string) => {
+  return `/api/v1/items/${id}/purchase/receipt`;
+};
+
+export const putItemPurchaseReceipt = async (
+  id: string,
+  putItemPurchaseReceiptBody: PutItemPurchaseReceiptBody,
+  options?: RequestInit,
+): Promise<PutItemPurchaseReceipt200> => {
+  const formData = new FormData();
+  formData.append(`photo`, putItemPurchaseReceiptBody.photo);
+
+  return apiFetch<PutItemPurchaseReceipt200>(getPutItemPurchaseReceiptUrl(id), {
+    ...options,
+    method: 'PUT',
+    body: formData,
+  });
+};
+
+export const getPutItemPurchaseReceiptMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putItemPurchaseReceipt>>,
+    TError,
+    { id: string; data: PutItemPurchaseReceiptBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putItemPurchaseReceipt>>,
+  TError,
+  { id: string; data: PutItemPurchaseReceiptBody },
+  TContext
+> => {
+  const mutationKey = ['putItemPurchaseReceipt'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putItemPurchaseReceipt>>,
+    { id: string; data: PutItemPurchaseReceiptBody }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return putItemPurchaseReceipt(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutItemPurchaseReceiptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putItemPurchaseReceipt>>
+>;
+export type PutItemPurchaseReceiptMutationBody = PutItemPurchaseReceiptBody;
+export type PutItemPurchaseReceiptMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-15, CPT-62 : photo ré-encodée sans métadonnées, par l'acheteur.
+ */
+export const usePutItemPurchaseReceipt = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof putItemPurchaseReceipt>>,
+      TError,
+      { id: string; data: PutItemPurchaseReceiptBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof putItemPurchaseReceipt>>,
+  TError,
+  { id: string; data: PutItemPurchaseReceiptBody },
+  TContext
+> => {
+  const mutationOptions = getPutItemPurchaseReceiptMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
+ * @summary CPT-59, CPT-62 : servi aux seuls participants.
+ */
+export const getGetItemPurchaseReceiptUrl = (id: string) => {
+  return `/api/v1/items/${id}/purchase/receipt`;
+};
+
+export const getItemPurchaseReceipt = async (id: string, options?: RequestInit): Promise<Blob> => {
+  return apiFetch<Blob>(getGetItemPurchaseReceiptUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetItemPurchaseReceiptQueryKey = (id?: string) => {
+  return [`/api/v1/items/${id}/purchase/receipt`] as const;
+};
+
+export const getGetItemPurchaseReceiptQueryOptions = <
+  TData = Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getItemPurchaseReceipt>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetItemPurchaseReceiptQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getItemPurchaseReceipt>>> = ({ signal }) =>
+    getItemPurchaseReceipt(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetItemPurchaseReceiptQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getItemPurchaseReceipt>>
+>;
+export type GetItemPurchaseReceiptQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetItemPurchaseReceipt<
+  TData = Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getItemPurchaseReceipt>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+          TError,
+          Awaited<ReturnType<typeof getItemPurchaseReceipt>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetItemPurchaseReceipt<
+  TData = Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getItemPurchaseReceipt>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+          TError,
+          Awaited<ReturnType<typeof getItemPurchaseReceipt>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetItemPurchaseReceipt<
+  TData = Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getItemPurchaseReceipt>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary CPT-59, CPT-62 : servi aux seuls participants.
+ */
+
+export function useGetItemPurchaseReceipt<
+  TData = Awaited<ReturnType<typeof getItemPurchaseReceipt>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getItemPurchaseReceipt>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetItemPurchaseReceiptQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary CPT-19
+ */
+export const getPostItemShortfallNoticeUrl = (id: string) => {
+  return `/api/v1/items/${id}/shortfall-notice`;
+};
+
+export const postItemShortfallNotice = async (
+  id: string,
+  shortfallNoticeDto: ShortfallNoticeDto,
+  options?: RequestInit,
+): Promise<PostItemShortfallNotice200> => {
+  return apiFetch<PostItemShortfallNotice200>(getPostItemShortfallNoticeUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shortfallNoticeDto),
+  });
+};
+
+export const getPostItemShortfallNoticeMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postItemShortfallNotice>>,
+    TError,
+    { id: string; data: ShortfallNoticeDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postItemShortfallNotice>>,
+  TError,
+  { id: string; data: ShortfallNoticeDto },
+  TContext
+> => {
+  const mutationKey = ['postItemShortfallNotice'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postItemShortfallNotice>>,
+    { id: string; data: ShortfallNoticeDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postItemShortfallNotice(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostItemShortfallNoticeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postItemShortfallNotice>>
+>;
+export type PostItemShortfallNoticeMutationBody = ShortfallNoticeDto;
+export type PostItemShortfallNoticeMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary CPT-19
+ */
+export const usePostItemShortfallNotice = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postItemShortfallNotice>>,
+      TError,
+      { id: string; data: ShortfallNoticeDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof postItemShortfallNotice>>,
+  TError,
+  { id: string; data: ShortfallNoticeDto },
+  TContext
+> => {
+  const mutationOptions = getPostItemShortfallNoticeMutationOptions(options);
 
   return useMutation(mutationOptions, queryClient);
 };

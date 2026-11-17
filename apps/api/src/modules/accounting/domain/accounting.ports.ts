@@ -14,10 +14,19 @@ export interface StoredResponse {
 }
 
 /** Ce que l'opération décide sous verrou : l'état suivant, la différence et la réponse. */
+/** CPT-19 : personnes prévenues d'un reste à couvrir, lues par leur seul auteur. */
+export interface ShortfallNoticeDraft {
+  readonly id: string;
+  readonly authorId: string;
+  readonly amount: number;
+  readonly notifiedIds: readonly string[];
+}
+
 export interface AccountingWork {
   readonly next: AccountingState;
   readonly diff: AccountingDiff;
   readonly response: StoredResponse;
+  readonly notice?: ShortfallNoticeDraft;
 }
 
 export type AccountingKey = { readonly itemId: string } | { readonly accountingId: string };
@@ -48,6 +57,10 @@ export abstract class AccountingRepository {
   abstract findById(accountingId: string): Promise<AccountingState | null>;
   /** CPT-58 : fiche d'une demande de revue en attente. */
   abstract findByPendingReview(reviewId: string): Promise<AccountingState | null>;
+  /** CPT-61 : fiche d'une demande de changement d'acheteur en attente. */
+  abstract findByPendingBuyerRequest(requestId: string): Promise<AccountingState | null>;
+  /** CPT-11 : fiches dont le profil est acheteur, plus récentes d'abord. */
+  abstract findByBuyer(profileId: string): Promise<AccountingState[]>;
 }
 
 export interface PersonCard {

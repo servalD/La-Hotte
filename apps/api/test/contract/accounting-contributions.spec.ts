@@ -385,66 +385,98 @@ describe('IDOR de la compta (SEC-03, VIS-34)', () => {
       .set({ ...papa.mutation, 'Idempotency-Key': key() })
       .send({ reviewEnabled: true, receiptEnabled: true })
       .expect(200);
-    const reviewId = ((await readAccounting(tonton, itemId)).body.reviews as Body[])[0]!
-      .id as string;
+    await http()
+      .post(`/api/v1/items/${itemId}/buyer-requests`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': key() })
+      .expect(200);
+    const state = await accounting.repository.findByItem(itemId);
+    const reviewId = state!.reviews[0]!.id;
+    const requestId = state!.buyerRequest!.id;
     const outsider = await person();
+    type Row = {
+      route: string;
+      method: 'get' | 'put' | 'delete' | 'post';
+      path: (id: string) => string;
+      body?: Body;
+      photo?: boolean;
+      idOf: 'item' | 'review' | 'request';
+    };
+    const item = (
+      route: string,
+      method: Row['method'],
+      suffix: string,
+      extra: Partial<Row> = {},
+    ): Row => ({
+      route,
+      method,
+      path: (id) => `/api/v1/items/${id}${suffix}`,
+      idOf: 'item',
+      ...extra,
+    });
+    const table: Row[] = [
+      item('GET /api/v1/items/:id/accounting', 'get', '/accounting'),
+      item('PUT /api/v1/items/:id/contribution', 'put', '/contribution', {
+        body: { mode: 'FULL' },
+      }),
+      item('DELETE /api/v1/items/:id/contribution', 'delete', '/contribution'),
+      item('PUT /api/v1/items/:id/accounting/options', 'put', '/accounting/options', {
+        body: { reviewEnabled: false, receiptEnabled: false },
+      }),
+      item('PUT /api/v1/items/:id/purchase', 'put', '/purchase', { body: {} }),
+      item('DELETE /api/v1/items/:id/purchase', 'delete', '/purchase'),
+      item('POST /api/v1/items/:id/contribution/lower', 'post', '/contribution/lower', {
+        body: { amountMinor: 1 },
+      }),
+      item('POST /api/v1/items/:id/shortfall-notice', 'post', '/shortfall-notice', {
+        body: { profileIds: [] },
+      }),
+      item('POST /api/v1/items/:id/buyer-requests', 'post', '/buyer-requests'),
+      item('PUT /api/v1/items/:id/purchase/receipt', 'put', '/purchase/receipt', { photo: true }),
+      item('GET /api/v1/items/:id/purchase/receipt', 'get', '/purchase/receipt'),
+      {
+        route: 'POST /api/v1/accounting-reviews/:id/approve',
+        method: 'post',
+        path: (id) => `/api/v1/accounting-reviews/${id}/approve`,
+        idOf: 'review',
+      },
+      {
+        route: 'POST /api/v1/accounting-reviews/:id/refuse',
+        method: 'post',
+        path: (id) => `/api/v1/accounting-reviews/${id}/refuse`,
+        idOf: 'review',
+      },
+      {
+        route: 'POST /api/v1/buyer-requests/:id/accept',
+        method: 'post',
+        path: (id) => `/api/v1/buyer-requests/${id}/accept`,
+        idOf: 'request',
+      },
+      {
+        route: 'POST /api/v1/buyer-requests/:id/refuse',
+        method: 'post',
+        path: (id) => `/api/v1/buyer-requests/${id}/refuse`,
+        idOf: 'request',
+      },
+      {
+        route: 'DELETE /api/v1/buyer-requests/:id',
+        method: 'delete',
+        path: (id) => `/api/v1/buyer-requests/${id}`,
+        idOf: 'request',
+      },
+    ];
     // La destinataire elle-même ne doit rien obtenir non plus (VIS-20).
     for (const intruder of [outsider, marie]) {
-      const table: {
-        route: string;
-        method: 'get' | 'put' | 'delete' | 'post';
-        path: (id: string) => string;
-        body?: Body;
-        idOf: 'item' | 'review';
-      }[] = [
-        {
-          route: 'GET /api/v1/items/:id/accounting',
-          method: 'get',
-          path: (id) => `/api/v1/items/${id}/accounting`,
-          idOf: 'item',
-        },
-        {
-          route: 'PUT /api/v1/items/:id/contribution',
-          method: 'put',
-          path: (id) => `/api/v1/items/${id}/contribution`,
-          body: { mode: 'FULL' },
-          idOf: 'item',
-        },
-        {
-          route: 'DELETE /api/v1/items/:id/contribution',
-          method: 'delete',
-          path: (id) => `/api/v1/items/${id}/contribution`,
-          idOf: 'item',
-        },
-        {
-          route: 'PUT /api/v1/items/:id/accounting/options',
-          method: 'put',
-          path: (id) => `/api/v1/items/${id}/accounting/options`,
-          body: { reviewEnabled: false, receiptEnabled: false },
-          idOf: 'item',
-        },
-        {
-          route: 'POST /api/v1/accounting-reviews/:id/approve',
-          method: 'post',
-          path: (id) => `/api/v1/accounting-reviews/${id}/approve`,
-          idOf: 'review',
-        },
-        {
-          route: 'POST /api/v1/accounting-reviews/:id/refuse',
-          method: 'post',
-          path: (id) => `/api/v1/accounting-reviews/${id}/refuse`,
-          idOf: 'review',
-        },
-      ];
       const before = JSON.stringify([...accounting.repository.states.values()]);
       for (const row of table) {
         const call = (id: string) => {
           const req = http()
             [row.method](row.path(id))
             .set({ ...intruder.mutation, 'Idempotency-Key': key() });
+          if (row.photo) return req.attach('photo', Buffer.from('\xff\xd8\xff x'), 'x.jpg');
           return row.body ? req.send(row.body) : req;
         };
-        const theirs = await call(row.idOf === 'item' ? itemId : reviewId);
+        const target = row.idOf === 'item' ? itemId : row.idOf === 'review' ? reviewId : requestId;
+        const theirs = await call(target);
         const unknown = await call(randomUUID());
         expect({ route: row.route, status: theirs.status, code: theirs.body.code }).toEqual({
           route: row.route,

@@ -92,6 +92,14 @@ export class InMemoryAccountingRepository extends AccountingRepository {
         at,
       });
     }
+    if (work.notice) {
+      this.notices.push({
+        accountingId: next.id,
+        authorId: work.notice.authorId,
+        amount: work.notice.amount,
+        notifiedIds: work.notice.notifiedIds,
+      });
+    }
     if (next.itemId) this.setItemStatus(next.itemId, itemStatusOf(next));
     if (idemKey && idem) {
       this.idempotency.set(idemKey, { hash: idem.requestHash, response: work.response });
@@ -111,6 +119,26 @@ export class InMemoryAccountingRepository extends AccountingRepository {
 
   findById(accountingId: string): Promise<AccountingState | null> {
     return Promise.resolve(this.lookup({ accountingId }));
+  }
+
+  readonly notices: {
+    accountingId: string;
+    authorId: string;
+    amount: number;
+    notifiedIds: readonly string[];
+  }[] = [];
+
+  findByPendingBuyerRequest(requestId: string): Promise<AccountingState | null> {
+    for (const state of this.states.values()) {
+      if (state.buyerRequest?.id === requestId) return Promise.resolve(state);
+    }
+    return Promise.resolve(null);
+  }
+
+  findByBuyer(profileId: string): Promise<AccountingState[]> {
+    return Promise.resolve(
+      [...this.states.values()].filter((state) => state.buyerId === profileId),
+    );
   }
 
   findByPendingReview(reviewId: string): Promise<AccountingState | null> {

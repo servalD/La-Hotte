@@ -30,6 +30,7 @@ const STATE_INCLUDE = {
   contributions: true,
   purchase: true,
   reviews: { where: { status: 'PENDING' }, orderBy: { createdAt: 'asc' } },
+  buyerRequests: { where: { status: 'PENDING' }, take: 1 },
 } satisfies Prisma.ItemAccountingInclude;
 
 type StateRow = Prisma.ItemAccountingGetPayload<{ include: typeof STATE_INCLUDE }>;
@@ -110,6 +111,16 @@ function toState(row: StateRow, refusedCost: number | null): AccountingState {
     purchase: row.purchase ? toPurchase(row.purchase) : null,
     reviews: row.reviews.map(toReview),
     refusedCost,
+    buyerRequest: row.buyerRequests[0]
+      ? {
+          id: row.buyerRequests[0].id,
+          candidateId: row.buyerRequests[0].candidateProfileId,
+          status: row.buyerRequests[0].status,
+          decidedBy: row.buyerRequests[0].decidedBy,
+          decidedAt: row.buyerRequests[0].decidedAt,
+          createdAt: row.buyerRequests[0].createdAt,
+        }
+      : null,
   };
 }
 
@@ -153,6 +164,25 @@ export class PrismaAccountingRepository extends AccountingRepository {
       select: { accountingId: true },
     });
     return review ? load(this.prisma, { id: review.accountingId }) : null;
+  }
+
+  async findByPendingBuyerRequest(requestId: string): Promise<AccountingState | null> {
+    const request = await this.prisma.buyerRequest.findFirst({
+      where: { id: requestId, status: 'PENDING' },
+      select: { accountingId: true },
+    });
+    return request ? load(this.prisma, { id: request.accountingId }) : null;
+  }
+
+  async findByBuyer(profileId: string): Promise<AccountingState[]> {
+    const rows = await this.prisma.itemAccounting.findMany({
+      where: { buyerProfileId: profileId },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+    const states = await Promise.all(rows.map((row) => load(this.prisma, { id: row.id })));
+    return states.filter((state): state is AccountingState => state !== null);
   }
 
   mutate(input: {
@@ -308,6 +338,30 @@ export class PrismaAccountingRepository extends AccountingRepository {
         where: { id: review.id },
         create: { id: review.id, accountingId: next.id, createdAt: review.createdAt, ...data },
         update: data,
+      });
+    }
+    for (const request of diff.buyerRequests.upsert) {
+      const data = {
+        candidateProfileId: request.candidateId,
+        status: request.status,
+        decidedBy: request.decidedBy,
+        decidedAt: request.decidedAt,
+      };
+      await tx.buyerRequest.upsert({
+        where: { id: request.id },
+        create: { id: request.id, accountingId: next.id, createdAt: request.createdAt, ...data },
+        update: data,
+      });
+    }
+    if (work.notice) {
+      await tx.shortfallNotice.create({
+        data: {
+          id: work.notice.id,
+          accountingId: next.id,
+          authorProfileId: work.notice.authorId,
+          amountMinor: BigInt(work.notice.amount),
+          notifiedProfileIds: [...work.notice.notifiedIds],
+        },
       });
     }
     if (diff.ledger.length > 0) {

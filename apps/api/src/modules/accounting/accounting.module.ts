@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { CatalogModule } from '../catalog';
 import { ConversationsModule } from '../conversations';
+import { EventsModule } from '../events';
 import { ListsModule } from '../lists';
 import { VisibilityModule } from '../visibility';
 import { AccountingGate } from './application/accounting-gate';
@@ -18,11 +20,22 @@ import {
 } from './infrastructure/prisma-accounting';
 import { AccountingController } from './presentation/accounting.controller';
 import { ItemCostSubscriber } from './presentation/item-cost.subscriber';
+import { PurchaseController } from './presentation/purchase.controller';
+import {
+  DecideBuyerRequest,
+  GetCart,
+  LowerContribution,
+  MarkPurchased,
+  NotifyShortfall,
+  PurchaseReceipts,
+  RequestBuyer,
+  UncheckPurchase,
+} from './application/manage-purchase.use-case';
 
 /** Module `accounting` : participations, acheteur, achat, règlements, soldes (07, ADR 0019). */
 @Module({
-  imports: [ListsModule, VisibilityModule, ConversationsModule],
-  controllers: [AccountingController],
+  imports: [ListsModule, VisibilityModule, ConversationsModule, EventsModule, CatalogModule],
+  controllers: [AccountingController, PurchaseController],
   providers: [
     AccountingGate,
     AccountingViews,
@@ -32,6 +45,14 @@ import { ItemCostSubscriber } from './presentation/item-cost.subscriber';
     DecideAccountingReview,
     ReconcileItemCost,
     ItemCostSubscriber,
+    MarkPurchased,
+    UncheckPurchase,
+    LowerContribution,
+    RequestBuyer,
+    DecideBuyerRequest,
+    NotifyShortfall,
+    PurchaseReceipts,
+    GetCart,
     { provide: AccountingRepository, useClass: PrismaAccountingRepository },
     { provide: AccountingPeople, useClass: PrismaAccountingPeople },
   ],

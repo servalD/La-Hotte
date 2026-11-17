@@ -97,6 +97,8 @@ export interface AccountingChanged {
     | 'shortfall'
     | 'settlement';
   readonly actorId: string | null;
+  /** CPT-19 : personnes choisies par l'auteur ; aucune autre ne reçoit l'avis du reste. */
+  readonly profileIds?: readonly string[];
 }
 
 export type AppEvent =

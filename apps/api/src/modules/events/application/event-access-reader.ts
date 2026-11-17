@@ -22,6 +22,26 @@ export class EventAccessReader {
     return seen;
   }
 
+  /**
+   * Faits d'un événement pour la compta (CPT-61, CPT-64, CPT-66, ADR 0019) : organisateurs, date
+   * et clôture. Aucune décision ici ; `null` si l'événement a disparu.
+   */
+  async accountingFacts(eventId: string): Promise<{
+    readonly organizers: readonly string[];
+    readonly date: string;
+    readonly timezone: string;
+    readonly closed: boolean;
+  } | null> {
+    const event = await this.events.find(eventId);
+    if (!event) return null;
+    return {
+      organizers: event.participants.filter((p) => p.role === 'ORGANIZER').map((p) => p.profileId),
+      date: event.date,
+      timezone: event.timezone,
+      closed: event.status !== 'UPCOMING',
+    };
+  }
+
   /** NOT-11 : titre d'un événement vu par ce profil, ou `null`. */
   async title(viewerId: string, eventId: string): Promise<string | null> {
     const event = await this.events.find(eventId);

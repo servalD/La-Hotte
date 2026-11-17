@@ -1856,6 +1856,233 @@
         ]
       }
     },
+    "/api/v1/buyer-requests/{id}": {
+      "delete": {
+        "operationId": "cancelBuyerRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-61 : le candidat retire sa demande.",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/buyer-requests/{id}/accept": {
+      "post": {
+        "operationId": "acceptBuyerRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-61",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/buyer-requests/{id}/refuse": {
+      "post": {
+        "operationId": "refuseBuyerRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-61",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/cart": {
+      "get": {
+        "operationId": "getCart",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-11",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/circle": {
       "get": {
         "operationId": "getCircle",
@@ -3794,6 +4021,71 @@
         ]
       }
     },
+    "/api/v1/items/{id}/buyer-requests": {
+      "post": {
+        "operationId": "postItemBuyerRequest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-61",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/items/{id}/comments": {
       "get": {
         "operationId": "listItemComments",
@@ -4052,6 +4344,81 @@
         ]
       }
     },
+    "/api/v1/items/{id}/contribution/lower": {
+      "post": {
+        "operationId": "lowerItemContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LowerContributionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-18",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/items/{id}/copy": {
       "post": {
         "operationId": "copyItemProduct",
@@ -4161,6 +4528,289 @@
         ]
       }
     },
+    "/api/v1/items/{id}/purchase": {
+      "put": {
+        "operationId": "putItemPurchase",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkPurchasedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-12, CPT-13, CPT-16, CPT-17, CPT-55",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteItemPurchase",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "confirm",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-14, CPT-63",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/items/{id}/purchase/receipt": {
+      "put": {
+        "operationId": "putItemPurchaseReceipt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "photo"
+                ],
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-15, CPT-62 : photo ré-encodée sans métadonnées, par l'acheteur.",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "get": {
+        "operationId": "getItemPurchaseReceipt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-59, CPT-62 : servi aux seuls participants.",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/items/{id}/received": {
       "post": {
         "operationId": "markItemReceived",
@@ -4239,6 +4889,81 @@
         },
         "tags": [
           "items"
+        ]
+      }
+    },
+    "/api/v1/items/{id}/shortfall-notice": {
+      "post": {
+        "operationId": "postItemShortfallNotice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortfallNoticeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-19",
+        "tags": [
+          "accounting"
         ]
       }
     },
@@ -7252,6 +7977,128 @@
           "itemIds"
         ]
       },
+      "CartEventView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
+      "CartGroupView": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CartEventView"
+              }
+            ]
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountingPersonView"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartLineView"
+            }
+          }
+        },
+        "required": [
+          "event",
+          "recipients",
+          "items"
+        ]
+      },
+      "CartLineView": {
+        "type": "object",
+        "properties": {
+          "accountingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "totalMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "coveredMinor": {
+            "type": "number"
+          },
+          "remainingMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "myShareMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "purchased": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accountingId",
+          "itemId",
+          "title",
+          "sourceUrl",
+          "quantity",
+          "currency",
+          "totalMinor",
+          "coveredMinor",
+          "remainingMinor",
+          "myShareMinor",
+          "purchased"
+        ]
+      },
+      "CartView": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartGroupView"
+            }
+          }
+        },
+        "required": [
+          "groups"
+        ]
+      },
       "ChannelPreferenceDto": {
         "type": "object",
         "properties": {
@@ -10074,6 +10921,30 @@
           "password"
         ]
       },
+      "LowerContributionDto": {
+        "type": "object",
+        "properties": {
+          "amountMinor": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000000000000
+          }
+        },
+        "required": [
+          "amountMinor"
+        ]
+      },
+      "MarkPurchasedDto": {
+        "type": "object",
+        "properties": {
+          "actualTotalMinor": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1000000000000
+          }
+        }
+      },
       "MarkReadDto": {
         "type": "object",
         "properties": {
@@ -11542,6 +12413,22 @@
         },
         "required": [
           "level"
+        ]
+      },
+      "ShortfallNoticeDto": {
+        "type": "object",
+        "properties": {
+          "profileIds": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "profileIds"
         ]
       },
       "SyncView": {

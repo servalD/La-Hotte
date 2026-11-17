@@ -8,8 +8,10 @@ import {
   diffAccounting,
   openAccounting,
   participantsOf,
+  type BuyerRequestRow,
   type ReviewRow,
 } from '../domain/accounting-state';
+import type { LedgerKind } from '../domain/ledger';
 import {
   AccountingActionForbiddenError,
   AccountingClosedError,
@@ -20,6 +22,7 @@ import {
   AccountingRepository,
   type IdempotencyInput,
   type MutateResult,
+  type ShortfallNoticeDraft,
 } from '../domain/accounting.ports';
 import {
   type AccountingOptions,
@@ -61,9 +64,18 @@ export class AccountingViews {
   }
 }
 
+/** Ce qu'une opération sous verrou rend au socle commun. */
+export interface OperateResult {
+  readonly next: AccountingState;
+  readonly closedReviews?: readonly ReviewRow[];
+  readonly closedBuyerRequest?: BuyerRequestRow | null;
+  readonly contributionKind: LedgerKind;
+  readonly notice?: ShortfallNoticeDraft;
+}
+
 /** Socle commun des mutations sur la compta d'un élément vu (ADR 0019). */
 @Injectable()
-abstract class ItemAccountingMutation {
+export abstract class ItemAccountingMutation {
   constructor(
     protected readonly gate: AccountingGate,
     protected readonly repository: AccountingRepository,
@@ -83,14 +95,9 @@ abstract class ItemAccountingMutation {
     readonly idempotency: IdempotencyInput;
     readonly gated: GatedAccounting;
     readonly change: AccountingChanged['change'];
-    readonly operate: (
-      state: AccountingState | null,
-      ctx: OperationContext,
-    ) => {
-      readonly next: AccountingState;
-      readonly closedReviews: readonly ReviewRow[];
-      readonly contributionKind: 'CONTRIBUTION_SET' | 'CONTRIBUTION_REMOVED';
-    };
+    readonly operate: (state: AccountingState | null, ctx: OperationContext) => OperateResult;
+    /** CPT-19 : profils choisis, portés par l'avis (lus après l'opération). */
+    readonly profileIds?: () => readonly string[];
   }): Promise<AccountingResponse> {
     const { gated, viewerId, itemId } = input;
     if (!gated.item) throw new AccountingNotFoundError();
@@ -103,7 +110,10 @@ abstract class ItemAccountingMutation {
       operationId: this.ids.next(),
       idempotency: input.idempotency,
       work: (state) => {
-        const { next, closedReviews, contributionKind } = input.operate(state, ctx);
+        const { next, closedReviews, contributionKind, closedBuyerRequest, notice } = input.operate(
+          state,
+          ctx,
+        );
         const diff = diffAccounting(
           state,
           next,
@@ -113,8 +123,22 @@ abstract class ItemAccountingMutation {
               row.profileId === viewerId ? contributionKind : 'CONTRIBUTION_ADJUSTED',
             review: 'REVIEW_DECIDED',
           },
-          closedReviews,
+          closedReviews ?? [],
+          closedBuyerRequest ?? null,
         );
+        // CPT-19, CPT-70 : l'avis d'un reste est une écriture du journal comme une autre.
+        if (notice) {
+          diff.ledger.push({
+            kind: 'SHORTFALL_NOTICE',
+            targetId: notice.id,
+            before: null,
+            after: {
+              amount: notice.amount,
+              authorId: notice.authorId,
+              notifiedIds: [...notice.notifiedIds],
+            },
+          });
+        }
         const level = accountingLevel(
           item.subject,
           { participants: participantsOf(next), buyerId: next.buyerId },
@@ -128,7 +152,7 @@ abstract class ItemAccountingMutation {
           cards,
           canContribute: gated.canContribute,
         });
-        return { next, diff, response: { status: 200, body } };
+        return { next, diff, response: { status: 200, body }, ...(notice ? { notice } : {}) };
       },
     });
     if (!result.replayed) {
@@ -138,6 +162,7 @@ abstract class ItemAccountingMutation {
         itemId,
         change: input.change,
         actorId: viewerId,
+        ...(input.profileIds ? { profileIds: input.profileIds() } : {}),
       });
     }
     return result.response.body as AccountingResponse;
@@ -221,11 +246,20 @@ export class RemoveContribution extends ItemAccountingMutation {
       ...input,
       gated,
       change: 'contribution',
-      operate: (state) => {
+      operate: (state, ctx) => {
         if (!state) throw new AccountingNotFoundError();
-        const next = removeContribution(state, input.viewerId);
-        if (!next) throw new AccountingNotFoundError();
-        return { next, closedReviews: [], contributionKind: 'CONTRIBUTION_REMOVED' };
+        const removed = removeContribution(state, input.viewerId);
+        if (!removed) throw new AccountingNotFoundError();
+        // CPT-61 : la demande d'un candidat qui se retire est annulée.
+        const request = removed.buyerRequest;
+        const cancels = request !== null && request.candidateId === input.viewerId;
+        return {
+          next: cancels ? { ...removed, buyerRequest: null } : removed,
+          closedBuyerRequest: cancels
+            ? { ...request, status: 'CANCELLED', decidedBy: input.viewerId, decidedAt: ctx.now }
+            : null,
+          contributionKind: 'CONTRIBUTION_REMOVED',
+        };
       },
     });
   }

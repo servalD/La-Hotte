@@ -50,7 +50,7 @@ const person = (card: Card) =>
     : null;
 
 /** Vue champ par champ (CPT-59) : jamais `...model`. */
-function toView(model: AccountingViewModel): ItemAccountingViewDto {
+export function toView(model: AccountingViewModel): ItemAccountingViewDto {
   const common = {
     accountingId: model.accountingId,
     itemId: model.itemId,

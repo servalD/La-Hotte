@@ -57,6 +57,18 @@ export interface ReviewRow {
   readonly createdAt: Date;
 }
 
+/** CPT-61 : demande de changement d'acheteur. */
+export type BuyerRequestStatus = 'PENDING' | 'ACCEPTED' | 'REFUSED' | 'CANCELLED';
+
+export interface BuyerRequestRow {
+  readonly id: string;
+  readonly candidateId: string;
+  readonly status: BuyerRequestStatus;
+  readonly decidedBy: string | null;
+  readonly decidedAt: Date | null;
+  readonly createdAt: Date;
+}
+
 export interface AccountingState {
   readonly id: string;
   readonly itemId: string | null;
@@ -76,6 +88,8 @@ export interface AccountingState {
   readonly reviews: readonly ReviewRow[];
   /** CPT-58 : dernier coût refusé en revue ; il n'ouvre pas de nouvelle demande. Lu, jamais écrit. */
   readonly refusedCost: number | null;
+  /** CPT-61 : demande de changement d'acheteur en attente. */
+  readonly buyerRequest: BuyerRequestRow | null;
 }
 
 /** Ouverture d'une fiche à la première participation (CPT-57 : coût prévu relevé). */
@@ -102,6 +116,7 @@ export function openAccounting(input: {
     purchase: null,
     reviews: [],
     refusedCost: null,
+    buyerRequest: null,
   };
 }
 
@@ -170,6 +185,7 @@ function header(state: AccountingState): Row {
     reviews: _r,
     version: _v,
     refusedCost: _f,
+    buyerRequest: _b,
     ...rest
   } = state;
   return rest;
@@ -187,6 +203,7 @@ export interface AccountingDiff {
   readonly contributions: { readonly upsert: ContributionRow[]; readonly remove: string[] };
   readonly purchase: { readonly upsert: PurchaseRow | null; readonly remove: string | null };
   readonly reviews: { readonly upsert: ReviewRow[] };
+  readonly buyerRequests: { readonly upsert: BuyerRequestRow[] };
   readonly ledger: LedgerDraft[];
 }
 
@@ -208,6 +225,7 @@ export function diffAccounting(
     readonly review?: LedgerKind;
   },
   closedReviews: readonly ReviewRow[] = [],
+  closedBuyerRequest: BuyerRequestRow | null = null,
 ): AccountingDiff {
   const ledger: LedgerDraft[] = [];
   const headerBefore = prev ? snapshot(header(prev)) : null;
@@ -267,11 +285,30 @@ export function diffAccounting(
       ledger.push({ kind: kinds.review ?? 'REVIEW_OPENED', targetId: row.id, before: a, after: b });
     }
   }
+  const requestUpsert: BuyerRequestRow[] = [];
+  const requests = [next.buyerRequest, closedBuyerRequest].filter(
+    (row): row is BuyerRequestRow => row !== null,
+  );
+  for (const row of requests) {
+    const before = prev?.buyerRequest?.id === row.id ? prev.buyerRequest : null;
+    const a = before ? snapshot(before as unknown as Row) : null;
+    const b = snapshot(row as unknown as Row);
+    if (!same(a, b)) {
+      requestUpsert.push(row);
+      ledger.push({
+        kind: row.status === 'PENDING' ? 'BUYER_REQUEST_OPENED' : 'BUYER_REQUEST_DECIDED',
+        targetId: row.id,
+        before: a,
+        after: b,
+      });
+    }
+  }
   return {
     header: headerChanged,
     contributions: { upsert, remove },
     purchase: { upsert: purchaseUpsert, remove: purchaseRemove },
     reviews: { upsert: reviewUpsert },
+    buyerRequests: { upsert: requestUpsert },
     ledger,
   };
 }

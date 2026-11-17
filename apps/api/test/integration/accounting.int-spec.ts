@@ -192,4 +192,66 @@ describe('Compta en base (CPT-03, CPT-70, CPT-71)', () => {
       authorProfileId: marie.profileId,
     });
   }, 30_000);
+
+  it('CPT-12 à CPT-18, CPT-61 : achat, hausse refusée, décocher et changement d’acheteur en base', async () => {
+    const { papa, tonton, itemId } = await world();
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 7_000 }).expect(200);
+    const post = (user: SignedIn, path: string, body?: Body) => {
+      const req = http()
+        .post(path)
+        .set({ ...user.mutation, 'Idempotency-Key': randomUUID() });
+      return body ? req.send(body) : req;
+    };
+    await post(tonton, `/api/v1/items/${itemId}/buyer-requests`).expect(200);
+    const request = await prisma.buyerRequest.findFirstOrThrow({
+      where: { accounting: { itemId }, status: 'PENDING' },
+    });
+    await post(papa, `/api/v1/buyer-requests/${request.id}/refuse`).expect(200);
+    await http()
+      .put(`/api/v1/items/${itemId}/purchase`)
+      .set({ ...papa.mutation, 'Idempotency-Key': randomUUID() })
+      .send({ actualTotalMinor: 11_000 })
+      .expect(200);
+    const lowered = await post(tonton, `/api/v1/items/${itemId}/contribution/lower`, {
+      amountMinor: 7_200,
+    }).expect(200);
+    expect(lowered.body.remainingMinor).toBe(800);
+    const rows = await prisma.contribution.findMany({
+      where: { accounting: { itemId } },
+      orderBy: { rank: 'asc' },
+    });
+    expect(
+      rows.map((r) => [Number(r.amountMinor), Number(r.prePurchaseMinor), r.settlement]),
+    ).toEqual([
+      [3_000, 3_000, 'NONE'],
+      [7_200, 7_000, 'DUE'],
+    ]);
+    expect((await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } })).status).toBe(
+      'PURCHASED',
+    );
+    await http()
+      .delete(`/api/v1/items/${itemId}/purchase`)
+      .set({ ...papa.mutation, 'Idempotency-Key': randomUUID() })
+      .expect(200);
+    expect(await prisma.purchase.count({ where: { accounting: { itemId } } })).toBe(0);
+    expect((await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } })).status).toBe(
+      'RESERVED',
+    );
+    const kinds = (
+      await prisma.ledgerEntry.findMany({
+        where: { accounting: { itemId } },
+        select: { kind: true },
+      })
+    ).map((e) => e.kind);
+    for (const kind of [
+      'BUYER_REQUEST_OPENED',
+      'BUYER_REQUEST_DECIDED',
+      'PURCHASE_SET',
+      'CONTRIBUTION_LOWERED',
+      'PURCHASE_REMOVED',
+    ]) {
+      expect(kinds).toContain(kind);
+    }
+  }, 30_000);
 });

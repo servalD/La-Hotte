@@ -31,6 +31,8 @@ export interface AccountingItem {
   readonly listId: string;
   readonly eventId: string | null;
   readonly title: string;
+  /** CPT-11 : lien marchand de la fiche. */
+  readonly sourceUrl: string | null;
   readonly quantity: number;
   readonly unitPriceMinor: number | null;
   readonly currency: string;
@@ -133,6 +135,7 @@ export class ItemAccessReader {
       listId: list.id,
       eventId: list.event?.id ?? null,
       title: item.product.title,
+      sourceUrl: item.product.sourceUrl,
       quantity: item.quantity,
       unitPriceMinor: item.unitPriceMinor,
       currency: item.currency,

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { PrivateImages } from './application/private-images';
 import {
   CreateProduct,
   GetImage,
@@ -42,6 +43,7 @@ import { ImagesController, ProductsController } from './presentation/products.co
     UpdateProduct,
     GetImage,
     ProductCatalog,
+    PrivateImages,
     { provide: ProductRepository, useClass: PrismaProductRepository },
     { provide: ImageStore, useClass: DiskImageStore },
     { provide: PageFetcher, useClass: HttpPageFetcher },
@@ -54,6 +56,6 @@ import { ImagesController, ProductsController } from './presentation/products.co
     { provide: ExtractionCache, useClass: PrismaExtractionCache },
     { provide: ExtractionQueue, useClass: InProcessExtractionQueue },
   ],
-  exports: [ProductCatalog],
+  exports: [ProductCatalog, PrivateImages],
 })
 export class CatalogModule {}

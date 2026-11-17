@@ -292,6 +292,477 @@ export const refuseAccountingReviewResponse = zod.union([
 ]);
 
 /**
+ * @summary CPT-61 : le candidat retire sa demande.
+ */
+export const cancelBuyerRequestParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const cancelBuyerRequestHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const cancelBuyerRequestResponseCurrencyMin = 3;
+export const cancelBuyerRequestResponseCurrencyMax = 3;
+
+export const cancelBuyerRequestResponseCurrencyMinOne = 3;
+export const cancelBuyerRequestResponseCurrencyMaxOne = 3;
+
+export const cancelBuyerRequestResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(cancelBuyerRequestResponseCurrencyMin)
+      .max(cancelBuyerRequestResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(cancelBuyerRequestResponseCurrencyMinOne)
+      .max(cancelBuyerRequestResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-61
+ */
+export const acceptBuyerRequestParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const acceptBuyerRequestHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const acceptBuyerRequestResponseCurrencyMin = 3;
+export const acceptBuyerRequestResponseCurrencyMax = 3;
+
+export const acceptBuyerRequestResponseCurrencyMinOne = 3;
+export const acceptBuyerRequestResponseCurrencyMaxOne = 3;
+
+export const acceptBuyerRequestResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(acceptBuyerRequestResponseCurrencyMin)
+      .max(acceptBuyerRequestResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(acceptBuyerRequestResponseCurrencyMinOne)
+      .max(acceptBuyerRequestResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-61
+ */
+export const refuseBuyerRequestParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const refuseBuyerRequestHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const refuseBuyerRequestResponseCurrencyMin = 3;
+export const refuseBuyerRequestResponseCurrencyMax = 3;
+
+export const refuseBuyerRequestResponseCurrencyMinOne = 3;
+export const refuseBuyerRequestResponseCurrencyMaxOne = 3;
+
+export const refuseBuyerRequestResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(refuseBuyerRequestResponseCurrencyMin)
+      .max(refuseBuyerRequestResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(refuseBuyerRequestResponseCurrencyMinOne)
+      .max(refuseBuyerRequestResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-11
+ */
+export const getCartResponseGroupsItemItemsItemCurrencyMin = 3;
+export const getCartResponseGroupsItemItemsItemCurrencyMax = 3;
+
+export const getCartResponse = zod.object({
+  groups: zod.array(
+    zod.object({
+      event: zod
+        .object({
+          id: zod.uuid(),
+          title: zod.string(),
+        })
+        .nullable(),
+      recipients: zod.array(
+        zod.object({
+          id: zod.uuid(),
+          displayName: zod.string(),
+          avatar: zod.string().nullable(),
+          accentColor: zod.string(),
+        }),
+      ),
+      items: zod.array(
+        zod.object({
+          accountingId: zod.uuid(),
+          itemId: zod.uuid().nullable(),
+          title: zod.string(),
+          sourceUrl: zod.string().nullable(),
+          quantity: zod.number().nullable(),
+          currency: zod
+            .string()
+            .min(getCartResponseGroupsItemItemsItemCurrencyMin)
+            .max(getCartResponseGroupsItemItemsItemCurrencyMax),
+          totalMinor: zod.number().nullable(),
+          coveredMinor: zod.number(),
+          remainingMinor: zod.number().nullable(),
+          myShareMinor: zod.number().nullable(),
+          purchased: zod.boolean(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
  * @summary CPT-59
  */
 export const getItemAccountingParams = zod.object({
@@ -499,6 +970,148 @@ export const putItemAccountingOptionsResponse = zod.union([
       .string()
       .min(putItemAccountingOptionsResponseCurrencyMinOne)
       .max(putItemAccountingOptionsResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-61
+ */
+export const postItemBuyerRequestParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const postItemBuyerRequestHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const postItemBuyerRequestResponseCurrencyMin = 3;
+export const postItemBuyerRequestResponseCurrencyMax = 3;
+
+export const postItemBuyerRequestResponseCurrencyMinOne = 3;
+export const postItemBuyerRequestResponseCurrencyMaxOne = 3;
+
+export const postItemBuyerRequestResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(postItemBuyerRequestResponseCurrencyMin)
+      .max(postItemBuyerRequestResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(postItemBuyerRequestResponseCurrencyMinOne)
+      .max(postItemBuyerRequestResponseCurrencyMaxOne),
     plannedTotalMinor: zod.number().nullable(),
     itemTotalMinor: zod.number().nullable(),
     coveredMinor: zod.number(),
@@ -810,6 +1423,758 @@ export const deleteItemContributionResponse = zod.union([
       .string()
       .min(deleteItemContributionResponseCurrencyMinOne)
       .max(deleteItemContributionResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-18
+ */
+export const lowerItemContributionParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const lowerItemContributionHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const lowerItemContributionBodyAmountMinorMin = 0;
+export const lowerItemContributionBodyAmountMinorMax = 1000000000000;
+
+export const lowerItemContributionBody = zod.object({
+  amountMinor: zod
+    .number()
+    .min(lowerItemContributionBodyAmountMinorMin)
+    .max(lowerItemContributionBodyAmountMinorMax),
+});
+
+export const lowerItemContributionResponseCurrencyMin = 3;
+export const lowerItemContributionResponseCurrencyMax = 3;
+
+export const lowerItemContributionResponseCurrencyMinOne = 3;
+export const lowerItemContributionResponseCurrencyMaxOne = 3;
+
+export const lowerItemContributionResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(lowerItemContributionResponseCurrencyMin)
+      .max(lowerItemContributionResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(lowerItemContributionResponseCurrencyMinOne)
+      .max(lowerItemContributionResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-12, CPT-13, CPT-16, CPT-17, CPT-55
+ */
+export const putItemPurchaseParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const putItemPurchaseHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const putItemPurchaseBodyActualTotalMinorMin = 0;
+export const putItemPurchaseBodyActualTotalMinorMax = 1000000000000;
+
+export const putItemPurchaseBody = zod.object({
+  actualTotalMinor: zod
+    .number()
+    .min(putItemPurchaseBodyActualTotalMinorMin)
+    .max(putItemPurchaseBodyActualTotalMinorMax)
+    .nullish(),
+});
+
+export const putItemPurchaseResponseCurrencyMin = 3;
+export const putItemPurchaseResponseCurrencyMax = 3;
+
+export const putItemPurchaseResponseCurrencyMinOne = 3;
+export const putItemPurchaseResponseCurrencyMaxOne = 3;
+
+export const putItemPurchaseResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(putItemPurchaseResponseCurrencyMin)
+      .max(putItemPurchaseResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(putItemPurchaseResponseCurrencyMinOne)
+      .max(putItemPurchaseResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-14, CPT-63
+ */
+export const deleteItemPurchaseParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const deleteItemPurchaseQueryParams = zod.object({
+  confirm: zod.boolean().optional(),
+});
+
+export const deleteItemPurchaseHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const deleteItemPurchaseResponseCurrencyMin = 3;
+export const deleteItemPurchaseResponseCurrencyMax = 3;
+
+export const deleteItemPurchaseResponseCurrencyMinOne = 3;
+export const deleteItemPurchaseResponseCurrencyMaxOne = 3;
+
+export const deleteItemPurchaseResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(deleteItemPurchaseResponseCurrencyMin)
+      .max(deleteItemPurchaseResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(deleteItemPurchaseResponseCurrencyMinOne)
+      .max(deleteItemPurchaseResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-15, CPT-62 : photo ré-encodée sans métadonnées, par l'acheteur.
+ */
+export const putItemPurchaseReceiptParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const putItemPurchaseReceiptHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const putItemPurchaseReceiptBody = zod.object({
+  photo: zod.instanceof(File),
+});
+
+export const putItemPurchaseReceiptResponseCurrencyMin = 3;
+export const putItemPurchaseReceiptResponseCurrencyMax = 3;
+
+export const putItemPurchaseReceiptResponseCurrencyMinOne = 3;
+export const putItemPurchaseReceiptResponseCurrencyMaxOne = 3;
+
+export const putItemPurchaseReceiptResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(putItemPurchaseReceiptResponseCurrencyMin)
+      .max(putItemPurchaseReceiptResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(putItemPurchaseReceiptResponseCurrencyMinOne)
+      .max(putItemPurchaseReceiptResponseCurrencyMaxOne),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['participant']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+        amountMinor: zod.number().nullable(),
+        units: zod.number().nullable(),
+        mine: zod.boolean(),
+      }),
+    ),
+    mine: zod
+      .object({
+        id: zod.uuid(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        share: zod
+          .object({
+            num: zod.number(),
+            den: zod.number(),
+          })
+          .nullable(),
+        units: zod.number().nullable(),
+        amountMinor: zod.number().nullable(),
+        rank: zod.number(),
+        settlement: zod.enum(['NONE', 'DUE', 'CLAIMED', 'SETTLED']),
+        settledMinor: zod.number(),
+      })
+      .nullable(),
+    isBuyer: zod.boolean(),
+    reviewEnabled: zod.boolean(),
+    receiptEnabled: zod.boolean(),
+    reviews: zod.array(
+      zod.object({
+        id: zod.uuid(),
+        kind: zod.enum(['COST', 'OPTIONS']),
+        author: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        proposedTotalMinor: zod.number().nullable(),
+        proposedReviewEnabled: zod.boolean().nullable(),
+        proposedReceiptEnabled: zod.boolean().nullable(),
+        createdAt: zod.iso.datetime({}),
+        canDecide: zod.boolean(),
+      }),
+    ),
+  }),
+]);
+
+/**
+ * @summary CPT-59, CPT-62 : servi aux seuls participants.
+ */
+export const getItemPurchaseReceiptParams = zod.object({
+  id: zod.uuid(),
+});
+
+/**
+ * @summary CPT-19
+ */
+export const postItemShortfallNoticeParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const postItemShortfallNoticeHeader = zod.object({
+  'Idempotency-Key': zod
+    .string()
+    .describe('CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.'),
+});
+
+export const postItemShortfallNoticeBodyProfileIdsMax = 50;
+
+export const postItemShortfallNoticeBody = zod.object({
+  profileIds: zod.array(zod.uuid()).max(postItemShortfallNoticeBodyProfileIdsMax),
+});
+
+export const postItemShortfallNoticeResponseCurrencyMin = 3;
+export const postItemShortfallNoticeResponseCurrencyMax = 3;
+
+export const postItemShortfallNoticeResponseCurrencyMinOne = 3;
+export const postItemShortfallNoticeResponseCurrencyMaxOne = 3;
+
+export const postItemShortfallNoticeResponse = zod.union([
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(postItemShortfallNoticeResponseCurrencyMin)
+      .max(postItemShortfallNoticeResponseCurrencyMax),
+    plannedTotalMinor: zod.number().nullable(),
+    itemTotalMinor: zod.number().nullable(),
+    coveredMinor: zod.number(),
+    remainingMinor: zod.number().nullable(),
+    buyer: zod
+      .object({
+        id: zod.uuid(),
+        displayName: zod.string(),
+        avatar: zod.string().nullable(),
+        accentColor: zod.string(),
+      })
+      .nullable(),
+    purchased: zod.boolean(),
+    canContribute: zod.boolean(),
+    view: zod.enum(['giver']),
+    participants: zod.array(
+      zod.object({
+        person: zod
+          .object({
+            id: zod.uuid(),
+            displayName: zod.string(),
+            avatar: zod.string().nullable(),
+            accentColor: zod.string(),
+          })
+          .nullable(),
+        mode: zod.enum(['FULL', 'PERCENT', 'FIXED']),
+        rank: zod.number(),
+        isBuyer: zod.boolean(),
+      }),
+    ),
+  }),
+  zod.object({
+    accountingId: zod.uuid().nullable(),
+    itemId: zod.uuid().nullable(),
+    title: zod.string(),
+    currency: zod
+      .string()
+      .min(postItemShortfallNoticeResponseCurrencyMinOne)
+      .max(postItemShortfallNoticeResponseCurrencyMaxOne),
     plannedTotalMinor: zod.number().nullable(),
     itemTotalMinor: zod.number().nullable(),
     coveredMinor: zod.number(),
