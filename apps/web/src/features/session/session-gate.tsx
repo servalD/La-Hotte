@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type ReactNode, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useOffline } from '@/lib/offline/offline-provider';
 import { purgeUserData } from '@/lib/session/purge';
 import { identityKey, nextRoute, type Requirement } from './next-route';
 
@@ -28,6 +29,7 @@ export function SessionGate({
   const { data, isPending, isError } = useGetSession({ query: { staleTime: 0 } });
   const target = data ? nextRoute(data, requires) : null;
   const queryClient = useQueryClient();
+  const offline = useOffline();
 
   // Filet de sécurité : quelle que soit la cause (session expirée, autre onglet, verrouillage), un
   // changement d'identité efface les données de l'ancienne (OFF-20, PIN-02).
@@ -42,6 +44,16 @@ export function SessionGate({
     if (target) router.replace(target);
   }, [target, router]);
 
+  // OFF-27 : sans réseau au lancement, l'écran se monte sur le coffre du dernier profil, ou dit
+  // pourquoi il ne le peut pas (profil à PIN, OFF-21).
+  if (!data && offline.mode === 'offline' && offline.profileId) return <>{children}</>;
+  if (!data && (offline.mode === 'needs_network' || offline.mode === 'offline')) {
+    return (
+      <p role="alert" className="p-6">
+        {offline.mode === 'needs_network' ? t('offlinePinNeedsNetwork') : t('offlineNothing')}
+      </p>
+    );
+  }
   if (isError) {
     return (
       <p role="alert" className="p-6 text-danger">

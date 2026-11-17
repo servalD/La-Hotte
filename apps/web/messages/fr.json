@@ -159,6 +159,8 @@
   "session": {
     "loading": "Chargement",
     "unreachable": "Le serveur ne répond pas. Vérifiez votre connexion, puis rechargez la page.",
+    "offlinePinNeedsNetwork": "Vous êtes hors ligne. Ce profil est protégé par un code : pour le rouvrir, il faut une connexion.",
+    "offlineNothing": "Vous êtes hors ligne et rien n'a encore été enregistré sur cet appareil. Reconnectez-vous pour commencer.",
     "profileUnreadable": "Impossible de vérifier ce profil. Par prudence, son contenu n’est pas affiché. Vérifiez votre connexion, puis réessayez.",
     "retry": "Réessayer"
   },

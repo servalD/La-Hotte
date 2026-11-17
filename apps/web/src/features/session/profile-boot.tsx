@@ -13,6 +13,7 @@ import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isLocale, LOCALE_COOKIE } from '@/i18n/config';
+import { useOffline } from '@/lib/offline/offline-provider';
 import { launchHandled, markLaunchHandled } from '@/lib/session/launch';
 import { purgeUserData } from '@/lib/session/purge';
 
@@ -29,6 +30,7 @@ export function ProfileBoot({ children }: { children: ReactNode }) {
   const current = useLocale();
   const { data: profile, isError, refetch } = useGetOwnProfile();
   const lock = useLockSession();
+  const offline = useOffline();
 
   const profileLocale = profile?.locale.slice(0, 2);
   useEffect(() => {
@@ -69,6 +71,9 @@ export function ProfileBoot({ children }: { children: ReactNode }) {
     if (!attempted.current) lockNow();
   }, [profile, mustLock, lockNow]);
 
+  // OFF-27 : hors ligne sur le coffre du profil, rien à décider ici (le verrou du lancement se
+  // rejouera au retour du réseau, avec la relecture de la session).
+  if (offline.mode === 'offline' && offline.profileId) return <>{children}</>;
   if (isError || lock.isError) {
     return (
       <div role="alert" className="flex flex-col gap-3 p-6">

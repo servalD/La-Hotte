@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
+import { wipeDevice } from '@/lib/offline/device';
+import { announceIdentity } from '@/lib/offline/identity-channel';
+import { forgetProfileKeys } from '@/lib/offline/keys';
 import { purgeUserData } from '@/lib/session/purge';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/theme-switcher';
@@ -46,6 +49,8 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   function onLock() {
     lock.mutate(undefined, {
       onSuccess: () => {
+        // OFF-21 : après verrouillage, la clé du coffre n'est plus en mémoire.
+        forgetProfileKeys();
         purgeUserData(queryClient);
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() }).then(() => {
           router.replace('/profiles/unlock');
@@ -57,9 +62,14 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   function onSignOut() {
     signOut.mutate(undefined, {
       onSettled: () => {
-        // Rien du compte ne reste dans le cache du navigateur.
+        // Rien du compte ne reste dans le cache du navigateur, ni sur l'appareil (OFF-22), ni
+        // dans les autres onglets (OFF-29).
+        forgetProfileKeys();
         queryClient.clear();
-        router.replace('/auth/login');
+        announceIdentity(null);
+        void wipeDevice().finally(() => {
+          router.replace('/auth/login');
+        });
       },
     });
   }

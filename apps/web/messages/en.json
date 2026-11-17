@@ -159,6 +159,8 @@
   "session": {
     "loading": "Loading",
     "unreachable": "The server is not responding. Check your connection, then reload the page.",
+    "offlinePinNeedsNetwork": "You're offline. This profile is protected by a code: reopening it needs a connection.",
+    "offlineNothing": "You're offline and nothing has been saved on this device yet. Reconnect to get started.",
     "profileUnreadable": "Unable to check this profile. As a precaution, its content is not shown. Check your connection, then try again.",
     "retry": "Try again"
   },
