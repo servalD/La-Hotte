@@ -9,6 +9,7 @@ import {
   wipeDevice,
   writeDeviceMeta,
 } from './device';
+import { lastPurgeAt } from '@/lib/session/purge';
 import { idbAvailable } from './idb';
 import { fetchProfileKey, heldProfileKey, type ProfileKey } from './keys';
 import { forgetQueries, persistQueries, restoreQueries } from './persist';
@@ -25,11 +26,10 @@ export interface OpenProfileCache {
   readonly close: (options?: { discard?: boolean }) => Promise<void>;
 }
 
-/** OFF-29 : sur un appareil partagé, les coffres d'un autre compte sont effacés (rien n'est écrit). */
-export async function wipeIfOtherAccount(accountTag: string): Promise<void> {
+/** OFF-25, OFF-29 : sur un appareil partagé, aucun coffre ne reste sur l'appareil, ni d'un autre compte ni de ce compte. */
+export async function wipeForSharedDevice(): Promise<void> {
   if (!idbAvailable()) return;
-  const meta = await readDeviceMeta();
-  if (meta && meta.accountTag !== accountTag) await wipeDevice();
+  if (await readDeviceMeta()) await wipeDevice();
 }
 
 export class CacheOpeningCancelled extends Error {}
@@ -55,9 +55,15 @@ async function mount(
     throw new CacheOpeningCancelled();
   }
   await recordVault({ profileId, encrypted: key.encrypted, keyId, lastOpenedAt: now });
+  const mountedAt = Date.now();
   const stop = persistQueries(queryClient, vault, {
     // OFF-20 : la session de l'onglet, relue, dit encore que ce profil est le profil actif.
     isOwner: () => {
+      // Une purge d'identité faite depuis l'ouverture : tant que la session n'a pas été relue, le
+      // cache peut déjà porter les lectures d'un autre profil ; rien n'est écrit (OFF-20).
+      const purgedAt = lastPurgeAt();
+      const sessionAt = queryClient.getQueryState(getGetSessionQueryKey())?.dataUpdatedAt ?? 0;
+      if (purgedAt > mountedAt && sessionAt < purgedAt) return false;
       const session = queryClient.getQueryData<SessionStatusView>(getGetSessionQueryKey());
       return !session?.session || session.session.activeProfileId === profileId;
     },

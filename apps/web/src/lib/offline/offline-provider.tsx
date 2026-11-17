@@ -19,7 +19,7 @@ import {
   type OpenProfileCache,
   openOffline,
   openOnline,
-  wipeIfOtherAccount,
+  wipeForSharedDevice,
 } from './profile-cache';
 import { prefetchUpcoming } from './prefetch';
 import { ActionQueue } from './queue';
@@ -85,6 +85,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const current = useRef<OpenProfileCache | null>(null);
   const identity = data ? identityKey(data) : null;
   const lastIdentity = useRef<string | null>(null);
+  const [generation, setGeneration] = useState(0);
 
   const session = data?.authenticated ? data.session : null;
   const profileId = session?.profileUnlocked ? session.activeProfileId : null;
@@ -101,7 +102,10 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         // la nouvelle identité et ne doivent pas y entrer.
         void current.current?.close({ discard: true });
         purgeUserData(queryClient);
-        void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
+        // La session relue, le coffre est rouvert même si l'identité retrouvée est la même.
+        void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() }).then(() => {
+          setGeneration((value) => value + 1);
+        });
       }),
     [queryClient],
   );
@@ -151,7 +155,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (session) {
-        if (shared && accountTag) await wipeIfOtherAccount(accountTag).catch(() => undefined);
+        if (shared) await wipeForSharedDevice().catch(() => undefined);
         settle({ mode: 'online', profileId: null, vault: null, sharedDevice: shared }, null);
         return;
       }
@@ -190,7 +194,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     };
     // `session` et `data` changent avec l'identité ; seuls ces critères décident d'un coffre.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileId, accountTag, shared, unreachable, data?.authenticated, queryClient]);
+  }, [profileId, accountTag, shared, unreachable, data?.authenticated, queryClient, generation]);
 
   // Fermeture du composant (changement de zone) : le coffre est rendu.
   useEffect(

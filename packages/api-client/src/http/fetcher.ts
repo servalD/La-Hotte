@@ -104,7 +104,7 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
     // lecture ne pose `X-User-Activity` que si l'appelant le demande (navigation).
     if (mutating) {
       if (token) headers.set('X-CSRF-Token', token);
-      headers.set('X-User-Activity', '1');
+      if (!headers.has('X-User-Activity')) headers.set('X-User-Activity', '1');
     }
     return fetch(`${baseUrl}${url}`, { ...init, credentials: 'include', headers });
   };

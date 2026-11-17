@@ -10,12 +10,20 @@ const SESSION_KEY = getGetSessionQueryKey()[0];
  * connexion, choix de profil, verrouillage, session perdue. Les clés de requête ne portent ni le
  * profil ni le compte, donc rien ne doit survivre au passage de l'un à l'autre (OFF-20, PIN-02).
  */
+let lastPurge = 0;
+
+/** Instant de la dernière purge d'identité (le coffre n'écrit pas tant que la session n'a pas suivi). */
+export function lastPurgeAt(): number {
+  return lastPurge;
+}
+
 export function purgeUserData(
   queryClient: QueryClient,
   options: { keepMutations?: boolean } = {},
 ): void {
   // OFF-21 : la clé d'un profil à PIN ne survit pas à un changement d'identité.
   forgetProfileKeys();
+  lastPurge = Date.now();
   if (!options.keepMutations) queryClient.getMutationCache().clear();
   void queryClient.resetQueries({ predicate: (query) => query.queryKey[0] !== SESSION_KEY });
 }

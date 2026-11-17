@@ -13,9 +13,15 @@ import {
   writeDeviceMeta,
 } from './device';
 import { idbEntries, openDatabase, PROFILE_STORES } from './idb';
-import { forgetProfileKeys } from './keys';
+import { forgetProfileKeys, heldProfileKey } from './keys';
 import { isPersisted, persistQueries, restoreQueries, snapshotOf } from './persist';
-import { forgetLastProfileReads, openOffline, openOnline } from './profile-cache';
+import {
+  forgetLastProfileReads,
+  openOffline,
+  openOnline,
+  wipeForSharedDevice,
+} from './profile-cache';
+import { purgeUserData } from '@/lib/session/purge';
 import { profileDatabaseName, ProfileVault } from './vault';
 
 // OFF-06, OFF-07, OFF-20 à OFF-29 (ADR 0020) : coffre par profil, chiffré pour un profil à PIN,
@@ -341,5 +347,63 @@ describe('Purges (OFF-07, OFF-22, OFF-29)', () => {
     expect(await vault.read('cache', 'state')).toBeUndefined();
     expect(await vault.read('queue', 'a1')).toEqual({ kind: 'comment' });
     vault.close();
+  });
+});
+
+describe('Corrections de la revue SEC-40 (OFF-20, OFF-21, OFF-25)', () => {
+  it('isOwner faux : rien n’est écrit, et l’arrêt n’écrit pas non plus (OFF-20)', async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const client = new QueryClient();
+    const vault = await ProfileVault.open(P1, null);
+    const stop = persistQueries(client, vault, { delayMs: 10, isOwner: () => false });
+    client.setQueryData(['/api/v1/balances'], { total: 1 });
+    await wait(50);
+    await stop();
+    const restored = new QueryClient();
+    await restoreQueries(restored, vault, Date.now());
+    expect(restored.getQueryData(['/api/v1/balances'])).toBeUndefined();
+    vault.close();
+  });
+
+  it('un changement d’identité fait oublier la clé d’un profil à PIN (OFF-21)', async () => {
+    pinProfile(5, 'd'.repeat(32));
+    const opened = await openOnline({
+      queryClient: new QueryClient(),
+      accountTag: 'compte-1',
+      profileId: P2,
+      now: Date.now(),
+      isCurrent: () => true,
+    });
+    await opened?.close();
+    expect(heldProfileKey(P2)).not.toBeNull();
+    purgeUserData(new QueryClient());
+    expect(heldProfileKey(P2)).toBeNull();
+  });
+
+  it('fermer deux fois un coffre est sans effet (fermeture idempotente)', async () => {
+    const opened = await openOnline({
+      queryClient: new QueryClient(),
+      accountTag: 'compte-1',
+      profileId: P1,
+      now: Date.now(),
+      isCurrent: () => true,
+    });
+    await opened?.close({ discard: true });
+    await expect(opened?.close()).resolves.toBeUndefined();
+  });
+
+  it('appareil partagé : aucun coffre ne reste, même celui du même compte (OFF-25)', async () => {
+    const opened = await openOnline({
+      queryClient: new QueryClient(),
+      accountTag: 'compte-1',
+      profileId: P1,
+      now: Date.now(),
+      isCurrent: () => true,
+    });
+    await opened?.close();
+    expect(await listVaults()).toHaveLength(1);
+    await wipeForSharedDevice();
+    expect(await listVaults()).toHaveLength(0);
+    expect(await readDeviceMeta()).toBeUndefined();
   });
 });

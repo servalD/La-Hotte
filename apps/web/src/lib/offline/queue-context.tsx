@@ -20,6 +20,8 @@ export const sendStep = (step: QueuedStep, body: Parameters<StepSender>[1], prof
     method: step.method,
     headers: {
       'Idempotency-Key': step.key,
+      // API-21 : un rejeu automatique n'est pas une action de l'utilisateur.
+      'X-User-Activity': '0',
       // OFF-18 : jamais sous un autre profil que celui de la file.
       ...(profileId ? { 'X-Expected-Profile': profileId } : {}),
       ...(body ? { 'Content-Type': 'application/json' } : {}),

@@ -83,13 +83,17 @@ export class IdentityGuardChain implements CanActivate {
     // 3. Profil actif déverrouillé.
     let profile = null;
     if (mark === 'profile' && session) {
+      // OFF-18 : avant toute prolongation du déverrouillage (API-21), le profil annoncé doit être
+      // celui de la session. L'en-tête ne fait que restreindre.
+      const expected = request.headers[EXPECTED_PROFILE_HEADER];
+      if (typeof expected === 'string' && expected !== session.record.activeProfileId) {
+        throw new ProfileMismatchError();
+      }
       profile = await this.authorizeProfile.execute({
         session,
         userActivity: request.headers[USER_ACTIVITY_HEADER] === '1',
         unlockCookie: readCookie(request, UNLOCK_COOKIE),
       });
-      const expected = request.headers[EXPECTED_PROFILE_HEADER];
-      if (typeof expected === 'string' && expected !== profile.id) throw new ProfileMismatchError();
       attachIdentity(request, { session, profile });
     }
 
