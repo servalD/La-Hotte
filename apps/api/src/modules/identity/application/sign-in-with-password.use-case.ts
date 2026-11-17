@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Clock } from '../../../shared/domain';
 import { normalizeEmail } from '../domain/account';
 import { AccountSuspendedError, InvalidCredentialsError } from '../domain/account.errors';
+import { ResumeAccountOnSignIn } from './manage-account-lifecycle.use-case';
 import { AccountRepository, PasswordHasher } from '../domain/account.ports';
 import { RateLimiter, SecurityLog, type SessionRef } from '../domain/ports';
 import { type RateLimitSubject, TRUSTED_DEVICE_ACCOUNT_THRESHOLD } from '../domain/rate-limit';
@@ -35,6 +36,7 @@ export class SignInWithPassword {
     private readonly completion: SignInCompletion,
     private readonly securityLog: SecurityLog,
     private readonly clock: Clock,
+    private readonly resume: ResumeAccountOnSignIn,
   ) {}
 
   async execute(input: {
@@ -67,8 +69,8 @@ export class SignInWithPassword {
     // passe terminé entre les deux ne laisse pas vérifier l'ancien hash à la nouvelle époque.
     // Sans compte, mêmes appels avec un identifiant nul.
     const accountId = (await this.accounts.findByEmail(email))?.accountId ?? NO_ACCOUNT_ID;
-    const state = await this.lifecycle.observe(accountId);
-    const account = await this.accounts.findById(accountId);
+    let state = await this.lifecycle.observe(accountId);
+    let account = await this.accounts.findById(accountId);
     const valid = await this.hasher.verify(account?.passwordHash ?? null, input.password);
 
     // AUTH-15 : un compte non vérifié reçoit le même refus qu'un mot de passe faux (sinon une
@@ -78,6 +80,8 @@ export class SignInWithPassword {
       await this.log(account?.accountId ?? null, 'login.failed', input.client);
       throw new InvalidCredentialsError();
     }
+    // RGPD-12 : un mot de passe juste pendant le délai de grâce annule l'effacement.
+    ({ account, state } = await this.resume.execute(account, state, input.client));
     if (!account.active || !state.active) {
       await this.limiter.recordFailure(subjects, this.clock.now(), reservation);
       await this.log(account.accountId, 'login.failed', input.client);

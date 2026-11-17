@@ -92,6 +92,8 @@ export interface AccountCredentials {
   readonly email: string;
   readonly passwordHash: string | null;
   readonly active: boolean;
+  /** RGPD-12 : effacement demandé ; une connexion réussie l'annule. */
+  readonly pendingDeletion: boolean;
   readonly emailVerified: boolean;
   readonly totpEnabled: boolean;
 }

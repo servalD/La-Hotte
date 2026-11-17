@@ -161,6 +161,8 @@ model Account {
   publicationSuspendedAt     DateTime?     @map("publication_suspended_at") @db.Timestamptz(3)
   /// RGPD-12 : présent si et seulement si `status = PENDING_DELETION` (`CHECK`).
   deletionRequestedAt        DateTime?     @map("deletion_requested_at") @db.Timestamptz(3)
+  /// RGPD-13 : avertissements d'inactivité envoyés (0, 1 à 30 jours, 2 à 7 jours) ; remis à zéro à la connexion.
+  inactivityNotices          Int           @default(0) @map("inactivity_notices") @db.SmallInt
   createdAt                  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                  DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 

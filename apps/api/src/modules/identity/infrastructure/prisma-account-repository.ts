@@ -27,6 +27,7 @@ function toCredentials(row: CredentialsRow): AccountCredentials {
     email: row.email,
     passwordHash: row.passwordHash,
     active: row.status === 'ACTIVE',
+    pendingDeletion: row.status === 'PENDING_DELETION',
     emailVerified: row.emailVerifiedAt !== null,
     totpEnabled: row.totpEnabledAt !== null,
   };

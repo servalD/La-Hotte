@@ -256,6 +256,10 @@ export const SECURITY_EVENTS = [
   'google.linked',
   'google.unlinked',
   'account.replaced',
+  // RGPD-12 : effacement du compte demandé, annulé par une connexion, exécuté.
+  'account.deletion_requested',
+  'account.deletion_cancelled',
+  'account.erased',
   // PIN-03 à PIN-05, PRO-08.
   'pin.locked',
   'pin.changed',

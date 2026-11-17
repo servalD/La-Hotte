@@ -50,6 +50,14 @@ export {
 export { CancelEmailChange } from './cancel-email-change.use-case';
 export { ChangePassword } from './change-password.use-case';
 export { CheckSessionAccess } from './check-session-access.use-case';
+export {
+  AccountHasWardsError,
+  EraseDueAccounts,
+  HandleInactiveAccounts,
+  LastAdminDeletionError,
+  RequestAccountDeletion,
+  ResumeAccountOnSignIn,
+} from './manage-account-lifecycle.use-case';
 export { CheckPlatformPermission, type PlatformActor } from './check-platform-permission.use-case';
 export {
   type AdminActionInput,

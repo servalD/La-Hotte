@@ -132,7 +132,11 @@ import {
 } from '../../src/modules/admin/testing';
 import {
   AccountAdministration,
+  AccountLifecycle,
+  EraseDueAccounts,
+  HandleInactiveAccounts,
   InMemoryAccountAdministration,
+  InMemoryAccountLifecycle,
 } from '../../src/modules/identity/testing';
 import { InMemoryPlatformSettings } from '../../src/platform/settings/in-memory-platform-settings';
 import { AuditJournal, PlatformSettings } from '../../src/shared/domain';
@@ -248,6 +252,10 @@ export interface TestIdentity {
   readonly wards: InMemoryWardRepository;
   /** Passages, détachements (PRO-12 à PRO-14). */
   readonly transfers: InMemoryTransferRepository;
+  /** RGPD-12, RGPD-13 : demandes d'effacement, avertissements d'inactivité. */
+  readonly lifecycle: InMemoryAccountLifecycle;
+  /** Lance les tâches du cycle de vie des comptes, comme le planificateur. */
+  runAccountLifecycle(): Promise<{ erased: number; warned: number; scheduled: number }>;
   /**
    * Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé), `TEST_PIN`
    * sinon. `withProfile: false` : compte sans aucun profil.
@@ -292,6 +300,7 @@ export async function createTestApp(
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
   const accounts = new InMemoryAccountRepository(sessions);
+  const lifecycle = new InMemoryAccountLifecycle(sessions, accounts);
   const administration = new InMemoryAccountAdministration(sessions, accounts, (write) => {
     audit.append(write);
   });
@@ -489,6 +498,8 @@ export async function createTestApp(
     })
     .overrideProvider(PlatformSettings)
     .useValue(platformSettings)
+    .overrideProvider(AccountLifecycle)
+    .useValue(lifecycle)
     .overrideProvider(AccountAdministration)
     .useValue(administration)
     .overrideProvider(AccountDirectory)
@@ -651,6 +662,12 @@ export async function createTestApp(
     links,
     wards,
     transfers,
+    lifecycle,
+    async runAccountLifecycle() {
+      const { warned, scheduled } = await app.get(HandleInactiveAccounts).execute();
+      const erased = await app.get(EraseDueAccounts).execute();
+      return { erased, warned, scheduled };
+    },
     async signIn({
       pin = false,
       relock = 'IDLE_15',

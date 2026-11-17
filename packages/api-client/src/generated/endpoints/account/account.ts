@@ -22,6 +22,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountDeletionView,
   AccountProfileListView,
   AccountProfileView,
   AccountView,
@@ -158,6 +159,66 @@ export function useGetAccount<
   return query;
 }
 
+/**
+ * @summary RGPD-05, RGPD-12 : effacement du compte dans 30 jours ; toutes les sessions tombent, cookies
+effacés. Se reconnecter avant la date annule la demande.
+ */
+export const getDeleteAccountUrl = () => {
+  return `/api/v1/account`;
+};
+
+export const deleteAccount = async (options?: RequestInit): Promise<AccountDeletionView> => {
+  return apiFetch<AccountDeletionView>(getDeleteAccountUrl(), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteAccountMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, void, TContext> => {
+  const mutationKey = ['deleteAccount'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, void> = () => {
+    return deleteAccount(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>;
+
+export type DeleteAccountMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary RGPD-05, RGPD-12 : effacement du compte dans 30 jours ; toutes les sessions tombent, cookies
+effacés. Se reconnecter avant la date annule la demande.
+ */
+export const useDeleteAccount = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAccount>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof deleteAccount>>, TError, void, TContext> => {
+  const mutationOptions = getDeleteAccountMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 export const getListAdminActionsOnAccountUrl = () => {
   return `/api/v1/account/admin-actions`;
 };

@@ -29,6 +29,15 @@ import {
   SuspendPublication,
 } from './application/administer-accounts.use-case';
 import { AccountAdministration } from './domain/account-administration';
+import { AccountLifecycle } from './domain/account-lifecycle';
+import { PrismaAccountLifecycle } from './infrastructure/prisma-account-lifecycle';
+import {
+  EraseDueAccounts,
+  HandleInactiveAccounts,
+  RequestAccountDeletion,
+  ResumeAccountOnSignIn,
+} from './application/manage-account-lifecycle.use-case';
+import { AccountLifecycleScheduler } from './presentation/account-lifecycle.scheduler';
 import { PrismaAccountAdministration } from './infrastructure/prisma-account-administration';
 import { SessionLifecycle } from './application/session-lifecycle';
 import { SignInWithPassword } from './application/sign-in-with-password.use-case';
@@ -269,6 +278,12 @@ import {
     SuspendPublication,
     RestorePublication,
     { provide: AccountAdministration, useClass: PrismaAccountAdministration },
+    { provide: AccountLifecycle, useClass: PrismaAccountLifecycle },
+    RequestAccountDeletion,
+    ResumeAccountOnSignIn,
+    EraseDueAccounts,
+    HandleInactiveAccounts,
+    AccountLifecycleScheduler,
     SessionLifecycle,
     ReportCsrfRejection,
     AccountMailer,

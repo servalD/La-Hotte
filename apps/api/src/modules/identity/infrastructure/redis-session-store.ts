@@ -260,7 +260,7 @@ export class RedisSessionStore extends SessionStore {
     // RGPD-13, ADM-04 : une session neuve est une connexion réussie.
     const signedIn = this.prisma.account.update({
       where: { id: record.accountId },
-      data: { lastSignInAt: record.createdAt },
+      data: { lastSignInAt: record.createdAt, inactivityNotices: 0 },
       select: { id: true },
     });
     const created = this.prisma.session.create({

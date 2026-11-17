@@ -57,6 +57,11 @@ export type MailKind =
   | { readonly kind: 'account_reactivated' }
   /** ADM-07 : lien de réinitialisation du TOTP, déclenché par un administrateur. */
   | { readonly kind: 'totp_reset'; readonly token: string }
+  /** RGPD-12 : date d'effet de l'effacement. */
+  | { readonly kind: 'deletion_scheduled'; readonly effectiveAt: Date }
+  | { readonly kind: 'deletion_cancelled' }
+  /** RGPD-13 : effacement pour inactivité dans `daysLeft` jours. */
+  | { readonly kind: 'inactivity_warning'; readonly daysLeft: number }
   /** RBAC-07 : rôle de plateforme changé. */
   | { readonly kind: 'role_changed' }
   | { readonly kind: 'recovery_code_used' }
@@ -238,6 +243,37 @@ export class AccountMailer {
             `(valable 30 minutes) :\n${this.link(EMAIL_LINK_PATHS.totpReset, mail.token)}\n\n` +
             'Tous les appareils seront déconnectés ; vous pourrez ensuite l’activer à nouveau. ' +
             'Si vous n’avez rien demandé, ignorez ce message et répondez-y pour nous prévenir.' +
+            SIGNATURE,
+        };
+      case 'deletion_scheduled':
+        return {
+          to,
+          subject: 'Suppression de votre compte programmée',
+          text:
+            'La suppression de votre compte La Hotte est programmée pour le ' +
+            `${mail.effectiveAt.toISOString().slice(0, 10)}. Tous les appareils ont été ` +
+            'déconnectés.\n\nVous avez changé d’avis ? Reconnectez-vous avant cette date : la ' +
+            'suppression sera annulée.' +
+            SIGNATURE,
+        };
+      case 'deletion_cancelled':
+        return {
+          to,
+          subject: 'Suppression de votre compte annulée',
+          text:
+            'Vous vous êtes reconnecté : la suppression de votre compte La Hotte est annulée. ' +
+            'Si vous n’en êtes pas à l’origine, changez votre mot de passe sans attendre :\n' +
+            `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'inactivity_warning':
+        return {
+          to,
+          subject: 'Votre compte va être supprimé faute d’utilisation',
+          text:
+            'Vous ne vous êtes pas connecté à La Hotte depuis bientôt trois ans. Sans connexion ' +
+            `d'ici ${mail.daysLeft} jours, votre compte et ses données seront supprimés.\n\n` +
+            `Pour le garder, il suffit de vous connecter :\n${this.settings.webOrigin}` +
             SIGNATURE,
         };
       case 'role_changed':

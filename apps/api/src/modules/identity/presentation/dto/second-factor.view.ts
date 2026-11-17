@@ -74,3 +74,8 @@ export class TrustedDeviceListView {
   @ApiProperty({ type: [TrustedDeviceView] })
   items!: TrustedDeviceView[];
 }
+
+/** RGPD-12 : date d'effet de l'effacement demandé. */
+export class AccountDeletionView {
+  @ApiProperty({ type: String, format: 'date-time' }) effectiveAt!: string;
+}

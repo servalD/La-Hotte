@@ -48,7 +48,7 @@ La phase 7 donne aux exploitants des moyens d'agir sans leur donner celui de lir
 ### Export et effacement (RGPD-11, RGPD-12)
 
 - L'export est lu **par les ports de lecture du moteur de visibilité** au nom du profil, jamais par une requête directe aux tables : c'est la seule façon de ne pas dupliquer les règles d'accès (invariant 2). Il s'écrit chiffré (SEC-22) dans `export_request` et s'efface au téléchargement.
-- L'effacement s'exécute par une tâche nocturne dans le processus de l'API, par lots, avec reprise : chaque étape est idempotente. Les tables en ajout seul ne sont pas modifiées : une clé étrangère `ON DELETE SET NULL` vide la référence au profil (action référentielle, qui ne passe pas par les privilèges `UPDATE` du rôle applicatif). Une écriture de compta reste donc vraie, sans personne.
+- L'effacement s'exécute par une tâche nocturne dans le processus de l'API, par lots, avec reprise : chaque étape est idempotente. Les tables en ajout seul ne sont pas modifiées : `ledger_entry`, `audit_log` et `security_log` n'ont pas de clé étrangère vers le profil ou le compte, leur identifiant ne désigne plus personne après l'effacement. Les autres tables vident la référence par `ON DELETE SET NULL` (commentaires, parts). Une écriture de compta reste donc vraie, sans personne. Une connexion réussie pendant le délai de grâce annule la demande, plutôt qu'une route d'annulation qu'on ne pourrait pas atteindre sans session.
 
 ### Sécurité des lignes (DAT-05, reportée par l'ADR 0019)
 
@@ -67,7 +67,7 @@ La phase 7 donne aux exploitants des moyens d'agir sans leur donner celui de lir
 
 - Relire le rôle à chaque requête `/admin` évite qu'un rôle retiré survive dans un cache pendant 12 heures.
 - L'audit dans la transaction rend « l'action a eu lieu sans trace » impossible par construction, ce que le critère d'acceptation de `11` exige.
-- Une clé étrangère `SET NULL` est la seule façon d'anonymiser une table en ajout seul sans lui rendre `UPDATE`.
+- Garder les tables en ajout seul sans clé étrangère vers une personne est la seule façon de les garder inchangées à l'effacement, sans leur rendre `UPDATE`.
 - Un compteur de comptes (pas de profils) évite de faire de la popularité d'une fiche un indice sur la composition d'un compte.
 
 ## Conséquences

@@ -8,6 +8,7 @@
 
 export * from './acceptBuyerRequest200';
 export * from './acceptProfileInvitationDto';
+export * from './accountDeletionView';
 export * from './accountMetadataView';
 export * from './accountProfileListView';
 export * from './accountProfileView';
