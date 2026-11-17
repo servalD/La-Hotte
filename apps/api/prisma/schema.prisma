@@ -1420,6 +1420,8 @@ model Budget {
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   recipient Profile? @relation("BudgetRecipient", fields: [recipientProfileId], references: [id], onDelete: Cascade)
 
+  /// CPT-69 : `NULLS NOT DISTINCT` ajouté à la main dans la migration (un budget global par événement).
+  @@unique([profileId, eventId, recipientProfileId], map: "budget_scope_key")
   @@index([profileId])
   @@map("budget")
 }
