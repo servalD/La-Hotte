@@ -5,9 +5,11 @@
  * Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.
  * OpenAPI spec version: 1
  */
+import type { AuditEntryViewBeforeOneOf } from './auditEntryViewBeforeOneOf';
 
 /**
- * Valeur d'un réglage avant et après (ADM-09) ; `null` sinon.
+ * Valeur avant et après : rôle, empreinte d'une recherche, ou réglage et sa clé (ADM-09).
  * @nullable
  */
-export type AuditEntryViewBefore = string | number | boolean | string[] | null;
+export type AuditEntryViewBefore =
+  string | number | boolean | string[] | AuditEntryViewBeforeOneOf | null;

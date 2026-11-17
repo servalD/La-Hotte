@@ -7,13 +7,23 @@ import {
   CurrentPlatformActor,
   type PlatformActor,
 } from '../../identity';
-import type { AuditValue } from '../../../shared/domain';
+import type { AuditScalar, AuditValue } from '../../../shared/domain';
 import { ReadAudit } from '../application/read-audit.use-case';
 import { AuditQueryDto } from './dto/audit.dto';
-import { AuditPageView } from './dto/audit.view';
+import { AuditPageView, type AuditValueView } from './dto/audit.view';
 
-function viewValue(value: AuditValue): string | number | boolean | string[] | null {
-  return typeof value === 'object' && value !== null ? [...value] : value;
+function viewScalar(value: AuditScalar): string | number | boolean | string[] | null {
+  return Array.isArray(value)
+    ? [...(value as readonly string[])]
+    : (value as string | number | boolean | null);
+}
+
+function viewValue(value: AuditValue): AuditValueView {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    const setting = value as { readonly key: string; readonly value: AuditScalar };
+    return { key: setting.key, value: viewScalar(setting.value) };
+  }
+  return viewScalar(value as AuditScalar);
 }
 
 /** Journal d'audit (AUD-04, AUD-06), réservé à `ADMIN` (RBAC-02). */

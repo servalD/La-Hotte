@@ -17,6 +17,7 @@ export const EMAIL_LINK_PATHS = {
   verifyProfileEmail: '/profiles/verify-email',
   transferConsent: '/transfers/consent',
   transferCancel: '/transfers/cancel',
+  totpReset: '/auth/totp-reset',
 } as const;
 
 /** PRO-16 : actions du tuteur dont le compte sous tutelle est averti. */
@@ -41,7 +42,7 @@ const WARD_CHANGE_TEXT: Readonly<Record<WardChange, string>> = {
   totp: 'La double authentification',
 };
 
-type MailKind =
+export type MailKind =
   | { readonly kind: 'verify_email'; readonly token: string }
   | { readonly kind: 'confirm_email_change'; readonly token: string }
   | { readonly kind: 'email_change_notice'; readonly token: string }
@@ -51,6 +52,13 @@ type MailKind =
   | { readonly kind: 'password_changed' }
   | { readonly kind: 'totp_enabled' }
   | { readonly kind: 'totp_disabled' }
+  /** ADM-06 : sans motif détaillé. */
+  | { readonly kind: 'account_suspended' }
+  | { readonly kind: 'account_reactivated' }
+  /** ADM-07 : lien de réinitialisation du TOTP, déclenché par un administrateur. */
+  | { readonly kind: 'totp_reset'; readonly token: string }
+  /** RBAC-07 : rôle de plateforme changé. */
+  | { readonly kind: 'role_changed' }
   | { readonly kind: 'recovery_code_used' }
   | { readonly kind: 'second_factor_attempts' }
   | { readonly kind: 'google_linked' }
@@ -200,6 +208,46 @@ export class AccountMailer {
             'connexion demandera désormais un code de votre application d’authentification.\n\n' +
             'Si vous n’en êtes pas à l’origine, réinitialisez votre mot de passe sans attendre :\n' +
             `${this.settings.webOrigin}${EMAIL_LINK_PATHS.resetPassword}` +
+            SIGNATURE,
+        };
+      case 'account_suspended':
+        return {
+          to,
+          subject: 'Votre compte est suspendu',
+          text:
+            'Votre compte La Hotte a été suspendu par l’équipe du service : vous ne pouvez plus ' +
+            'vous y connecter, et tous les appareils ont été déconnectés. Vos listes et vos ' +
+            'échanges sont conservés.\n\nPour en savoir plus ou contester, répondez à ce message.' +
+            SIGNATURE,
+        };
+      case 'account_reactivated':
+        return {
+          to,
+          subject: 'Votre compte est de nouveau actif',
+          text:
+            'Votre compte La Hotte a été réactivé. Vous pouvez vous connecter comme avant.' +
+            SIGNATURE,
+        };
+      case 'totp_reset':
+        return {
+          to,
+          subject: 'Réinitialisation de la double authentification',
+          text:
+            'À votre demande, l’équipe du service a préparé la réinitialisation de la double ' +
+            'authentification de votre compte La Hotte. Pour la désactiver, ouvrez ce lien ' +
+            `(valable 30 minutes) :\n${this.link(EMAIL_LINK_PATHS.totpReset, mail.token)}\n\n` +
+            'Tous les appareils seront déconnectés ; vous pourrez ensuite l’activer à nouveau. ' +
+            'Si vous n’avez rien demandé, ignorez ce message et répondez-y pour nous prévenir.' +
+            SIGNATURE,
+        };
+      case 'role_changed':
+        return {
+          to,
+          subject: 'Votre rôle sur La Hotte a changé',
+          text:
+            'Le rôle de votre compte La Hotte vient de changer, et les appareils ont été ' +
+            'déconnectés. Reconnectez-vous pour continuer.\n\nSi vous ne vous y attendiez pas, ' +
+            'répondez à ce message.' +
             SIGNATURE,
         };
       case 'totp_disabled':

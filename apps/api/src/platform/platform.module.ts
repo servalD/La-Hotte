@@ -1,6 +1,13 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
-import { AppEvents, Clock, IdGenerator, Metrics } from '../shared/domain';
+import {
+  AppEvents,
+  AuditJournal,
+  Clock,
+  IdGenerator,
+  Metrics,
+  PlatformSettings,
+} from '../shared/domain';
 import { InProcessAppEvents } from './events/in-process-app-events';
 import { AppConfig, parseEnv } from './config/env';
 import { HealthController } from './health/health.controller';
@@ -14,7 +21,9 @@ import { ProblemDetailsFilter } from './http/problem-details.filter';
 import { createValidationPipe } from './http/validation';
 import { SystemClock, UuidV7IdGenerator } from './ids/system.providers';
 import { LoggingModule } from './logging/logging.module';
+import { PrismaAuditJournal } from './prisma/prisma-audit-journal';
 import { PrismaService } from './prisma/prisma.service';
+import { PrismaPlatformSettings } from './settings/prisma-platform-settings';
 import { RedisService } from './redis/redis.service';
 import { ErrorReporter, SentryErrorReporter, TelemetryShutdown } from './telemetry/error-reporter';
 import { OtelMetrics } from './telemetry/otel-metrics';
@@ -48,8 +57,12 @@ class ConfigModule {}
     { provide: IdempotencyStore, useClass: PrismaIdempotencyStore },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
     IdempotencyPurgeScheduler,
+    { provide: AuditJournal, useClass: PrismaAuditJournal },
+    { provide: PlatformSettings, useClass: PrismaPlatformSettings },
   ],
   exports: [
+    AuditJournal,
+    PlatformSettings,
     IdempotencyStore,
     PrismaService,
     RedisService,

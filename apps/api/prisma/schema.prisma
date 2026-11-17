@@ -67,6 +67,8 @@ enum AccountTokenPurpose {
   EMAIL_CHANGE
   EMAIL_CHANGE_CANCEL
   PASSWORD_RESET
+  /// ADM-07 : réinitialisation du TOTP déclenchée par un administrateur.
+  TOTP_RESET
   /// PRO-10 : vérification de l'adresse d'un profil.
   PROFILE_EMAIL_VERIFY
   /// PRO-12 : accord du profil à un passage, par son adresse.

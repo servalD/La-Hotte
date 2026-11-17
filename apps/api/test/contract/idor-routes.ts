@@ -99,3 +99,15 @@ export const PHASE5_IDOR_ROUTES: readonly string[] = [
   'POST /api/v1/offset-proposals/:id/decline',
   'DELETE /api/v1/budgets/:id',
 ];
+
+// RBAC-04, RBAC-05 : routes de l'espace d'administration (phase 7). L'identifiant y désigne par
+// conception un compte cible : la barrière est la permission de plateforme, vérifiée route par
+// route dans `admin-rbac.spec.ts` (USER et MODERATOR reçoivent le 404 d'une route inconnue).
+export const PHASE7_ADMIN_ROUTES: readonly string[] = [
+  'POST /api/v1/admin/accounts/:id/suspend',
+  'POST /api/v1/admin/accounts/:id/reactivate',
+  'POST /api/v1/admin/accounts/:id/force-logout',
+  'POST /api/v1/admin/accounts/:id/totp-reset',
+  'PUT /api/v1/admin/accounts/:id/role',
+  'PUT /api/v1/admin/settings/:key',
+];

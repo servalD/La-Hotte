@@ -257,7 +257,13 @@ export class RedisSessionStore extends SessionStore {
   }
 
   async insert(record: SessionRecord, now: Date): Promise<void> {
-    await this.prisma.session.create({
+    // RGPD-13, ADM-04 : une session neuve est une connexion réussie.
+    const signedIn = this.prisma.account.update({
+      where: { id: record.accountId },
+      data: { lastSignInAt: record.createdAt },
+      select: { id: true },
+    });
+    const created = this.prisma.session.create({
       data: {
         id: record.id,
         accountId: record.accountId,
@@ -274,6 +280,7 @@ export class RedisSessionStore extends SessionStore {
         sharedDevice: record.sharedDevice,
       },
     });
+    await this.prisma.$transaction([created, signedIn]);
     await this.writeCache(record, null, now);
   }
 

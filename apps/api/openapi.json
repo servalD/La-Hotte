@@ -32,6 +32,37 @@
         ]
       }
     },
+    "/api/v1/account/admin-actions": {
+      "get": {
+        "operationId": "listAdminActionsOnAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionsOnAccountView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/account/age-attestation": {
       "post": {
         "operationId": "attestAge",
@@ -1122,6 +1153,268 @@
         ]
       }
     },
+    "/api/v1/admin/accounts": {
+      "get": {
+        "operationId": "searchAccount",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "maxLength": 254,
+              "format": "email",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountSearchView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/accounts/{id}/force-logout": {
+      "post": {
+        "operationId": "forceAccountLogout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/accounts/{id}/reactivate": {
+      "post": {
+        "operationId": "reactivateAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/accounts/{id}/role": {
+      "put": {
+        "operationId": "changeAccountRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/accounts/{id}/suspend": {
+      "post": {
+        "operationId": "suspendAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/accounts/{id}/totp-reset": {
+      "post": {
+        "operationId": "requestAccountTotpReset",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/admin/audit": {
       "get": {
         "operationId": "listAuditEntries",
@@ -1189,6 +1482,87 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuditPageView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "operationId": "getPlatformSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettingsView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/{key}": {
+      "put": {
+        "operationId": "updatePlatformSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/PlatformSettingKey"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSettingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettingsView"
                 }
               }
             }
@@ -1841,6 +2215,41 @@
           }
         },
         "summary": "AUTH-10, AUTH-14 : secret et URI du QR code, une seule fois ; TOTP pas encore actif.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/totp/reset/confirm": {
+      "post": {
+        "operationId": "confirmTotpReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "ADM-07 : le titulaire ouvre le lien envoyé à la demande d'un administrateur. TOTP, codes de\nsecours et appareils de confiance retirés ; toutes les sessions tombent.",
         "tags": [
           "auth"
         ]
@@ -8310,6 +8719,72 @@
           "canDecide"
         ]
       },
+      "AccountMetadataView": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSignInAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "profileCount": {
+            "type": "number"
+          },
+          "listCount": {
+            "type": "number"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountRole"
+              }
+            ]
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountStatus"
+              }
+            ]
+          },
+          "totpEnabled": {
+            "type": "boolean"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "publicationSuspended": {
+            "type": "boolean"
+          },
+          "suspensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuspensionEventView"
+            }
+          }
+        },
+        "required": [
+          "accountId",
+          "createdAt",
+          "lastSignInAt",
+          "profileCount",
+          "listCount",
+          "role",
+          "status",
+          "totpEnabled",
+          "emailVerified",
+          "publicationSuspended",
+          "suspensions"
+        ]
+      },
       "AccountProfileListView": {
         "type": "object",
         "properties": {
@@ -8363,6 +8838,31 @@
           "hasPin",
           "isChild",
           "hasEmail"
+        ]
+      },
+      "AccountRole": {
+        "type": "string",
+        "enum": [
+          "USER",
+          "MODERATOR",
+          "ADMIN"
+        ]
+      },
+      "AccountSearchView": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountMetadataView"
+              }
+            ]
+          }
+        },
+        "required": [
+          "account"
         ]
       },
       "AccountSessionListView": {
@@ -8440,6 +8940,14 @@
         "required": [
           "token",
           "password"
+        ]
+      },
+      "AccountStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "SUSPENDED",
+          "PENDING_DELETION"
         ]
       },
       "AccountView": {
@@ -8544,6 +9052,58 @@
           "item_or_suggestion"
         ]
       },
+      "AdminActionOnAccountView": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditAction"
+              }
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "action",
+          "at",
+          "reason"
+        ]
+      },
+      "AdminActionsOnAccountView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminActionOnAccountView"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AdminReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "AgeAttestationDto": {
         "type": "object",
         "properties": {
@@ -8634,7 +9194,7 @@
             "nullable": true
           },
           "before": {
-            "description": "Valeur d'un réglage avant et après (ADM-09) ; `null` sinon.",
+            "description": "Valeur avant et après : rôle, empreinte d'une recherche, ou réglage et sa clé (ADM-09).",
             "nullable": true,
             "oneOf": [
               {
@@ -8650,6 +9210,38 @@
                 "type": "array",
                 "items": {
                   "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "key",
+                  "value"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "nullable": true,
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             ]
@@ -8670,6 +9262,38 @@
                 "type": "array",
                 "items": {
                   "type": "string"
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "key",
+                  "value"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "nullable": true,
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             ]
@@ -9260,6 +9884,27 @@
         },
         "required": [
           "groups"
+        ]
+      },
+      "ChangeRoleDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountRole"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "role"
         ]
       },
       "ChannelPreferenceDto": {
@@ -12838,6 +13483,50 @@
           "createdAt"
         ]
       },
+      "PlatformSettingKey": {
+        "type": "string",
+        "enum": [
+          "registration_mode",
+          "forbidden_terms",
+          "blocked_domains",
+          "extraction_daily_limit"
+        ]
+      },
+      "PlatformSettingsView": {
+        "type": "object",
+        "properties": {
+          "registration_mode": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RegistrationMode"
+              }
+            ]
+          },
+          "forbidden_terms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocked_domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "extraction_daily_limit": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "registration_mode",
+          "forbidden_terms",
+          "blocked_domains",
+          "extraction_daily_limit"
+        ]
+      },
       "PostCommentDto": {
         "type": "object",
         "properties": {
@@ -13459,6 +14148,13 @@
           "ageAttested"
         ]
       },
+      "RegistrationMode": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "INVITE_ONLY"
+        ]
+      },
       "RequestTransferDto": {
         "type": "object",
         "properties": {
@@ -13916,6 +14612,26 @@
         },
         "required": [
           "profileIds"
+        ]
+      },
+      "SuspensionEventView": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuditAction"
+              }
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "action",
+          "at"
         ]
       },
       "SyncView": {
@@ -14553,6 +15269,44 @@
             "format": "password"
           }
         }
+      },
+      "UpdateSettingDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          },
+          "value": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "OPEN",
+                  "INVITE_ONLY"
+                ]
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 500
+              }
+            ]
+          }
+        },
+        "required": [
+          "reason",
+          "value"
+        ]
       },
       "VisibilityEditRole": {
         "type": "string",

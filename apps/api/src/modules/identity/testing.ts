@@ -59,3 +59,5 @@ export { WardRepository } from './domain/ward.ports';
 export { InMemoryWardRepository } from './infrastructure/in-memory-wards';
 export { TransferRepository } from './domain/transfer.ports';
 export { InMemoryTransferRepository } from './infrastructure/in-memory-transfers';
+export { AccountAdministration } from './domain/account-administration';
+export { InMemoryAccountAdministration } from './infrastructure/in-memory-administration';

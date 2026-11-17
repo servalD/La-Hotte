@@ -42,6 +42,8 @@ export const ACCOUNT_TOKEN_PURPOSES = [
   'EMAIL_CHANGE',
   'EMAIL_CHANGE_CANCEL',
   'PASSWORD_RESET',
+  /** ADM-07 : réinitialisation du TOTP déclenchée par un administrateur. */
+  'TOTP_RESET',
 ] as const;
 export type AccountTokenPurpose = (typeof ACCOUNT_TOKEN_PURPOSES)[number];
 
@@ -51,6 +53,7 @@ export const ACCOUNT_TOKEN_LIFETIME_MS: Readonly<Record<AccountTokenPurpose, num
   EMAIL_CHANGE: DAY,
   EMAIL_CHANGE_CANCEL: 7 * DAY,
   PASSWORD_RESET: 30 * MINUTE,
+  TOTP_RESET: 30 * MINUTE,
 };
 
 /** AUTH-15 : un compte non vérifié est supprimé après 7 jours. */

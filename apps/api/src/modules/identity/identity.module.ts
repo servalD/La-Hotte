@@ -17,6 +17,17 @@ import { RequestEmailChange } from './application/request-email-change.use-case'
 import { RequestPasswordReset } from './application/request-password-reset.use-case';
 import { ResolveSession } from './application/resolve-session.use-case';
 import { CheckPlatformPermission } from './application/check-platform-permission.use-case';
+import {
+  AdminActionKit,
+  ChangeAccountRole,
+  ConfirmTotpReset,
+  ForceLogout,
+  ReactivateAccount,
+  RequestTotpReset,
+  SuspendAccount,
+} from './application/administer-accounts.use-case';
+import { AccountAdministration } from './domain/account-administration';
+import { PrismaAccountAdministration } from './infrastructure/prisma-account-administration';
 import { SessionLifecycle } from './application/session-lifecycle';
 import { SignInWithPassword } from './application/sign-in-with-password.use-case';
 import { VerifyEmail } from './application/verify-email.use-case';
@@ -246,6 +257,14 @@ import {
     AuthorizeProfile,
     CheckSessionAccess,
     CheckPlatformPermission,
+    AdminActionKit,
+    SuspendAccount,
+    ReactivateAccount,
+    ForceLogout,
+    ChangeAccountRole,
+    RequestTotpReset,
+    ConfirmTotpReset,
+    { provide: AccountAdministration, useClass: PrismaAccountAdministration },
     SessionLifecycle,
     ReportCsrfRejection,
     AccountMailer,
@@ -376,6 +395,11 @@ import {
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
   exports: [
+    SuspendAccount,
+    ReactivateAccount,
+    ForceLogout,
+    ChangeAccountRole,
+    RequestTotpReset,
     CheckSessionAccess,
     IdentityEvents,
     CircleReader,

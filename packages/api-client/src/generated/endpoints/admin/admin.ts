@@ -5,26 +5,570 @@
  * Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.
  * OpenAPI spec version: 1
  */
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from '@tanstack/react-query';
 
-import type { AuditPageView, ListAuditEntriesParams, ProblemDetailsDto } from '../../model';
+import type {
+  AccountSearchView,
+  AdminReasonDto,
+  AuditPageView,
+  ChangeRoleDto,
+  ListAuditEntriesParams,
+  PlatformSettingKey,
+  PlatformSettingsView,
+  ProblemDetailsDto,
+  SearchAccountParams,
+  UpdateSettingDto,
+} from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
 import type { ErrorType } from '../../../http/fetcher';
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
+export const getSearchAccountUrl = (params: SearchAccountParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/admin/accounts?${stringifiedParams}`
+    : `/api/v1/admin/accounts`;
+};
+
+export const searchAccount = async (
+  params: SearchAccountParams,
+  options?: RequestInit,
+): Promise<AccountSearchView> => {
+  return apiFetch<AccountSearchView>(getSearchAccountUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getSearchAccountQueryKey = (params?: SearchAccountParams) => {
+  return [`/api/v1/admin/accounts`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchAccountQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: SearchAccountParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchAccount>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSearchAccountQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchAccount>>> = ({ signal }) =>
+    searchAccount(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchAccount>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type SearchAccountQueryResult = NonNullable<Awaited<ReturnType<typeof searchAccount>>>;
+export type SearchAccountQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useSearchAccount<
+  TData = Awaited<ReturnType<typeof searchAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: SearchAccountParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchAccount>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchAccount>>,
+          TError,
+          Awaited<ReturnType<typeof searchAccount>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSearchAccount<
+  TData = Awaited<ReturnType<typeof searchAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: SearchAccountParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchAccount>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchAccount>>,
+          TError,
+          Awaited<ReturnType<typeof searchAccount>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSearchAccount<
+  TData = Awaited<ReturnType<typeof searchAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: SearchAccountParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchAccount>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useSearchAccount<
+  TData = Awaited<ReturnType<typeof searchAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: SearchAccountParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof searchAccount>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSearchAccountQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getForceAccountLogoutUrl = (id: string) => {
+  return `/api/v1/admin/accounts/${id}/force-logout`;
+};
+
+export const forceAccountLogout = async (
+  id: string,
+  adminReasonDto: AdminReasonDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getForceAccountLogoutUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminReasonDto),
+  });
+};
+
+export const getForceAccountLogoutMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof forceAccountLogout>>,
+    TError,
+    { id: string; data: AdminReasonDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof forceAccountLogout>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationKey = ['forceAccountLogout'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof forceAccountLogout>>,
+    { id: string; data: AdminReasonDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return forceAccountLogout(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ForceAccountLogoutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof forceAccountLogout>>
+>;
+export type ForceAccountLogoutMutationBody = AdminReasonDto;
+export type ForceAccountLogoutMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useForceAccountLogout = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof forceAccountLogout>>,
+      TError,
+      { id: string; data: AdminReasonDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof forceAccountLogout>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationOptions = getForceAccountLogoutMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getReactivateAccountUrl = (id: string) => {
+  return `/api/v1/admin/accounts/${id}/reactivate`;
+};
+
+export const reactivateAccount = async (
+  id: string,
+  adminReasonDto: AdminReasonDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getReactivateAccountUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminReasonDto),
+  });
+};
+
+export const getReactivateAccountMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reactivateAccount>>,
+    TError,
+    { id: string; data: AdminReasonDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reactivateAccount>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationKey = ['reactivateAccount'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reactivateAccount>>,
+    { id: string; data: AdminReasonDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return reactivateAccount(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReactivateAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reactivateAccount>>
+>;
+export type ReactivateAccountMutationBody = AdminReasonDto;
+export type ReactivateAccountMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useReactivateAccount = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reactivateAccount>>,
+      TError,
+      { id: string; data: AdminReasonDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reactivateAccount>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationOptions = getReactivateAccountMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getChangeAccountRoleUrl = (id: string) => {
+  return `/api/v1/admin/accounts/${id}/role`;
+};
+
+export const changeAccountRole = async (
+  id: string,
+  changeRoleDto: ChangeRoleDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getChangeAccountRoleUrl(id), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(changeRoleDto),
+  });
+};
+
+export const getChangeAccountRoleMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changeAccountRole>>,
+    TError,
+    { id: string; data: ChangeRoleDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changeAccountRole>>,
+  TError,
+  { id: string; data: ChangeRoleDto },
+  TContext
+> => {
+  const mutationKey = ['changeAccountRole'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changeAccountRole>>,
+    { id: string; data: ChangeRoleDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return changeAccountRole(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangeAccountRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof changeAccountRole>>
+>;
+export type ChangeAccountRoleMutationBody = ChangeRoleDto;
+export type ChangeAccountRoleMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useChangeAccountRole = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof changeAccountRole>>,
+      TError,
+      { id: string; data: ChangeRoleDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof changeAccountRole>>,
+  TError,
+  { id: string; data: ChangeRoleDto },
+  TContext
+> => {
+  const mutationOptions = getChangeAccountRoleMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getSuspendAccountUrl = (id: string) => {
+  return `/api/v1/admin/accounts/${id}/suspend`;
+};
+
+export const suspendAccount = async (
+  id: string,
+  adminReasonDto: AdminReasonDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getSuspendAccountUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminReasonDto),
+  });
+};
+
+export const getSuspendAccountMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof suspendAccount>>,
+    TError,
+    { id: string; data: AdminReasonDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof suspendAccount>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationKey = ['suspendAccount'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof suspendAccount>>,
+    { id: string; data: AdminReasonDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return suspendAccount(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SuspendAccountMutationResult = NonNullable<Awaited<ReturnType<typeof suspendAccount>>>;
+export type SuspendAccountMutationBody = AdminReasonDto;
+export type SuspendAccountMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useSuspendAccount = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof suspendAccount>>,
+      TError,
+      { id: string; data: AdminReasonDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof suspendAccount>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationOptions = getSuspendAccountMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getRequestAccountTotpResetUrl = (id: string) => {
+  return `/api/v1/admin/accounts/${id}/totp-reset`;
+};
+
+export const requestAccountTotpReset = async (
+  id: string,
+  adminReasonDto: AdminReasonDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getRequestAccountTotpResetUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminReasonDto),
+  });
+};
+
+export const getRequestAccountTotpResetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestAccountTotpReset>>,
+    TError,
+    { id: string; data: AdminReasonDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestAccountTotpReset>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationKey = ['requestAccountTotpReset'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestAccountTotpReset>>,
+    { id: string; data: AdminReasonDto }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return requestAccountTotpReset(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestAccountTotpResetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestAccountTotpReset>>
+>;
+export type RequestAccountTotpResetMutationBody = AdminReasonDto;
+export type RequestAccountTotpResetMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRequestAccountTotpReset = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof requestAccountTotpReset>>,
+      TError,
+      { id: string; data: AdminReasonDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof requestAccountTotpReset>>,
+  TError,
+  { id: string; data: AdminReasonDto },
+  TContext
+> => {
+  const mutationOptions = getRequestAccountTotpResetMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 export const getListAuditEntriesUrl = (params?: ListAuditEntriesParams) => {
   const normalizedParams = new URLSearchParams();
 
@@ -153,3 +697,201 @@ export function useListAuditEntries<
 
   return query;
 }
+
+export const getGetPlatformSettingsUrl = () => {
+  return `/api/v1/admin/settings`;
+};
+
+export const getPlatformSettings = async (options?: RequestInit): Promise<PlatformSettingsView> => {
+  return apiFetch<PlatformSettingsView>(getGetPlatformSettingsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetPlatformSettingsQueryKey = () => {
+  return [`/api/v1/admin/settings`] as const;
+};
+
+export const getGetPlatformSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlatformSettings>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPlatformSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformSettings>>> = ({ signal }) =>
+    getPlatformSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlatformSettings>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetPlatformSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlatformSettings>>
+>;
+export type GetPlatformSettingsQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useGetPlatformSettings<
+  TData = Awaited<ReturnType<typeof getPlatformSettings>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPlatformSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getPlatformSettings>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPlatformSettings<
+  TData = Awaited<ReturnType<typeof getPlatformSettings>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPlatformSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getPlatformSettings>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetPlatformSettings<
+  TData = Awaited<ReturnType<typeof getPlatformSettings>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGetPlatformSettings<
+  TData = Awaited<ReturnType<typeof getPlatformSettings>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetPlatformSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getUpdatePlatformSettingUrl = (key: PlatformSettingKey) => {
+  return `/api/v1/admin/settings/${key}`;
+};
+
+export const updatePlatformSetting = async (
+  key: PlatformSettingKey,
+  updateSettingDto: UpdateSettingDto,
+  options?: RequestInit,
+): Promise<PlatformSettingsView> => {
+  return apiFetch<PlatformSettingsView>(getUpdatePlatformSettingUrl(key), {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateSettingDto),
+  });
+};
+
+export const getUpdatePlatformSettingMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlatformSetting>>,
+    TError,
+    { key: PlatformSettingKey; data: UpdateSettingDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePlatformSetting>>,
+  TError,
+  { key: PlatformSettingKey; data: UpdateSettingDto },
+  TContext
+> => {
+  const mutationKey = ['updatePlatformSetting'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePlatformSetting>>,
+    { key: PlatformSettingKey; data: UpdateSettingDto }
+  > = (props) => {
+    const { key, data } = props ?? {};
+
+    return updatePlatformSetting(key, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePlatformSettingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePlatformSetting>>
+>;
+export type UpdatePlatformSettingMutationBody = UpdateSettingDto;
+export type UpdatePlatformSettingMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useUpdatePlatformSetting = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updatePlatformSetting>>,
+      TError,
+      { key: PlatformSettingKey; data: UpdateSettingDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updatePlatformSetting>>,
+  TError,
+  { key: PlatformSettingKey; data: UpdateSettingDto },
+  TContext
+> => {
+  const mutationOptions = getUpdatePlatformSettingMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};

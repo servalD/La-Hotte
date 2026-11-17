@@ -7,6 +7,109 @@
  */
 import * as zod from 'zod';
 
+export const searchAccountQueryEmailMax = 254;
+
+export const searchAccountQueryParams = zod.object({
+  email: zod.email().max(searchAccountQueryEmailMax),
+});
+
+export const searchAccountResponse = zod.object({
+  account: zod
+    .object({
+      accountId: zod.uuid(),
+      createdAt: zod.iso.datetime({}),
+      lastSignInAt: zod.iso.datetime({}).nullable(),
+      profileCount: zod.number(),
+      listCount: zod.number(),
+      role: zod.enum(['USER', 'MODERATOR', 'ADMIN']),
+      status: zod.enum(['ACTIVE', 'SUSPENDED', 'PENDING_DELETION']),
+      totpEnabled: zod.boolean(),
+      emailVerified: zod.boolean(),
+      publicationSuspended: zod.boolean(),
+      suspensions: zod.array(
+        zod.object({
+          action: zod.enum([
+            'audit.read',
+            'account.search',
+            'account.suspend',
+            'account.reactivate',
+            'account.force_logout',
+            'account.totp_reset_requested',
+            'account.totp_reset_completed',
+            'role.grant',
+            'role.revoke',
+            'role.grant_by_operator',
+            'setting.update',
+            'moderation.decide',
+            'publication.restore',
+            'followup.failed',
+          ]),
+          at: zod.iso.datetime({}),
+        }),
+      ),
+    })
+    .nullable(),
+});
+
+export const forceAccountLogoutParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const forceAccountLogoutBodyReasonMin = 10;
+export const forceAccountLogoutBodyReasonMax = 500;
+
+export const forceAccountLogoutBody = zod.object({
+  reason: zod.string().min(forceAccountLogoutBodyReasonMin).max(forceAccountLogoutBodyReasonMax),
+});
+
+export const reactivateAccountParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const reactivateAccountBodyReasonMin = 10;
+export const reactivateAccountBodyReasonMax = 500;
+
+export const reactivateAccountBody = zod.object({
+  reason: zod.string().min(reactivateAccountBodyReasonMin).max(reactivateAccountBodyReasonMax),
+});
+
+export const changeAccountRoleParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const changeAccountRoleBodyReasonMin = 10;
+export const changeAccountRoleBodyReasonMax = 500;
+
+export const changeAccountRoleBody = zod.object({
+  reason: zod.string().min(changeAccountRoleBodyReasonMin).max(changeAccountRoleBodyReasonMax),
+  role: zod.enum(['USER', 'MODERATOR', 'ADMIN']),
+});
+
+export const suspendAccountParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const suspendAccountBodyReasonMin = 10;
+export const suspendAccountBodyReasonMax = 500;
+
+export const suspendAccountBody = zod.object({
+  reason: zod.string().min(suspendAccountBodyReasonMin).max(suspendAccountBodyReasonMax),
+});
+
+export const requestAccountTotpResetParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const requestAccountTotpResetBodyReasonMin = 10;
+export const requestAccountTotpResetBodyReasonMax = 500;
+
+export const requestAccountTotpResetBody = zod.object({
+  reason: zod
+    .string()
+    .min(requestAccountTotpResetBodyReasonMin)
+    .max(requestAccountTotpResetBodyReasonMax),
+});
+
 export const listAuditEntriesQueryCursorMax = 200;
 
 export const listAuditEntriesQueryLimitDefault = 50;
@@ -69,13 +172,85 @@ export const listAuditEntriesResponse = zod.object({
       reason: zod.string().nullable(),
       ip: zod.string().nullable(),
       before: zod
-        .union([zod.string(), zod.number(), zod.boolean(), zod.array(zod.string())])
+        .union([
+          zod.string(),
+          zod.number(),
+          zod.boolean(),
+          zod.array(zod.string()),
+          zod.object({
+            key: zod.string(),
+            value: zod
+              .union([zod.string(), zod.number(), zod.boolean(), zod.array(zod.string())])
+              .nullable(),
+          }),
+        ])
         .nullable()
-        .describe("Valeur d'un réglage avant et après (ADM-09) ; `null` sinon."),
+        .describe(
+          "Valeur avant et après : rôle, empreinte d'une recherche, ou réglage et sa clé (ADM-09).",
+        ),
       after: zod
-        .union([zod.string(), zod.number(), zod.boolean(), zod.array(zod.string())])
+        .union([
+          zod.string(),
+          zod.number(),
+          zod.boolean(),
+          zod.array(zod.string()),
+          zod.object({
+            key: zod.string(),
+            value: zod
+              .union([zod.string(), zod.number(), zod.boolean(), zod.array(zod.string())])
+              .nullable(),
+          }),
+        ])
         .nullable(),
     }),
   ),
   nextCursor: zod.string().nullable(),
+});
+
+export const getPlatformSettingsResponse = zod.object({
+  registration_mode: zod.enum(['OPEN', 'INVITE_ONLY']).nullable(),
+  forbidden_terms: zod.array(zod.string()),
+  blocked_domains: zod.array(zod.string()),
+  extraction_daily_limit: zod.number().nullable(),
+});
+
+export const updatePlatformSettingParams = zod.object({
+  key: zod.enum([
+    'registration_mode',
+    'forbidden_terms',
+    'blocked_domains',
+    'extraction_daily_limit',
+  ]),
+});
+
+export const updatePlatformSettingBodyReasonMin = 10;
+export const updatePlatformSettingBodyReasonMax = 500;
+
+export const updatePlatformSettingBodyValueMinTwo = 0;
+export const updatePlatformSettingBodyValueMaxTwo = 1000;
+
+export const updatePlatformSettingBodyValueMaxThree = 500;
+
+export const updatePlatformSettingBody = zod.object({
+  reason: zod
+    .string()
+    .min(updatePlatformSettingBodyReasonMin)
+    .max(updatePlatformSettingBodyReasonMax),
+  value: zod
+    .union([
+      zod.enum(['OPEN', 'INVITE_ONLY']),
+      zod
+        .number()
+        .min(updatePlatformSettingBodyValueMinTwo)
+        .max(updatePlatformSettingBodyValueMaxTwo),
+      zod.array(zod.string()).max(updatePlatformSettingBodyValueMaxThree),
+    ])
+    .nullable(),
+});
+
+export const updatePlatformSettingResponse = zod.object({
+  registration_mode: zod.enum(['OPEN', 'INVITE_ONLY']).nullable(),
+  forbidden_terms: zod.array(zod.string()),
+  blocked_domains: zod.array(zod.string()),
+  extraction_daily_limit: zod.number().nullable(),
 });

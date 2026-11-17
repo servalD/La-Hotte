@@ -134,6 +134,7 @@ Un profil est une personne ; un compte, une façon de se connecter. Ces règles 
 | Confirmation d'un changement d'e-mail (`EMAIL_CHANGE`)      | 24 heures                                                           |
 | Annulation d'un changement d'e-mail (`EMAIL_CHANGE_CANCEL`) | 7 jours (AUTH-16)                                                   |
 | Réinitialisation du mot de passe (`PASSWORD_RESET`)         | 30 minutes (AUTH-06)                                                |
+| Réinitialisation du TOTP par un administrateur (`TOTP_RESET`) | 30 minutes (`11`, ADM-07)                                         |
 | Invitation à un lien (`invitation`, `LINK`)                 | 7 jours (LNK-01) ; supprimée 30 jours après son terme (LNK-10)      |
 | Invitation à créer un profil (`invitation`, `PROFILE`)      | 7 jours, acceptation du compte visé comprise (PRO-11)               |
 | Vérification de l'adresse d'un profil (`PROFILE_EMAIL_VERIFY`) | 24 heures (PRO-10)                                               |

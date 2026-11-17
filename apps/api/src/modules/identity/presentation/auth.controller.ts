@@ -7,6 +7,7 @@ import {
   CancelEmailChange,
   ChangePassword,
   ConfirmPasswordReset,
+  ConfirmTotpReset,
   CsrfTokens,
   DisableTotp,
   type IssuedSession,
@@ -85,6 +86,7 @@ export class AuthController {
     private readonly cancelChange: CancelEmailChange,
     private readonly requestReset: RequestPasswordReset,
     private readonly confirmReset: ConfirmPasswordReset,
+    private readonly confirmTotpResetUseCase: ConfirmTotpReset,
     private readonly changePasswordUseCase: ChangePassword,
     private readonly requestChange: RequestEmailChange,
     private readonly authorizeProfile: AuthorizeProfile,
@@ -344,6 +346,21 @@ export class AuthController {
     @ClientContext() client: ClientContextValue,
   ): Promise<void> {
     await this.confirmReset.execute({ token: body.token, newPassword: body.newPassword, client });
+  }
+
+  /**
+   * ADM-07 : le titulaire ouvre le lien envoyé à la demande d'un administrateur. TOTP, codes de
+   * secours et appareils de confiance retirés ; toutes les sessions tombent.
+   */
+  @Post('totp/reset/confirm')
+  @Public()
+  @HttpCode(204)
+  @ApiNoContentResponse()
+  async confirmTotpReset(
+    @Body() body: EmailTokenDto,
+    @ClientContext() client: ClientContextValue,
+  ): Promise<void> {
+    await this.confirmTotpResetUseCase.execute({ token: body.token, client });
   }
 
   /** AUTH-05, AUTH-14 : toutes les autres sessions tombent ; celle-ci est remplacée. */

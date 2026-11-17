@@ -25,8 +25,11 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 export const AUDIT_TARGET_KINDS = ['ACCOUNT', 'PRODUCT', 'COMMENT', 'SETTING'] as const;
 export type AuditTargetKind = (typeof AUDIT_TARGET_KINDS)[number];
 
-/** Valeur d'un réglage (ADM-09) : jamais un contenu d'utilisateur. */
-export type AuditValue = string | number | boolean | null | readonly string[];
+/** Valeur simple d'un réglage ou d'un rôle : jamais un contenu d'utilisateur. */
+export type AuditScalar = string | number | boolean | null | readonly string[];
+
+/** ADM-09 : un réglage est journalisé avec sa clé. */
+export type AuditValue = AuditScalar | { readonly key: string; readonly value: AuditScalar };
 
 export interface AuditEntry {
   /** `null` : action de la commande d'exploitation, hors de tout compte. */
@@ -40,4 +43,19 @@ export interface AuditEntry {
   readonly ip: string | null;
   readonly before?: AuditValue;
   readonly after?: AuditValue;
+}
+
+/** Entrée prête à écrire : identifiant et instant fixés par le cas d'usage. */
+export interface AuditWrite {
+  readonly id: string;
+  readonly at: Date;
+  readonly entry: AuditEntry;
+}
+
+/**
+ * Entrée écrite seule, hors de la transaction d'une action : la suite d'une action qui a échoué
+ * (AUD-05, `followup.failed`). Toute autre entrée s'écrit dans la transaction de son action.
+ */
+export abstract class AuditJournal {
+  abstract append(write: AuditWrite): Promise<void>;
 }

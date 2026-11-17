@@ -5,8 +5,10 @@
  * Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.
  * OpenAPI spec version: 1
  */
+import type { AuditEntryViewAfterOneOf } from './auditEntryViewAfterOneOf';
 
 /**
  * @nullable
  */
-export type AuditEntryViewAfter = string | number | boolean | string[] | null;
+export type AuditEntryViewAfter =
+  string | number | boolean | string[] | AuditEntryViewAfterOneOf | null;

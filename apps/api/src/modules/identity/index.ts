@@ -19,6 +19,15 @@ export {
   RequiresRecentReauth,
 } from './presentation/decorators';
 export type { PlatformActor, PlatformPermission } from './application/contract';
+/** Administration des comptes (ADM-06 à ADM-08, RBAC-07), pour le module `admin`. */
+export {
+  type AdminActionInput,
+  ChangeAccountRole,
+  ForceLogout,
+  ReactivateAccount,
+  RequestTotpReset,
+  SuspendAccount,
+} from './application/contract';
 export type { ActiveProfile as ActiveProfileValue } from './application/authorize-profile.use-case';
 
 /**

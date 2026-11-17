@@ -26,6 +26,31 @@ export const getAccountResponse = zod.object({
     .max(getAccountResponseRecoveryCodesRemainingMax),
 });
 
+export const listAdminActionsOnAccountResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      action: zod.enum([
+        'audit.read',
+        'account.search',
+        'account.suspend',
+        'account.reactivate',
+        'account.force_logout',
+        'account.totp_reset_requested',
+        'account.totp_reset_completed',
+        'role.grant',
+        'role.revoke',
+        'role.grant_by_operator',
+        'setting.update',
+        'moderation.decide',
+        'publication.restore',
+        'followup.failed',
+      ]),
+      at: zod.iso.datetime({}),
+      reason: zod.string().nullable(),
+    }),
+  ),
+});
+
 export const attestAgeBody = zod.object({
   ageAttested: zod.literal(true),
 });

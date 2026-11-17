@@ -25,6 +25,7 @@ import type {
   AccountProfileListView,
   AccountProfileView,
   AccountView,
+  AdminActionsOnAccountView,
   AgeAttestationDto,
   CreateProfileDto,
   CreateWardDto,
@@ -147,6 +148,128 @@ export function useGetAccount<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getGetAccountQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+export const getListAdminActionsOnAccountUrl = () => {
+  return `/api/v1/account/admin-actions`;
+};
+
+export const listAdminActionsOnAccount = async (
+  options?: RequestInit,
+): Promise<AdminActionsOnAccountView> => {
+  return apiFetch<AdminActionsOnAccountView>(getListAdminActionsOnAccountUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListAdminActionsOnAccountQueryKey = () => {
+  return [`/api/v1/account/admin-actions`] as const;
+};
+
+export const getListAdminActionsOnAccountQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminActionsOnAccountQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminActionsOnAccount>>> = ({
+    signal,
+  }) => listAdminActionsOnAccount({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminActionsOnAccountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminActionsOnAccount>>
+>;
+export type ListAdminActionsOnAccountQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListAdminActionsOnAccountQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

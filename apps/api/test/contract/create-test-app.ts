@@ -118,7 +118,20 @@ import {
   RecordingPushSender,
   SendDigests,
 } from '../../src/modules/notifications/testing';
-import { AuditTrail, InMemoryAuditTrail } from '../../src/modules/admin/testing';
+import {
+  AccountDirectory,
+  AccountSearchQuota,
+  AuditTrail,
+  InMemoryAccountSearchQuota,
+  InMemoryAuditTrail,
+} from '../../src/modules/admin/testing';
+import {
+  AccountAdministration,
+  InMemoryAccountAdministration,
+} from '../../src/modules/identity/testing';
+import { InMemoryPlatformSettings } from '../../src/platform/settings/in-memory-platform-settings';
+import { AuditJournal, PlatformSettings } from '../../src/shared/domain';
+import { InMemoryAccountDirectory } from './in-memory-account-directory';
 import type { AccountRole } from '../../src/modules/identity/domain/session';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 import { IdempotencyStore, InMemoryIdempotencyStore } from '../../src/platform/http/idempotency';
@@ -134,6 +147,9 @@ import {
 /** Doubles du module `admin` (phase 7). */
 export interface TestAdmin {
   readonly audit: InMemoryAuditTrail;
+  readonly settings: InMemoryPlatformSettings;
+  readonly searchQuota: InMemoryAccountSearchQuota;
+  readonly administration: InMemoryAccountAdministration;
 }
 
 /** Doubles du module `accounting` (phase 5). */
@@ -255,9 +271,16 @@ export async function createTestApp(
 
   const sessions = new InMemorySessionStore();
   const audit = new InMemoryAuditTrail();
+  const platformSettings = new InMemoryPlatformSettings((write) => {
+    audit.append(write);
+  });
+  const searchQuota = new InMemoryAccountSearchQuota();
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
   const accounts = new InMemoryAccountRepository(sessions);
+  const administration = new InMemoryAccountAdministration(sessions, accounts, (write) => {
+    audit.append(write);
+  });
   const profiles = new InMemoryProfileLockPolicies(accounts.profiles);
   const profileRepository = new InMemoryProfileRepository(accounts.profiles, sessions);
   const hasher = new FakePasswordHasher();
@@ -438,6 +461,21 @@ export async function createTestApp(
     .useValue(conversations.digests)
     .overrideProvider(AuditTrail)
     .useValue(audit)
+    .overrideProvider(AuditJournal)
+    .useValue({
+      append: (write: Parameters<AuditJournal['append']>[0]) => {
+        audit.append(write);
+        return Promise.resolve();
+      },
+    })
+    .overrideProvider(PlatformSettings)
+    .useValue(platformSettings)
+    .overrideProvider(AccountAdministration)
+    .useValue(administration)
+    .overrideProvider(AccountDirectory)
+    .useValue(new InMemoryAccountDirectory(sessions, accounts, administration, audit))
+    .overrideProvider(AccountSearchQuota)
+    .useValue(searchQuota)
     .overrideProvider(IdempotencyStore)
     .useValue(idempotency)
     .compile();
@@ -604,5 +642,13 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity, catalog, events, conversations, accounting, admin: { audit } };
+  return {
+    app,
+    identity,
+    catalog,
+    events,
+    conversations,
+    accounting,
+    admin: { audit, settings: platformSettings, searchQuota, administration },
+  };
 }

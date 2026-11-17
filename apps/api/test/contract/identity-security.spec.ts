@@ -18,6 +18,7 @@ import {
   PHASE3_IDOR_ROUTES,
   PHASE4_IDOR_ROUTES,
   PHASE5_IDOR_ROUTES,
+  PHASE7_ADMIN_ROUTES,
 } from './idor-routes';
 import { listRoutes, type RouteInfo } from './routes';
 
@@ -383,10 +384,13 @@ describe('CSRF sur toutes les mutations (API-21, ADR 0013)', () => {
     listRoutes(app).filter((route) => isUnsafe(route) && !route.oidcCallback);
 
   it('avec une session : jeton absent, d’une autre session ou de pré-session, origine étrangère — 403, rien ne change', async () => {
-    const user = await reauthenticated(await identity.signIn());
+    const plain = await reauthenticated(await identity.signIn());
+    // RBAC-05 : l'espace d'administration répond 404 avant le CSRF à qui n'a pas le rôle ; ses
+    // routes sont donc essayées avec un administrateur.
+    const admin = await reauthenticated(await identity.signIn({ role: 'ADMIN' }));
     const other = await identity.signIn();
     const pre = await presession();
-    const attempts: Record<string, Record<string, string>> = {
+    const attemptsFor = (user: SignedIn): Record<string, Record<string, string>> => ({
       'jeton absent': { Cookie: user.cookie, Origin: WEB_ORIGIN },
       'jeton vide': { ...user.mutation, 'X-CSRF-Token': '' },
       'jeton d’une autre session': { ...user.mutation, 'X-CSRF-Token': other.csrf },
@@ -395,11 +399,13 @@ describe('CSRF sur toutes les mutations (API-21, ADR 0013)', () => {
       'Sec-Fetch-Site cross-site': { ...user.mutation, 'Sec-Fetch-Site': 'cross-site' },
       // Un sous-domaine n'est pas l'origine du web.
       'Sec-Fetch-Site same-site': { ...user.mutation, 'Sec-Fetch-Site': 'same-site' },
-    };
+    });
     const routes = mutations();
     expect(routes.length).toBeGreaterThan(20);
     const before = snapshot();
     for (const route of routes) {
+      const user = route.marks.includes('admin') ? admin : plain;
+      const attempts = attemptsFor(user);
       const cases = isPublic(route)
         ? attempts
         : {
@@ -1092,6 +1098,7 @@ describe('IDOR : ressources d’un autre compte (SEC-03, critère de 01)', () =>
         ...PHASE4_IDOR_ROUTES,
         // Phase 5 : table de `accounting-contributions.spec.ts`.
         ...PHASE5_IDOR_ROUTES,
+        ...PHASE7_ADMIN_ROUTES,
       ].sort(),
     );
   });

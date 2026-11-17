@@ -25,7 +25,7 @@ export interface AuditEntryView {
   /** @nullable */
   ip: string | null;
   /**
-   * Valeur d'un réglage avant et après (ADM-09) ; `null` sinon.
+   * Valeur avant et après : rôle, empreinte d'une recherche, ou réglage et sa clé (ADM-09).
    * @nullable
    */
   before: AuditEntryViewBefore;

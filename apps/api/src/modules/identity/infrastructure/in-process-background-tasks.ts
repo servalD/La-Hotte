@@ -1,6 +1,7 @@
 import { Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
 import { AppConfig } from '../../../platform/config/env';
 import { ErrorReporter } from '../../../platform/telemetry/error-reporter';
+import { PlatformSettings } from '../../../shared/domain';
 import { BackgroundTasks, IdentitySettings } from '../domain/account.ports';
 import type { RegistrationMode } from '../domain/account';
 
@@ -39,12 +40,20 @@ export class InProcessBackgroundTasks extends BackgroundTasks implements OnAppli
 /** Réglages du module, lus dans la configuration validée au démarrage. */
 @Injectable()
 export class EnvIdentitySettings extends IdentitySettings {
-  readonly registrationMode: RegistrationMode;
+  private readonly initialMode: RegistrationMode;
   readonly webOrigin: string;
 
-  constructor(config: AppConfig) {
+  constructor(
+    config: AppConfig,
+    private readonly platform: PlatformSettings,
+  ) {
     super();
-    this.registrationMode = config.env.REGISTRATION_MODE;
+    this.initialMode = config.env.REGISTRATION_MODE;
     this.webOrigin = config.env.WEB_ORIGIN.replace(/\/+$/, '');
+  }
+
+  /** AUTH-09, ADM-09 : la valeur réglée par un administrateur prime sur l'environnement. */
+  get registrationMode(): RegistrationMode {
+    return this.platform.current().registration_mode ?? this.initialMode;
   }
 }
