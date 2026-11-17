@@ -83,6 +83,8 @@ export interface AccountingState {
   readonly detachedTitle: string | null;
   readonly detachedEventId: string | null;
   readonly detachedAt: Date | null;
+  /** CPT-52, CPT-73 : relevés au détachement par la base ; jamais d'accès. */
+  readonly detachedExcluded: readonly string[];
   readonly version: number;
   readonly contributions: readonly ContributionRow[];
   readonly purchase: PurchaseRow | null;
@@ -113,6 +115,7 @@ export function openAccounting(input: {
     detachedTitle: null,
     detachedEventId: null,
     detachedAt: null,
+    detachedExcluded: [],
     version: 0,
     contributions: [],
     purchase: null,

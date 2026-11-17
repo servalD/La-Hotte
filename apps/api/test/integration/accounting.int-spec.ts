@@ -406,4 +406,59 @@ describe('Compta en base (CPT-03, CPT-70, CPT-71)', () => {
     ]);
     expect(await engagements.withdrawalAlertCandidates(eventId, papa.profileId!)).toEqual([]);
   }, 30_000);
+
+  it('I1 (revue SEC-40) : achat et suppression simultanés, la suppression réussit toujours', async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const { marie, papa, itemId } = await world();
+      await contribute(papa, itemId, { mode: 'FULL' }).expect(200);
+      const [purchased, deleted] = await Promise.all([
+        http()
+          .put(`/api/v1/items/${itemId}/purchase`)
+          .set({ ...papa.mutation, 'Idempotency-Key': randomUUID() })
+          .send({}),
+        http().delete(`/api/v1/items/${itemId}`).set(marie.mutation),
+      ]);
+      expect(deleted.status).toBe(204);
+      expect([200, 404]).toContain(purchased.status);
+    }
+  }, 60_000);
+
+  it('I2 (revue SEC-40) : un participant devenu destinataire n’a rien d’une fiche détachée', async () => {
+    const { marie, papa, tonton, itemId } = await world();
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 2_000 }).expect(200);
+    await http()
+      .put(`/api/v1/items/${itemId}/purchase`)
+      .set({ ...papa.mutation, 'Idempotency-Key': randomUUID() })
+      .send({})
+      .expect(200);
+    const item = await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } });
+    // Tonton devient co-destinataire de la liste, puis le souhait est supprimé.
+    await prisma.listRecipient.create({
+      data: { id: randomUUID(), listId: item.listId, profileId: tonton.profileId! },
+    });
+    await http().delete(`/api/v1/items/${itemId}`).set(marie.mutation).expect(204);
+    const detached = await prisma.itemAccounting.findFirstOrThrow({
+      where: {
+        detachedTitle: { not: null },
+        contributions: { some: { profileId: tonton.profileId } },
+      },
+    });
+    expect(detached.detachedRecipientIds).toContain(tonton.profileId);
+    const balances = await http()
+      .get('/api/v1/balances')
+      .set({ Cookie: tonton.cookie })
+      .expect(200);
+    expect(balances.body.items).toEqual([]);
+    const part = await prisma.contribution.findFirstOrThrow({
+      where: { accountingId: detached.id, profileId: tonton.profileId },
+    });
+    await http()
+      .post(`/api/v1/contributions/${part.id}/claim`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': randomUUID() })
+      .expect(404);
+    // Papa, l'acheteur, garde l'accès.
+    const forPapa = await http().get('/api/v1/balances').set({ Cookie: papa.cookie }).expect(200);
+    expect(forPapa.body.items).not.toEqual([]);
+  }, 30_000);
 });

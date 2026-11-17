@@ -1226,22 +1226,24 @@ enum OffsetProposalStatus {
 /// déclencheur `item_accounting_detach` quand l'élément disparaît (CPT-73) : `item_id` vidé,
 /// titre et événement relevés. `detached_event_id` sans clé étrangère : il survit à l'événement.
 model ItemAccounting {
-  id                String    @id @db.Uuid
-  itemId            String?   @unique @map("item_id") @db.Uuid
-  currency          String    @db.Char(3)
+  id                   String    @id @db.Uuid
+  itemId               String?   @unique @map("item_id") @db.Uuid
+  currency             String    @db.Char(3)
   /// CPT-57 : coût prévu ; absent sur un élément sans prix (CPT-55).
-  plannedTotalMinor BigInt?   @map("planned_total_minor")
-  buyerProfileId    String?   @map("buyer_profile_id") @db.Uuid
-  reviewEnabled     Boolean   @default(true) @map("review_enabled")
-  receiptEnabled    Boolean   @default(false) @map("receipt_enabled")
+  plannedTotalMinor    BigInt?   @map("planned_total_minor")
+  buyerProfileId       String?   @map("buyer_profile_id") @db.Uuid
+  reviewEnabled        Boolean   @default(true) @map("review_enabled")
+  receiptEnabled       Boolean   @default(false) @map("receipt_enabled")
   /// CPT-53 : rang d'arrivée suivant.
-  nextRank          Int       @default(1) @map("next_rank")
-  detachedTitle     String?   @map("detached_title") @db.VarChar(300)
-  detachedEventId   String?   @map("detached_event_id") @db.Uuid
-  detachedAt        DateTime? @map("detached_at") @db.Timestamptz(3)
-  version           Int       @default(1)
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  nextRank             Int       @default(1) @map("next_rank")
+  detachedTitle        String?   @map("detached_title") @db.VarChar(300)
+  detachedEventId      String?   @map("detached_event_id") @db.Uuid
+  /// CPT-52, CPT-73 : destinataires et honorés relevés au détachement ; jamais d'accès.
+  detachedRecipientIds String[]  @default([]) @map("detached_recipient_ids") @db.Uuid
+  detachedAt           DateTime? @map("detached_at") @db.Timestamptz(3)
+  version              Int       @default(1)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   item          ListItem?          @relation(fields: [itemId], references: [id], onDelete: SetNull)
   buyer         Profile?           @relation("AccountingBuyer", fields: [buyerProfileId], references: [id], onDelete: SetNull)

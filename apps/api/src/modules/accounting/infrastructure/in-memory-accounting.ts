@@ -1,4 +1,4 @@
-import { IdempotencyKeyReusedError } from '../domain/accounting.errors';
+import { AccountingNotFoundError, IdempotencyKeyReusedError } from '../domain/accounting.errors';
 import {
   type AccountingState,
   itemStatusOf,
@@ -178,6 +178,9 @@ export class InMemoryAccountingRepository extends AccountingRepository {
       if (known) {
         if (known.hash !== idem.requestHash) throw new IdempotencyKeyReusedError();
         return { replayed: true, response: known.response };
+      }
+      if (this.offsets.get(input.proposal.id)?.status !== 'PENDING') {
+        throw new AccountingNotFoundError();
       }
       const states = new Map<string, AccountingState>();
       for (const id of input.accountingIds) {

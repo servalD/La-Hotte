@@ -651,6 +651,29 @@ Dépendances : 0 ; 1 → 2 → 3 → 4 → 5 → 6 → 7 ; les écrans (8) suive
 
 Sortie : critères de `07` ; le journal permet de reconstituer tout état.
 
+**Tranches 0 à 9 faites le 2026-11-17** (opus), d'affilée. Module `accounting` (domaine pur testé par propriétés, verrou par fiche, idempotence dans la transaction, journal dérivé de la différence d'état), décisions de compta dans le moteur (matrice générée, 100 % des branches), avis, trame `accounting.changed`, tâches planifiées, écrans (Offrir, Panier, Comptes, Mes cadeaux). Test OBS-26 vert avec un scénario de compta ; toutes les lectures d'une destinataire identiques avant et après une compta complète.
+
+Choix faits dans les silences, à relire (écrits en règles quand ils touchent le produit) :
+
+- pourcentages en fractions exactes (`num/den`), centimes distribués par rang seulement si les fractions couvrent exactement (CPT-53) ; une part Tout ne rétrécit jamais par le geste d'autrui (CPT-54) ;
+- avant l'achat, un nouveau coût garde les pourcentages et la part Tout complète ; une hausse sans part relative ne va au dernier arrivé que si l'élément était couvert ; un excédent est retiré aux derniers arrivés, un pourcentage réduit devient un montant fixe (CPT-57) ;
+- la revue d'un nouveau coût naît de l'avis `item.changed`, au nom de l'auteur du changement ; si l'avis se perd, la prochaine écriture la crée sans auteur (tout participant peut alors décider) ;
+- l'état réel `list_item.status` est écrit par la transaction de compta, sans toucher la version (ADR 0019) ;
+- `IDEMPOTENCY_KEY_REQUIRED` en `422` (et non `400`), faute de nature d'erreur `400` dans le domaine ;
+- le reste actualisé sort dans le corps du `409` (`remainingMinor`), seul membre d'extension numérique permis ;
+- un « Ne prévenir personne » (CPT-19) est enregistré comme un avis sans destinataire ;
+- RLS (DAT-05) reportée à la phase 7 (ADR 0019).
+
+Restes :
+
+- **Écran de confirmation d'une compensation** : l'API confirme, mais aucune route ne liste les propositions reçues ; la personne sollicitée ne peut pas encore confirmer depuis l'interface.
+- Avis de compta pour un participant qui ne voit plus l'élément (VIS-37) ou dont l'élément a disparu (CPT-73) : aucun en v1 (CPT-74) ; donc pas d'avis LST-15 « souhait réservé retiré ».
+- Achat, décocher et justificatif d'une fiche détachée : seuls les règlements et la compensation passent par la fiche ; les routes d'achat restent sur l'élément.
+- EVT-26 (avis de reprise d'un souhait réservé) et la mention « événement annulé » sur les participations (EVT-34) : non faits.
+- Écrans : options de compta, demande de changement d'acheteur, justificatif, budgets et règlements ne sont pas encore dans l'interface (l'API est prête) ; animation du total (CPT-43) et tiroir mobile (CPT-41) à faire avec la passe de motion de la phase 6 ; parcours Playwright et relecture `design:ux-copy` non faits.
+- File hors ligne des mutations de compta (clé d'idempotence prête) : phase 6.
+- Test d'intégration `identity-transfers` (« plus de 100 détachements ») : échoue sur une base locale qui a accumulé des passages échus des exécutions précédentes ; sans lien avec la phase (la CI part d'une base neuve).
+
 ## Phase 6 — Hors ligne, installation, motion
 
 Spec : `08`, `10`. ADR 0005.

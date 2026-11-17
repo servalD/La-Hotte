@@ -362,3 +362,12 @@ describe('CPT-60 : liste hors événement', () => {
     expect(canContribute({ list: trashed, access, item }, VIEWER)).toBe(false);
   });
 });
+
+describe('CPT-73 : fiche détachée (revue SEC-40, I2)', () => {
+  it('un participant relevé comme destinataire ou honoré au détachement n’a aucun accès', () => {
+    const facts = { participants: [VIEWER, BUYER], buyerId: BUYER };
+    expect(accountingLevel(null, { ...facts, excluded: [VIEWER] }, VIEWER)).toBe('none');
+    expect(accountingLevel(null, { ...facts, excluded: [OTHER] }, VIEWER)).toBe('participant');
+    expect(accountingLevel(null, facts, VIEWER)).toBe('participant');
+  });
+});

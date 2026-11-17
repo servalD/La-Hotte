@@ -12,6 +12,7 @@ import {
   AccountingActionForbiddenError,
   ContributionFrozenError,
   ContributionInvalidError,
+  ContributionSettledError,
 } from './accounting.errors';
 import { isMinor } from './money';
 import type { OperationContext, Outcome } from './operations';
@@ -30,6 +31,20 @@ export class PurchaseUncheckConfirmRequiredError extends DomainError {
   constructor() {
     super('Unchecking the purchase requires confirmation.');
   }
+}
+
+/** CPT-63 (revue SEC-40, I3) : l'achat est déjà coché ; corriger le prix passe par décocher. */
+export class PurchaseDoneError extends DomainError {
+  readonly kind = 'conflict';
+  readonly code = 'PURCHASE_DONE';
+  constructor() {
+    super('The purchase is already checked.');
+  }
+}
+
+/** CPT-61 (revue SEC-40, I4) : une part d'un autre est en partie réglée chez l'acheteur en place. */
+export function othersSettled(state: AccountingState): boolean {
+  return state.contributions.some((row) => row.profileId !== state.buyerId && row.settled > 0);
 }
 
 /** CPT-12, CPT-62 : geste qui exige un achat coché (justificatif, refus d'une hausse). */
@@ -79,8 +94,8 @@ function closePendingCost(state: AccountingState, now: Date): Outcome {
 /**
  * CPT-12, CPT-13, CPT-16, CPT-17, CPT-55 : l'acheteur coche Acheté, avec le prix payé s'il diffère.
  * Les parts d'avant l'achat sont gardées (`prePurchase`, plancher de CPT-18) ; l'écart est réparti ;
- * la demande de coût en attente est close (le prix payé tranche, CPT-58). Saisir de nouveau le
- * prix payé repart des parts d'avant l'achat ; la fenêtre de refus garde sa date.
+ * la demande de coût en attente est close (le prix payé tranche, CPT-58). Une seconde fois est
+ * refusée (revue SEC-40, I3) : corriger le prix passe par décocher.
  */
 export function markPurchased(
   state: AccountingState,
@@ -89,41 +104,30 @@ export function markPurchased(
   ctx: OperationContext,
 ): Outcome {
   if (state.buyerId !== buyerId) throw new AccountingActionForbiddenError();
+  if (state.purchase) throw new PurchaseDoneError();
   if (state.contributions.length === 0) throw new ContributionInvalidError();
   if (actual !== null && !isMinor(actual)) throw new ContributionInvalidError();
   // CPT-55 : sans prix, le prix payé est obligatoire.
   if (state.planned === null && actual === null) throw new ContributionInvalidError();
-  const base: AccountingState = state.purchase
-    ? {
-        ...state,
-        contributions: state.contributions.map((row) => ({
-          ...row,
-          amount: row.prePurchase ?? row.amount,
-        })),
-      }
-    : state;
-  const frozen = base.contributions.map((row) => ({ ...row, prePurchase: row.amount }));
-  const withFrozen: AccountingState = { ...base, contributions: frozen };
-  let parts = partsOf(withFrozen);
-  if (base.planned === null && actual !== null) parts = resolveUnknownFull(actual, parts);
-  else if (base.planned !== null && actual !== null && actual !== base.planned) {
-    parts = applyGap(base.planned, actual, parts);
+  const frozen: AccountingState = {
+    ...state,
+    contributions: state.contributions.map((row) => ({ ...row, prePurchase: row.amount })),
+  };
+  let parts = partsOf(frozen);
+  if (state.planned === null && actual !== null) parts = resolveUnknownFull(actual, parts);
+  else if (state.planned !== null && actual !== null && actual !== state.planned) {
+    parts = applyGap(state.planned, actual, parts);
   }
-  const priced = withParts(withFrozen, parts);
   const purchased: AccountingState = {
-    ...priced,
-    contributions: priced.contributions.map((row) => ({
-      ...row,
-      prePurchase: row.prePurchase ?? row.amount,
-    })),
+    ...withParts(frozen, parts),
     purchase: {
-      id: state.purchase?.id ?? ctx.newId(),
+      id: ctx.newId(),
       buyerId,
-      purchasedAt: state.purchase?.purchasedAt ?? ctx.now,
-      planned: base.planned,
+      purchasedAt: ctx.now,
+      planned: state.planned,
       actual,
-      receiptKey: state.purchase?.receiptKey ?? null,
-      raiseUntil: state.purchase?.raiseUntil ?? new Date(ctx.now.getTime() + RAISE_WINDOW_MS),
+      receiptKey: null,
+      raiseUntil: new Date(ctx.now.getTime() + RAISE_WINDOW_MS),
     },
   };
   return closePendingCost(withSettlements(purchased), ctx.now);
@@ -246,6 +250,7 @@ export function decideBuyerRequest(
   const cleared: AccountingState = { ...state, buyerRequest: null };
   if (decision !== 'ACCEPTED') return { state: cleared, closed };
   if (state.purchase) throw new ContributionFrozenError();
+  if (othersSettled(state)) throw new ContributionSettledError();
   if (!participantsOf(state).includes(request.candidateId)) throw new ContributionInvalidError();
   return { state: withSettlements({ ...cleared, buyerId: request.candidateId }), closed };
 }

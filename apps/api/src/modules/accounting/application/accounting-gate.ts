@@ -38,6 +38,7 @@ export class AccountingGate {
     const facts = {
       participants: state ? participantsOf(state) : [],
       buyerId: state?.buyerId ?? null,
+      excluded: state?.detachedExcluded ?? [],
     };
     const level = item || state ? accountingLevel(item?.subject ?? null, facts, viewerId) : 'none';
     return {

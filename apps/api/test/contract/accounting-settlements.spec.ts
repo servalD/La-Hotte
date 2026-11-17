@@ -335,3 +335,19 @@ describe('IDOR des règlements (SEC-03, CPT-59)', () => {
     expect(others.body.items).toEqual([]);
   });
 });
+
+describe('M1 (revue SEC-40) : une proposition déclinée ne s’applique plus', () => {
+  it('confirmer après un refus rend 404 et ne règle rien', async () => {
+    const { papa, tonton } = await world();
+    const proposal = await http()
+      .post('/api/v1/offset-proposals')
+      .set(papa.mutation)
+      .send({ counterpartId: tonton.profileId, currency: 'EUR' })
+      .expect(200);
+    const id = proposal.body.id as string;
+    await post(papa, `/api/v1/offset-proposals/${id}/decline`).expect(200);
+    const before = JSON.stringify([...accounting.repository.states.values()]);
+    await post(tonton, `/api/v1/offset-proposals/${id}/confirm`).expect(404);
+    expect(JSON.stringify([...accounting.repository.states.values()])).toBe(before);
+  });
+});

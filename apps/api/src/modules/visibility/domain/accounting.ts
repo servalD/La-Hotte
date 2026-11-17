@@ -13,6 +13,11 @@ export type AccountingLevel = 'none' | 'giver' | 'participant' | 'buyer';
 export interface AccountingFacts {
   readonly participants: readonly string[];
   readonly buyerId: string | null;
+  /**
+   * CPT-52, CPT-73 (revue SEC-40, I2) : destinataires de la liste et honorés d'une surprise,
+   * relevés au détachement. Ils n'obtiennent jamais rien d'une fiche détachée.
+   */
+  readonly excluded?: readonly string[];
 }
 
 /** L'élément et sa liste ; `null` quand la fiche est détachée (CPT-73). */
@@ -40,6 +45,8 @@ export function accountingLevel(
   if (subject !== null) {
     if (subject.list.recipients.includes(viewerId)) return 'none';
     if (subject.list.event?.hiddenFrom.includes(viewerId)) return 'none';
+  } else if (facts.excluded?.includes(viewerId)) {
+    return 'none';
   }
   if (facts.participants.includes(viewerId)) {
     return facts.buyerId === viewerId ? 'buyer' : 'participant';

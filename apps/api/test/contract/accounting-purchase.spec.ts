@@ -283,3 +283,45 @@ describe('Panier (CPT-11)', () => {
     expect(recipient.body.groups).toEqual([]);
   });
 });
+
+describe('Revue SEC-40 de la phase 5, cycle 1', () => {
+  it('I3 : cocher Acheté une seconde fois est refusé ; le refus de hausse reste', async () => {
+    const { papa, tonton, itemId } = await world();
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 7_000 }).expect(200);
+    await purchase(papa, itemId, { actualTotalMinor: 11_000 }).expect(200);
+    await post(tonton, `/api/v1/items/${itemId}/contribution/lower`, { amountMinor: 7_200 }).expect(
+      200,
+    );
+    const again = await purchase(papa, itemId, { actualTotalMinor: 11_000 });
+    expect({ status: again.status, code: again.body.code }).toEqual({
+      status: 409,
+      code: 'PURCHASE_DONE',
+    });
+    const state = await accounting.repository.findByItem(itemId);
+    expect(state!.contributions.find((c) => c.profileId === tonton.profileId)!.amount).toBe(7_200);
+  });
+
+  it('I4 : pas de changement d’acheteur, ni de retrait de l’acheteur, avec une part avancée', async () => {
+    const { papa, tonton, itemId } = await world();
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 3_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 4_000 }).expect(200);
+    const tontonPart = (await accounting.repository.findByItem(itemId))!.contributions.find(
+      (c) => c.profileId === tonton.profileId,
+    )!;
+    // CPT-21 : Tonton avance sa part à Papa.
+    await http()
+      .put(`/api/v1/contributions/${tontonPart.id}/settlement`)
+      .set({ ...papa.mutation, 'Idempotency-Key': key() })
+      .send({ settled: true })
+      .expect(200);
+    await post(tonton, `/api/v1/items/${itemId}/buyer-requests`).expect(200);
+    const requestId = (await accounting.repository.findByItem(itemId))!.buyerRequest!.id;
+    const accepted = await post(papa, `/api/v1/buyer-requests/${requestId}/accept`);
+    expect(accepted.body.code).toBe('CONTRIBUTION_SETTLED');
+    const left = await http()
+      .delete(`/api/v1/items/${itemId}/contribution`)
+      .set({ ...papa.mutation, 'Idempotency-Key': key() });
+    expect(left.body.code).toBe('CONTRIBUTION_SETTLED');
+  });
+});

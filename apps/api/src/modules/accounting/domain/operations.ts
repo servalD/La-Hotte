@@ -244,6 +244,13 @@ export function removeContribution(
   if (!mine) return null;
   if (state.purchase) throw new ContributionFrozenError();
   if (mine.settled > 0) throw new ContributionSettledError();
+  // CPT-61 (revue SEC-40, I4) : l'acheteur ne s'en va pas avec l'argent avancé par d'autres.
+  if (
+    state.buyerId === profileId &&
+    state.contributions.some((row) => row.profileId !== profileId && row.settled > 0)
+  ) {
+    throw new ContributionSettledError();
+  }
   const result = setParticipation(state.planned, partsOf(state), mine.id, null);
   if (!('parts' in result)) throw new ContributionInvalidError();
   const next = withParts(

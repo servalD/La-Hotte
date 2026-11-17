@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { IdGenerator } from '../../../shared/domain';
 import { PrismaService } from '../../../platform/prisma/prisma.service';
-import { IdempotencyKeyReusedError } from '../domain/accounting.errors';
+import { AccountingNotFoundError, IdempotencyKeyReusedError } from '../domain/accounting.errors';
 import {
   type AccountingState,
   type ContributionRow,
@@ -113,6 +113,7 @@ function toState(row: StateRow, refusedCost: number | null): AccountingState {
     detachedTitle: row.detachedTitle,
     detachedEventId: row.detachedEventId,
     detachedAt: row.detachedAt,
+    detachedExcluded: row.detachedRecipientIds,
     version: row.version,
     contributions: row.contributions.map(toContribution),
     purchase: row.purchase ? toPurchase(row.purchase) : null,
@@ -215,6 +216,11 @@ export class PrismaAccountingRepository extends AccountingRepository {
       async (tx) => {
         const replay = await this.claimKey(tx, input.idempotency);
         if (replay) return { replayed: true, response: replay.response };
+        // M1 : la proposition est verrouillée et relue en attente dans la transaction.
+        const pending = await tx.$queryRaw<{ id: string }[]>`
+          SELECT "id" FROM "offset_proposal"
+           WHERE "id" = ${input.proposal.id}::uuid AND "status" = 'PENDING' FOR UPDATE`;
+        if (pending.length === 0) throw new AccountingNotFoundError();
         const states = new Map<string, AccountingState>();
         for (const id of [...new Set(input.accountingIds)].sort()) {
           const state = await this.lock(tx, { accountingId: id });
@@ -419,17 +425,24 @@ export class PrismaAccountingRepository extends AccountingRepository {
   }
 
   /** Verrou sur la fiche ; pour l'ouvrir, verrou sur l'élément d'abord (deux premières parts). */
+  /**
+   * Revue SEC-40, I1 : un seul ordre de verrous, l'élément puis la fiche, comme la suppression d'un
+   * élément (dont le déclencheur verrouille la fiche après la ligne `list_item`).
+   */
   private async lock(tx: Tx, key: AccountingKey): Promise<AccountingState | null> {
     if ('accountingId' in key) {
+      const head = await tx.itemAccounting.findUnique({
+        where: { id: key.accountingId },
+        select: { itemId: true },
+      });
+      if (head?.itemId) {
+        await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${head.itemId}::uuid FOR UPDATE`;
+      }
       await tx.$queryRaw`SELECT "id" FROM "item_accounting" WHERE "id" = ${key.accountingId}::uuid FOR UPDATE`;
       return load(tx, { id: key.accountingId });
     }
-    const found = await tx.$queryRaw<{ id: string }[]>`
-      SELECT "id" FROM "item_accounting" WHERE "item_id" = ${key.itemId}::uuid FOR UPDATE`;
-    if (found.length === 0) {
-      await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${key.itemId}::uuid FOR UPDATE`;
-      await tx.$queryRaw`SELECT "id" FROM "item_accounting" WHERE "item_id" = ${key.itemId}::uuid FOR UPDATE`;
-    }
+    await tx.$queryRaw`SELECT "id" FROM "list_item" WHERE "id" = ${key.itemId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "item_accounting" WHERE "item_id" = ${key.itemId}::uuid FOR UPDATE`;
     return load(tx, { itemId: key.itemId });
   }
 
