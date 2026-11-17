@@ -19,6 +19,7 @@ import {
   type OpenProfileCache,
   openOffline,
   openOnline,
+  wipeIfOtherAccount,
 } from './profile-cache';
 import { prefetchUpcoming } from './prefetch';
 import { ActionQueue } from './queue';
@@ -96,6 +97,9 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     () =>
       listenIdentity((message) => {
         if (message.identity === lastIdentity.current) return;
+        // H1 : l'écriture du coffre s'arrête avant la purge ; les relectures qui suivent sont sous
+        // la nouvelle identité et ne doivent pas y entrer.
+        void current.current?.close({ discard: true });
         purgeUserData(queryClient);
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
       }),
@@ -147,6 +151,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (session) {
+        if (shared && accountTag) await wipeIfOtherAccount(accountTag).catch(() => undefined);
         settle({ mode: 'online', profileId: null, vault: null, sharedDevice: shared }, null);
         return;
       }

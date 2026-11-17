@@ -75,6 +75,7 @@ export async function wipeDevice(): Promise<void> {
   const vaults = await listVaults().catch(() => [] as VaultRecord[]);
   await Promise.all(vaults.map((v) => destroyProfileVault(v.profileId)));
   await deleteDatabase(DEVICE_DB);
+  await wipeCachedPages();
 }
 
 /**
@@ -91,4 +92,26 @@ export async function reconcileDevice(accountTag: string, now: number): Promise<
     if (now - vault.lastOpenedAt > CACHE_RETENTION_MS) await forgetVault(vault.profileId);
   }
   if (!meta) await writeDeviceMeta({ accountTag, lastProfileId: null });
+}
+
+/**
+ * OFF-22 : les pages gardées par le service worker (`/lists/<id>`, …) ne survivent pas à la
+ * déconnexion. Restent les fichiers du build et les pages de premier niveau, qui ne portent
+ * aucun identifiant.
+ */
+export async function wipeCachedPages(): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  try {
+    for (const name of await caches.keys()) {
+      if (!name.startsWith('lh-')) continue;
+      const cache = await caches.open(name);
+      for (const request of await cache.keys()) {
+        const { pathname } = new URL(request.url);
+        const deep = pathname.split('/').filter(Boolean).length > 1;
+        if (!pathname.startsWith('/_next/') && deep) await cache.delete(request);
+      }
+    }
+  } catch {
+    // Le cache des pages est une commodité ; une erreur ne bloque pas la déconnexion.
+  }
 }

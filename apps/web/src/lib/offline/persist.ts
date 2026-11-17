@@ -100,13 +100,13 @@ export function forgetQueries(vault: ProfileVault): Promise<void> {
 /**
  * Écrit l'état des lectures persistées au plus une fois par seconde après un changement ; une
  * lecture retirée du cache (purge, `access.revoked`) disparaît donc du coffre à l'écriture
- * suivante. Rend la fonction d'arrêt, qui écrit une dernière fois.
+ * suivante. Rend la fonction d'arrêt, qui écrit une dernière fois sauf avec `discard`.
  */
 export function persistQueries(
   queryClient: QueryClient,
   vault: ProfileVault,
   options: { delayMs?: number; now?: () => number } = {},
-): () => Promise<void> {
+): (options?: { discard?: boolean }) => Promise<void> {
   const delay = options.delayMs ?? 1_000;
   const now = options.now ?? Date.now;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -128,12 +128,15 @@ export function persistQueries(
   // Ce qui était déjà lu à l'ouverture du coffre (lectures du profil faites avant) est écrit aussi.
   timer = setTimeout(flush, delay);
 
-  return async () => {
+  return async ({ discard = false } = {}) => {
     stopped = true;
     unsubscribe();
     if (timer) {
       clearTimeout(timer);
-      flush();
+      timer = null;
+      // `discard` : l'identité vient de changer, l'état courant du cache n'est plus celui du
+      // profil de ce coffre (OFF-20) ; rien n'est écrit.
+      if (!discard) flush();
     }
     await writing;
   };

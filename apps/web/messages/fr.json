@@ -27,7 +27,9 @@
       "who": "Personne d’autre ne voit ce que vous saisissez ici.",
       "submit": "Se connecter",
       "submitting": "Connexion…",
-      "google": "Continuer avec Google"
+      "google": "Continuer avec Google",
+      "sharedDevice": "Appareil partagé ou emprunté",
+      "sharedDeviceHint": "Rien n’est gardé sur cet appareil et la session est courte (12 heures au plus, 2 heures sans activité). Les actions en attente sont perdues si vous fermez l’onglet."
     },
     "register": {
       "title": "Créer un compte",

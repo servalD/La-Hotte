@@ -226,6 +226,22 @@ describe('Coffre d’un profil (OFF-20, OFF-21, OFF-26)', () => {
   });
 });
 
+describe('Arrêt de l’écriture à un changement d’identité (OFF-20)', () => {
+  it('discard : une lecture arrivée sous une autre identité n’entre pas dans le coffre', async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const client = new QueryClient();
+    const vault = await ProfileVault.open(P2, null);
+    const stop = persistQueries(client, vault, { delayMs: 10_000 });
+    client.setQueryData(['/api/v1/balances'], { groups: ['vue d’un autre profil'] });
+    await stop({ discard: true });
+    await wait(30);
+    const restored = new QueryClient();
+    await restoreQueries(restored, vault, Date.now());
+    expect(restored.getQueryData(['/api/v1/balances'])).toBeUndefined();
+    vault.close();
+  });
+});
+
 describe('Réouverture hors ligne (OFF-27)', () => {
   it('profil sans PIN : rouvert hors ligne ; profil à PIN : réseau requis sans clé en mémoire', async () => {
     const client = clientWith({ '/api/v1/cart': { groups: [] } });

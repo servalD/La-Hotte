@@ -149,6 +149,7 @@ describe('Service worker (PWA-07, OFF-24)', () => {
     push({ title: 'Pour Léa', body: 'Un nouveau message', url: '/notifications' });
     push({ title: 'x'.repeat(500), body: 'y', url: 'https://piege.example/' });
     push({ title: 'z', body: 'w', url: '//piege.example/' });
+    push({ title: 'z', body: 'w', url: '/\\piege.example' });
     expect(shown[0]).toMatchObject({
       title: 'Pour Léa',
       options: { body: 'Un nouveau message', data: { url: '/notifications' } },
@@ -156,6 +157,7 @@ describe('Service worker (PWA-07, OFF-24)', () => {
     expect(shown[1]?.title).toHaveLength(80);
     expect(shown[1]?.options.data.url).toBe('/notifications');
     expect(shown[2]?.options.data.url).toBe('/notifications');
+    expect(shown[3]?.options.data.url).toBe('/notifications');
   });
 
   it('pages de connexion, de compte, de profils : jamais mises en cache', async () => {
@@ -171,5 +173,16 @@ describe('Service worker (PWA-07, OFF-24)', () => {
     expect([...sw.store.keys()].filter((k) => /auth|account|profiles|invitations/.test(k))).toEqual(
       [],
     );
+  });
+
+  it('cible de partage et pages ouvertes avec des paramètres : jamais mises en cache (VIS-20, OFF-22)', async () => {
+    const sw = harness(network);
+    await sw.dispatch({
+      url: `${ORIGIN}/share?url=https%3A%2F%2Fmarchand.example%2Fcadeau&title=Secret`,
+      mode: 'navigate',
+    });
+    await sw.dispatch({ url: `${ORIGIN}/share`, mode: 'navigate' });
+    await sw.dispatch({ url: `${ORIGIN}/lists?q=cadeau`, mode: 'navigate' });
+    expect([...sw.store.keys()]).toEqual([]);
   });
 });

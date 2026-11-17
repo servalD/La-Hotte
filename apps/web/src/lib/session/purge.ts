@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { getGetSessionQueryKey } from '@wishlist/api-client';
+import { forgetProfileKeys } from '@/lib/offline/keys';
 
 const SESSION_KEY = getGetSessionQueryKey()[0];
 
@@ -13,6 +14,8 @@ export function purgeUserData(
   queryClient: QueryClient,
   options: { keepMutations?: boolean } = {},
 ): void {
+  // OFF-21 : la clé d'un profil à PIN ne survit pas à un changement d'identité.
+  forgetProfileKeys();
   if (!options.keepMutations) queryClient.getMutationCache().clear();
   void queryClient.resetQueries({ predicate: (query) => query.queryKey[0] !== SESSION_KEY });
 }

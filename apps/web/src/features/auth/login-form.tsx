@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { purgeUserData } from '@/lib/session/purge';
 import { authErrorKey } from './api-errors';
 import { text } from './form-data';
@@ -27,7 +28,8 @@ export function LoginForm() {
     const form = new FormData(event.currentTarget);
     const email = text(form, 'email').trim();
     const password = text(form, 'password');
-    const parsed = authSchemas.signInBody.safeParse({ email, password });
+    const sharedDevice = form.get('sharedDevice') === 'on';
+    const parsed = authSchemas.signInBody.safeParse({ email, password, sharedDevice });
     if (!parsed.success) {
       setFieldErrors({
         email: email.length < 3 ? t('errors.emailRequired') : undefined,
@@ -77,6 +79,26 @@ export function LoginForm() {
         error={fieldErrors.password}
         required
       />
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-3">
+          <input
+            id="login-shared-device"
+            name="sharedDevice"
+            type="checkbox"
+            className="size-5 shrink-0 self-center"
+            aria-describedby="login-shared-device-hint"
+          />
+          <Label
+            htmlFor="login-shared-device"
+            className="flex min-h-touch flex-1 items-center font-normal"
+          >
+            {t('login.sharedDevice')}
+          </Label>
+        </div>
+        <p id="login-shared-device-hint" className="text-sm text-foreground-muted">
+          {t('login.sharedDeviceHint')}
+        </p>
+      </div>
       <FormError message={formError} />
       <Button type="submit" disabled={signIn.isPending}>
         {signIn.isPending ? t('login.submitting') : t('login.submit')}

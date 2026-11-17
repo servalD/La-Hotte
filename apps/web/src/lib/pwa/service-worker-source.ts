@@ -18,7 +18,7 @@ const SHELL = 'lh-shell-' + VERSION;
 const OFFLINE = '/offline';
 const PRECACHE = ['/', '/lists', '/events', '/cart', '/balances', '/gifts', '/notifications', '/actions', OFFLINE];
 const NEVER = ['/api/', '/realtime', '/monitoring', '/sw.js'];
-const NO_PAGE_CACHE = ['/auth', '/account', '/accounts', '/profiles', '/invitations', '/transfers', '/settings'];
+const NO_PAGE_CACHE = ['/share', '/auth', '/account', '/accounts', '/profiles', '/invitations', '/transfers', '/settings'];
 
 const startsWithAny = (path, list) => list.some((p) => path === p || path.startsWith(p.endsWith('/') ? p : p + '/') || path.startsWith(p + '?'));
 
@@ -78,7 +78,15 @@ self.addEventListener('sync', (event) => {
 
 // NOT-15, PWA-04 : push au texte neutre (NOT-06), rien d'autre n'est lu du message. Un lien ne
 // mène que dans l'application.
-const inApp = (value) => (typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value : '/notifications');
+const inApp = (value) => {
+  if (typeof value !== 'string' || !value.startsWith('/')) return '/notifications';
+  try {
+    const target = new URL(value, self.location.origin);
+    return target.origin === self.location.origin ? target.pathname + target.search + target.hash : '/notifications';
+  } catch (error) {
+    return '/notifications';
+  }
+};
 const text = (value, max) => (typeof value === 'string' ? value.slice(0, max) : '');
 
 self.addEventListener('push', (event) => {
@@ -136,7 +144,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (request.mode !== 'navigate') return;
-  const cacheable = !startsWithAny(url.pathname, NO_PAGE_CACHE);
+  // Une page ouverte avec des paramètres (cible de partage, lien) n'est jamais gardée : l'URL
+  // peut se retrouver dans la charge de la page.
+  const cacheable = !url.search && !startsWithAny(url.pathname, NO_PAGE_CACHE);
   event.respondWith(
     (async () => {
       const cache = await caches.open(SHELL);

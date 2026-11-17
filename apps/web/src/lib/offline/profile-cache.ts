@@ -5,6 +5,7 @@ import {
   readVault,
   reconcileDevice,
   recordVault,
+  wipeDevice,
   writeDeviceMeta,
 } from './device';
 import { idbAvailable } from './idb';
@@ -16,8 +17,18 @@ import { ProfileVault } from './vault';
 export interface OpenProfileCache {
   readonly profileId: string;
   readonly vault: ProfileVault;
-  /** Arrête l'écriture, écrit une dernière fois et ferme la base. */
-  readonly close: () => Promise<void>;
+  /**
+   * Arrête l'écriture, écrit une dernière fois et ferme la base. `discard` : sans dernière écriture
+   * (l'identité a changé ailleurs). Le premier appel décide ; les suivants attendent le même arrêt.
+   */
+  readonly close: (options?: { discard?: boolean }) => Promise<void>;
+}
+
+/** OFF-29 : sur un appareil partagé, les coffres d'un autre compte sont effacés (rien n'est écrit). */
+export async function wipeIfOtherAccount(accountTag: string): Promise<void> {
+  if (!idbAvailable()) return;
+  const meta = await readDeviceMeta();
+  if (meta && meta.accountTag !== accountTag) await wipeDevice();
 }
 
 export class CacheOpeningCancelled extends Error {}
@@ -44,12 +55,15 @@ async function mount(
   }
   await recordVault({ profileId, encrypted: key.encrypted, keyId, lastOpenedAt: now });
   const stop = persistQueries(queryClient, vault);
+  let closing: Promise<void> | null = null;
   return {
     profileId,
     vault,
-    close: async () => {
-      await stop();
-      vault.close();
+    close: (options) => {
+      closing ??= stop(options).then(() => {
+        vault.close();
+      });
+      return closing;
     },
   };
 }

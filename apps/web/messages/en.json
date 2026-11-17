@@ -27,7 +27,9 @@
       "who": "Nobody else sees what you type here.",
       "submit": "Sign in",
       "submitting": "Signing in…",
-      "google": "Continue with Google"
+      "google": "Continue with Google",
+      "sharedDevice": "Shared or borrowed device",
+      "sharedDeviceHint": "Nothing is kept on this device and the session is short (12 hours at most, 2 hours without activity). Pending actions are lost if you close the tab."
     },
     "register": {
       "title": "Create an account",
