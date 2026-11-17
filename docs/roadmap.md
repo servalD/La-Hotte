@@ -727,6 +727,7 @@ Restes :
 - iOS : repli par copier-coller détecté à l'ouverture (PWA-02) non fait.
 - Relecture `design:ux-copy` des nouveaux textes, mesure Lighthouse (≥ 90) et test avec cinq personnes non techniciennes : non faits.
 - Résolution de conflit (OFF-14) pour la modification d'un élément seulement ; les autres refus passent par « Refaire » ou « Abandonner ».
+- Revue SEC-40, cycle 1 : corrigés H1, H2, M1 à M4, F1 (`X-Expected-Profile` sur le rejeu de la file, OFF-18 ; l'en-tête n'est pas posé sur les lectures, qui sont protégées côté coffre par `isOwner` et l'arrêt sans écriture). Notés sans correction : F2 (nonce de CSP rejoué par le service worker, défense en profondeur) ; F4 (le rejeu d'idempotence rend le corps gardé sans revérifier l'accès actuel : données déjà reçues par le même profil).
 
 ## Phase 7 — Administration, catalogue global, mise en production
 

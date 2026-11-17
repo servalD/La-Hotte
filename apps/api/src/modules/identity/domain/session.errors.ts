@@ -20,6 +20,19 @@ export class CsrfRejectedError extends DomainError {
   }
 }
 
+/**
+ * OFF-18 : la requête annonce le profil qui l'a faite (`X-Expected-Profile`) et la session en a
+ * changé depuis (autre onglet). Rien n'est exécuté ; le rejeu attend le bon profil.
+ */
+export class ProfileMismatchError extends DomainError {
+  readonly kind = 'locked';
+  readonly code = 'PROFILE_MISMATCH';
+
+  constructor() {
+    super('Le profil actif a changé. Reprenez avec le bon profil.');
+  }
+}
+
 /** PIN-02 : aucun profil actif, ou profil actif verrouillé. */
 export class ProfileLockedError extends DomainError {
   readonly kind = 'locked';

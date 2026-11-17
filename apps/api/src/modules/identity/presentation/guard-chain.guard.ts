@@ -8,6 +8,7 @@ import {
   CsrfRejectedError,
   CsrfTokens,
   hasRecentReauth,
+  ProfileMismatchError,
   ReauthRequiredError,
   ReportCsrfRejection,
   type ResolvedSession,
@@ -27,6 +28,8 @@ import {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const CSRF_HEADER = 'x-csrf-token';
 export const USER_ACTIVITY_HEADER = 'x-user-activity';
+/** OFF-18 : profil qui a fait la requête ; ne fait que restreindre, le profil vient de la session. */
+export const EXPECTED_PROFILE_HEADER = 'x-expected-profile';
 
 /**
  * Chaîne de gardes globale (ADR 0013), dans cet ordre, refus par défaut (SEC-01) :
@@ -85,6 +88,8 @@ export class IdentityGuardChain implements CanActivate {
         userActivity: request.headers[USER_ACTIVITY_HEADER] === '1',
         unlockCookie: readCookie(request, UNLOCK_COOKIE),
       });
+      const expected = request.headers[EXPECTED_PROFILE_HEADER];
+      if (typeof expected === 'string' && expected !== profile.id) throw new ProfileMismatchError();
       attachIdentity(request, { session, profile });
     }
 

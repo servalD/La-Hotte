@@ -152,3 +152,25 @@ describe('GET /session : étiquette du compte et appareil partagé (OFF-28, OFF-
     expect(cookie).toBeDefined();
   });
 });
+
+describe('X-Expected-Profile (OFF-18)', () => {
+  it('profil attendu différent du profil actif : 423 PROFILE_MISMATCH, rien n’est exécuté', async () => {
+    const user = await identity.signIn();
+    const res = await http()
+      .get('/api/v1/profiles/me/cache-key')
+      .set({ Cookie: user.cookie, 'X-Expected-Profile': '00000000-0000-7000-8000-000000000000' });
+    expect({ status: res.status, code: res.body.code }).toEqual({
+      status: 423,
+      code: 'PROFILE_MISMATCH',
+    });
+  });
+
+  it('profil attendu identique, ou en-tête absent : la requête passe', async () => {
+    const user = await identity.signIn();
+    await http()
+      .get('/api/v1/profiles/me/cache-key')
+      .set({ Cookie: user.cookie, 'X-Expected-Profile': user.profileId ?? '' })
+      .expect(200);
+    await cacheKey(user).expect(200);
+  });
+});

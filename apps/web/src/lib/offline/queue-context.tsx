@@ -15,11 +15,13 @@ import {
  * Envoi d'une étape par le mutateur du client généré (ADR 0020) : CSRF, `X-User-Activity` et
  * erreurs RFC 9457 comme pour toute mutation. La clé d'idempotence est celle de l'étape.
  */
-export const sendStep: StepSender = (step: QueuedStep, body) =>
+export const sendStep = (step: QueuedStep, body: Parameters<StepSender>[1], profileId?: string) =>
   apiFetch<unknown>(step.url, {
     method: step.method,
     headers: {
       'Idempotency-Key': step.key,
+      // OFF-18 : jamais sous un autre profil que celui de la file.
+      ...(profileId ? { 'X-Expected-Profile': profileId } : {}),
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...(step.ifMatch ? { 'If-Match': step.ifMatch } : {}),
     },

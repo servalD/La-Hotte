@@ -105,7 +105,12 @@ export function forgetQueries(vault: ProfileVault): Promise<void> {
 export function persistQueries(
   queryClient: QueryClient,
   vault: ProfileVault,
-  options: { delayMs?: number; now?: () => number } = {},
+  options: {
+    delayMs?: number;
+    now?: () => number;
+    /** Faux : le cache de l'onglet n'est plus celui du profil de ce coffre ; rien n'est écrit. */
+    isOwner?: () => boolean;
+  } = {},
 ): (options?: { discard?: boolean }) => Promise<void> {
   const delay = options.delayMs ?? 1_000;
   const now = options.now ?? Date.now;
@@ -115,6 +120,7 @@ export function persistQueries(
 
   const flush = () => {
     timer = null;
+    if (options.isOwner && !options.isOwner()) return;
     const snapshot = snapshotOf(queryClient, now());
     writing = writing.then(() => vault.write('cache', SNAPSHOT, snapshot)).catch(() => undefined);
   };

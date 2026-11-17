@@ -216,9 +216,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     if (!queueOwner) return undefined;
     let alive = true;
     const vault = state.vault;
-    const next = new ActionQueue(queueOwner, vault, sendStep, (action) => {
-      refreshAfter(queryClient, action);
-    });
+    const next = new ActionQueue(
+      queueOwner,
+      vault,
+      (step, body) => sendStep(step, body, queueOwner),
+      (action) => {
+        refreshAfter(queryClient, action);
+      },
+    );
     void next
       .load()
       .catch(() => undefined)

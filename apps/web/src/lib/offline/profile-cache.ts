@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { getGetSessionQueryKey, type SessionStatusView } from '@wishlist/api-client';
 import {
   forgetVault,
   readDeviceMeta,
@@ -54,7 +55,13 @@ async function mount(
     throw new CacheOpeningCancelled();
   }
   await recordVault({ profileId, encrypted: key.encrypted, keyId, lastOpenedAt: now });
-  const stop = persistQueries(queryClient, vault);
+  const stop = persistQueries(queryClient, vault, {
+    // OFF-20 : la session de l'onglet, relue, dit encore que ce profil est le profil actif.
+    isOwner: () => {
+      const session = queryClient.getQueryData<SessionStatusView>(getGetSessionQueryKey());
+      return !session?.session || session.session.activeProfileId === profileId;
+    },
+  });
   let closing: Promise<void> | null = null;
   return {
     profileId,

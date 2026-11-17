@@ -38,6 +38,7 @@ export { LockSession, type ProfileSelection, SelectProfile } from './select-prof
 export {
   CsrfRejectedError,
   ProfileLockedError,
+  ProfileMismatchError,
   ReauthRequiredError,
   SessionRequiredError,
 } from '../domain/session.errors';
