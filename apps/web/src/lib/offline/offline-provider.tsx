@@ -102,9 +102,11 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         // la nouvelle identité et ne doivent pas y entrer.
         void current.current?.close({ discard: true });
         purgeUserData(queryClient);
-        // La session relue, le coffre est rouvert même si l'identité retrouvée est la même.
+        // La session relue, le coffre est rouvert même si l'identité retrouvée est la même. Une
+        // déconnexion (`identity` nul) n'en rouvre aucun : la session perdue relance l'effet.
+        const signedOut = message.identity === null;
         void queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() }).then(() => {
-          setGeneration((value) => value + 1);
+          if (!signedOut) setGeneration((value) => value + 1);
         });
       }),
     [queryClient],
