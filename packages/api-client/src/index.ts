@@ -18,4 +18,10 @@ export * from './generated/endpoints/profiles/profiles';
 export * from './generated/endpoints/session/session';
 export * from './generated/endpoints/sessions/sessions';
 export * from './generated/model';
-export { ApiError, setApiBaseUrl, setCsrfTokenSource, type ProblemDetails } from './http/fetcher';
+export {
+  ApiError,
+  apiFetch,
+  setApiBaseUrl,
+  setCsrfTokenSource,
+  type ProblemDetails,
+} from './http/fetcher';

@@ -12,7 +12,6 @@ import {
   useFollowOneItem,
   useGetItemThreads,
   useListItemComments,
-  usePostItemComment,
   useRemoveCommentReaction,
   useUnfollowOneItem,
 } from '@wishlist/api-client';
@@ -21,6 +20,8 @@ import { type SyntheticEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { offlineActions } from '@/lib/offline/actions';
+import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { cn } from '@/lib/utils/cn';
 import { useRealtime, useRealtimeRooms } from '@/lib/realtime/realtime-provider';
 import { formatMinor } from '@/features/lists/format';
@@ -160,7 +161,12 @@ function ThreadView({
   const queryClient = useQueryClient();
   const params = { thread };
   const { data, isPending } = useListItemComments(itemId, params);
-  const post = usePostItemComment();
+  const perform = useOfflineAction();
+  const [sending, setSending] = useState(false);
+  // OFF-10, UX-32 : un commentaire écrit hors ligne s'affiche « en attente d'envoi ».
+  const waiting = usePendingFor(itemId).filter(
+    (a) => a.kind === 'comment.post' && a.subject.thread === thread,
+  );
   const [error, setError] = useState<string | null>(null);
   const { emit } = useRealtime();
   const refresh = () => {
@@ -181,19 +187,19 @@ function ThreadView({
     const form = event.currentTarget;
     const body = new FormData(form).get('body');
     if (typeof body !== 'string' || body.trim().length === 0) return;
-    post.mutate(
-      { id: itemId, data: { thread, body } },
-      {
-        onSuccess: () => {
-          form.reset();
-          setError(null);
-          refresh();
-        },
-        onError: () => {
-          setError(t('error'));
-        },
-      },
-    );
+    setSending(true);
+    perform(offlineActions.comment(itemId, thread, body))
+      .then((outcome) => {
+        form.reset();
+        setError(null);
+        if (!outcome.queued) refresh();
+      })
+      .catch(() => {
+        setError(t('error'));
+      })
+      .finally(() => {
+        setSending(false);
+      });
   }
 
   const messages = [...(data?.items ?? [])].reverse();
@@ -213,6 +219,12 @@ function ThreadView({
         {messages.map((comment) => (
           <li key={comment.id}>
             <Message comment={comment} onChanged={refresh} />
+          </li>
+        ))}
+        {waiting.map((action) => (
+          <li key={action.id} className="rounded-md border border-dashed border-border p-2 text-sm">
+            <p className="break-words whitespace-pre-wrap">{String(action.display.body ?? '')}</p>
+            <p className="text-foreground-muted">{t('pendingSend')}</p>
           </li>
         ))}
       </ol>
@@ -241,7 +253,7 @@ function ThreadView({
               {error}
             </p>
           ) : null}
-          <Button type="submit" disabled={post.isPending}>
+          <Button type="submit" disabled={sending}>
             {t('send')}
           </Button>
         </form>

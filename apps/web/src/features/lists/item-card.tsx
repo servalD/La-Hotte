@@ -7,10 +7,6 @@ import {
   ItemPriority,
   type ListPermissionsView,
   useCopyItemProduct,
-  useDeleteOneItem,
-  useMarkItemReceived,
-  useUnmarkItemReceived,
-  useUpdateOneItem,
   useWithdrawItem,
   WithdrawnReason,
 } from '@wishlist/api-client';
@@ -23,6 +19,9 @@ import { Field } from '@/features/auth/field';
 import { ItemAccountingButton } from '@/features/accounting/item-accounting';
 import { ItemThreadsButton } from '@/features/conversations/item-threads';
 import { text } from '@/features/auth/form-data';
+import { offlineActions } from '@/lib/offline/actions';
+import { kindKey, type QueuedInput } from '@/lib/offline/queue';
+import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { listErrorKey } from './api-errors';
 import { formatMinor, imageUrl } from './format';
 import { WhoSeesDialog } from './who-sees-dialog';
@@ -56,10 +55,18 @@ export function ItemCard({
   const onError = (e: unknown) => {
     setMessage(te(listErrorKey(e)));
   };
-  const received = useMarkItemReceived();
-  const unreceived = useUnmarkItemReceived();
+  const perform = useOfflineAction();
+  // UX-32, OFF-13 : un geste fait hors ligne s'affiche « à confirmer » jusqu'à la réponse.
+  const pending = usePendingFor(item.id);
+  const act = (input: QueuedInput) => {
+    setMessage(null);
+    perform(input)
+      .then((outcome) => {
+        if (!outcome.queued) refresh();
+      })
+      .catch(onError);
+  };
   const withdraw = useWithdrawItem();
-  const remove = useDeleteOneItem();
   const copy = useCopyItemProduct();
 
   const giver = item.view === 'giver' ? item : null;
@@ -130,10 +137,17 @@ export function ItemCard({
           {message}
         </p>
       ) : null}
+      {pending.length > 0 ? (
+        <p className="text-sm text-foreground-muted">
+          <span aria-hidden="true">⏳ </span>
+          {pending.map((action) => t(`pending.${kindKey(action.kind)}`)).join(' · ')}
+        </p>
+      ) : null}
 
       {editing ? (
         <EditForm
           item={item}
+          listId={listId}
           isGiftlist={isGiftlist}
           onDone={() => {
             setEditing(false);
@@ -151,10 +165,7 @@ export function ItemCard({
               <Button
                 variant="secondary"
                 onClick={() => {
-                  (recipient.received ? unreceived : received).mutate(
-                    { id: item.id },
-                    { onSuccess: refresh, onError },
-                  );
+                  act(offlineActions.received(item.id, listId, !recipient.received));
                 }}
               >
                 {recipient.received ? t('unmarkReceived') : t('markReceived')}
@@ -216,7 +227,7 @@ export function ItemCard({
               confirmLabel={t('delete')}
               cancelLabel={t('cancel')}
               onConfirm={() => {
-                remove.mutate({ id: item.id }, { onSuccess: refresh, onError });
+                act(offlineActions.deleteItem(item.id, listId, item.product.title));
               }}
             />
           ) : null}
@@ -228,38 +239,44 @@ export function ItemCard({
 
 function EditForm({
   item,
+  listId,
   isGiftlist,
   onDone,
   onError,
 }: {
   item: ItemCollectionViewItemsItem;
+  listId: string;
   isGiftlist: boolean;
   onDone: () => void;
   onError: (e: unknown) => void;
 }) {
   const t = useTranslations('item');
-  const update = useUpdateOneItem({ request: { headers: { 'If-Match': `"${item.version}"` } } });
+  const perform = useOfflineAction();
+  const [saving, setSaving] = useState(false);
   const [priority, setPriority] = useState(item.priority);
 
   function onSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const quantity = Number(form.get('quantity'));
-    update.mutate(
-      {
-        id: item.id,
-        data: {
-          quantity: Number.isInteger(quantity) && quantity >= 1 ? quantity : item.quantity,
-          priority,
-          note: text(form, 'note'),
-          manyWelcome: form.get('manyWelcome') === 'on',
-          ...(isGiftlist && item.view === 'giver'
-            ? { shownToRecipient: form.get('shown') === 'on' }
-            : {}),
-        },
-      },
-      { onSuccess: onDone, onError },
-    );
+    setSaving(true);
+    // OFF-14 : la version lue part avec la modification ; dépassée au rejeu, c'est un conflit.
+    perform(
+      offlineActions.updateItem(item.id, listId, item.version, {
+        quantity: Number.isInteger(quantity) && quantity >= 1 ? quantity : item.quantity,
+        priority,
+        note: text(form, 'note'),
+        manyWelcome: form.get('manyWelcome') === 'on',
+        ...(isGiftlist && item.view === 'giver'
+          ? { shownToRecipient: form.get('shown') === 'on' }
+          : {}),
+      }),
+    )
+      .then(onDone)
+      .catch(onError)
+      .finally(() => {
+        setSaving(false);
+      });
   }
 
   return (
@@ -304,7 +321,7 @@ function EditForm({
         <Button type="button" variant="secondary" onClick={onDone}>
           {t('cancel')}
         </Button>
-        <Button type="submit" disabled={update.isPending}>
+        <Button type="submit" disabled={saving}>
           {t('save')}
         </Button>
       </div>

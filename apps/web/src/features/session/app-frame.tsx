@@ -9,6 +9,8 @@ import type { ReactNode } from 'react';
 import { wipeDevice } from '@/lib/offline/device';
 import { announceIdentity } from '@/lib/offline/identity-channel';
 import { forgetProfileKeys } from '@/lib/offline/keys';
+import { useQueuedActions } from '@/lib/offline/queue-context';
+import { ConfirmButton } from '@/components/confirm-button';
 import { purgeUserData } from '@/lib/session/purge';
 import { Button } from '@/components/ui/button';
 import { ThemeSwitcher } from '@/components/theme-switcher';
@@ -45,6 +47,7 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
   const queryClient = useQueryClient();
   const lock = useLockSession();
   const signOut = useSignOut();
+  const waiting = useQueuedActions().length;
 
   function onLock() {
     lock.mutate(undefined, {
@@ -95,9 +98,27 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
               </Button>
             </>
           ) : null}
-          <Button variant="secondary" onClick={onSignOut} disabled={signOut.isPending}>
-            {t('signOut')}
-          </Button>
+          {waiting > 0 ? (
+            <Button asChild variant="ghost">
+              <Link href="/actions">{t('actions', { count: waiting })}</Link>
+            </Button>
+          ) : null}
+          {waiting > 0 ? (
+            // OFF-22 : la déconnexion efface la file ; l'utilisateur est prévenu avant.
+            <ConfirmButton
+              variant="secondary"
+              label={t('signOut')}
+              title={t('signOutQueueTitle')}
+              description={t('signOutQueueBody', { count: waiting })}
+              confirmLabel={t('signOutAnyway')}
+              cancelLabel={t('cancel')}
+              onConfirm={onSignOut}
+            />
+          ) : (
+            <Button variant="secondary" onClick={onSignOut} disabled={signOut.isPending}>
+              {t('signOut')}
+            </Button>
+          )}
         </nav>
       </header>
       <main id="contenu" className="flex flex-1 flex-col gap-6">

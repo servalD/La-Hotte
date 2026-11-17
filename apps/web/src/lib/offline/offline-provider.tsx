@@ -20,6 +20,8 @@ import {
   openOffline,
   openOnline,
 } from './profile-cache';
+import { ActionQueue } from './queue';
+import { QueueContext, refreshAfter, sendStep } from './queue-context';
 import type { ProfileVault } from './vault';
 
 /**
@@ -193,5 +195,83 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  return <OfflineContext.Provider value={state}>{children}</OfflineContext.Provider>;
+  // File d'actions du profil (OFF-11) : dans son coffre, ou en mémoire sur un appareil partagé.
+  const queueOwner =
+    state.profileId ?? (state.mode === 'online' && shared && profileId ? profileId : null);
+  const [loaded, setLoaded] = useState<{
+    owner: string;
+    vault: ProfileVault | null;
+    queue: ActionQueue;
+  } | null>(null);
+  // Une file n'est servie que pour son profil et son coffre : jamais celle d'un autre profil.
+  const queue =
+    loaded && loaded.owner === queueOwner && loaded.vault === state.vault ? loaded.queue : null;
+  useEffect(() => {
+    if (!queueOwner) return undefined;
+    let alive = true;
+    const vault = state.vault;
+    const next = new ActionQueue(queueOwner, vault, sendStep, (action) => {
+      refreshAfter(queryClient, action);
+    });
+    void next
+      .load()
+      .catch(() => undefined)
+      .then(() => {
+        if (alive) setLoaded({ owner: queueOwner, vault, queue: next });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [queueOwner, state.vault, queryClient]);
+
+  // OFF-16 : rejouée à l'ouverture, au retour du réseau, au retour sur l'onglet, et toutes les
+  // 30 secondes ; seulement en ligne, sous la session du profil qui a fait les actions.
+  const canReplay = online && state.mode === 'online' && queue?.profileId === profileId;
+  useEffect(() => {
+    if (!queue || !canReplay) return undefined;
+    const kick = () => {
+      void queue.run();
+    };
+    kick();
+    const timer = setInterval(kick, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') kick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    // PWA-07 : la synchronisation en arrière-plan du service worker réveille la file.
+    const onMessage = (event: MessageEvent<unknown>) => {
+      if ((event.data as { type?: unknown } | null)?.type === 'lh-replay-queue') kick();
+    };
+    const worker = 'serviceWorker' in navigator ? navigator.serviceWorker : null;
+    worker?.addEventListener('message', onMessage);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      worker?.removeEventListener('message', onMessage);
+    };
+  }, [queue, canReplay]);
+
+  // OFF-30 : sur un appareil partagé, fermer l'onglet perd la file ; l'application avertit.
+  const actions = useSyncExternalStore(
+    (listener) => queue?.subscribe(listener) ?? (() => undefined),
+    () => queue?.snapshot().length ?? 0,
+    () => 0,
+  );
+  useEffect(() => {
+    if (!state.sharedDevice && state.vault) return undefined;
+    if (actions === 0) return undefined;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+    };
+  }, [actions, state.sharedDevice, state.vault]);
+
+  return (
+    <OfflineContext.Provider value={state}>
+      <QueueContext.Provider value={{ queue, online }}>{children}</QueueContext.Provider>
+    </OfflineContext.Provider>
+  );
 }

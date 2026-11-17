@@ -5,16 +5,17 @@ import {
   ApiError,
   type GetItemAccounting200,
   type ItemAccountingParticipantView,
+  type SetContributionDto,
   useApproveAccountingReview,
-  useDeleteItemContribution,
   useDeleteItemPurchase,
   useGetItemAccounting,
   useLowerItemContribution,
   usePostItemShortfallNotice,
-  usePutItemContribution,
-  usePutItemPurchase,
   useRefuseAccountingReview,
 } from '@wishlist/api-client';
+import { offlineActions } from '@/lib/offline/actions';
+import { kindKey, type QueuedInput } from '@/lib/offline/queue';
+import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -76,6 +77,7 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
   const { data } = useGetItemAccounting(itemId);
   const [error, setError] = useState<string | null>(null);
   const [shortfallFor, setShortfallFor] = useState<number | null>(null);
+  const pending = usePendingFor(itemId);
   if (!data) return <p className="text-foreground-muted">{t('loading')}</p>;
   const view: GetItemAccounting200 = data;
   const money = (minor: number) => formatMinor(minor, view.currency, locale);
@@ -130,6 +132,22 @@ export function ItemAccounting({ itemId }: { itemId: string }) {
               </li>
             ))}
       </ul>
+      {pending.length > 0 ? (
+        // OFF-13 : rien n'est acquis tant que le serveur n'a pas répondu.
+        <ul aria-label={t('pendingTitle')} className="flex flex-col gap-1 text-sm">
+          {pending.map((action) => (
+            <li key={action.id} className="rounded-md border border-dashed border-border p-2">
+              <span aria-hidden="true">⏳ </span>
+              {t(`pending.${kindKey(action.kind)}`, {
+                amount:
+                  typeof action.display.amountMinor === 'number'
+                    ? money(action.display.amountMinor)
+                    : '',
+              })}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
@@ -189,20 +207,23 @@ function ContributeForm({
 }) {
   const t = useTranslations('accounting');
   const locale = useLocale();
-  const { request, renew } = useIdempotencyKey();
+  const perform = useOfflineAction();
+  const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'PERCENT' | 'FIXED'>('FIXED');
   const [value, setValue] = useState('');
-  const contribute = usePutItemContribution({
-    request,
-    mutation: {
-      onSuccess: () => {
-        renew();
+  // OFF-13 : en ligne, la réponse vient tout de suite ; hors ligne, la part est « à confirmer ».
+  const contribute = (data: SetContributionDto, amountMinor: number | null) => {
+    setBusy(true);
+    perform(offlineActions.contribute(itemId, data, amountMinor))
+      .then(() => {
         setValue('');
         onDone();
-      },
-      onError,
-    },
-  });
+      })
+      .catch(onError)
+      .finally(() => {
+        setBusy(false);
+      });
+  };
   const entamé = view.coveredMinor > 0;
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
@@ -212,7 +233,7 @@ function ContributeForm({
         onError(null);
         return;
       }
-      contribute.mutate({ id: itemId, data: { mode: 'FIXED', amountMinor } });
+      contribute({ mode: 'FIXED', amountMinor }, amountMinor);
       return;
     }
     // CPT-53 : un pour cent au centième, en fraction exacte sur 10 000.
@@ -221,17 +242,14 @@ function ContributeForm({
       onError(null);
       return;
     }
-    contribute.mutate({
-      id: itemId,
-      data: { mode: 'PERCENT', shareNum: hundredths, shareDen: 10_000 },
-    });
+    contribute({ mode: 'PERCENT', shareNum: hundredths, shareDen: 10_000 }, null);
   };
   return (
     <div className="flex flex-col gap-2">
       <Button
-        disabled={contribute.isPending}
+        disabled={busy}
         onClick={() => {
-          contribute.mutate({ id: itemId, data: { mode: 'FULL' } });
+          contribute({ mode: 'FULL' }, view.remainingMinor);
         }}
       >
         {entamé && view.remainingMinor !== null
@@ -268,7 +286,7 @@ function ContributeForm({
             }}
           />
         </div>
-        <Button type="submit" variant="secondary" disabled={contribute.isPending}>
+        <Button type="submit" variant="secondary" disabled={busy}>
           {t('confirm')}
         </Button>
       </form>
@@ -290,8 +308,17 @@ function ParticipantActions({
   onShortfall: (amount: number) => void;
 }) {
   const t = useTranslations('accounting');
-  const withdrawKey = useIdempotencyKey();
-  const purchaseKey = useIdempotencyKey();
+  const perform = useOfflineAction();
+  const [busy, setBusy] = useState(false);
+  const act = (input: QueuedInput) => {
+    setBusy(true);
+    perform(input)
+      .then(onDone)
+      .catch(onError)
+      .finally(() => {
+        setBusy(false);
+      });
+  };
   const uncheckKey = useIdempotencyKey();
   const lowerKey = useIdempotencyKey();
   const reviewKey = useIdempotencyKey();
@@ -307,8 +334,6 @@ function ParticipantActions({
       onError,
     },
   });
-  const withdraw = useDeleteItemContribution(options(withdrawKey));
-  const purchase = usePutItemPurchase(options(purchaseKey));
   const uncheck = useDeleteItemPurchase(options(uncheckKey));
   const approve = useApproveAccountingReview(options(reviewKey));
   const refuse = useRefuseAccountingReview(options(reviewKey));
@@ -335,9 +360,9 @@ function ParticipantActions({
       {!view.purchased && mine ? (
         <Button
           variant="ghost"
-          disabled={withdraw.isPending}
+          disabled={busy}
           onClick={() => {
-            withdraw.mutate({ id: itemId });
+            act(offlineActions.withdrawContribution(itemId));
           }}
         >
           {t('withdraw')}
@@ -357,10 +382,11 @@ function ParticipantActions({
             />
           </div>
           <Button
-            disabled={purchase.isPending}
+            disabled={busy}
             onClick={() => {
               const actualTotalMinor = paid.trim() === '' ? null : parseAmount(paid);
-              purchase.mutate({ id: itemId, data: { actualTotalMinor } });
+              // Cas d'usage d'OFF-10 : cocher l'achat en magasin, sans réseau.
+              act(offlineActions.purchase(itemId, actualTotalMinor));
             }}
           >
             {t('markPurchased')}

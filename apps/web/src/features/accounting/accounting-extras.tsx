@@ -7,7 +7,6 @@ import {
   type OverviewGroupView,
   useAcceptBuyerRequest,
   useCancelBuyerRequest,
-  useClaimContributionSettlement,
   useConfirmOffset,
   useDeclineOffset,
   useDeleteBudget,
@@ -16,7 +15,6 @@ import {
   useNudgeContribution,
   usePostItemBuyerRequest,
   usePutBudget,
-  usePutContributionSettlement,
   usePutItemAccountingOptions,
   usePutItemPurchaseReceipt,
   useRefuseBuyerRequest,
@@ -28,6 +26,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatMinor } from '@/features/lists/format';
+import { offlineActions } from '@/lib/offline/actions';
+import type { QueuedInput } from '@/lib/offline/queue';
+import { useOfflineAction, useQueuedActions } from '@/lib/offline/queue-context';
 import { parseAmount } from './parse-amount';
 import { useIdempotencyKey } from './use-idempotency-key';
 
@@ -268,12 +269,35 @@ export function SettlementActions({ line, viewerId }: { line: BalanceLineView; v
       setError(t('errors.generic'));
     },
   };
-  const settleKey = useIdempotencyKey();
-  const claimKey = useIdempotencyKey();
   const nudgeKey = useIdempotencyKey();
-  const settle = usePutContributionSettlement(withKey(settleKey, handlers));
-  const claim = useClaimContributionSettlement(withKey(claimKey, handlers));
   const nudge = useNudgeContribution(withKey(nudgeKey, handlers));
+  // OFF-10 : marquer une part réglée, « j'ai payé » : possibles hors ligne, « à confirmer ».
+  const perform = useOfflineAction();
+  const [busy, setBusy] = useState(false);
+  const pendingHere = useQueuedActions().some(
+    (a) => a.state === 'pending' && a.display.contributionId === line.contributionId,
+  );
+  const act = (input: QueuedInput) => {
+    setBusy(true);
+    perform(input)
+      .then(handlers.onDone)
+      .catch(handlers.onError)
+      .finally(() => {
+        setBusy(false);
+      });
+  };
+  const settle = {
+    isPending: busy,
+    mutate: (v: { id: string; data: { settled: boolean } }) => {
+      act(offlineActions.settle(v.id, line.itemId, v.data.settled));
+    },
+  };
+  const claim = {
+    isPending: busy,
+    mutate: (v: { id: string }) => {
+      act(offlineActions.claim(v.id, line.itemId));
+    },
+  };
   const iAmBuyer = line.buyerId === viewerId;
   const done = line.settlement === 'SETTLED';
   return (
@@ -312,6 +336,7 @@ export function SettlementActions({ line, viewerId }: { line: BalanceLineView; v
           {t('settle.claim')}
         </Button>
       ) : null}
+      {pendingHere ? <p className="text-sm text-foreground-muted">{t('settle.pending')}</p> : null}
       {error ? (
         <p role="alert" className="text-sm text-danger">
           {error}
