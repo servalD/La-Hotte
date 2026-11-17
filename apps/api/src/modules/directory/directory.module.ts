@@ -5,6 +5,7 @@ import { VisibilityModule } from '../visibility';
 import {
   CopyFromDirectory,
   SearchDirectory,
+  SearchGlobalCatalog,
   ShareProduct,
 } from './application/directory.use-cases';
 import { DirectoryController, ProductShareController } from './presentation/directory.controller';
@@ -13,6 +14,6 @@ import { DirectoryController, ProductShareController } from './presentation/dire
 @Module({
   imports: [VisibilityModule, CatalogModule, ListsModule],
   controllers: [ProductShareController, DirectoryController],
-  providers: [ShareProduct, SearchDirectory, CopyFromDirectory],
+  providers: [ShareProduct, SearchDirectory, SearchGlobalCatalog, CopyFromDirectory],
 })
 export class DirectoryModule {}

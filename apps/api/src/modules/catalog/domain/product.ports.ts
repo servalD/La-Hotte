@@ -1,5 +1,7 @@
+import type { GlobalEntry } from './moderation';
 import type {
   ExtractionStatus,
+  ModerationStatus,
   Product,
   ProductFields,
   ProductSource,
@@ -52,11 +54,22 @@ export abstract class ProductRepository {
     readonly changes: Partial<ProductFields>;
   }): Promise<Product | 'missing' | 'version'>;
   /** REP-02, REP-08 : niveau de partage ; missing si la fiche n'est pas à lui. */
+  /** REP-02, MOD-06 : niveau de partage et statut de modération, ensemble. */
   abstract setShareLevel(
     ownerProfileId: string,
     productId: string,
     level: ShareLevel,
+    moderation: ModerationStatus,
   ): Promise<Product | 'missing'>;
+  /**
+   * MOD-05, MOD-12 : fiches `GLOBAL` et `APPROVED`, une par URL normalisée (la plus ancienne),
+   * avec le nombre de comptes distincts qui ont publié cette URL ; les plus récentes d'abord.
+   * `query` : recherche plein texte (VIS-40).
+   */
+  abstract findGlobal(input: {
+    readonly query: string | null;
+    readonly limit: number;
+  }): Promise<GlobalEntry[]>;
   /**
    * REP-03, VIS-40 : fiches publiées au cercle par ces propriétaires, les plus récentes d'abord ;
    * `query` : recherche plein texte (titre et description, dictionnaire français).

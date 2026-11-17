@@ -4,10 +4,16 @@ import { ActiveProfile, type ActiveProfileValue, RequiresProfile } from '../../i
 import {
   CopyFromDirectory,
   SearchDirectory,
+  SearchGlobalCatalog,
   ShareProduct,
 } from '../application/directory.use-cases';
-import { DirectoryQueryDto, ShareProductDto } from './dto/directory.dto';
-import { CopiedDirectoryProductView, DirectoryView, SharedProductView } from './dto/directory.view';
+import { DirectoryQueryDto, GlobalCatalogQueryDto, ShareProductDto } from './dto/directory.dto';
+import {
+  CopiedDirectoryProductView,
+  DirectoryView,
+  GlobalCatalogView,
+  SharedProductView,
+} from './dto/directory.view';
 
 const UUID_PARAM = { schema: { type: 'string', format: 'uuid' } } as const;
 
@@ -43,8 +49,37 @@ export class ProductShareController {
 export class DirectoryController {
   constructor(
     private readonly search: SearchDirectory,
+    private readonly searchGlobal: SearchGlobalCatalog,
     private readonly copy: CopyFromDirectory,
   ) {}
+
+  /** MOD-05, MOD-12, REP-04, REP-10 : le catalogue ouvert à tous, sans auteur. */
+  @Get('global')
+  @ApiOkResponse({ type: GlobalCatalogView })
+  async searchGlobalCatalog(
+    @Query() query: GlobalCatalogQueryDto,
+    @ActiveProfile() profile: ActiveProfileValue,
+  ): Promise<GlobalCatalogView> {
+    const entries = await this.searchGlobal.execute({
+      viewerId: profile.id,
+      query: query.q ?? null,
+      limit: query.limit ?? 50,
+    });
+    return {
+      items: entries.map(({ product: p, adopters }) => ({
+        productId: p.id,
+        title: p.title,
+        description: p.description,
+        // REP-04, RGPD-07 : une photo de l'utilisateur ne sort jamais.
+        imageKey: p.imageFromPhoto ? null : p.imageKey,
+        unitPriceMinor: p.unitPriceMinor,
+        currency: p.currency,
+        merchant: p.merchant,
+        sourceUrl: p.sourceUrl,
+        adopters,
+      })),
+    };
+  }
 
   @Get()
   @ApiOkResponse({ type: DirectoryView })

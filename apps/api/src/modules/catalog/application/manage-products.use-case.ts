@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { IdGenerator } from '../../../shared/domain';
+import { IdGenerator, PlatformSettings } from '../../../shared/domain';
+import {
+  type GlobalEntry,
+  type Publisher,
+  PublisherPolicy,
+  statusOnPublish,
+} from '../domain/moderation';
 import {
   copyFields,
   type Product,
@@ -117,17 +123,54 @@ export class ProductCatalog {
   constructor(
     private readonly products: ProductRepository,
     private readonly ids: IdGenerator,
+    private readonly settings: PlatformSettings,
+    private readonly publishers: PublisherPolicy,
   ) {}
 
-  /** REP-02, REP-08 : le droit (REP-06, REP-09) est vérifié par l'appelant. */
+  /**
+   * REP-02, REP-08, MOD-06 : le droit (REP-06, MOD-12) est vérifié par l'appelant ; le statut de
+   * modération suit le niveau. Publier au catalogue global calcule le statut (MOD-09), une fiche
+   * retirée par la modération n'y revient que par la file, et la quitter efface le statut sauf un
+   * retrait.
+   */
   async setShareLevel(
     ownerProfileId: string,
     productId: string,
     level: ShareLevel,
   ): Promise<Product> {
-    const result = await this.products.setShareLevel(ownerProfileId, productId, level);
+    const product = await this.products.findOwned(ownerProfileId, productId);
+    if (!product) throw new ProductNotFoundError();
+    const current = product.moderationStatus;
+    const { forbidden_terms, blocked_domains } = this.settings.current();
+    const moderation =
+      level !== 'GLOBAL'
+        ? current === 'REJECTED'
+          ? 'REJECTED'
+          : 'NONE'
+        : product.shareLevel === 'GLOBAL' && current !== 'NONE'
+          ? current
+          : current === 'REJECTED'
+            ? 'PENDING'
+            : statusOnPublish(product, {
+                forbiddenTerms: forbidden_terms,
+                blockedDomains: blocked_domains,
+              });
+    const result = await this.products.setShareLevel(ownerProfileId, productId, level, moderation);
     if (result === 'missing') throw new ProductNotFoundError();
     return result;
+  }
+
+  /** MOD-12 : candidates du catalogue global ; `visibility` tranche fiche par fiche (REP-10). */
+  findGlobal(input: {
+    readonly query: string | null;
+    readonly limit: number;
+  }): Promise<GlobalEntry[]> {
+    return this.products.findGlobal(input);
+  }
+
+  /** MOD-12 : profil enfant, publication suspendue. */
+  publisher(profileId: string): Promise<Publisher | null> {
+    return this.publishers.of(profileId);
   }
 
   /** REP-03, VIS-40 : candidates ; `visibility` tranche fiche par fiche. */
@@ -150,11 +193,22 @@ export class ProductCatalog {
   }
 
   /** ART-04, REP-05 : nouvelle fiche au copieur, sans lien vers l'original ni partage. */
-  async copy(sourceProductId: string, newOwnerProfileId: string): Promise<Product> {
+  async copy(
+    sourceProductId: string,
+    newOwnerProfileId: string,
+    options: { readonly withoutUserPhoto?: boolean } = {},
+  ): Promise<Product> {
     const source = await this.products.findById(sourceProductId);
     if (!source) throw new ProductNotFoundError();
+    const fields = copyFields(source);
+    // REP-04, RGPD-07 : une photo prise par l'auteur ne sort jamais du catalogue global.
+    const image =
+      options.withoutUserPhoto && fields.imageFromPhoto
+        ? { imageKey: null, imageFromPhoto: false }
+        : {};
     return this.products.create({
-      ...copyFields(source),
+      ...fields,
+      ...image,
       id: this.ids.next(),
       ownerProfileId: newOwnerProfileId,
       source: source.source,

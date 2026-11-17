@@ -65,6 +65,8 @@ import {
   InMemoryProductRepository,
   PageFetcher,
   ProductRepository,
+  InMemoryPublisherPolicy,
+  PublisherPolicy,
 } from '../../src/modules/catalog/testing';
 import {
   EngagementReader,
@@ -195,6 +197,8 @@ export interface TestEvents {
 /** Doubles des modules de la phase 2. */
 export interface TestCatalog {
   readonly products: InMemoryProductRepository;
+  /** MOD-12 : profils enfants (lus dans `identity`) et suspensions de publication. */
+  readonly publishers: InMemoryPublisherPolicy;
   readonly images: InMemoryImageStore;
   readonly fetcher: FakePageFetcher;
   readonly extractor: FakeProductExtractor;
@@ -271,6 +275,7 @@ export async function createTestApp(
 
   const sessions = new InMemorySessionStore();
   const audit = new InMemoryAuditTrail();
+  const publishers = new InMemoryPublisherPolicy();
   const platformSettings = new InMemoryPlatformSettings((write) => {
     audit.append(write);
   });
@@ -305,6 +310,7 @@ export async function createTestApp(
   const visibilityLog = new InMemoryVisibilityLog();
   const catalog: TestCatalog = {
     products,
+    publishers,
     images: new InMemoryImageStore(),
     fetcher: new FakePageFetcher(),
     extractor: new FakeProductExtractor(),
@@ -459,6 +465,8 @@ export async function createTestApp(
     .useValue(conversations.delivery)
     .overrideProvider(DigestRepository)
     .useValue(conversations.digests)
+    .overrideProvider(PublisherPolicy)
+    .useValue(publishers)
     .overrideProvider(AuditTrail)
     .useValue(audit)
     .overrideProvider(AuditJournal)
@@ -590,6 +598,7 @@ export async function createTestApp(
   };
 
   products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
+  publishers.isChildOf = (profileId) => accounts.profiles.get(profileId)?.isChild === true;
   catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);

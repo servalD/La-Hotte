@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Product as ProductRow } from '@prisma/client';
 import { PrismaService } from '../../../platform/prisma/prisma.service';
-import type { Product, ProductFields, ShareLevel } from '../domain/product';
+import type { GlobalEntry } from '../domain/moderation';
+import type { ModerationStatus, Product, ProductFields, ShareLevel } from '../domain/product';
 import {
   type ExtractionOutcome,
   type NewProduct,
@@ -36,6 +37,7 @@ export function toProduct(row: ProductRow): Product {
     normalizedUrl: row.normalizedUrl,
     source: row.source,
     shareLevel: row.shareLevel,
+    moderationStatus: row.moderationStatus,
     extractionStatus: row.extractionStatus,
     uncertainFields: row.uncertainFields,
     extractionTruncated: row.extractionTruncated,
@@ -128,13 +130,23 @@ export class PrismaProductRepository extends ProductRepository {
     expectedVersion: number;
     changes: Partial<ProductFields>;
   }): Promise<Product | 'missing' | 'version'> {
-    const result = await this.prisma.product.updateMany({
-      where: {
-        id: input.productId,
-        ownerProfileId: input.ownerProfileId,
-        version: input.expectedVersion,
-      },
-      data: { ...fieldData(input.changes), version: { increment: 1 } },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.product.updateMany({
+        where: {
+          id: input.productId,
+          ownerProfileId: input.ownerProfileId,
+          version: input.expectedVersion,
+        },
+        data: { ...fieldData(input.changes), version: { increment: 1 } },
+      });
+      // MOD-06 : un contenu changé après publication au catalogue global repasse par la file.
+      if (updated.count === 1) {
+        await tx.product.updateMany({
+          where: { id: input.productId, shareLevel: 'GLOBAL', moderationStatus: 'APPROVED' },
+          data: { moderationStatus: 'PENDING' },
+        });
+      }
+      return updated;
     });
     const row = await this.prisma.product.findFirst({
       where: { id: input.productId, ownerProfileId: input.ownerProfileId },
@@ -147,10 +159,11 @@ export class PrismaProductRepository extends ProductRepository {
     ownerProfileId: string,
     productId: string,
     level: ShareLevel,
+    moderation: ModerationStatus,
   ): Promise<Product | 'missing'> {
     const result = await this.prisma.product.updateMany({
       where: { id: productId, ownerProfileId },
-      data: { shareLevel: level, version: { increment: 1 } },
+      data: { shareLevel: level, moderationStatus: moderation, version: { increment: 1 } },
     });
     if (result.count === 0) return 'missing';
     return toProduct(await this.prisma.product.findUniqueOrThrow({ where: { id: productId } }));
@@ -185,6 +198,42 @@ export class PrismaProductRepository extends ProductRepository {
     });
     return rows.map(toProduct);
   }
+  async findGlobal(input: { query: string | null; limit: number }): Promise<GlobalEntry[]> {
+    // MOD-05 : une fiche par URL normalisée (la plus ancienne publiée) ; une fiche sans URL est
+    // seule de son groupe. Le compteur compte des comptes, jamais des profils. Requête paramétrée.
+    const query = input.query;
+    const rows = await this.prisma.$queryRaw<{ id: string; adopters: number }[]>`
+      WITH published AS (
+        SELECT p.id, p.created_at, COALESCE(p.normalized_url, p.id::text) AS grp, pr.account_id
+        FROM product p
+        JOIN profile pr ON pr.id = p.owner_profile_id
+        WHERE p.share_level = 'GLOBAL' AND p.moderation_status = 'APPROVED'
+      ),
+      canonical AS (
+        SELECT DISTINCT ON (grp) grp, id, created_at FROM published ORDER BY grp, created_at, id
+      ),
+      counts AS (
+        SELECT grp, COUNT(DISTINCT account_id)::int AS adopters FROM published GROUP BY grp
+      )
+      SELECT c.id, n.adopters
+      FROM canonical c
+      JOIN counts n ON n.grp = c.grp
+      JOIN product p ON p.id = c.id
+      WHERE ${query}::text IS NULL
+        OR to_tsvector('french', p.title || ' ' || p.description) @@ plainto_tsquery('french', ${query}::text)
+      ORDER BY c.created_at DESC, c.id DESC
+      LIMIT ${input.limit}`;
+    if (rows.length === 0) return [];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+    });
+    const byId = new Map(products.map((row) => [row.id, toProduct(row)]));
+    return rows.flatMap((row) => {
+      const product = byId.get(row.id);
+      return product ? [{ product, adopters: row.adopters }] : [];
+    });
+  }
+
   async completeExtraction(productId: string, outcome: ExtractionOutcome): Promise<Product | null> {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.product.findUnique({ where: { id: productId } });

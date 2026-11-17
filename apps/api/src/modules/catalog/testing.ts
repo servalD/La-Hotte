@@ -11,3 +11,5 @@ export {
   InMemoryProductRepository,
   ManualExtractionQueue,
 } from './infrastructure/in-memory-catalog';
+export { PublisherPolicy } from './domain/moderation';
+export { InMemoryPublisherPolicy } from './infrastructure/publisher-policy';

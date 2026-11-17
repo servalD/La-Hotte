@@ -1,3 +1,5 @@
+import { PublisherPolicy } from './domain/moderation';
+import { PrismaPublisherPolicy } from './infrastructure/publisher-policy';
 import { Module } from '@nestjs/common';
 import { PrivateImages } from './application/private-images';
 import {
@@ -37,6 +39,7 @@ import { ImagesController, ProductsController } from './presentation/products.co
 @Module({
   controllers: [ProductsController, ImagesController],
   providers: [
+    { provide: PublisherPolicy, useClass: PrismaPublisherPolicy },
     CreateProduct,
     GetOwnProduct,
     ListOwnProducts,

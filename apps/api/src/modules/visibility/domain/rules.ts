@@ -306,7 +306,7 @@ export interface ProductReference {
  * REP-03, REP-07, REP-10 : une fiche publiée au cercle se voit d'un profil de ce cercle, sauf s'il
  * est écarté par la règle d'un élément qui la référence, ou destinataire d'un tel élément : la
  * publication ne révèle pas ce qu'on lui prépare. Le propriétaire ne se voit pas dans son répertoire.
- * Le catalogue global attend la phase 7 (REP-09).
+ * Le catalogue global a sa propre règle (`globalProductVisible`).
  */
 export function sharedProductVisible(input: {
   readonly viewerId: string;
@@ -317,6 +317,27 @@ export function sharedProductVisible(input: {
 }): boolean {
   if (input.shareLevel !== 'CIRCLE' || input.ownerId === null) return false;
   if (input.ownerId === input.viewerId || !input.viewerInOwnerCircle) return false;
+  return input.references.every(
+    (reference) =>
+      !reference.listRecipients.includes(input.viewerId) &&
+      !ruleExcludes(reference.rule, input.viewerId),
+  );
+}
+
+/**
+ * MOD-12, REP-04, REP-07, REP-10 : une fiche du catalogue global se voit de tout profil si elle est
+ * `GLOBAL` et `APPROVED` (MOD-06), sauf d'un profil écarté par la règle d'un élément qui la
+ * référence ou destinataire d'un tel élément. Le propriétaire ne la voit pas dans le catalogue.
+ */
+export function globalProductVisible(input: {
+  readonly viewerId: string;
+  readonly ownerId: string | null;
+  readonly shareLevel: 'PRIVATE' | 'CIRCLE' | 'GLOBAL';
+  readonly moderationStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  readonly references: readonly ProductReference[];
+}): boolean {
+  if (input.shareLevel !== 'GLOBAL' || input.moderationStatus !== 'APPROVED') return false;
+  if (input.ownerId === input.viewerId) return false;
   return input.references.every(
     (reference) =>
       !reference.listRecipients.includes(input.viewerId) &&

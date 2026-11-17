@@ -47,3 +47,36 @@ export const searchDirectoryResponse = zod.object({
 export const copyFromDirectoryParams = zod.object({
   productId: zod.uuid(),
 });
+
+/**
+ * @summary MOD-05, MOD-12, REP-04, REP-10 : le catalogue ouvert à tous, sans auteur.
+ */
+export const searchGlobalCatalogQueryQMax = 100;
+
+export const searchGlobalCatalogQueryLimitDefault = 50;
+export const searchGlobalCatalogQueryLimitMax = 50;
+
+export const searchGlobalCatalogQueryParams = zod.object({
+  q: zod.string().max(searchGlobalCatalogQueryQMax).optional(),
+  limit: zod
+    .number()
+    .min(1)
+    .max(searchGlobalCatalogQueryLimitMax)
+    .default(searchGlobalCatalogQueryLimitDefault),
+});
+
+export const searchGlobalCatalogResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      productId: zod.uuid(),
+      title: zod.string(),
+      description: zod.string(),
+      imageKey: zod.string().nullable(),
+      unitPriceMinor: zod.number().nullable(),
+      currency: zod.string(),
+      merchant: zod.string().nullable(),
+      sourceUrl: zod.string().nullable(),
+      adopters: zod.number(),
+    }),
+  ),
+});

@@ -1,5 +1,6 @@
 import {
   DomainError,
+  normalizeTerm,
   type PlatformSettingKey,
   type PlatformSettingValues,
 } from '../../../shared/domain';
@@ -18,11 +19,6 @@ export const SETTING_LIST_MAX = 500;
 const TERM_MAX = 100;
 const DOMAIN_PATTERN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 export const EXTRACTION_DAILY_LIMIT_MAX = 1000;
-
-/** MOD-09 : comparaison sans accent ni casse. */
-export function normalizeTerm(raw: string): string {
-  return raw.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
 
 function list(raw: unknown, clean: (item: string) => string | null): string[] {
   if (!Array.isArray(raw) || raw.length > SETTING_LIST_MAX) throw new SettingInvalidError();
@@ -76,3 +72,5 @@ export function validateSetting<K extends PlatformSettingKey>(
   })();
   return value as PlatformSettingValues[K];
 }
+
+export { normalizeTerm };

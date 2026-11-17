@@ -42,3 +42,4 @@ export {
   type PlatformSettingValues,
   type SettingWrite,
 } from './platform-settings.port';
+export { normalizeTerm } from './text';

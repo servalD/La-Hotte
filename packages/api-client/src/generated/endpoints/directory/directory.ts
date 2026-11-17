@@ -24,8 +24,10 @@ import type {
 import type {
   CopiedDirectoryProductView,
   DirectoryView,
+  GlobalCatalogView,
   ProblemDetailsDto,
   SearchDirectoryParams,
+  SearchGlobalCatalogParams,
 } from '../../model';
 
 import { apiFetch } from '../../../http/fetcher';
@@ -245,3 +247,149 @@ export const useCopyFromDirectory = <TError = ErrorType<ProblemDetailsDto>, TCon
 
   return useMutation(mutationOptions, queryClient);
 };
+/**
+ * @summary MOD-05, MOD-12, REP-04, REP-10 : le catalogue ouvert à tous, sans auteur.
+ */
+export const getSearchGlobalCatalogUrl = (params?: SearchGlobalCatalogParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/v1/directory/global?${stringifiedParams}`
+    : `/api/v1/directory/global`;
+};
+
+export const searchGlobalCatalog = async (
+  params?: SearchGlobalCatalogParams,
+  options?: RequestInit,
+): Promise<GlobalCatalogView> => {
+  return apiFetch<GlobalCatalogView>(getSearchGlobalCatalogUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getSearchGlobalCatalogQueryKey = (params?: SearchGlobalCatalogParams) => {
+  return [`/api/v1/directory/global`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchGlobalCatalogQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchGlobalCatalog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: SearchGlobalCatalogParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof searchGlobalCatalog>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSearchGlobalCatalogQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchGlobalCatalog>>> = ({ signal }) =>
+    searchGlobalCatalog(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchGlobalCatalog>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type SearchGlobalCatalogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchGlobalCatalog>>
+>;
+export type SearchGlobalCatalogQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useSearchGlobalCatalog<
+  TData = Awaited<ReturnType<typeof searchGlobalCatalog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params: undefined | SearchGlobalCatalogParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof searchGlobalCatalog>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchGlobalCatalog>>,
+          TError,
+          Awaited<ReturnType<typeof searchGlobalCatalog>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSearchGlobalCatalog<
+  TData = Awaited<ReturnType<typeof searchGlobalCatalog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: SearchGlobalCatalogParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof searchGlobalCatalog>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof searchGlobalCatalog>>,
+          TError,
+          Awaited<ReturnType<typeof searchGlobalCatalog>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSearchGlobalCatalog<
+  TData = Awaited<ReturnType<typeof searchGlobalCatalog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: SearchGlobalCatalogParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof searchGlobalCatalog>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary MOD-05, MOD-12, REP-04, REP-10 : le catalogue ouvert à tous, sans auteur.
+ */
+
+export function useSearchGlobalCatalog<
+  TData = Awaited<ReturnType<typeof searchGlobalCatalog>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  params?: SearchGlobalCatalogParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof searchGlobalCatalog>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSearchGlobalCatalogQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}

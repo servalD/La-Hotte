@@ -1,6 +1,6 @@
-import { requiresHiddenItemChoice, sharedProductVisible } from './rules';
+import { globalProductVisible, requiresHiddenItemChoice, sharedProductVisible } from './rules';
 
-// REP-03, REP-06, REP-07, REP-09, REP-10.
+// REP-03, REP-04, REP-06, REP-07, REP-10, MOD-06, MOD-12.
 
 const base = {
   viewerId: 'tonton',
@@ -18,7 +18,7 @@ describe('Répertoire (REP-03, REP-07, REP-10)', () => {
 
   it.each([
     ['privée', { shareLevel: 'PRIVATE' as const }],
-    ['catalogue global avant la phase 7 (REP-09)', { shareLevel: 'GLOBAL' as const }],
+    ['catalogue global : sa propre règle', { shareLevel: 'GLOBAL' as const }],
     ['hors du cercle', { viewerInOwnerCircle: false }],
     ['le propriétaire lui-même', { viewerId: 'papa' }],
     ['fiche sans propriétaire (PRO-06)', { ownerId: null }],
@@ -45,5 +45,35 @@ describe('Répertoire (REP-03, REP-07, REP-10)', () => {
         { rule: { mode: 'ONLY', profiles: ['x'] }, listRecipients: [] },
       ]),
     ).toBe(true);
+  });
+});
+
+describe('Catalogue global (MOD-06, MOD-12, REP-04, REP-07, REP-10)', () => {
+  const global = {
+    viewerId: 'inconnu',
+    ownerId: 'papa',
+    shareLevel: 'GLOBAL' as const,
+    moderationStatus: 'APPROVED' as const,
+    references: [open],
+  };
+
+  it('tout profil voit une fiche approuvée, hors de tout cercle', () => {
+    expect(globalProductVisible(global)).toBe(true);
+  });
+
+  it.each([
+    ['en attente de modération', { moderationStatus: 'PENDING' as const }],
+    ['retirée par la modération', { moderationStatus: 'REJECTED' as const }],
+    ['jamais soumise', { moderationStatus: 'NONE' as const }],
+    ['publiée au cercle seulement', { shareLevel: 'CIRCLE' as const }],
+    ['le propriétaire lui-même', { viewerId: 'papa' }],
+    ['destinataire d’un élément qui la référence (REP-10)', { viewerId: 'marie' }],
+  ])('pas visible : %s', (_label, change) => {
+    expect(globalProductVisible({ ...global, ...change })).toBe(false);
+  });
+
+  it('REP-07 : écarté par la règle d’un élément qui la référence', () => {
+    const hidden = { rule: { mode: 'EXCEPT' as const, profiles: ['inconnu'] }, listRecipients: [] };
+    expect(globalProductVisible({ ...global, references: [open, hidden] })).toBe(false);
   });
 });
