@@ -20,6 +20,7 @@ import { ConfirmButton } from '@/components/confirm-button';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/features/auth/field';
+import { ItemAccountingButton } from '@/features/accounting/item-accounting';
 import { ItemThreadsButton } from '@/features/conversations/item-threads';
 import { text } from '@/features/auth/form-data';
 import { listErrorKey } from './api-errors';
@@ -143,6 +144,8 @@ export function ItemCard({
       ) : (
         <div className="flex flex-wrap gap-2">
           <ItemThreadsButton itemId={item.id} title={item.product.title} />
+          {/* CPT-02, CPT-59 : seulement sous la forme offreur. */}
+          {giver ? <ItemAccountingButton itemId={item.id} title={item.product.title} /> : null}
           {recipient && !isGiftlist ? (
             <>
               <Button
