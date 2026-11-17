@@ -115,4 +115,6 @@ export const PHASE7_ADMIN_ROUTES: readonly string[] = [
   'POST /api/v1/admin/moderation/:kind/:id/decide',
   // MOD-11 : décision d'un autre auteur, 404 comme une inconnue (`moderation.spec.ts`).
   'POST /api/v1/moderation-decisions/:id/contest',
+  // RGPD-11 : export d'un autre profil, 404 comme un inconnu (`data-export.spec.ts`).
+  'GET /api/v1/profiles/me/export/:id',
 ];

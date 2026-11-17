@@ -198,6 +198,12 @@ export const setOwnEmailBody = zod.object({
   email: zod.email().max(setOwnEmailBodyEmailMax),
 });
 
+export const downloadProfileExportParams = zod.object({
+  id: zod.uuid(),
+});
+
+export const downloadProfileExportResponse = zod.record(zod.string(), zod.unknown());
+
 /**
  * @summary PIN-04 : créer son PIN, ou le changer avec l'ancien (compté par PIN-03), sans
 ré-authentification. Jamais de désactivation ici.

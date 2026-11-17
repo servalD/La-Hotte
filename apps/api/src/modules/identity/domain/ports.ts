@@ -260,6 +260,9 @@ export const SECURITY_EVENTS = [
   'account.deletion_requested',
   'account.deletion_cancelled',
   'account.erased',
+  // RGPD-11 : export des données d'un profil demandé, puis téléchargé.
+  'export.requested',
+  'export.downloaded',
   // PIN-03 à PIN-05, PRO-08.
   'pin.locked',
   'pin.changed',

@@ -101,6 +101,13 @@ import { TrashPurgeScheduler } from './presentation/trash-purge.scheduler';
     { provide: ListRepository, useClass: PrismaListRepository },
     { provide: ItemRepository, useClass: PrismaItemRepository },
   ],
-  exports: [ProductReferences, EventWishlists, ItemAccessReader, GetEventProgress],
+  exports: [
+    ProductReferences,
+    EventWishlists,
+    ItemAccessReader,
+    GetEventProgress,
+    ListLists,
+    ListItems,
+  ],
 })
 export class ListsModule {}

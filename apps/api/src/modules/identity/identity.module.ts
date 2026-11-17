@@ -414,6 +414,8 @@ import {
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
   exports: [
+    GetOwnProfile,
+    SecurityLog,
     SuspendPublication,
     RestorePublication,
     SuspendAccount,

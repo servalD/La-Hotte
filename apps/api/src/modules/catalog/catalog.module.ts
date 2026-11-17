@@ -59,6 +59,6 @@ import { ImagesController, ProductsController } from './presentation/products.co
     { provide: ExtractionCache, useClass: PrismaExtractionCache },
     { provide: ExtractionQueue, useClass: InProcessExtractionQueue },
   ],
-  exports: [ProductCatalog, PrivateImages],
+  exports: [ProductCatalog, PrivateImages, ListOwnProducts],
 })
 export class CatalogModule {}

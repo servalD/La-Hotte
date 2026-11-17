@@ -90,6 +90,17 @@ export class InMemoryCommentRepository extends CommentRepository {
     return Promise.resolve(next);
   }
 
+  byAuthor(profileId: string, limit: number): Promise<CommentRecord[]> {
+    return Promise.resolve(
+      [...this.comments.values()]
+        .filter(
+          (c) => c.authorId === profileId && c.kind === 'MESSAGE' && !c.deletedAt && !c.moderatedAt,
+        )
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit),
+    );
+  }
+
   setMasked(commentId: string, at: Date | null): Promise<boolean> {
     const row = this.comments.get(commentId);
     if (!row || row.kind !== 'MESSAGE' || row.deletedAt || row.moderatedAt) {

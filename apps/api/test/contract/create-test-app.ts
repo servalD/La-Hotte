@@ -138,6 +138,7 @@ import {
   InMemoryAccountAdministration,
   InMemoryAccountLifecycle,
 } from '../../src/modules/identity/testing';
+import { DataExportStore, InMemoryDataExportStore } from '../../src/modules/privacy/testing';
 import { InMemoryPlatformSettings } from '../../src/platform/settings/in-memory-platform-settings';
 import { AuditJournal, PlatformSettings } from '../../src/shared/domain';
 import { InMemoryAccountDirectory } from './in-memory-account-directory';
@@ -160,6 +161,8 @@ export interface TestAdmin {
   readonly searchQuota: InMemoryAccountSearchQuota;
   readonly administration: InMemoryAccountAdministration;
   readonly moderation: InMemoryModerationStore;
+  /** RGPD-11 : fichiers d'export (en clair dans le double). */
+  readonly exports: InMemoryDataExportStore;
   /** MOD-11 : lance l'effacement des messages retirés, comme la tâche du processus. */
   eraseRemovedComments(): Promise<number>;
 }
@@ -290,6 +293,7 @@ export async function createTestApp(
   const sessions = new InMemorySessionStore();
   const audit = new InMemoryAuditTrail();
   const publishers = new InMemoryPublisherPolicy();
+  const exports = new InMemoryDataExportStore();
   const moderation = new InMemoryModerationStore((write) => {
     audit.append(write);
   });
@@ -483,6 +487,8 @@ export async function createTestApp(
     .useValue(conversations.delivery)
     .overrideProvider(DigestRepository)
     .useValue(conversations.digests)
+    .overrideProvider(DataExportStore)
+    .useValue(exports)
     .overrideProvider(ModerationStore)
     .useValue(moderation)
     .overrideProvider(PublisherPolicy)
@@ -704,6 +710,7 @@ export async function createTestApp(
       searchQuota,
       administration,
       moderation,
+      exports,
       eraseRemovedComments: () => app.get(EraseRemovedComments).execute(),
     },
   };

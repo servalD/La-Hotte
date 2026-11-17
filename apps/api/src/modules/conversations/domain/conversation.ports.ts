@@ -49,6 +49,8 @@ export abstract class CommentRepository {
   abstract setModerated(commentId: string, at: Date | null): Promise<boolean>;
   /** MOD-11 : texte d'un message retiré effacé définitivement (COM-15). */
   abstract eraseModerated(ids: readonly string[], at: Date): Promise<number>;
+  /** RGPD-11 : messages vivants de cet auteur, du plus récent au plus ancien. */
+  abstract byAuthor(profileId: string, limit: number): Promise<CommentRecord[]>;
   /** COM-17 : messages vivants par fil. */
   abstract countMessages(itemId: string): Promise<Record<Thread, number>>;
   abstract react(commentId: string, profileId: string, reaction: CommentReaction): Promise<void>;

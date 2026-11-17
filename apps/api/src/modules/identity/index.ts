@@ -51,3 +51,7 @@ export { EventInvitationNotices } from './application/event-invitation-notices';
 /** NOT-15, NOT-17 : résumé e-mail au compte ; session encore vivante avant une push. */
 export { CheckSessionAlive, DigestMailer } from './application/digest-mailer';
 export { type IdentityEvent, IdentityEvents, type IdentityEventListener } from './domain/ports';
+/** RGPD-11 : données du profil actif, pour son export. */
+export { GetOwnProfile } from './application/contract';
+/** SEC-30, RGPD-11 : journal de sécurité, pour la trace d'un export (sans contenu). */
+export { SecurityLog } from './domain/ports';

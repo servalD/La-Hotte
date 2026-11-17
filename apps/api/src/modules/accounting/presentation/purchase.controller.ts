@@ -39,6 +39,7 @@ import {
   RECEIPT_UPLOAD_MAX_BYTES,
   RequestBuyer,
   UncheckPurchase,
+  type CartGroup,
 } from '../application/contract';
 import { ACCOUNTING_VIEW_SCHEMA, type ItemAccountingViewDto } from './dto/accounting.view';
 import {
@@ -308,30 +309,34 @@ export class PurchaseController {
   @Get('cart')
   @ApiOkResponse({ type: CartView })
   async getCart(@ActiveProfile() profile: ActiveProfileValue): Promise<CartView> {
-    const groups = await this.cart.execute(profile.id);
-    return {
-      groups: groups.map((group) => ({
-        event: group.event ? { id: group.event.id, title: group.event.title } : null,
-        recipients: group.recipients.map((p) => ({
-          id: p.id,
-          displayName: p.displayName,
-          avatar: p.avatar,
-          accentColor: p.accentColor,
-        })),
-        items: group.items.map((line) => ({
-          accountingId: line.accountingId,
-          itemId: line.itemId,
-          title: line.title,
-          sourceUrl: line.sourceUrl,
-          quantity: line.quantity,
-          currency: line.currency,
-          totalMinor: line.totalMinor,
-          coveredMinor: line.coveredMinor,
-          remainingMinor: line.remainingMinor,
-          myShareMinor: line.myShareMinor,
-          purchased: line.purchased,
-        })),
-      })),
-    };
+    return toCartView(await this.cart.execute(profile.id));
   }
+}
+
+/** CPT-11 : vue du panier, champ par champ (aussi pour l'export, RGPD-11). */
+export function toCartView(groups: readonly CartGroup[]): CartView {
+  return {
+    groups: groups.map((group) => ({
+      event: group.event ? { id: group.event.id, title: group.event.title } : null,
+      recipients: group.recipients.map((p) => ({
+        id: p.id,
+        displayName: p.displayName,
+        avatar: p.avatar,
+        accentColor: p.accentColor,
+      })),
+      items: group.items.map((line) => ({
+        accountingId: line.accountingId,
+        itemId: line.itemId,
+        title: line.title,
+        sourceUrl: line.sourceUrl,
+        quantity: line.quantity,
+        currency: line.currency,
+        totalMinor: line.totalMinor,
+        coveredMinor: line.coveredMinor,
+        remainingMinor: line.remainingMinor,
+        myShareMinor: line.myShareMinor,
+        purchased: line.purchased,
+      })),
+    })),
+  };
 }

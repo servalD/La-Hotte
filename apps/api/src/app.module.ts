@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AdminModule } from './modules/admin';
+import { PrivacyModule } from './modules/privacy';
 import { CatalogModule } from './modules/catalog';
 import { AccountingModule } from './modules/accounting';
 import { ConversationsModule } from './modules/conversations';
@@ -26,6 +27,7 @@ import { PlatformModule } from './platform/platform.module';
     NotificationsModule,
     RealtimeModule,
     AdminModule,
+    PrivacyModule,
   ],
 })
 export class AppModule {}

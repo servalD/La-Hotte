@@ -16,6 +16,16 @@ export interface CommentForModeration {
   readonly createdAt: Date;
 }
 
+/** RGPD-11 : un message de l'auteur, pour son export. */
+export interface AuthoredComment {
+  readonly id: string;
+  readonly itemId: string;
+  readonly thread: Thread;
+  readonly body: string;
+  readonly createdAt: Date;
+  readonly editedAt: Date | null;
+}
+
 /**
  * Surface de `conversations` pour la modération (module `admin`). La lisibilité d'un message pour
  * le signaleur est décidée comme pour toute lecture (COM-11) : le signalement ne devient pas un
@@ -40,6 +50,28 @@ export class CommentModerationGate {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * RGPD-11 : messages de ce profil qu'il lit encore (COM-11) ; un message d'un fil qui lui est
+   * désormais fermé (devenu destinataire, VIS-20) n'en sort pas.
+   */
+  async authoredReadable(profileId: string, limit: number): Promise<AuthoredComment[]> {
+    const rows = await this.comments.byAuthor(profileId, limit);
+    const out: AuthoredComment[] = [];
+    for (const row of rows) {
+      if (await this.readable(profileId, row.id)) {
+        out.push({
+          id: row.id,
+          itemId: row.itemId,
+          thread: row.thread,
+          body: row.body,
+          createdAt: row.createdAt,
+          editedAt: row.editedAt,
+        });
+      }
+    }
+    return out;
   }
 
   async forModerator(commentId: string): Promise<CommentForModeration | null> {

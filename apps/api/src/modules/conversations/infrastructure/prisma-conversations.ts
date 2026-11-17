@@ -150,6 +150,15 @@ export class PrismaCommentRepository extends CommentRepository {
     return updated.count === 1 ? this.find(commentId) : null;
   }
 
+  async byAuthor(profileId: string, limit: number): Promise<CommentRecord[]> {
+    const rows = await this.prisma.comment.findMany({
+      where: { authorProfileId: profileId, kind: 'MESSAGE', deletedAt: null, moderatedAt: null },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+    });
+    return rows.map(toComment);
+  }
+
   async setMasked(commentId: string, at: Date | null): Promise<boolean> {
     const { count } = await this.prisma.comment.updateMany({
       where: { id: commentId, kind: 'MESSAGE', deletedAt: null, moderatedAt: null },
