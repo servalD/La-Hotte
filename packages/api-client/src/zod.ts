@@ -1,5 +1,6 @@
 // Schémas Zod générés : formulaires et vérification des réponses en développement (API-03).
 export * as accountSchemas from './generated/zod/account/account.zod';
+export * as accountingSchemas from './generated/zod/accounting/accounting.zod';
 export * as authSchemas from './generated/zod/auth/auth.zod';
 export * as blocksSchemas from './generated/zod/blocks/blocks.zod';
 export * as circleSchemas from './generated/zod/circle/circle.zod';

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CatalogModule } from './modules/catalog';
+import { AccountingModule } from './modules/accounting';
 import { ConversationsModule } from './modules/conversations';
 import { DirectoryModule } from './modules/directory';
 import { EventsModule } from './modules/events';
@@ -20,6 +21,7 @@ import { PlatformModule } from './platform/platform.module';
     DirectoryModule,
     EventsModule,
     ConversationsModule,
+    AccountingModule,
     NotificationsModule,
     RealtimeModule,
   ],

@@ -27,6 +27,12 @@ export abstract class DomainError extends Error {
   /** Délai avant nouvel essai, pour `Retry-After` (429, 503). */
   readonly retryAfterSeconds?: number;
 
+  /**
+   * Membres d'extension du corps `problem+json` (RFC 9457), par exemple le reste actualisé de
+   * CPT-03. Des nombres seulement : aucun texte d'utilisateur ne sort par une erreur.
+   */
+  readonly problemMembers?: Readonly<Record<string, number>>;
+
   constructor(message: string) {
     super(message);
     this.name = new.target.name;

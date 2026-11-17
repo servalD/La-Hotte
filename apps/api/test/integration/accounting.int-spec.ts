@@ -1,0 +1,195 @@
+import { randomUUID } from 'node:crypto';
+import type { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { AppModule } from '../../src/app.module';
+import { configureApp } from '../../src/bootstrap';
+import { replay, type LedgerRecord } from '../../src/modules/accounting/domain/ledger';
+import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
+import { PrismaService } from '../../src/platform/prisma/prisma.service';
+import { createAccountWithProfile, signIn, type SignedIn } from '../support/sign-in';
+
+// Compta contre PostgreSQL réel (tranche 4 de la phase 5) : verrou sur le reste (CPT-03),
+// idempotence concurrente (CPT-71), journal égal à la projection (CPT-70), état réel sans
+// version (LST-11, VIS-35), revue ouverte par l'avis de changement (CPT-57, CPT-58).
+
+let app: INestApplication;
+let prisma: PrismaService;
+
+beforeAll(async () => {
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  app = moduleRef.createNestApplication({ bufferLogs: true });
+  configureApp(app);
+  await app.init();
+  prisma = app.get(PrismaService);
+});
+
+afterAll(async () => {
+  await app.close();
+});
+
+const http = () => request(app.getHttpServer());
+type Body = Record<string, unknown>;
+
+async function person(): Promise<SignedIn> {
+  const { accountId, profileId } = await createAccountWithProfile(prisma);
+  return signIn(app, { accountId, profileId });
+}
+
+async function link(x: SignedIn, y: SignedIn): Promise<void> {
+  const [a, b] = [x.profileId!, y.profileId!].sort();
+  await prisma.profileLink.create({
+    data: {
+      id: randomUUID(),
+      profileAId: a!,
+      profileBId: b!,
+      status: 'ACCEPTED',
+      requestedBy: a!,
+      aGuardianRequired: false,
+      bGuardianRequired: false,
+    },
+  });
+}
+
+async function world() {
+  const marie = await person();
+  const papa = await person();
+  const tonton = await person();
+  await link(marie, papa);
+  await link(marie, tonton);
+  const lists = await http().get('/api/v1/lists').set({ Cookie: marie.cookie }).expect(200);
+  const listId = (lists.body.items as Body[]).find((l) => l.personal)!.id as string;
+  const product = await http()
+    .post('/api/v1/products')
+    .set(marie.mutation)
+    .send({ title: 'Robot pâtissier', unitPriceMinor: 10_000 })
+    .expect(201);
+  const item = await http()
+    .post(`/api/v1/lists/${listId}/items`)
+    .set(marie.mutation)
+    .send({ productId: product.body.id })
+    .expect(201);
+  return { marie, papa, tonton, itemId: item.body.id as string };
+}
+
+function contribute(user: SignedIn, itemId: string, body: Body, key = randomUUID()) {
+  return http()
+    .put(`/api/v1/items/${itemId}/contribution`)
+    .set({ ...user.mutation, 'Idempotency-Key': key })
+    .send(body);
+}
+
+describe('Compta en base (CPT-03, CPT-70, CPT-71)', () => {
+  it('CPT-03 : deux requêtes pour le dernier reste, une réussit, l’autre a le reste à jour', async () => {
+    const { papa, tonton, itemId } = await world();
+    const [a, b] = await Promise.all([
+      contribute(papa, itemId, { mode: 'FIXED', amountMinor: 6_000 }),
+      contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 6_000 }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    const refused = a.status === 409 ? a : b;
+    expect(refused.body).toMatchObject({
+      code: 'CONTRIBUTION_EXCEEDS_REMAINING',
+      remainingMinor: 4_000,
+    });
+    const rows = await prisma.contribution.findMany({ where: { accounting: { itemId } } });
+    expect(rows.reduce((sum, r) => sum + Number(r.amountMinor), 0)).toBe(6_000);
+  }, 30_000);
+
+  it('CPT-03 : la première participation simultanée n’ouvre qu’une fiche', async () => {
+    const { papa, tonton, itemId } = await world();
+    const results = await Promise.all([
+      contribute(papa, itemId, { mode: 'FIXED', amountMinor: 1_000 }),
+      contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 2_000 }),
+    ]);
+    expect(results.map((r) => r.status)).toEqual([200, 200]);
+    expect(await prisma.itemAccounting.count({ where: { itemId } })).toBe(1);
+    const ranks = (await prisma.contribution.findMany({ where: { accounting: { itemId } } }))
+      .map((r) => r.rank)
+      .sort();
+    expect(ranks).toEqual([1, 2]);
+  }, 30_000);
+
+  it('CPT-71 : la même clé envoyée deux fois en même temps n’a d’effet qu’une fois', async () => {
+    const { papa, itemId } = await world();
+    const key = randomUUID();
+    const [a, b] = await Promise.all([
+      contribute(papa, itemId, { mode: 'FIXED', amountMinor: 2_500 }, key),
+      contribute(papa, itemId, { mode: 'FIXED', amountMinor: 2_500 }, key),
+    ]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(b.body).toEqual(a.body);
+    const accounting = await prisma.itemAccounting.findUniqueOrThrow({ where: { itemId } });
+    const operations = await prisma.ledgerEntry.groupBy({
+      by: ['operationId'],
+      where: { accountingId: accounting.id },
+    });
+    expect(operations).toHaveLength(1);
+    const reused = await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 2_600 }, key);
+    expect(reused.body.code).toBe('IDEMPOTENCY_KEY_REUSED');
+  }, 30_000);
+
+  it('CPT-70 : rejouer le journal en base redonne les participations', async () => {
+    const { papa, tonton, itemId } = await world();
+    await contribute(papa, itemId, { mode: 'PERCENT', shareNum: 1, shareDen: 3 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'PERCENT', shareNum: 1, shareDen: 3 }).expect(200);
+    await contribute(papa, itemId, { mode: 'FULL' }).expect(200);
+    await http()
+      .delete(`/api/v1/items/${itemId}/contribution`)
+      .set({ ...tonton.mutation, 'Idempotency-Key': randomUUID() })
+      .expect(200);
+    const accounting = await prisma.itemAccounting.findUniqueOrThrow({
+      where: { itemId },
+      include: { contributions: true },
+    });
+    const entries = await prisma.ledgerEntry.findMany({ where: { accountingId: accounting.id } });
+    const rebuilt = replay(
+      entries.map((e): LedgerRecord => ({
+        id: e.id,
+        kind: e.kind as LedgerRecord['kind'],
+        targetId: e.targetId!,
+        before: e.before as LedgerRecord['before'],
+        after: e.after as LedgerRecord['after'],
+        at: e.at,
+      })),
+    );
+    for (const row of accounting.contributions) {
+      expect(rebuilt.get(row.id)).toMatchObject({
+        amount: Number(row.amountMinor),
+        mode: row.mode,
+        rank: row.rank,
+      });
+    }
+    const rebuiltContributions = [...rebuilt.keys()].filter((id) => id !== accounting.id);
+    expect(rebuiltContributions.sort()).toEqual(accounting.contributions.map((c) => c.id).sort());
+  }, 30_000);
+
+  it('LST-11, VIS-35 : l’état réel suit la compta sans faire bouger la version', async () => {
+    const { papa, itemId } = await world();
+    const before = await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } });
+    await contribute(papa, itemId, { mode: 'FULL' }).expect(200);
+    const after = await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } });
+    expect(after.status).toBe('RESERVED');
+    expect(after.version).toBe(before.version);
+  }, 30_000);
+
+  it('CPT-57, CPT-58 : la destinataire change le prix ; la revue est ouverte à son nom', async () => {
+    const { marie, papa, tonton, itemId } = await world();
+    await contribute(papa, itemId, { mode: 'FIXED', amountMinor: 5_000 }).expect(200);
+    await contribute(tonton, itemId, { mode: 'FIXED', amountMinor: 5_000 }).expect(200);
+    const item = await prisma.listItem.findUniqueOrThrow({ where: { id: itemId } });
+    await http()
+      .patch(`/api/v1/items/${itemId}`)
+      .set({ ...marie.mutation, 'If-Match': String(item.version) })
+      .send({ unitPriceMinor: 11_000 })
+      .expect(200);
+    await app.get(InProcessAppEvents).drain();
+    const reviews = await prisma.accountingReview.findMany({ where: { accounting: { itemId } } });
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toMatchObject({
+      kind: 'COST',
+      status: 'PENDING',
+      authorProfileId: marie.profileId,
+    });
+  }, 30_000);
+});

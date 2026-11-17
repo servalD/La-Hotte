@@ -94,7 +94,11 @@ export class ProblemDetailsFilter implements ExceptionFilter {
 
     if (exception instanceof DomainError) {
       const status = STATUS_BY_DOMAIN_KIND[exception.kind];
-      return problem(status, exception.code, { ...ctx, detail: exception.message });
+      // CPT-03 : membres d'extension déclarés par l'erreur (nombres seulement, jamais de texte).
+      return {
+        ...problem(status, exception.code, { ...ctx, detail: exception.message }),
+        ...(exception.problemMembers ?? {}),
+      };
     }
     if (exception instanceof RequestValidationException) {
       return problem(400, 'VALIDATION_FAILED', { ...ctx, errors: exception.fieldErrors });

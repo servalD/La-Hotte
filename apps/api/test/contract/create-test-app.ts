@@ -117,6 +117,18 @@ import {
   SendDigests,
 } from '../../src/modules/notifications/testing';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
+import {
+  AccountingPeople,
+  AccountingRepository,
+  InMemoryAccountingPeople,
+  InMemoryAccountingRepository,
+} from '../../src/modules/accounting/testing';
+
+/** Doubles du module `accounting` (phase 5). */
+export interface TestAccounting {
+  readonly repository: InMemoryAccountingRepository;
+  readonly people: InMemoryAccountingPeople;
+}
 
 /** Doubles du module `conversations` (phase 4). */
 export interface TestConversations {
@@ -220,6 +232,7 @@ export async function createTestApp(
   catalog: TestCatalog;
   events: TestEvents;
   conversations: TestConversations;
+  accounting: TestAccounting;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
@@ -289,6 +302,14 @@ export async function createTestApp(
     deliverPushes: () => app.get(DeliverPushes).execute(),
     sendDigests: () => app.get(SendDigests).execute(),
     settle: () => app.get(InProcessAppEvents).drain(),
+  };
+  const accounting: TestAccounting = {
+    // LST-11, LST-12 : l'état réel de l'élément suit la compta, comme dans la transaction réelle.
+    repository: new InMemoryAccountingRepository((itemId, status) => {
+      const row = catalog.items.items.get(itemId);
+      if (row && row.status !== 'WITHDRAWN') catalog.items.items.set(itemId, { ...row, status });
+    }),
+    people: new InMemoryAccountingPeople(),
   };
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
@@ -370,6 +391,10 @@ export async function createTestApp(
     .useValue(events.floor)
     .overrideProvider(CommentRepository)
     .useValue(conversations.comments)
+    .overrideProvider(AccountingRepository)
+    .useValue(accounting.repository)
+    .overrideProvider(AccountingPeople)
+    .useValue(accounting.people)
     .overrideProvider(FollowRepository)
     .useValue(conversations.follows)
     .overrideProvider(ConversationPeople)
@@ -551,5 +576,5 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity, catalog, events, conversations };
+  return { app, identity, catalog, events, conversations, accounting };
 }

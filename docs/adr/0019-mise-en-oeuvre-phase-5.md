@@ -31,7 +31,8 @@ Deux contraintes viennent des décisions de l'utilisateur : un changement de pri
 
 ### Prix changé et revue
 
-- La compta ne réagit pas à l'événement `item.changed` pour décider : à chaque écriture et à chaque lecture de la fiche, elle compare le coût de l'élément (prix × quantité, dans la devise de la compta) au coût prévu. Un écart sans demande en attente ouvre la demande (revue cochée, plus d'un participant) ou s'applique aussitôt. Ainsi aucune perte d'avis du bus ne peut laisser la compta en retard. L'événement ne sert qu'aux notifications et aux trames.
+- Sur l'avis `item.changed`, la compta compare le coût de l'élément (prix × quantité, dans la devise de la compta) au coût prévu, par une opération du système sans clé d'idempotence. Un écart ouvre une demande de revue, dont l'auteur est l'auteur du changement (revue cochée, plus d'un participant), ou s'applique aussitôt. **Chaque écriture de compta refait la même comparaison** sous verrou : un avis perdu ne laisse donc jamais les parts sur un coût faux ; la demande naît alors sans auteur, et tout participant peut la décider. Une lecture ne modifie rien (API-21) : elle montre les deux prix tant qu'ils diffèrent.
+- L'état réel de l'élément (`list_item.status`, LST-11, LST-12) est écrit par la transaction de compta, sans toucher sa version (VIS-35) : c'est la seule écriture de `accounting` dans une table de `lists`, faite pour que l'état réel ne diverge jamais de la compta.
 
 ### Tâches planifiées
 

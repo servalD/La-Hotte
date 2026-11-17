@@ -8,6 +8,7 @@
 /** Genres d'écriture : liste fermée. */
 export const LEDGER_KINDS = [
   'ACCOUNTING_OPENED',
+  'ACCOUNTING_UPDATED',
   'ACCOUNTING_COST',
   'ACCOUNTING_OPTIONS',
   'ACCOUNTING_BUYER',

@@ -78,8 +78,30 @@ export interface NotificationCreated {
   readonly seq: number;
 }
 
+/**
+ * Compta d'un élément changée (`accounting`, ADR 0019). Forme offreur exigée pour toute sortie
+ * (CPT-59) ; aucun montant : les abonnés relisent à travers le moteur.
+ */
+export interface AccountingChanged {
+  readonly type: 'accounting.changed';
+  readonly accountingId: string;
+  /** Absent quand l'élément a disparu (CPT-73). */
+  readonly itemId: string | null;
+  readonly change:
+    | 'contribution'
+    | 'options'
+    | 'review_opened'
+    | 'review_decided'
+    | 'buyer'
+    | 'purchase'
+    | 'shortfall'
+    | 'settlement';
+  readonly actorId: string | null;
+}
+
 export type AppEvent =
   | ItemChanged
+  | AccountingChanged
   | ListChanged
   | CommentChanged
   | EventChanged

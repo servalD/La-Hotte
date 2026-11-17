@@ -916,6 +916,136 @@
         ]
       }
     },
+    "/api/v1/accounting-reviews/{id}/approve": {
+      "post": {
+        "operationId": "approveAccountingReview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-58",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/accounting-reviews/{id}/refuse": {
+      "post": {
+        "operationId": "refuseAccountingReview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-58",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/accounts/setup": {
       "post": {
         "operationId": "setupAccount",
@@ -3533,6 +3663,137 @@
         ]
       }
     },
+    "/api/v1/items/{id}/accounting": {
+      "get": {
+        "operationId": "getItemAccounting",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-59",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/items/{id}/accounting/options": {
+      "put": {
+        "operationId": "putItemAccountingOptions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountingOptionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-58",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/items/{id}/comments": {
       "get": {
         "operationId": "listItemComments",
@@ -3650,6 +3911,144 @@
         "summary": "COM-11 à COM-13",
         "tags": [
           "conversations"
+        ]
+      }
+    },
+    "/api/v1/items/{id}/contribution": {
+      "put": {
+        "operationId": "putItemContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetContributionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-01 à CPT-07, CPT-53 à CPT-57, CPT-60",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteItemContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "CPT-71 : clé de 8 à 128 caractères [A-Za-z0-9_-], valable 30 jours.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingGiverView"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "view",
+                    "mapping": {
+                      "giver": "#/components/schemas/ItemAccountingGiverView",
+                      "participant": "#/components/schemas/ItemAccountingParticipantView"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Erreur (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "CPT-06, CPT-65, CPT-72, CPT-73",
+        "tags": [
+          "accounting"
         ]
       }
     },
@@ -6274,6 +6673,107 @@
           "displayName"
         ]
       },
+      "AccountingOptionsDto": {
+        "type": "object",
+        "properties": {
+          "reviewEnabled": {
+            "type": "boolean"
+          },
+          "receiptEnabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reviewEnabled",
+          "receiptEnabled"
+        ]
+      },
+      "AccountingPersonView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string",
+            "nullable": true
+          },
+          "accentColor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "avatar",
+          "accentColor"
+        ]
+      },
+      "AccountingReviewKind": {
+        "type": "string",
+        "enum": [
+          "COST",
+          "OPTIONS"
+        ]
+      },
+      "AccountingReviewView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingReviewKind"
+              }
+            ]
+          },
+          "author": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "proposedTotalMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "proposedReviewEnabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "proposedReceiptEnabled": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "canDecide": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "author",
+          "proposedTotalMinor",
+          "proposedReviewEnabled",
+          "proposedReceiptEnabled",
+          "createdAt",
+          "canDecide"
+        ]
+      },
       "AccountProfileListView": {
         "type": "object",
         "properties": {
@@ -7087,6 +7587,38 @@
           "mine",
           "canEdit",
           "canDelete"
+        ]
+      },
+      "ContributionInputMode": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "PERCENT",
+          "FIXED",
+          "UNITS"
+        ]
+      },
+      "ContributionMode": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "PERCENT",
+          "FIXED"
+        ]
+      },
+      "ContributionShareView": {
+        "type": "object",
+        "properties": {
+          "num": {
+            "type": "number"
+          },
+          "den": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "num",
+          "den"
         ]
       },
       "CopiedDirectoryProductView": {
@@ -8193,6 +8725,39 @@
           "REVEALED"
         ]
       },
+      "GiverContributionLineView": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContributionMode"
+              }
+            ]
+          },
+          "rank": {
+            "type": "number"
+          },
+          "isBuyer": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "person",
+          "mode",
+          "rank",
+          "isBuyer"
+        ]
+      },
       "GiverItemStatus": {
         "type": "string",
         "enum": [
@@ -8357,6 +8922,195 @@
         },
         "required": [
           "token"
+        ]
+      },
+      "ItemAccountingGiverView": {
+        "type": "object",
+        "properties": {
+          "accountingId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "plannedTotalMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "itemTotalMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "coveredMinor": {
+            "type": "number"
+          },
+          "remainingMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "buyer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "purchased": {
+            "type": "boolean"
+          },
+          "canContribute": {
+            "type": "boolean"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "giver"
+            ]
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GiverContributionLineView"
+            }
+          }
+        },
+        "required": [
+          "accountingId",
+          "itemId",
+          "title",
+          "currency",
+          "plannedTotalMinor",
+          "itemTotalMinor",
+          "coveredMinor",
+          "remainingMinor",
+          "buyer",
+          "purchased",
+          "canContribute",
+          "view",
+          "participants"
+        ]
+      },
+      "ItemAccountingParticipantView": {
+        "type": "object",
+        "properties": {
+          "accountingId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "itemId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "plannedTotalMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "itemTotalMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "coveredMinor": {
+            "type": "number"
+          },
+          "remainingMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "buyer": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "purchased": {
+            "type": "boolean"
+          },
+          "canContribute": {
+            "type": "boolean"
+          },
+          "view": {
+            "type": "string",
+            "enum": [
+              "participant"
+            ]
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantContributionLineView"
+            }
+          },
+          "mine": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyContributionView"
+              }
+            ]
+          },
+          "isBuyer": {
+            "type": "boolean"
+          },
+          "reviewEnabled": {
+            "type": "boolean"
+          },
+          "receiptEnabled": {
+            "type": "boolean"
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountingReviewView"
+            }
+          }
+        },
+        "required": [
+          "accountingId",
+          "itemId",
+          "title",
+          "currency",
+          "plannedTotalMinor",
+          "itemTotalMinor",
+          "coveredMinor",
+          "remainingMinor",
+          "buyer",
+          "purchased",
+          "canContribute",
+          "view",
+          "participants",
+          "mine",
+          "isBuyer",
+          "reviewEnabled",
+          "receiptEnabled",
+          "reviews"
         ]
       },
       "ItemCollectionView": {
@@ -9346,6 +10100,62 @@
           "READER"
         ]
       },
+      "MyContributionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContributionMode"
+              }
+            ]
+          },
+          "share": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContributionShareView"
+              }
+            ]
+          },
+          "units": {
+            "type": "number",
+            "nullable": true
+          },
+          "amountMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "rank": {
+            "type": "number"
+          },
+          "settlement": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SettlementState"
+              }
+            ]
+          },
+          "settledMinor": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "mode",
+          "share",
+          "units",
+          "amountMinor",
+          "rank",
+          "settlement",
+          "settledMinor"
+        ]
+      },
       "NewPasswordDto": {
         "type": "object",
         "properties": {
@@ -9672,6 +10482,53 @@
           "executesAt",
           "expiresAt",
           "destinationNames"
+        ]
+      },
+      "ParticipantContributionLineView": {
+        "type": "object",
+        "properties": {
+          "person": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountingPersonView"
+              }
+            ]
+          },
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContributionMode"
+              }
+            ]
+          },
+          "rank": {
+            "type": "number"
+          },
+          "isBuyer": {
+            "type": "boolean"
+          },
+          "amountMinor": {
+            "type": "number",
+            "nullable": true
+          },
+          "units": {
+            "type": "number",
+            "nullable": true
+          },
+          "mine": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "person",
+          "mode",
+          "rank",
+          "isBuyer",
+          "amountMinor",
+          "units",
+          "mine"
         ]
       },
       "PasswordResetConfirmDto": {
@@ -10515,6 +11372,51 @@
           "isChild"
         ]
       },
+      "SetContributionDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContributionInputMode"
+              }
+            ]
+          },
+          "shareNum": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "shareDen": {
+            "type": "number",
+            "enum": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              10000
+            ]
+          },
+          "amountMinor": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000000000000
+          },
+          "units": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 999
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
       "SetItemRuleDto": {
         "type": "object",
         "properties": {
@@ -10576,6 +11478,15 @@
         },
         "required": [
           "newPin"
+        ]
+      },
+      "SettlementState": {
+        "type": "string",
+        "enum": [
+          "NONE",
+          "DUE",
+          "CLAIMED",
+          "SETTLED"
         ]
       },
       "SharedProductView": {
