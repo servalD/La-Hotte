@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AppEvents, Clock, IdGenerator, Metrics } from '../../../shared/domain';
+import { AppEvents, Clock, IdGenerator, Metrics, PlatformSettings } from '../../../shared/domain';
 import {
   EXTRACTION_CACHE_TTL_MS,
   EXTRACTIONS_PER_ACCOUNT_PER_DAY,
@@ -34,18 +34,19 @@ import { type ExtractionOutcome, ImageStore, ProductRepository } from '../domain
 async function checkRateLimit(
   products: ProductRepository,
   clock: Clock,
+  settings: PlatformSettings,
   owner: { readonly profileId: string; readonly accountId: string },
 ): Promise<void> {
+  // ADM-09 : un administrateur peut régler le plafond quotidien du compte.
+  const perAccountPerDay =
+    settings.current().extraction_daily_limit ?? EXTRACTIONS_PER_ACCOUNT_PER_DAY;
   const now = clock.now().getTime();
   const counts = await products.countExtractionsSince({
     ...owner,
     profileSince: new Date(now - 3600_000),
     accountSince: new Date(now - 24 * 3600_000),
   });
-  if (
-    counts.profile >= EXTRACTIONS_PER_PROFILE_PER_HOUR ||
-    counts.account >= EXTRACTIONS_PER_ACCOUNT_PER_DAY
-  ) {
+  if (counts.profile >= EXTRACTIONS_PER_PROFILE_PER_HOUR || counts.account >= perAccountPerDay) {
     throw new ExtractionRateLimitedError();
   }
 }
@@ -61,6 +62,7 @@ export class CreateProductFromLink {
     private readonly queue: ExtractionQueue,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly settings: PlatformSettings,
   ) {}
 
   async execute(input: {
@@ -71,7 +73,7 @@ export class CreateProductFromLink {
   }): Promise<Product> {
     const normalized = normalizeUrl(input.url);
     if (!normalized) throw new ProductUrlInvalidError();
-    await checkRateLimit(this.products, this.clock, {
+    await checkRateLimit(this.products, this.clock, this.settings, {
       profileId: input.ownerProfileId,
       accountId: input.accountId,
     });
@@ -107,6 +109,7 @@ export class CreateProductFromPhoto {
     private readonly queue: ExtractionQueue,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly settings: PlatformSettings,
   ) {}
 
   async execute(input: {
@@ -115,7 +118,7 @@ export class CreateProductFromPhoto {
     photo: Buffer;
     currency: string;
   }): Promise<Product> {
-    await checkRateLimit(this.products, this.clock, {
+    await checkRateLimit(this.products, this.clock, this.settings, {
       profileId: input.ownerProfileId,
       accountId: input.accountId,
     });

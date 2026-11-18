@@ -122,6 +122,11 @@ export class InMemoryAccountingRepository extends AccountingRepository {
     return Promise.resolve(this.lookup({ itemId }));
   }
 
+  /** Le double ne connaît pas les destinataires : la défense DAT-05 se vérifie en intégration. */
+  findByItemAs(_viewerId: string, itemId: string): Promise<AccountingState | null> {
+    return this.findByItem(itemId);
+  }
+
   findById(accountingId: string): Promise<AccountingState | null> {
     return Promise.resolve(this.lookup({ accountingId }));
   }

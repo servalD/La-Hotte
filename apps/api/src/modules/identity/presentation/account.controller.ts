@@ -1,28 +1,65 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Req, Res } from '@nestjs/common';
-import { ApiNoContentResponse, ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiAcceptedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import {
   GetAccount,
   ListTrustedDevices,
+  RequestAccountDeletion,
   type ResolvedSession,
   RevokeTrustedDevice,
   sessionRef,
 } from '../application/contract';
 import { clearDeviceCookie, clearSessionCookies, DEVICE_COOKIE, readCookie } from './cookies';
-import { AccountScope, ClientContext, type ClientContextValue, CurrentSession } from './decorators';
-import { AccountView, TrustedDeviceListView } from './dto/second-factor.view';
+import {
+  AccountScope,
+  ClientContext,
+  type ClientContextValue,
+  CurrentSession,
+  RequiresRecentReauth,
+} from './decorators';
+import { AccountDeletionView, AccountView, TrustedDeviceListView } from './dto/second-factor.view';
 
 /** Espace Compte (PIN-08) : métadonnées du compte seulement, jamais un contenu de profil. */
 @ApiTags('account')
 @AccountScope()
 @Controller('account')
 export class AccountController {
-  constructor(private readonly getAccountUseCase: GetAccount) {}
+  constructor(
+    private readonly getAccountUseCase: GetAccount,
+    private readonly requestDeletion: RequestAccountDeletion,
+  ) {}
 
   @Get()
   @ApiOkResponse({ type: AccountView })
   async getAccount(@CurrentSession() current: ResolvedSession): Promise<AccountView> {
     return this.getAccountUseCase.execute(current.record.accountId);
+  }
+
+  /**
+   * RGPD-05, RGPD-12 : effacement du compte dans 30 jours ; toutes les sessions tombent, cookies
+   * effacés. Se reconnecter avant la date annule la demande.
+   */
+  @Delete()
+  @RequiresRecentReauth()
+  @HttpCode(202)
+  @ApiAcceptedResponse({ type: AccountDeletionView })
+  async deleteAccount(
+    @CurrentSession() current: ResolvedSession,
+    @ClientContext() client: ClientContextValue,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<AccountDeletionView> {
+    const { effectiveAt } = await this.requestDeletion.execute({
+      accountId: current.record.accountId,
+      client,
+    });
+    clearSessionCookies(response);
+    return { effectiveAt: effectiveAt.toISOString() };
   }
 }
 

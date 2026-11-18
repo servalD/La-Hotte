@@ -16,6 +16,30 @@ import { ReportCsrfRejection } from './application/report-csrf-rejection.use-cas
 import { RequestEmailChange } from './application/request-email-change.use-case';
 import { RequestPasswordReset } from './application/request-password-reset.use-case';
 import { ResolveSession } from './application/resolve-session.use-case';
+import { CheckPlatformPermission } from './application/check-platform-permission.use-case';
+import {
+  AdminActionKit,
+  ChangeAccountRole,
+  ConfirmTotpReset,
+  ForceLogout,
+  ReactivateAccount,
+  RequestTotpReset,
+  RestorePublication,
+  SuspendAccount,
+  SuspendPublication,
+  AccountProfileIds,
+} from './application/administer-accounts.use-case';
+import { AccountAdministration } from './domain/account-administration';
+import { AccountLifecycle } from './domain/account-lifecycle';
+import { PrismaAccountLifecycle } from './infrastructure/prisma-account-lifecycle';
+import {
+  EraseDueAccounts,
+  HandleInactiveAccounts,
+  RequestAccountDeletion,
+  ResumeAccountOnSignIn,
+} from './application/manage-account-lifecycle.use-case';
+import { AccountLifecycleScheduler } from './presentation/account-lifecycle.scheduler';
+import { PrismaAccountAdministration } from './infrastructure/prisma-account-administration';
 import { SessionLifecycle } from './application/session-lifecycle';
 import { SignInWithPassword } from './application/sign-in-with-password.use-case';
 import { VerifyEmail } from './application/verify-email.use-case';
@@ -244,6 +268,24 @@ import {
     ResolveSession,
     AuthorizeProfile,
     CheckSessionAccess,
+    CheckPlatformPermission,
+    AdminActionKit,
+    SuspendAccount,
+    ReactivateAccount,
+    ForceLogout,
+    ChangeAccountRole,
+    RequestTotpReset,
+    ConfirmTotpReset,
+    SuspendPublication,
+    AccountProfileIds,
+    RestorePublication,
+    { provide: AccountAdministration, useClass: PrismaAccountAdministration },
+    { provide: AccountLifecycle, useClass: PrismaAccountLifecycle },
+    RequestAccountDeletion,
+    ResumeAccountOnSignIn,
+    EraseDueAccounts,
+    HandleInactiveAccounts,
+    AccountLifecycleScheduler,
     SessionLifecycle,
     ReportCsrfRejection,
     AccountMailer,
@@ -374,6 +416,16 @@ import {
   ],
   // Surface pour les autres modules : vérification d'accès et événements (pas le magasin).
   exports: [
+    GetOwnProfile,
+    SecurityLog,
+    SuspendPublication,
+    AccountProfileIds,
+    RestorePublication,
+    SuspendAccount,
+    ReactivateAccount,
+    ForceLogout,
+    ChangeAccountRole,
+    RequestTotpReset,
     CheckSessionAccess,
     IdentityEvents,
     CircleReader,

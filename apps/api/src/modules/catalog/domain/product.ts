@@ -13,6 +13,8 @@ export const IMAGE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
 export type ProductSource = 'LINK' | 'PHOTO' | 'MANUAL';
 export type ShareLevel = 'PRIVATE' | 'CIRCLE' | 'GLOBAL';
 export type ExtractionStatus = 'NONE' | 'PENDING' | 'DONE' | 'FAILED';
+/** MOD-06 : `NONE` jamais soumise ; seule une fiche `APPROVED` est visible du catalogue global. */
+export type ModerationStatus = 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /** Champs saisissables d'une fiche. */
 export interface ProductFields {
@@ -32,6 +34,7 @@ export interface Product extends ProductFields {
   readonly normalizedUrl: string | null;
   readonly source: ProductSource;
   readonly shareLevel: ShareLevel;
+  readonly moderationStatus: ModerationStatus;
   readonly extractionStatus: ExtractionStatus;
   readonly uncertainFields: readonly string[];
   readonly extractionTruncated: boolean;

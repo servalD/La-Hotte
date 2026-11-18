@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ResumeAccountOnSignIn } from './manage-account-lifecycle.use-case';
 import { Clock, IdGenerator } from '../../../shared/domain';
 import {
   accentColorFor,
@@ -102,6 +103,7 @@ export class CompleteGoogleFlow {
     private readonly throttle: EventThrottle,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly resume: ResumeAccountOnSignIn,
   ) {}
 
   async execute(input: {
@@ -187,8 +189,8 @@ export class CompleteGoogleFlow {
     const accountId = found ?? (await this.createAccount(flow, claims, input.client));
     // ADR 0014 : l'époque est lue, puis l'identité relue. Une dissociation terminée entre la
     // première lecture et l'époque ne laisse pas ouvrir une session à la nouvelle époque.
-    const state = await this.lifecycle.observe(accountId);
-    const account = await this.accounts.findById(accountId);
+    let state = await this.lifecycle.observe(accountId);
+    let account = await this.accounts.findById(accountId);
     if (
       !state ||
       !account ||
@@ -198,6 +200,8 @@ export class CompleteGoogleFlow {
     }
     // AUTH-09 : un compte né d'une invitation non consommée ne s'ouvre pas (reprise impossible ici).
     if (!account.emailVerified) throw new GoogleFlowInvalidError();
+    // RGPD-12 : une connexion reconnue pendant le délai de grâce annule l'effacement.
+    ({ account, state } = await this.resume.execute(account, state, input.client));
     if (!account.active || !state.active) {
       await this.log(accountId, 'login.failed', input.client);
       throw new AccountSuspendedError();

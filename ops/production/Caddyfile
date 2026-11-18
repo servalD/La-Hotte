@@ -1,0 +1,75 @@
+# Caddy de production (ADR 0008, SEC-13, SEC-20, DEP-07, OBS-27). TLS automatique, HTTP/2 et
+# HTTP/3. La CSP à nonce est posée par le middleware du web ; les autres en-têtes de sécurité par
+# Next (next.config.ts) et redoublés ici pour les réponses de l'API.
+{
+	email {$ACME_EMAIL}
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+}
+
+# DEP-07 : ce nom d'hôte ne sert que l'application, sur aucun autre port (cookies `__Host-`).
+{$APP_HOST} {
+	import security_headers
+	encode zstd gzip
+
+	# SEC-43 : procédure de divulgation.
+	handle /.well-known/security.txt {
+		root * /srv
+		rewrite * /security.txt
+		file_server
+	}
+
+	# Même origine pour le web et l'API (SEC-14) ; le WebSocket de la passerelle temps réel passe
+	# par ici (API-30). `X-Forwarded-For` est remplacé par Caddy, jamais repris du client
+	# (TRUSTED_PROXY_HOPS=1, SEC-30).
+	@api path /api/* /realtime/* /health/live /health/ready
+	handle @api {
+		reverse_proxy api:4000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		# OBS-20, ADM-10 : ni chaîne de requête (adresse cherchée, termes de recherche), ni en-têtes
+		# de requête ou de réponse (cookies), ni adresse complète dans les journaux d'accès. Le filtre
+		# `query` ne retire que des clés nommées : la chaîne entière est coupée par expression.
+		format filter {
+			wrap json
+			fields {
+				request>uri regexp `\?.*$` ""
+				request>headers delete
+				resp_headers delete
+				request>remote_ip ip_mask 16 32
+				request>client_ip ip_mask 16 32
+			}
+		}
+	}
+}
+
+# OBS-27 : services d'exploitation sur leurs propres noms d'hôte, restreints par adresse.
+{$GLITCHTIP_HOST} {
+	import security_headers
+	@outsider not remote_ip {$OPS_ALLOWED_IPS}
+	respond @outsider 404
+	reverse_proxy glitchtip:8000
+}
+
+{$OBSERVE_HOST} {
+	import security_headers
+	@outsider not remote_ip {$OPS_ALLOWED_IPS}
+	respond @outsider 404
+	reverse_proxy openobserve:5080
+}

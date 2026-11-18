@@ -1,6 +1,11 @@
-import { requiresHiddenItemChoice, sharedProductVisible } from './rules';
+import {
+  globalProductVisible,
+  moderationWithheld,
+  requiresHiddenItemChoice,
+  sharedProductVisible,
+} from './rules';
 
-// REP-03, REP-06, REP-07, REP-09, REP-10.
+// REP-03, REP-04, REP-06, REP-07, REP-10, MOD-06, MOD-12.
 
 const base = {
   viewerId: 'tonton',
@@ -9,7 +14,11 @@ const base = {
   viewerInOwnerCircle: true,
   references: [],
 };
-const open = { rule: { mode: 'ALL' as const, profiles: [] }, listRecipients: ['marie'] };
+const open = {
+  rule: { mode: 'ALL' as const, profiles: [] },
+  listRecipients: ['marie'],
+  surpriseFor: [],
+};
 
 describe('Répertoire (REP-03, REP-07, REP-10)', () => {
   it('le cercle du propriétaire voit une fiche publiée au cercle', () => {
@@ -18,7 +27,7 @@ describe('Répertoire (REP-03, REP-07, REP-10)', () => {
 
   it.each([
     ['privée', { shareLevel: 'PRIVATE' as const }],
-    ['catalogue global avant la phase 7 (REP-09)', { shareLevel: 'GLOBAL' as const }],
+    ['catalogue global : sa propre règle', { shareLevel: 'GLOBAL' as const }],
     ['hors du cercle', { viewerInOwnerCircle: false }],
     ['le propriétaire lui-même', { viewerId: 'papa' }],
     ['fiche sans propriétaire (PRO-06)', { ownerId: null }],
@@ -27,9 +36,17 @@ describe('Répertoire (REP-03, REP-07, REP-10)', () => {
   });
 
   it('REP-07 : écarté par la règle d’un élément qui la référence', () => {
-    const hidden = { rule: { mode: 'EXCEPT' as const, profiles: ['tonton'] }, listRecipients: [] };
+    const hidden = {
+      rule: { mode: 'EXCEPT' as const, profiles: ['tonton'] },
+      listRecipients: [],
+      surpriseFor: [],
+    };
     expect(sharedProductVisible({ ...base, references: [open, hidden] })).toBe(false);
-    const only = { rule: { mode: 'ONLY' as const, profiles: ['mamie'] }, listRecipients: [] };
+    const only = {
+      rule: { mode: 'ONLY' as const, profiles: ['mamie'] },
+      listRecipients: [],
+      surpriseFor: [],
+    };
     expect(sharedProductVisible({ ...base, references: [only] })).toBe(false);
   });
 
@@ -42,8 +59,110 @@ describe('Répertoire (REP-03, REP-07, REP-10)', () => {
     expect(
       requiresHiddenItemChoice([
         open,
-        { rule: { mode: 'ONLY', profiles: ['x'] }, listRecipients: [] },
+        { rule: { mode: 'ONLY', profiles: ['x'] }, listRecipients: [], surpriseFor: [] },
       ]),
+    ).toBe(true);
+  });
+});
+
+describe('Catalogue global (MOD-06, MOD-12, REP-04, REP-07, REP-10)', () => {
+  const global = {
+    viewerId: 'inconnu',
+    ownerId: 'papa',
+    shareLevel: 'GLOBAL' as const,
+    moderationStatus: 'APPROVED' as const,
+    references: [open],
+  };
+
+  it('tout profil voit une fiche approuvée, hors de tout cercle', () => {
+    expect(globalProductVisible(global)).toBe(true);
+  });
+
+  it.each([
+    ['en attente de modération', { moderationStatus: 'PENDING' as const }],
+    ['retirée par la modération', { moderationStatus: 'REJECTED' as const }],
+    ['jamais soumise', { moderationStatus: 'NONE' as const }],
+    ['publiée au cercle seulement', { shareLevel: 'CIRCLE' as const }],
+    ['le propriétaire lui-même', { viewerId: 'papa' }],
+    ['destinataire d’un élément qui la référence (REP-10)', { viewerId: 'marie' }],
+  ])('pas visible : %s', (_label, change) => {
+    expect(globalProductVisible({ ...global, ...change })).toBe(false);
+  });
+
+  it('REP-07 : écarté par la règle d’un élément qui la référence', () => {
+    const hidden = {
+      rule: { mode: 'EXCEPT' as const, profiles: ['inconnu'] },
+      listRecipients: [],
+      surpriseFor: [],
+    };
+    expect(globalProductVisible({ ...global, references: [open, hidden] })).toBe(false);
+  });
+});
+
+describe('Modération soustraite au modérateur concerné (ADM-05, MOD-10, RBAC-12)', () => {
+  const all = { mode: 'ALL' as const, profiles: [] };
+  const base = { actorProfileIds: ['m1', 'm2'], authorId: 'paul', references: [] };
+
+  it('un modérateur sans lien voit le contenu', () => {
+    expect(moderationWithheld(base)).toBe(false);
+    expect(
+      moderationWithheld({
+        ...base,
+        references: [{ rule: all, listRecipients: ['lea'], surpriseFor: [] }],
+      }),
+    ).toBe(false);
+  });
+
+  it('soustrait si un profil du compte est destinataire, écarté ou auteur', () => {
+    expect(
+      moderationWithheld({
+        ...base,
+        references: [{ rule: all, listRecipients: ['m2'], surpriseFor: [] }],
+      }),
+    ).toBe(true);
+    expect(
+      moderationWithheld({
+        ...base,
+        references: [
+          { rule: { mode: 'EXCEPT', profiles: ['m1'] }, listRecipients: ['lea'], surpriseFor: [] },
+        ],
+      }),
+    ).toBe(true);
+    expect(moderationWithheld({ ...base, authorId: 'm1' })).toBe(true);
+  });
+});
+
+describe('Surprise et répertoire (REP-10, EVT-04, ADM-05)', () => {
+  const honoree = {
+    rule: { mode: 'ALL' as const, profiles: [] },
+    listRecipients: ['paul'],
+    surpriseFor: ['lea'],
+  };
+
+  it('une fiche ne disparaît pas du répertoire d’un honoré quand sa liste rejoint une surprise', () => {
+    expect(
+      sharedProductVisible({
+        viewerId: 'lea',
+        ownerId: 'zoe',
+        shareLevel: 'CIRCLE',
+        viewerInOwnerCircle: true,
+        references: [honoree],
+      }),
+    ).toBe(true);
+    expect(
+      globalProductVisible({
+        viewerId: 'lea',
+        ownerId: 'zoe',
+        shareLevel: 'GLOBAL',
+        moderationStatus: 'APPROVED',
+        references: [honoree],
+      }),
+    ).toBe(true);
+  });
+
+  it('mais la modération la soustrait à l’honoré', () => {
+    expect(
+      moderationWithheld({ actorProfileIds: ['lea'], authorId: 'zoe', references: [honoree] }),
     ).toBe(true);
   });
 });

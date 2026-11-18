@@ -12,6 +12,8 @@ export type { IdempotencyInput } from '../domain/accounting.ports';
 export type { ContributionInput } from '../domain/operations';
 export { IdempotencyKeyRequiredError } from '../domain/accounting.errors';
 export { MAX_MINOR } from '../domain/money';
+export type { CartGroup } from './manage-purchase.use-case';
+export type { BalanceSummary } from './manage-settlements.use-case';
 export {
   DecideBuyerRequest,
   GetCart,

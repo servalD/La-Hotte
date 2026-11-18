@@ -11,12 +11,21 @@ export class HiddenItemRequiresChoiceError extends DomainError {
   }
 }
 
-/** REP-09 : le catalogue global ouvre avec la modération (phase 7). */
-export class GlobalCatalogUnavailableError extends DomainError {
-  readonly kind = 'business_rule';
-  readonly code = 'GLOBAL_CATALOG_UNAVAILABLE';
+/** REP-04, MOD-12 : un profil enfant ne publie pas au catalogue global. */
+export class ChildPublicationForbiddenError extends DomainError {
+  readonly kind = 'forbidden';
+  readonly code = 'CHILD_PUBLICATION_FORBIDDEN';
   constructor() {
-    super('Le catalogue ouvert à tous n’est pas encore disponible.');
+    super('Un profil enfant ne publie pas dans le catalogue ouvert à tous.');
+  }
+}
+
+/** MOD-10, MOD-12 : publication au catalogue global suspendue pour ce compte. */
+export class PublicationSuspendedError extends DomainError {
+  readonly kind = 'forbidden';
+  readonly code = 'PUBLICATION_SUSPENDED';
+  constructor() {
+    super('La publication dans le catalogue ouvert à tous est suspendue pour ce compte.');
   }
 }
 

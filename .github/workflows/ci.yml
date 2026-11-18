@@ -23,11 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -93,11 +93,11 @@ jobs:
       SMTP_URL: smtp://127.0.0.1:1
       MAIL_FROM: noreply@lahotte.test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -124,18 +124,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
       - name: Audit des dépendances
         run: pnpm audit --prod --audit-level high
       - name: Détection de secrets
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -144,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       # CI-05. L'action est épinglée par commit complet : en mars 2026 les tags de
@@ -165,6 +165,109 @@ jobs:
           trivyignores: .trivyignore.yaml
           exit-code: '1'
 
+  images:
+    name: Images et Trivy (CI-05, DEP-04)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api, dockerfile: apps/api/Dockerfile, target: runtime }
+          - { name: api-migrate, dockerfile: apps/api/Dockerfile, target: migrate }
+          - { name: web, dockerfile: apps/web/Dockerfile, target: runtime }
+          - { name: fetcher, dockerfile: apps/fetcher/Dockerfile, target: runtime }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # Construction sans publication : la publication viendra avec le premier serveur, dans
+      # deploy.yml, après ce même contrôle.
+      - name: Construction de l'image
+        run: >-
+          docker build --file ${{ matrix.dockerfile }} --target ${{ matrix.target }}
+          --tag lahotte-${{ matrix.name }}:ci .
+      - name: Trivy, image (vulnérabilités de l'image construite)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.2
+          scan-type: image
+          image-ref: lahotte-${{ matrix.name }}:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
+          exit-code: '1'
+
+  restore:
+    name: Sauvegarde et restauration chronométrées (DEP-05, SEC-23)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.6-bookworm
+        env:
+          POSTGRES_USER: wishlist
+          POSTGRES_PASSWORD: wishlist
+          POSTGRES_DB: wishlist
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U wishlist -d wishlist"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # Identifiants éphémères du conteneur de CI, sans valeur hors de ce job.
+      DATABASE_MIGRATION_URL: postgresql://wishlist:wishlist@localhost:5432/wishlist
+      OWNER_URL: postgresql://wishlist:wishlist@localhost:5432
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Caddyfile de production valide, journaux sans chaîne de requête (OBS-20, ADM-10)
+        run: |
+          docker run --rm -v "$PWD/ops/production/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            -e APP_HOST=app.example.test -e OBSERVE_HOST=observe.example.test \
+            -e GLITCHTIP_HOST=errors.example.test -e ACME_EMAIL=ops@example.test \
+            -e OPS_ALLOWED_IPS=192.0.2.0/24 \
+            caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate > caddy.json
+          grep -q '"regexp"' caddy.json
+          grep -q '"resp_headers"' caddy.json
+      - name: Outils PostgreSQL 17 et age
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common age
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+      - name: Rôles et migrations
+        run: |
+          psql "$OWNER_URL/wishlist" -v ON_ERROR_STOP=1 -f docker/postgres/init.sql
+          pnpm db:migrate:deploy
+      - name: Données d'essai
+        run: psql "$OWNER_URL/wishlist" -v ON_ERROR_STOP=1 -f ops/production/scripts/ci-seed.sql
+      - name: Sauvegarde chiffrée, puis restauration dans une base neuve
+        run: |
+          work="$(mktemp -d)"
+          age-keygen -o "$work/identity.txt" 2>/dev/null
+          export BACKUP_AGE_RECIPIENT="$(age-keygen -y "$work/identity.txt")"
+          export BACKUP_DIR="$work/backups"
+          export PG_BASEBACKUP_CMD="true"
+          export PG_DUMP_CMD="pg_dump $OWNER_URL/wishlist --format=custom"
+          ops/production/scripts/backup.sh base
+          psql "$OWNER_URL/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE restored OWNER wishlist"
+          AGE_IDENTITY="$work/identity.txt" TARGET_URL="$OWNER_URL/restored"             ops/production/scripts/restore.sh "$(ls "$BACKUP_DIR"/logical-*.dump.age)"             | tee "$work/restore.log"
+          echo "### Restauration (DEP-06)" >> "$GITHUB_STEP_SUMMARY"
+          sed 's/^/    /' "$work/restore.log" >> "$GITHUB_STEP_SUMMARY"
+      - name: Mêmes lignes avant et après
+        run: |
+          for db in wishlist restored; do
+            psql "$OWNER_URL/$db" -At -c "SELECT (SELECT count(*) FROM account) || ' ' || (SELECT count(*) FROM product) || ' ' || (SELECT count(*) FROM audit_log)"
+          done | uniq | wc -l | grep -qx 1
+
   e2e:
     name: Bout en bout (CI-02)
     if: github.ref == 'refs/heads/main'
@@ -172,11 +275,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -184,7 +287,7 @@ jobs:
       - run: pnpm --filter @wishlist/web exec playwright install --with-deps chromium
       - run: pnpm --filter @wishlist/web build
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-report

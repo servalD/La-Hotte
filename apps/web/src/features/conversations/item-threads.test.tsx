@@ -83,6 +83,51 @@ describe('ItemThreads', () => {
   });
 });
 
+describe('Modération (MOD-07, MOD-08, MOD-10)', () => {
+  const base = {
+    id: 'c1',
+    itemId: 'i',
+    thread: 'GIVERS',
+    kind: 'MESSAGE',
+    author: { id: 'p', displayName: 'Paul', avatar: null, accentColor: '#336699' },
+    body: '',
+    mentions: [],
+    activity: null,
+    editedAt: null,
+    deleted: false,
+    createdAt: '2026-11-17T10:00:00.000Z',
+    reactions: [],
+    mine: false,
+    canEdit: false,
+    canDelete: false,
+  };
+
+  beforeEach(() => {
+    state.threads = {
+      view: 'giver',
+      public: null,
+      givers: { count: 1, canWrite: true },
+      following: true,
+    };
+  });
+
+  it('message masqué : la raison, ni texte ni réactions', () => {
+    state.comments = [{ ...base, moderation: 'UNDER_REVIEW' }];
+    wrap(<ItemThreads itemId="i" />);
+    expect(screen.getByText(fr.moderationNotice.UNDER_REVIEW)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: fr.report.open })).toBeNull();
+  });
+
+  it('message d’un autre : on peut le signaler ; le sien, non', () => {
+    state.comments = [
+      { ...base, body: 'Bonjour', moderation: 'NONE' },
+      { ...base, id: 'c2', body: 'Le mien', moderation: 'NONE', mine: true },
+    ];
+    wrap(<ItemThreads itemId="i" />);
+    expect(screen.getAllByRole('button', { name: fr.report.open })).toHaveLength(1);
+  });
+});
+
 describe('LightMarkdown (COM-09, COM-13)', () => {
   it('gras, italique, liens sûrs, listes ; aucun HTML interprété', () => {
     const { container } = render(

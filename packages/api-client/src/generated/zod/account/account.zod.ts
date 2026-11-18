@@ -12,6 +12,14 @@ export const getAccountResponseRecoveryCodesRemainingMax = 10;
 
 export const getAccountResponse = zod.object({
   email: zod.email(),
+  role: zod
+    .enum(['USER', 'MODERATOR', 'ADMIN'])
+    .describe(
+      "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+    )
+    .describe(
+      "RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration.",
+    ),
   emailVerified: zod.boolean(),
   hasPassword: zod.boolean(),
   googleLinked: zod
@@ -24,6 +32,31 @@ export const getAccountResponse = zod.object({
     .number()
     .min(getAccountResponseRecoveryCodesRemainingMin)
     .max(getAccountResponseRecoveryCodesRemainingMax),
+});
+
+export const listAdminActionsOnAccountResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      action: zod.enum([
+        'audit.read',
+        'account.search',
+        'account.suspend',
+        'account.reactivate',
+        'account.force_logout',
+        'account.totp_reset_requested',
+        'account.totp_reset_completed',
+        'role.grant',
+        'role.revoke',
+        'role.grant_by_operator',
+        'setting.update',
+        'moderation.decide',
+        'publication.restore',
+        'followup.failed',
+      ]),
+      at: zod.iso.datetime({}),
+      reason: zod.string().nullable(),
+    }),
+  ),
 });
 
 export const attestAgeBody = zod.object({

@@ -298,6 +298,132 @@ async function playScenario(app: INestApplication): Promise<void> {
   await playEventsScenario(app);
   await playExchangesScenario(app);
   await playAccountingScenario(app);
+  await playAdministrationScenario(app);
+}
+
+/**
+ * Phase 7 (tranche 9) : recherche de compte par une adresse marquée, réglage et motifs marqués,
+ * suspension, catalogue global, signalement et décision, contestation, export et effacement du
+ * compte. Ni adresse, ni motif, ni note, ni titre, ni contenu d'export n'en sortent (OBS-20,
+ * AUD-06, RGPD-11).
+ */
+async function playAdministrationScenario(app: INestApplication): Promise<void> {
+  const http = request(app.getHttpServer());
+  const prisma = app.get(PrismaService);
+  const reauthenticated = async (account: { accountId: string; profileId: string | null }) => {
+    const signed = await signIn(app, account);
+    const rotated = await app.get(SessionLifecycle).rotate({
+      id: signed.sessionId,
+      accountId: account.accountId,
+      tokenHash: signed.tokenHash,
+    });
+    const s = sessionHeaders(
+      app,
+      rotated.token,
+      rotated.record.tokenHash,
+      signed.sessionId,
+      account.accountId,
+      account.profileId,
+    );
+    return {
+      ...markedHeaders,
+      Cookie: `${s.cookie}; session=${MARKER}`,
+      'X-CSRF-Token': s.csrf,
+      Origin: 'http://localhost:3000',
+      get 'Idempotency-Key'() {
+        return randomUUID();
+      },
+    };
+  };
+  const adminAccount = await createAccountWithProfile(prisma);
+  const moderatorAccount = await createAccountWithProfile(prisma);
+  for (const [id, role] of [
+    [adminAccount.accountId, 'ADMIN'],
+    [moderatorAccount.accountId, 'MODERATOR'],
+  ] as const) {
+    await prisma.account.update({
+      where: { id },
+      data: { role, totpEnabledAt: new Date(), totpSecretEnc: Buffer.from('secret') },
+    });
+  }
+  const author = await createAccountWithProfile(prisma);
+  const reporter = await createAccountWithProfile(prisma);
+  const target = await createAccountWithProfile(prisma);
+  const admin = await reauthenticated({ accountId: adminAccount.accountId, profileId: null });
+  const moderator = await reauthenticated({
+    accountId: moderatorAccount.accountId,
+    profileId: null,
+  });
+  const writer = await reauthenticated(author);
+  const reader = await reauthenticated(reporter);
+
+  await http
+    .get(`/api/v1/admin/accounts?email=${encodeURIComponent(`${MARKER}@lahotte.test`)}`)
+    .set(admin)
+    .expect(200);
+  await http
+    .put('/api/v1/admin/settings/forbidden_terms')
+    .set(admin)
+    .send({ value: [`terme ${MARKER}`], reason: `motif ${MARKER}` })
+    .expect(200);
+  await http
+    .post(`/api/v1/admin/accounts/${target.accountId}/suspend`)
+    .set(admin)
+    .send({ reason: `motif ${MARKER}` })
+    .expect(204);
+  await http.get('/api/v1/admin/audit?limit=5').set(admin).expect(200);
+  await http.get('/api/v1/admin/stats').set(moderator).expect(200);
+
+  // Catalogue global, signalement, décision et contestation.
+  const product = await http
+    .post('/api/v1/products')
+    .set(writer)
+    .send({ title: `Montre ${MARKER}`, description: `Note ${MARKER}` })
+    .expect(201);
+  const productId = product.body.id as string;
+  await prisma.product.update({
+    where: { id: productId },
+    data: {
+      source: 'LINK',
+      extractionStatus: 'DONE',
+      sourceUrl: `https://boutique.example/${MARKER}`,
+    },
+  });
+  await http
+    .put(`/api/v1/products/${productId}/share`)
+    .set(writer)
+    .send({ level: 'GLOBAL' })
+    .expect(200);
+  await prisma.product.update({ where: { id: productId }, data: { moderationStatus: 'APPROVED' } });
+  await http.get(`/api/v1/directory/global?q=${MARKER}`).set(reader).expect(200);
+  await http
+    .post('/api/v1/reports')
+    .set(reader)
+    .send({ targetKind: 'PRODUCT', targetId: productId, reason: 'OTHER', note: `note ${MARKER}` })
+    .expect(204);
+  await http.get('/api/v1/admin/moderation/queue').set(moderator).expect(200);
+  await http
+    .post(`/api/v1/admin/moderation/products/${productId}/decide`)
+    .set(moderator)
+    .send({ decision: 'REMOVE', reason: `motif ${MARKER}` })
+    .expect(204);
+  await app.get(InProcessAppEvents).drain();
+  const decisions = await http.get('/api/v1/moderation-decisions').set(writer).expect(200);
+  const decisionId = (decisions.body.items as { id: string }[])[0]?.id ?? randomUUID();
+  await http
+    .post(`/api/v1/moderation-decisions/${decisionId}/contest`)
+    .set(writer)
+    .send({ text: `contestation ${MARKER}` })
+    .expect(204);
+
+  // RGPD-11, RGPD-12 : export et effacement.
+  const created = await http.post('/api/v1/profiles/me/export').set(writer).expect(201);
+  await http
+    .get(`/api/v1/profiles/me/export/${created.body.id as string}`)
+    .set(writer)
+    .expect(200);
+  await http.get(`/api/v1/profiles/me/export/${MARKER}`).set(writer).expect(400);
+  await http.delete('/api/v1/account').set(reader).expect(202);
 }
 
 /**

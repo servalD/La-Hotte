@@ -37,6 +37,13 @@ export class ProductView {
   @ApiProperty({ enum: SHARE_LEVELS, enumName: 'ShareLevel' })
   shareLevel!: (typeof SHARE_LEVELS)[number];
 
+  /** MOD-06 : statut de la fiche au catalogue global, lu par son seul propriétaire. */
+  @ApiProperty({
+    enum: ['NONE', 'PENDING', 'APPROVED', 'REJECTED'],
+    enumName: 'ModerationStatus',
+  })
+  moderationStatus!: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
   @ApiProperty({ enum: EXTRACTION, enumName: 'ExtractionStatus' })
   extractionStatus!: (typeof EXTRACTION)[number];
 

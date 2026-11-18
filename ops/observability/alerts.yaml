@@ -1,0 +1,95 @@
+# Règles d'alerte versionnées (OBS-05, OBS-42, OBS-43, SEC-32). Source de vérité : ce fichier.
+# Chaque règle est saisie à l'identique dans l'outil qui l'évalue (OpenObserve, GlitchTip ou la
+# sonde externe) sur le premier serveur, puis son export y est rangé à côté (`exports/`). Toutes
+# partent par un canal indépendant de l'application (SMTP direct ou webhook, OBS-43).
+#
+# Les requêtes ne lisent que des métriques et des attributs de la liste blanche (OBS-20) : `code`,
+# `kind`, `http.route`, `http.response.status_code`. Aucune ne cite un contenu.
+
+destinations:
+  exploitation:
+    kind: email
+    to: exploitation@lahotte.example
+  astreinte:
+    kind: webhook
+    note: service de notification hors du serveur (SMS ou application d'astreinte)
+
+rules:
+  # --- Disponibilité (OBS-41) : la surveillance ne doit pas tomber avec le serveur.
+  - id: app-down
+    tool: sonde externe
+    check: GET https://{APP_HOST}/health/ready, toutes les minutes, depuis hors du serveur
+    fire: 3 échecs consécutifs
+    to: [astreinte, exploitation]
+  - id: tls-expiry
+    tool: sonde externe
+    check: certificat de {APP_HOST}
+    fire: expiration dans moins de 14 jours
+    to: [exploitation]
+  - id: heartbeat-missing
+    tool: sonde externe
+    check: signal de vie envoyé par le cron de l'hôte (README, « Signal de vie »)
+    fire: aucun signal depuis 15 minutes
+    to: [astreinte, exploitation]
+  - id: backup-failed
+    tool: sonde externe
+    check: signal de vie envoyé à la fin de `backup.sh base` et de `backup.sh wal`
+    fire: base absente depuis 26 heures, ou journaux absents depuis 20 minutes (DEP-06)
+    to: [astreinte, exploitation]
+
+  # --- Erreurs (OBS-04, OBS-25).
+  - id: new-error
+    tool: GlitchTip
+    check: nouvelle erreur, ou erreur résolue qui revient (régression)
+    fire: immédiatement
+    to: [exploitation]
+  - id: scheduled-task-failed
+    tool: GlitchTip
+    check: erreur dont la route commence par `task:` (purges, effacements, rappels, modération)
+    fire: 1 occurrence
+    to: [exploitation]
+  - id: error-rate
+    tool: OpenObserve
+    stream: traces
+    query: >-
+      SELECT count(*) FILTER (WHERE "http.response.status_code" >= 500) * 1.0 / count(*) AS rate
+      FROM traces WHERE kind = 'SERVER'
+    window: 5m
+    fire: rate > 0.02 et au moins 50 requêtes
+    to: [astreinte, exploitation]
+
+  # --- Sécurité (SEC-32).
+  - id: authorization-denied-spike
+    tool: OpenObserve
+    stream: metrics
+    query: sum(rate(wishlist_authorization_denied[5m]))
+    fire: plus de 3 fois la médiane des 7 derniers jours, et au moins 20 refus en 5 minutes
+    to: [exploitation]
+  - id: login-failures
+    tool: OpenObserve
+    stream: metrics
+    query: sum(rate(wishlist_domain_errors{code="INVALID_CREDENTIALS"}[5m]))
+    fire: au moins 100 échecs en 5 minutes
+    to: [exploitation]
+  - id: realtime-givers-denied
+    tool: OpenObserve
+    stream: metrics
+    query: sum(increase(wishlist_realtime_denied{code="GIVERS_ROOM"}[15m]))
+    fire: au moins 10 refus en 15 minutes (un destinataire qui cherche le salon des offreurs)
+    to: [exploitation]
+
+  # --- Extraction (EXT-34, OBS-05).
+  - id: extraction-errors
+    tool: OpenObserve
+    stream: metrics
+    query: >-
+      sum(rate(wishlist_extraction_outcome{code=~"FAILED.*|TIMEOUT|BLOCKED"}[15m]))
+      / sum(rate(wishlist_extraction_outcome[15m]))
+    fire: plus de 30 % d'échecs sur 15 minutes, et au moins 20 extractions
+    to: [exploitation]
+  - id: extraction-budget
+    tool: OpenObserve
+    stream: metrics
+    query: sum(increase(wishlist_extraction_tokens_sum[1d]))
+    fire: plus que le budget quotidien de jetons fixé par l'exploitation
+    to: [exploitation]

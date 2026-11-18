@@ -3,6 +3,7 @@ import type {
   AccountingChanged,
   CommentChanged,
   EventNotice,
+  ModerationNotice,
   ProductExtracted,
 } from '../../../shared/domain';
 import { FollowRepository } from '../../conversations';
@@ -124,6 +125,16 @@ export class RouteNotices {
   }
 
   /** NOT-02 : au profil, ou à tous les profils du compte. */
+  /** MOD-11 : avis à l'auteur, sans modérateur, sans signaleur, sans texte. */
+  async moderation(event: ModerationNotice): Promise<void> {
+    await this.produce.execute({
+      type: event.outcome === 'removed' ? 'moderation.removed' : 'moderation.restored',
+      subject: { kind: 'self' },
+      candidates: [event.profileId],
+      actorId: null,
+    });
+  }
+
   async security(input: {
     notice: keyof typeof SECURITY_TYPES;
     accountId: string;

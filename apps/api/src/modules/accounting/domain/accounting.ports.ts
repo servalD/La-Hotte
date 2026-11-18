@@ -54,6 +54,11 @@ export abstract class AccountingRepository {
   }): Promise<MutateResult>;
 
   abstract findByItem(itemId: string): Promise<AccountingState | null>;
+  /**
+   * Lecture au nom de `viewerId` (DAT-05) : la base n'en rend ni parts ni achat à un destinataire
+   * de la liste. Défense supplémentaire : le moteur décide toujours le niveau d'accès.
+   */
+  abstract findByItemAs(viewerId: string, itemId: string): Promise<AccountingState | null>;
   abstract findById(accountingId: string): Promise<AccountingState | null>;
   /** CPT-58 : fiche d'une demande de revue en attente. */
   abstract findByPendingReview(reviewId: string): Promise<AccountingState | null>;

@@ -18,6 +18,26 @@ export class DirectoryView {
   @ApiProperty({ type: [DirectoryEntryView] }) items!: DirectoryEntryView[];
 }
 
+/**
+ * REP-04, MOD-05, MOD-12 : une fiche du catalogue global, **sans auteur**, sans note, sans photo de
+ * l'utilisateur ; `adopters` compte des comptes, jamais des noms.
+ */
+export class GlobalCatalogEntryView {
+  @ApiProperty({ format: 'uuid' }) productId!: string;
+  @ApiProperty() title!: string;
+  @ApiProperty() description!: string;
+  @ApiProperty({ type: String, nullable: true }) imageKey!: string | null;
+  @ApiProperty({ type: Number, nullable: true }) unitPriceMinor!: number | null;
+  @ApiProperty() currency!: string;
+  @ApiProperty({ type: String, nullable: true }) merchant!: string | null;
+  @ApiProperty({ type: String, nullable: true }) sourceUrl!: string | null;
+  @ApiProperty() adopters!: number;
+}
+
+export class GlobalCatalogView {
+  @ApiProperty({ type: [GlobalCatalogEntryView] }) items!: GlobalCatalogEntryView[];
+}
+
 export class SharedProductView {
   @ApiProperty({ format: 'uuid' }) productId!: string;
   @ApiProperty({ enum: ['PRIVATE', 'CIRCLE', 'GLOBAL'], enumName: 'ShareLevel' })

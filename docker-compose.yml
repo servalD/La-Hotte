@@ -94,6 +94,10 @@ services:
     profiles: [obs]
     image: otel/opentelemetry-collector-contrib:0.165.0
     command: ['--config=/etc/otelcol/config.yaml']
+    environment:
+      OPENOBSERVE_ENDPOINT: http://openobserve:5080/api/default
+      # base64("dev@example.com:Dev-Obs-1!") : identifiant de développement, voir openobserve.
+      OPENOBSERVE_AUTHORIZATION: Basic ZGV2QGV4YW1wbGUuY29tOkRldi1PYnMtMSE=
     depends_on:
       - openobserve
     ports:

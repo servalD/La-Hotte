@@ -7,6 +7,8 @@ export { IdentityModule } from './identity.module';
 export {
   AccountScope,
   ActiveProfile,
+  AdminScope,
+  CurrentPlatformActor,
   activeProfileOf,
   ClientContext,
   type ClientContextValue,
@@ -16,6 +18,19 @@ export {
   RequiresProfile,
   RequiresRecentReauth,
 } from './presentation/decorators';
+export type { PlatformActor, PlatformPermission } from './application/contract';
+/** Administration des comptes (ADM-06 à ADM-08, RBAC-07), pour le module `admin`. */
+export {
+  type AdminActionInput,
+  ChangeAccountRole,
+  ForceLogout,
+  ReactivateAccount,
+  RequestTotpReset,
+  RestorePublication,
+  SuspendAccount,
+  SuspendPublication,
+  AccountProfileIds,
+} from './application/contract';
 export type { ActiveProfile as ActiveProfileValue } from './application/authorize-profile.use-case';
 
 /**
@@ -37,3 +52,7 @@ export { EventInvitationNotices } from './application/event-invitation-notices';
 /** NOT-15, NOT-17 : résumé e-mail au compte ; session encore vivante avant une push. */
 export { CheckSessionAlive, DigestMailer } from './application/digest-mailer';
 export { type IdentityEvent, IdentityEvents, type IdentityEventListener } from './domain/ports';
+/** RGPD-11 : données du profil actif, pour son export. */
+export { GetOwnProfile } from './application/contract';
+/** SEC-30, RGPD-11 : journal de sécurité, pour la trace d'un export (sans contenu). */
+export { SecurityLog } from './domain/ports';

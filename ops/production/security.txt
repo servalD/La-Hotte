@@ -1,0 +1,5 @@
+# SEC-43 : procédure de divulgation (RFC 9116). Servi à /.well-known/security.txt par Caddy.
+Contact: mailto:securite@lahotte.example
+Expires: 2027-11-18T00:00:00.000Z
+Preferred-Languages: fr, en
+Policy: https://lahotte.example/.well-known/security.txt

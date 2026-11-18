@@ -22,9 +22,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountDeletionView,
   AccountProfileListView,
   AccountProfileView,
   AccountView,
+  AdminActionsOnAccountView,
   AgeAttestationDto,
   CreateProfileDto,
   CreateWardDto,
@@ -147,6 +149,188 @@ export function useGetAccount<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getGetAccountQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * @summary RGPD-05, RGPD-12 : effacement du compte dans 30 jours ; toutes les sessions tombent, cookies
+effacés. Se reconnecter avant la date annule la demande.
+ */
+export const getDeleteAccountUrl = () => {
+  return `/api/v1/account`;
+};
+
+export const deleteAccount = async (options?: RequestInit): Promise<AccountDeletionView> => {
+  return apiFetch<AccountDeletionView>(getDeleteAccountUrl(), {
+    ...options,
+    method: 'DELETE',
+  });
+};
+
+export const getDeleteAccountMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, void, TContext>;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<Awaited<ReturnType<typeof deleteAccount>>, TError, void, TContext> => {
+  const mutationKey = ['deleteAccount'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAccount>>, void> = () => {
+    return deleteAccount(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAccountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAccount>>>;
+
+export type DeleteAccountMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary RGPD-05, RGPD-12 : effacement du compte dans 30 jours ; toutes les sessions tombent, cookies
+effacés. Se reconnecter avant la date annule la demande.
+ */
+export const useDeleteAccount = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAccount>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof deleteAccount>>, TError, void, TContext> => {
+  const mutationOptions = getDeleteAccountMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getListAdminActionsOnAccountUrl = () => {
+  return `/api/v1/account/admin-actions`;
+};
+
+export const listAdminActionsOnAccount = async (
+  options?: RequestInit,
+): Promise<AdminActionsOnAccountView> => {
+  return apiFetch<AdminActionsOnAccountView>(getListAdminActionsOnAccountUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListAdminActionsOnAccountQueryKey = () => {
+  return [`/api/v1/account/admin-actions`] as const;
+};
+
+export const getListAdminActionsOnAccountQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminActionsOnAccountQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminActionsOnAccount>>> = ({
+    signal,
+  }) => listAdminActionsOnAccount({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListAdminActionsOnAccountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminActionsOnAccount>>
+>;
+export type ListAdminActionsOnAccountQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminActionsOnAccount>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useListAdminActionsOnAccount<
+  TData = Awaited<ReturnType<typeof listAdminActionsOnAccount>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminActionsOnAccount>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListAdminActionsOnAccountQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

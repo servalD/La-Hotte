@@ -10,6 +10,7 @@ import type { CommentKind } from './commentKind';
 import type { CommentViewAuthor } from './commentViewAuthor';
 import type { CommentPersonView } from './commentPersonView';
 import type { CommentViewActivity } from './commentViewActivity';
+import type { CommentModeration } from './commentModeration';
 import type { CommentReactionView } from './commentReactionView';
 
 export interface CommentView {
@@ -27,6 +28,8 @@ export interface CommentView {
   /** @nullable */
   editedAt: string | null;
   deleted: boolean;
+  /** MOD-08, MOD-10 : `UNDER_REVIEW` masqué en attente, `REMOVED` retiré ; texte alors vide. */
+  moderation: CommentModeration;
   createdAt: string;
   reactions: CommentReactionView[];
   mine: boolean;

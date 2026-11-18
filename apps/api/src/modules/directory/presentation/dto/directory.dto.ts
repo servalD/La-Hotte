@@ -18,7 +18,24 @@ export class ShareProductDto {
   hiddenItemChoice?: (typeof HIDDEN_ITEM_CHOICES)[number];
 }
 
-/** `GET /directory` (REP-03, VIS-40) ; `scope=global` attend la phase 7 (REP-09). */
+/** `GET /directory` (REP-03, VIS-40) ; le catalogue global a sa route (`GET /directory/global`). */
+/** `GET /directory/global` (MOD-12, VIS-40). */
+export class GlobalCatalogQueryDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @ApiProperty({ required: false, maxLength: 100 })
+  q?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  @ApiProperty({ required: false, minimum: 1, maximum: 50, default: 50 })
+  limit?: number;
+}
+
 export class DirectoryQueryDto {
   @IsOptional()
   @IsIn(['circle'])

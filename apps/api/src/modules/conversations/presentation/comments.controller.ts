@@ -66,6 +66,7 @@ function toCommentView(comment: CommentModel): CommentView {
       : null,
     editedAt: comment.editedAt?.toISOString() ?? null,
     deleted: comment.deleted,
+    moderation: comment.moderation,
     createdAt: comment.createdAt.toISOString(),
     reactions: comment.reactions.map((r) => ({
       reaction: r.reaction,

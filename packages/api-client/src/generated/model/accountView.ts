@@ -5,9 +5,12 @@
  * Contrat de l’API La Hotte. Généré depuis les DTO NestJS, ne pas éditer.
  * OpenAPI spec version: 1
  */
+import type { AccountRole } from './accountRole';
 
 export interface AccountView {
   email: string;
+  /** RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration. */
+  role: AccountRole;
   emailVerified: boolean;
   hasPassword: boolean;
   /** AUTH-03 : un compte Google est associé ; la ré-authentification peut passer par lui. */

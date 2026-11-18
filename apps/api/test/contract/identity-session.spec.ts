@@ -44,6 +44,8 @@ const PUBLIC_ROUTES = [
   'POST /api/v1/auth/email/cancel',
   'POST /api/v1/auth/password/reset',
   'POST /api/v1/auth/password/reset/confirm',
+  // ADM-07 : lien envoyé à la demande d'un administrateur.
+  'POST /api/v1/auth/totp/reset/confirm',
   // Google (AUTH-03, ADR 0013 « Retour OIDC ») : départ lié à la pré-session, retour lié au
   // parcours démarré par ce navigateur.
   'POST /api/v1/auth/google/start',

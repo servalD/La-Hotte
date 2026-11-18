@@ -87,7 +87,7 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 
 - **REP-07** Une fiche publiée au cercle n'apparaît pas aux profils exclus par la règle d'un élément qui la référence. Le moteur de visibilité tranche au plus restrictif.
 - **REP-08** Dépublier est immédiat. Les copies déjà faites par d'autres restent.
-- **REP-09** Le catalogue global ouvre avec la modération (phase 7) : d'ici là, `PUT /products/{id}/share` refuse `GLOBAL` (`422 GLOBAL_CATALOG_UNAVAILABLE`).
+- **REP-09** Retirée le 2026-11-17 : le catalogue global ouvre en phase 7 avec la modération (`11`, MOD-06 à MOD-12). `PUT /products/{id}/share` accepte `GLOBAL` (refusé aux profils enfants et aux comptes dont la publication est suspendue) ; une fiche `PENDING` ou `REJECTED` n'est jamais visible d'un autre profil.
 - **REP-10** Une fiche publiée n'apparaît jamais, dans le répertoire ni dans la recherche, à un profil destinataire d'un élément qui la référence (cadeau d'une giftlist, suggestion sur sa wishlist) : la publication ne révèle pas ce qu'on lui prépare. Avec REP-07, le moteur écarte donc les exclus et les destinataires de tout élément qui référence la fiche. Pour qu'une fiche déjà publiée ne disparaisse pas du répertoire d'un destinataire (ce serait une trace, GFT-07), l'ajouter à une liste dont un autre profil est destinataire crée d'office une copie privée (ART-04), que l'élément référence ; de même, ajouter un destinataire à une liste fait passer sur une copie privée les éléments qui référencent une fiche publiée.
 
 ## Recherche
@@ -104,4 +104,4 @@ Un profil voit un élément si les **trois** conditions sont vraies :
 ## Questions ouvertes
 
 1. Faut-il des **groupes nommés** (« grands-parents », « collègues ») réutilisables dans les règles ? Pratique dès qu'on dépasse dix proches. Proposé en `15-suggestions.md`.
-2. Le catalogue global doit-il être ouvert dès la v1 ou attendre que la modération soit rodée ? La roadmap le place en dernière phase.
+2. ~~Catalogue global dès la v1~~ Tranchée le 2026-11-17 : ouvert en phase 7, avec modération (`11`).

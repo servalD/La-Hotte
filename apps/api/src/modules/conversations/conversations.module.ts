@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CommentModerationGate } from './application/comment-moderation';
 import { ListsModule } from '../lists';
 import { VisibilityModule } from '../visibility';
 import {
@@ -30,6 +31,7 @@ import { ItemActivitySubscriber } from './presentation/item-activity.subscriber'
   imports: [ListsModule, VisibilityModule],
   controllers: [CommentsController],
   providers: [
+    CommentModerationGate,
     CommentViews,
     GetThreads,
     ListComments,
@@ -44,6 +46,6 @@ import { ItemActivitySubscriber } from './presentation/item-activity.subscriber'
     { provide: FollowRepository, useClass: PrismaFollowRepository },
     { provide: ConversationPeople, useClass: PrismaConversationPeople },
   ],
-  exports: [FollowRepository, CommentRepository],
+  exports: [FollowRepository, CommentRepository, CommentModerationGate],
 })
 export class ConversationsModule {}

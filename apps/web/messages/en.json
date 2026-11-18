@@ -156,6 +156,14 @@
       "confirming": "Cancelling…",
       "done": "Change cancelled.",
       "doneHint": "Your profile stays in its current account."
+    },
+    "totpReset": {
+      "title": "Reset two-step verification",
+      "who": "Someone from the administration started this reset at your request. The link is valid for 30 minutes and works once.",
+      "confirm": "Remove two-step verification",
+      "confirming": "Resetting…",
+      "done": "Two-step verification removed.",
+      "doneHint": "Sign in with your password, then turn two-step verification on again in Security. An administration role can only be given back after that."
     }
   },
   "session": {
@@ -192,7 +200,13 @@
     "signOutQueueTitle": "Some actions haven't been sent yet",
     "signOutQueueBody": "{count, plural, one {One action made offline will be lost} other {# actions made offline will be lost}} if you sign out now.",
     "signOutAnyway": "Sign out anyway",
-    "cancel": "Stay signed in"
+    "cancel": "Stay signed in",
+    "admin": "Administration",
+    "adminHome": "Dashboard",
+    "adminModeration": "Moderation",
+    "adminAccounts": "Accounts",
+    "adminSettings": "Settings",
+    "adminAudit": "Audit log"
   },
   "home": {
     "hello": "Hello {name}",
@@ -1481,5 +1495,244 @@
     "chooseList": "Which list?",
     "noList": "You don't have a list yet. Create one from \"Lists\".",
     "personal": "My list"
+  },
+  "admin": {
+    "who": "Administration area: no list, no profile and no unreported message ever shows here.",
+    "reason": "Reason",
+    "reasonHint": "At least 10 characters. It is written to the audit log.",
+    "yes": "Yes",
+    "no": "No",
+    "never": "Never",
+    "hidden": "—",
+    "errors": {
+      "generic": "That didn’t work. Please try again.",
+      "network": "No connection: try again once you’re online.",
+      "VALIDATION_FAILED": "Check the reason: 10 to 500 characters.",
+      "ACCOUNT_NOT_FOUND": "This account no longer exists.",
+      "ADMIN_SELF_ACTION": "You can’t do this on your own account.",
+      "ROLE_REQUIREMENTS_NOT_MET": "This account doesn’t meet the role’s requirements (two-step verification on, verified address, independent account).",
+      "LAST_ADMIN": "The last administrator keeps their role.",
+      "ACCOUNT_STATE_CONFLICT": "The account’s state doesn’t allow this.",
+      "ACCOUNT_SEARCH_RATE_LIMITED": "Too many searches: try again in an hour.",
+      "SETTING_INVALID": "This value isn’t allowed for this setting.",
+      "NOTHING_TO_MODERATE": "This content no longer awaits a decision.",
+      "CONTEST_SAME_MODERATOR": "Another moderator must decide this appeal.",
+      "DECISION_NOT_FOUND": "This appeal no longer exists.",
+      "REPORT_TARGET_NOT_FOUND": "This content no longer exists."
+    },
+    "stats": {
+      "title": "Dashboard",
+      "who": "Numbers only. A number about fewer than 10 accounts is hidden.",
+      "active": "Active accounts over 30 days",
+      "created": "Accounts created over 30 days",
+      "lists": "Lists created over 30 days",
+      "catalog": "Items in the open catalogue",
+      "median": "Median time to handle a report",
+      "hours": "{value} h",
+      "extraction": "Successful extractions over 30 days",
+      "percent": "{value}%",
+      "masked": "Hidden: too few accounts"
+    },
+    "moderation": {
+      "title": "Moderation",
+      "who": "You see the reported content, the reason and the thread, nothing else: not the author, the list or the recipients.",
+      "empty": "Nothing to handle.",
+      "product": "Item",
+      "comment": "Message",
+      "contest": "Appeal",
+      "thread": {
+        "PUBLIC": "Public thread",
+        "GIVERS": "Givers’ thread"
+      },
+      "status": {
+        "NONE": "Not in the catalogue",
+        "PENDING": "Pending",
+        "APPROVED": "Visible in the catalogue",
+        "REJECTED": "Removed"
+      },
+      "reports": "{count, plural, one {# report} other {# reports}}",
+      "pending": "Publication awaiting review",
+      "notes": "Reporters’ notes",
+      "keep": "Keep",
+      "remove": "Remove",
+      "removeSuspend": "Remove and suspend the author’s publishing",
+      "uphold": "Uphold the removal",
+      "overturn": "Overturn the removal",
+      "contestText": "What the author asks",
+      "contested": "Appealed decision: {action} — “{reason}”",
+      "done": "Decision saved."
+    },
+    "accounts": {
+      "title": "Accounts",
+      "who": "Search by exact address. You only see dates, numbers and states, never content.",
+      "email": "Email address",
+      "search": "Search",
+      "notFound": "No account with this address.",
+      "created": "Created on",
+      "lastSignIn": "Last sign-in",
+      "profiles": "Profiles",
+      "lists": "Lists created",
+      "role": "Role",
+      "status": "State",
+      "totp": "Two-step verification",
+      "verified": "Verified address",
+      "publication": "Catalogue publishing",
+      "publicationSuspended": "Suspended",
+      "publicationOpen": "Allowed",
+      "suspensions": "Suspension history",
+      "roles": {
+        "USER": "User",
+        "MODERATOR": "Moderator",
+        "ADMIN": "Administrator"
+      },
+      "statuses": {
+        "ACTIVE": "Active",
+        "SUSPENDED": "Suspended",
+        "PENDING_DELETION": "Deletion requested"
+      },
+      "events": {
+        "account_suspend": "Suspended",
+        "account_reactivate": "Reactivated"
+      },
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "forceLogout": "Sign out every device",
+      "totpReset": "Send a two-step verification reset link",
+      "changeRole": "Change role",
+      "restorePublication": "Lift the publishing suspension",
+      "done": "Action saved."
+    },
+    "settings": {
+      "title": "Platform settings",
+      "who": "Apply to every account. Each change is written to the log with the old and new value.",
+      "registration": "Sign-ups",
+      "registrationDefault": "Server value",
+      "OPEN": "Open to everyone",
+      "INVITE_ONLY": "Invitation only",
+      "terms": "Terms banned from the catalogue",
+      "termsHint": "One per line. An item containing one waits for a moderator.",
+      "domains": "Domains blocked from the catalogue",
+      "domainsHint": "One per line, without https://. Subdomains are included.",
+      "limit": "Extractions per account per day",
+      "limitHint": "Empty: 200, the default.",
+      "save": "Save",
+      "saved": "Setting saved."
+    },
+    "audit": {
+      "title": "Audit log",
+      "who": "Every action by moderators and administrators. Reading this log is logged too.",
+      "empty": "No entries.",
+      "filter": "Action",
+      "all": "All",
+      "actor": "By",
+      "operator": "Operator command",
+      "target": "Target",
+      "more": "Show older entries",
+      "actions": {
+        "audit_read": "Log read",
+        "account_search": "Account search",
+        "account_suspend": "Suspension",
+        "account_reactivate": "Reactivation",
+        "account_force_logout": "Forced sign-out",
+        "account_totp_reset_requested": "Two-step verification reset requested",
+        "account_totp_reset_completed": "Two-step verification reset",
+        "role_grant": "Role granted",
+        "role_revoke": "Role removed",
+        "role_grant_by_operator": "Role granted by operator command",
+        "setting_update": "Setting changed",
+        "moderation_decide": "Moderation decision",
+        "publication_restore": "Publishing restored",
+        "followup_failed": "Follow-up of an action failed"
+      }
+    }
+  },
+  "report": {
+    "open": "Report",
+    "title": "Report this content",
+    "who": "Only the moderation team reads this report. The person concerned won’t know who sent it.",
+    "reason": "Reason",
+    "reasons": {
+      "SPAM": "Advertising or spam",
+      "INAPPROPRIATE": "Offensive content",
+      "PRIVACY": "Privacy violation",
+      "ILLEGAL": "Illegal content",
+      "OTHER": "Other"
+    },
+    "note": "Details (optional)",
+    "send": "Send report",
+    "cancel": "Cancel",
+    "sent": "Thank you, moderation will take a look.",
+    "errors": {
+      "generic": "The report couldn’t be sent.",
+      "REPORT_OWN_CONTENT": "You can’t report your own content.",
+      "REPORT_TARGET_NOT_FOUND": "This content no longer exists."
+    }
+  },
+  "moderationNotice": {
+    "UNDER_REVIEW": "Message under review",
+    "REMOVED": "Message removed by moderation"
+  },
+  "catalog": {
+    "circle": "My circle",
+    "global": "Open to all",
+    "globalWho": "Items published by everyone, without names. They were reviewed before showing here.",
+    "adopters": "{count, plural, one {Added by # person} other {Added by # people}}"
+  },
+  "shareGlobal": {
+    "GLOBAL": "Everyone sees it in the catalogue, without your name",
+    "PENDING": "Awaiting review before it shows in the catalogue",
+    "REJECTED": "Removed from the catalogue by moderation",
+    "publish": "Publish in the open catalogue",
+    "who": "The open catalogue never shows your name, notes or photos.",
+    "CHILD_PUBLICATION_FORBIDDEN": "A child profile doesn’t publish in the open catalogue.",
+    "PUBLICATION_SUSPENDED": "Publishing in the catalogue is suspended for this account."
+  },
+  "myModeration": {
+    "title": "My removed content",
+    "who": "Moderation decisions on your items and messages. Only you see them.",
+    "empty": "No removed content.",
+    "PRODUCT": "One of your items",
+    "COMMENT": "One of your messages",
+    "reason": "Reason: {reason}",
+    "contest": "Appeal",
+    "contestText": "Your explanation",
+    "contestHint": "10 to 500 characters. Another moderator will read it and decide; their decision is final.",
+    "send": "Send",
+    "sent": "Appeal sent.",
+    "contested": "Appeal in progress",
+    "outcome": {
+      "UPHOLD": "Removal upheld",
+      "OVERTURN": "Removal overturned"
+    },
+    "CONTEST_NOT_ALLOWED": "This decision can no longer be appealed.",
+    "generic": "The appeal couldn’t be sent."
+  },
+  "myData": {
+    "title": "My data",
+    "who": "A file with this profile’s data, as you see it. Only you can download it, once, within 24 hours.",
+    "request": "Prepare my export",
+    "download": "Download the file",
+    "downloaded": "File downloaded.",
+    "EXPORT_RATE_LIMITED": "An export was already prepared today for this profile.",
+    "EXPORT_NOT_FOUND": "This file is no longer available.",
+    "generic": "The export didn’t work."
+  },
+  "accountDeletion": {
+    "title": "Delete the account",
+    "who": "Deletes the account and all its profiles in 30 days. Your messages and shares stay with others, as “Deleted profile”.",
+    "button": "Delete my account",
+    "confirmTitle": "Delete this account?",
+    "confirmBody": "Every device will be signed out. You’ll have 30 days to change your mind: just sign in again.",
+    "confirm": "Delete in 30 days",
+    "cancel": "Keep my account",
+    "HAS_WARDS": "This account is the guardian of another account: end the guardianship first.",
+    "LAST_ADMIN": "The last administrator can’t delete their account.",
+    "generic": "The request didn’t work."
+  },
+  "adminActions": {
+    "title": "Team actions on your account",
+    "who": "What administrators did on your account. Only you see this list.",
+    "empty": "No actions.",
+    "reason": "Reason: {reason}"
   }
 }

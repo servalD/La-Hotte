@@ -300,13 +300,25 @@ export interface ProductReference {
   readonly rule: ItemRule;
   /** Destinataires de la liste de l'élément (GFT-10 : tous ceux d'une giftlist). */
   readonly listRecipients: readonly string[];
+  /**
+   * VIS-36, EVT-29 : honorés de la surprise à laquelle la liste est rattachée ; la liste leur est
+   * cachée comme à ses destinataires. Vide : liste hors d'une surprise. Ne sert qu'à la modération
+   * (ADM-05) : au répertoire, une fiche ne disparaît pas quand sa liste rejoint une surprise, ce
+   * serait une trace (REP-10, EVT-04).
+   */
+  readonly surpriseFor: readonly string[];
+}
+
+/** REP-07, REP-10 : profil à qui la fiche est cachée au répertoire (destinataire ou écarté). */
+function referenceHides(reference: ProductReference, profileId: string): boolean {
+  return reference.listRecipients.includes(profileId) || ruleExcludes(reference.rule, profileId);
 }
 
 /**
  * REP-03, REP-07, REP-10 : une fiche publiée au cercle se voit d'un profil de ce cercle, sauf s'il
  * est écarté par la règle d'un élément qui la référence, ou destinataire d'un tel élément : la
  * publication ne révèle pas ce qu'on lui prépare. Le propriétaire ne se voit pas dans son répertoire.
- * Le catalogue global attend la phase 7 (REP-09).
+ * Le catalogue global a sa propre règle (`globalProductVisible`).
  */
 export function sharedProductVisible(input: {
   readonly viewerId: string;
@@ -317,10 +329,45 @@ export function sharedProductVisible(input: {
 }): boolean {
   if (input.shareLevel !== 'CIRCLE' || input.ownerId === null) return false;
   if (input.ownerId === input.viewerId || !input.viewerInOwnerCircle) return false;
-  return input.references.every(
-    (reference) =>
-      !reference.listRecipients.includes(input.viewerId) &&
-      !ruleExcludes(reference.rule, input.viewerId),
+  return input.references.every((reference) => !referenceHides(reference, input.viewerId));
+}
+
+/**
+ * MOD-12, REP-04, REP-07, REP-10 : une fiche du catalogue global se voit de tout profil si elle est
+ * `GLOBAL` et `APPROVED` (MOD-06), sauf d'un profil écarté par la règle d'un élément qui la
+ * référence ou destinataire d'un tel élément. Le propriétaire ne la voit pas dans le catalogue.
+ */
+export function globalProductVisible(input: {
+  readonly viewerId: string;
+  readonly ownerId: string | null;
+  readonly shareLevel: 'PRIVATE' | 'CIRCLE' | 'GLOBAL';
+  readonly moderationStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  readonly references: readonly ProductReference[];
+}): boolean {
+  if (input.shareLevel !== 'GLOBAL' || input.moderationStatus !== 'APPROVED') return false;
+  if (input.ownerId === input.viewerId) return false;
+  return input.references.every((reference) => !referenceHides(reference, input.viewerId));
+}
+
+/**
+ * ADM-05, MOD-10, RBAC-12 : un contenu à modérer est soustrait au modérateur dont un profil en est
+ * l'auteur, ou serait écarté par la règle d'un élément concerné, ou en est destinataire, ou est honoré
+ * de la surprise à laquelle sa liste est rattachée : la
+ * modération ne révèle pas ce qu'on lui prépare (VIS-20), et nul ne tranche sur son propre contenu.
+ * Le contenu reste dans la file des autres modérateurs.
+ */
+export function moderationWithheld(input: {
+  readonly actorProfileIds: readonly string[];
+  readonly authorId: string | null;
+  readonly references: readonly ProductReference[];
+}): boolean {
+  return input.actorProfileIds.some(
+    (profileId) =>
+      profileId === input.authorId ||
+      input.references.some(
+        (reference) =>
+          referenceHides(reference, profileId) || reference.surpriseFor.includes(profileId),
+      ),
   );
 }
 

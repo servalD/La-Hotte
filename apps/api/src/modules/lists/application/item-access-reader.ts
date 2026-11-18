@@ -6,6 +6,7 @@ import {
   type ItemAccess,
   itemAccess,
   type ListAccess,
+  type ProductReference,
   type Thread,
   type ThreadAccess,
   threadAccess,
@@ -147,6 +148,18 @@ export class ItemAccessReader {
   async recipientsOf(itemId: string): Promise<readonly string[]> {
     const loaded = await this.load(itemId);
     return loaded ? loaded.list.recipients : [];
+  }
+
+  /** ADM-05 : règle et destinataires d'un élément, pour soustraire un contenu au modérateur. */
+  async referenceOf(itemId: string): Promise<ProductReference | null> {
+    const loaded = await this.load(itemId);
+    return loaded
+      ? {
+          rule: itemFactsOf(loaded.item).rule,
+          listRecipients: loaded.list.recipients,
+          surpriseFor: loaded.list.event?.hiddenFrom ?? [],
+        }
+      : null;
   }
 
   /** RT-09 : accès d'un profil à une liste (salon `list:{id}`). */

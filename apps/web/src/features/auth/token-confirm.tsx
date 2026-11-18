@@ -3,6 +3,7 @@
 import {
   useCancelEmailChange,
   useCancelTransferByEmail,
+  useConfirmTotpReset,
   useVerifyEmail,
   useVerifyProfileEmail,
 } from '@wishlist/api-client';
@@ -14,7 +15,8 @@ import { authErrorKey } from './api-errors';
 import { useFragmentToken } from './fragment-token';
 import { FormError } from './form-error';
 
-type Kind = 'verifyEmail' | 'cancelEmailChange' | 'verifyProfileEmail' | 'cancelTransfer';
+type Kind =
+  'verifyEmail' | 'cancelEmailChange' | 'verifyProfileEmail' | 'cancelTransfer' | 'totpReset';
 
 /**
  * Page à jeton unique dans le fragment : un bouton confirme (pas d'appel à l'ouverture, un
@@ -28,11 +30,13 @@ export function TokenConfirm({ kind }: { kind: Kind }) {
   const cancel = useCancelEmailChange();
   const verifyProfile = useVerifyProfileEmail();
   const cancelTransfer = useCancelTransferByEmail();
+  const totpReset = useConfirmTotpReset();
   const mutation = {
     verifyEmail: verify,
     cancelEmailChange: cancel,
     verifyProfileEmail: verifyProfile,
     cancelTransfer,
+    totpReset,
   }[kind];
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +54,7 @@ export function TokenConfirm({ kind }: { kind: Kind }) {
     return (
       <div role="status" className="flex flex-col gap-3">
         <p className="font-medium">{t('done')}</p>
-        {kind === 'cancelEmailChange' || kind === 'cancelTransfer' ? (
+        {kind === 'cancelEmailChange' || kind === 'cancelTransfer' || kind === 'totpReset' ? (
           <p className="text-sm text-foreground-muted">{t('doneHint')}</p>
         ) : null}
         <Button asChild>

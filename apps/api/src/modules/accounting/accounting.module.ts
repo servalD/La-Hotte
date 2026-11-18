@@ -79,6 +79,6 @@ import {
     { provide: AccountingPeople, useClass: PrismaAccountingPeople },
     { provide: BudgetRepository, useClass: PrismaBudgetRepository },
   ],
-  exports: [AccountingRepository],
+  exports: [AccountingRepository, GetCart, GetBalances, ManageBudgets],
 })
 export class AccountingModule {}

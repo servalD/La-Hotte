@@ -21,7 +21,11 @@ export class ProductReferences {
     const out = new Map<string, ProductReference[]>();
     for (const reference of await this.items.referencesOf(productIds)) {
       const list = out.get(reference.productId) ?? [];
-      list.push({ rule: reference.rule, listRecipients: reference.listRecipients });
+      list.push({
+        rule: reference.rule,
+        listRecipients: reference.listRecipients,
+        surpriseFor: reference.surpriseFor,
+      });
       out.set(reference.productId, list);
     }
     return out;

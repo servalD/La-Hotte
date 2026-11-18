@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import type { Product, ProductFields, ShareLevel } from '../domain/product';
+import type { GlobalEntry } from '../domain/moderation';
+import type { ModerationStatus, Product, ProductFields, ShareLevel } from '../domain/product';
 import {
   type ExtractionOutcome,
   ImageStore,
@@ -39,6 +40,7 @@ export class InMemoryProductRepository extends ProductRepository {
     const row = {
       ...product,
       shareLevel: 'PRIVATE' as const,
+      moderationStatus: 'NONE' as const,
       uncertainFields: [],
       extractionTruncated: false,
       priceCheckedAt: null,
@@ -86,7 +88,16 @@ export class InMemoryProductRepository extends ProductRepository {
     const row = this.rows.get(input.productId);
     if (!row || row.ownerProfileId !== input.ownerProfileId) return Promise.resolve('missing');
     if (row.version !== input.expectedVersion) return Promise.resolve('version');
-    const next = { ...row, ...input.changes, version: row.version + 1 };
+    const next = {
+      ...row,
+      ...input.changes,
+      // MOD-06 : un contenu changé après publication repasse par la file.
+      moderationStatus:
+        row.shareLevel === 'GLOBAL' && row.moderationStatus === 'APPROVED'
+          ? ('PENDING' as const)
+          : row.moderationStatus,
+      version: row.version + 1,
+    };
     this.rows.set(row.id, next);
     return Promise.resolve(next);
   }
@@ -95,10 +106,16 @@ export class InMemoryProductRepository extends ProductRepository {
     ownerProfileId: string,
     productId: string,
     level: ShareLevel,
+    moderation: ModerationStatus,
   ): Promise<Product | 'missing'> {
     const row = this.rows.get(productId);
     if (!row || row.ownerProfileId !== ownerProfileId) return Promise.resolve('missing');
-    const next = { ...row, shareLevel: level, version: row.version + 1 };
+    const next = {
+      ...row,
+      shareLevel: level,
+      moderationStatus: moderation,
+      version: row.version + 1,
+    };
     this.rows.set(productId, next);
     return Promise.resolve(next);
   }
@@ -121,6 +138,64 @@ export class InMemoryProductRepository extends ProductRepository {
         .slice(0, input.limit),
     );
   }
+  setModeration(
+    productId: string,
+    input: { moderation: ModerationStatus; shareLevel?: ShareLevel },
+  ): Promise<boolean> {
+    const row = this.rows.get(productId);
+    if (!row) return Promise.resolve(false);
+    this.rows.set(productId, {
+      ...row,
+      moderationStatus: input.moderation,
+      ...(input.shareLevel ? { shareLevel: input.shareLevel, version: row.version + 1 } : {}),
+    });
+    return Promise.resolve(true);
+  }
+
+  findPendingGlobal(limit: number): Promise<Product[]> {
+    return Promise.resolve(
+      [...this.rows.values()]
+        .filter((row) => row.shareLevel === 'GLOBAL' && row.moderationStatus === 'PENDING')
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        .slice(0, limit),
+    );
+  }
+
+  findGlobal(input: { query: string | null; limit: number }): Promise<GlobalEntry[]> {
+    const words = (input.query ?? '').toLowerCase().split(/s+/).filter(Boolean);
+    const published = [...this.rows.values()].filter(
+      (row) => row.shareLevel === 'GLOBAL' && row.moderationStatus === 'APPROVED',
+    );
+    const groups = new Map<string, typeof published>();
+    for (const row of published) {
+      const key = row.normalizedUrl ?? row.id;
+      groups.set(key, [...(groups.get(key) ?? []), row]);
+    }
+    const entries = [...groups.values()].map((rows) => {
+      const sorted = [...rows].sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+      );
+      const product = sorted[0] as Product;
+      return {
+        product,
+        // MOD-05 : un profil sans compte connu compte pour lui-même.
+        adopters: new Set(
+          rows.map((row) => this.accountOf(row.ownerProfileId) ?? row.ownerProfileId),
+        ).size,
+      };
+    });
+    return Promise.resolve(
+      entries
+        .filter(({ product }) =>
+          words.every((word) =>
+            `${product.title} ${product.description}`.toLowerCase().includes(word),
+          ),
+        )
+        .sort((a, b) => b.product.createdAt.getTime() - a.product.createdAt.getTime())
+        .slice(0, input.limit),
+    );
+  }
+
   completeExtraction(productId: string, outcome: ExtractionOutcome): Promise<Product | null> {
     const row = this.rows.get(productId);
     if (!row || row.extractionStatus !== 'PENDING') return Promise.resolve(null);

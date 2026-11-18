@@ -503,6 +503,23 @@ export const startTotpEnrollmentResponse = zod.object({
 });
 
 /**
+ * @summary ADM-07 : le titulaire ouvre le lien envoyé à la demande d'un administrateur. TOTP, codes de
+secours et appareils de confiance retirés ; toutes les sessions tombent.
+ */
+export const confirmTotpResetBodyTokenMin = 43;
+export const confirmTotpResetBodyTokenMax = 43;
+
+export const confirmTotpResetBodyTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+export const confirmTotpResetBody = zod.object({
+  token: zod
+    .string()
+    .min(confirmTotpResetBodyTokenMin)
+    .max(confirmTotpResetBodyTokenMax)
+    .regex(confirmTotpResetBodyTokenRegExp),
+});
+
+/**
  * @summary Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification
 du cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.
  */

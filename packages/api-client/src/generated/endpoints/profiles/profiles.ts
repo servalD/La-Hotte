@@ -23,6 +23,8 @@ import type {
 
 import type {
   CacheKeyView,
+  DataExportView,
+  DownloadProfileExport200,
   EmailDto,
   EmailTokenDto,
   OwnTransferStateView,
@@ -625,6 +627,202 @@ export const useClearOwnEmail = <TError = ErrorType<ProblemDetailsDto>, TContext
 
   return useMutation(mutationOptions, queryClient);
 };
+export const getRequestProfileExportUrl = () => {
+  return `/api/v1/profiles/me/export`;
+};
+
+export const requestProfileExport = async (options?: RequestInit): Promise<DataExportView> => {
+  return apiFetch<DataExportView>(getRequestProfileExportUrl(), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getRequestProfileExportMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestProfileExport>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestProfileExport>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['requestProfileExport'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestProfileExport>>,
+    void
+  > = () => {
+    return requestProfileExport(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestProfileExportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestProfileExport>>
+>;
+
+export type RequestProfileExportMutationError = ErrorType<ProblemDetailsDto>;
+
+export const useRequestProfileExport = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof requestProfileExport>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<Awaited<ReturnType<typeof requestProfileExport>>, TError, void, TContext> => {
+  const mutationOptions = getRequestProfileExportMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+export const getDownloadProfileExportUrl = (id: string) => {
+  return `/api/v1/profiles/me/export/${id}`;
+};
+
+export const downloadProfileExport = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DownloadProfileExport200> => {
+  return apiFetch<DownloadProfileExport200>(getDownloadProfileExportUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getDownloadProfileExportQueryKey = (id?: string) => {
+  return [`/api/v1/profiles/me/export/${id}`] as const;
+};
+
+export const getDownloadProfileExportQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadProfileExport>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof downloadProfileExport>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getDownloadProfileExportQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadProfileExport>>> = ({ signal }) =>
+    downloadProfileExport(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadProfileExport>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type DownloadProfileExportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadProfileExport>>
+>;
+export type DownloadProfileExportQueryError = ErrorType<ProblemDetailsDto>;
+
+export function useDownloadProfileExport<
+  TData = Awaited<ReturnType<typeof downloadProfileExport>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof downloadProfileExport>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof downloadProfileExport>>,
+          TError,
+          Awaited<ReturnType<typeof downloadProfileExport>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useDownloadProfileExport<
+  TData = Awaited<ReturnType<typeof downloadProfileExport>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof downloadProfileExport>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof downloadProfileExport>>,
+          TError,
+          Awaited<ReturnType<typeof downloadProfileExport>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useDownloadProfileExport<
+  TData = Awaited<ReturnType<typeof downloadProfileExport>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof downloadProfileExport>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useDownloadProfileExport<
+  TData = Awaited<ReturnType<typeof downloadProfileExport>>,
+  TError = ErrorType<ProblemDetailsDto>,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof downloadProfileExport>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getDownloadProfileExportQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
 /**
  * @summary PIN-04 : créer son PIN, ou le changer avec l'ancien (compté par PIN-03), sans
 ré-authentification. Jamais de désactivation ici.

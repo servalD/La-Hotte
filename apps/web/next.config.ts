@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
@@ -31,6 +32,7 @@ const TOKEN_PAGES = [
   '/auth/verify-email',
   '/auth/reset-password',
   '/auth/cancel-email-change',
+  '/auth/totp-reset',
   '/auth/google/return',
   '/auth/register',
   '/invitations/open',
@@ -44,6 +46,11 @@ const TOKEN_PAGES = [
 const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // DEP-04 : l'image de production embarque la sortie autonome (serveur et dépendances tracées),
+  // seulement quand le Dockerfile la demande ; le développement et les tests gardent `next start`.
+  ...(process.env.NEXT_OUTPUT === 'standalone'
+    ? { output: 'standalone' as const, outputFileTracingRoot: path.resolve(process.cwd(), '../..') }
+    : {}),
   // Le lint tourne à part (pnpm lint), avec la configuration partagée.
   eslint: { ignoreDuringBuilds: true },
   transpilePackages: ['@wishlist/api-client'],

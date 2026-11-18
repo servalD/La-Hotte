@@ -19,6 +19,7 @@ import {
   ManageBudgets,
   ManageOffsets,
   SettleContribution,
+  type BalanceSummary,
 } from '../application/contract';
 import { toView } from './accounting.controller';
 import { ACCOUNTING_VIEW_SCHEMA, type ItemAccountingViewDto } from './dto/accounting.view';
@@ -138,26 +139,7 @@ export class SettlementController {
     @Query() query: BalancesQueryDto,
     @ActiveProfile() profile: ActiveProfileValue,
   ): Promise<BalancesView> {
-    const balances = await this.balances.execute(profile.id, query.eventId ?? null);
-    return {
-      items: balances.map((b) => ({
-        other: b.other ? person(b.other) : null,
-        currency: b.currency,
-        iOweMinor: b.iOweMinor,
-        owesMeMinor: b.owesMeMinor,
-        netMinor: b.netMinor,
-        lines: b.lines.map((l) => ({
-          contributionId: l.contributionId,
-          accountingId: l.accountingId,
-          itemId: l.itemId,
-          title: l.title,
-          participantId: l.participantId,
-          buyerId: l.buyerId,
-          owedMinor: l.owedMinor,
-          settlement: l.settlement,
-        })),
-      })),
-    };
+    return toBalancesView(await this.balances.execute(profile.id, query.eventId ?? null));
   }
 
   /** CPT-75 */
@@ -308,7 +290,31 @@ export class SettlementController {
   }
 }
 
-function toBudgetView(b: {
+/** CPT-30 à CPT-33 : vue des comptes, champ par champ (aussi pour l'export, RGPD-11). */
+export function toBalancesView(balances: readonly BalanceSummary[]): BalancesView {
+  return {
+    items: balances.map((b) => ({
+      other: b.other ? person(b.other) : null,
+      currency: b.currency,
+      iOweMinor: b.iOweMinor,
+      owesMeMinor: b.owesMeMinor,
+      netMinor: b.netMinor,
+      lines: b.lines.map((l) => ({
+        contributionId: l.contributionId,
+        accountingId: l.accountingId,
+        itemId: l.itemId,
+        title: l.title,
+        participantId: l.participantId,
+        buyerId: l.buyerId,
+        owedMinor: l.owedMinor,
+        settlement: l.settlement,
+      })),
+    })),
+  };
+}
+
+/** CPT-40 : vue d'un budget (aussi pour l'export, RGPD-11). */
+export function toBudgetView(b: {
   id: string;
   eventId: string;
   recipientId: string | null;

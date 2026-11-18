@@ -234,6 +234,7 @@ describe('Activation du TOTP (AUTH-10, AUTH-11, AUTH-14, SEC-22)', () => {
       googleLinked: false,
       totpEnabled: true,
       recoveryCodesRemaining: 10,
+      role: 'USER',
     });
     await identity.background.flush();
     expect(identity.mail.sent.at(-1)).toMatchObject({
@@ -753,6 +754,7 @@ describe('GET /account (PIN-08)', () => {
       'googleLinked',
       'hasPassword',
       'recoveryCodesRemaining',
+      'role',
       'totpEnabled',
     ]);
   });

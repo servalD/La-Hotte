@@ -1491,6 +1491,93 @@ export const useStartTotpEnrollment = <TError = ErrorType<ProblemDetailsDto>, TC
   return useMutation(mutationOptions, queryClient);
 };
 /**
+ * @summary ADM-07 : le titulaire ouvre le lien envoyé à la demande d'un administrateur. TOTP, codes de
+secours et appareils de confiance retirés ; toutes les sessions tombent.
+ */
+export const getConfirmTotpResetUrl = () => {
+  return `/api/v1/auth/totp/reset/confirm`;
+};
+
+export const confirmTotpReset = async (
+  emailTokenDto: EmailTokenDto,
+  options?: RequestInit,
+): Promise<void> => {
+  return apiFetch<void>(getConfirmTotpResetUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(emailTokenDto),
+  });
+};
+
+export const getConfirmTotpResetMutationOptions = <
+  TError = ErrorType<ProblemDetailsDto>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmTotpReset>>,
+    TError,
+    { data: EmailTokenDto },
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmTotpReset>>,
+  TError,
+  { data: EmailTokenDto },
+  TContext
+> => {
+  const mutationKey = ['confirmTotpReset'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmTotpReset>>,
+    { data: EmailTokenDto }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return confirmTotpReset(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmTotpResetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmTotpReset>>
+>;
+export type ConfirmTotpResetMutationBody = EmailTokenDto;
+export type ConfirmTotpResetMutationError = ErrorType<ProblemDetailsDto>;
+
+/**
+ * @summary ADM-07 : le titulaire ouvre le lien envoyé à la demande d'un administrateur. TOTP, codes de
+secours et appareils de confiance retirés ; toutes les sessions tombent.
+ */
+export const useConfirmTotpReset = <TError = ErrorType<ProblemDetailsDto>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof confirmTotpReset>>,
+      TError,
+      { data: EmailTokenDto },
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof confirmTotpReset>>,
+  TError,
+  { data: EmailTokenDto },
+  TContext
+> => {
+  const mutationOptions = getConfirmTotpResetMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
+/**
  * @summary Second facteur (AUTH-10 à AUTH-12, ADR 0013) : code TOTP ou de secours, pré-authentification
 du cookie `__Host-lh_pending`. Au succès, session neuve ; appareil de confiance sur demande.
  */

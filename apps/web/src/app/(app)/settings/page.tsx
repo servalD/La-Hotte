@@ -2,6 +2,8 @@ import { getTranslations } from 'next-intl/server';
 import { NotificationPreferencesSection } from '@/features/notifications/preferences-section';
 import { OwnTransfer } from '@/features/settings/own-transfer';
 import { PinEmailSection } from '@/features/settings/pin-email-section';
+import { MyDataSection } from '@/features/settings/my-data';
+import { MyModerationSection } from '@/features/settings/my-moderation';
 import { SettingsForm } from '@/features/settings/settings-form';
 
 export default async function Page() {
@@ -18,6 +20,8 @@ export default async function Page() {
       <SettingsForm />
       <PinEmailSection />
       <NotificationPreferencesSection />
+      <MyModerationSection />
+      <MyDataSection />
     </>
   );
 }

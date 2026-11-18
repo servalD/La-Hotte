@@ -57,7 +57,7 @@ async function directory(user: SignedIn, q?: string): Promise<string[]> {
   return (res.body.items as Body[]).map((e) => e.productId as string);
 }
 
-describe('Partage (REP-02, REP-08, REP-09)', () => {
+describe('Partage (REP-02, REP-08)', () => {
   it('au cercle : visible du cercle avec qui partage, pas des autres ; dépublié aussitôt', async () => {
     const papa = await person();
     const tonton = await person();
@@ -80,15 +80,12 @@ describe('Partage (REP-02, REP-08, REP-09)', () => {
     expect(await directory(tonton)).not.toContain(id);
   });
 
-  it('REP-09 : catalogue global refusé ; fiche d’un autre : 404', async () => {
+  it('MOD-06 : une fiche saisie à la main publiée au catalogue global attend la modération ; fiche d’un autre : 404', async () => {
     const papa = await person();
     const tonton = await person();
     const id = await newProduct(papa, 'x');
-    const global = await share(papa, id, { level: 'GLOBAL' });
-    expect({ status: global.status, code: global.body.code }).toEqual({
-      status: 422,
-      code: 'GLOBAL_CATALOG_UNAVAILABLE',
-    });
+    await share(papa, id, { level: 'GLOBAL' }).expect(200);
+    expect(catalog.products.rows.get(id)?.moderationStatus).toBe('PENDING');
     await share(tonton, id, { level: 'CIRCLE' }).expect(404);
   });
 

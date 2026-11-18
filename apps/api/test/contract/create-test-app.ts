@@ -65,6 +65,8 @@ import {
   InMemoryProductRepository,
   PageFetcher,
   ProductRepository,
+  InMemoryPublisherPolicy,
+  PublisherPolicy,
 } from '../../src/modules/catalog/testing';
 import {
   EngagementReader,
@@ -118,6 +120,31 @@ import {
   RecordingPushSender,
   SendDigests,
 } from '../../src/modules/notifications/testing';
+import {
+  AccountDirectory,
+  AccountSearchQuota,
+  AuditTrail,
+  EraseRemovedComments,
+  FixedPlatformStats,
+  InMemoryAccountSearchQuota,
+  InMemoryAuditTrail,
+  InMemoryModerationStore,
+  ModerationStore,
+  PlatformStatsReader,
+} from '../../src/modules/admin/testing';
+import {
+  AccountAdministration,
+  AccountLifecycle,
+  EraseDueAccounts,
+  HandleInactiveAccounts,
+  InMemoryAccountAdministration,
+  InMemoryAccountLifecycle,
+} from '../../src/modules/identity/testing';
+import { DataExportStore, InMemoryDataExportStore } from '../../src/modules/privacy/testing';
+import { InMemoryPlatformSettings } from '../../src/platform/settings/in-memory-platform-settings';
+import { AuditJournal, PlatformSettings } from '../../src/shared/domain';
+import { InMemoryAccountDirectory } from './in-memory-account-directory';
+import type { AccountRole } from '../../src/modules/identity/domain/session';
 import { InProcessAppEvents } from '../../src/platform/events/in-process-app-events';
 import { IdempotencyStore, InMemoryIdempotencyStore } from '../../src/platform/http/idempotency';
 import {
@@ -128,6 +155,21 @@ import {
   InMemoryAccountingRepository,
   InMemoryBudgetRepository,
 } from '../../src/modules/accounting/testing';
+
+/** Doubles du module `admin` (phase 7). */
+export interface TestAdmin {
+  readonly audit: InMemoryAuditTrail;
+  readonly settings: InMemoryPlatformSettings;
+  readonly searchQuota: InMemoryAccountSearchQuota;
+  readonly administration: InMemoryAccountAdministration;
+  readonly moderation: InMemoryModerationStore;
+  /** RGPD-11 : fichiers d'export (en clair dans le double). */
+  readonly exports: InMemoryDataExportStore;
+  /** STA-02 : comptages bruts rendus par le lecteur de statistiques. */
+  readonly stats: FixedPlatformStats;
+  /** MOD-11 : lance l'effacement des messages retirés, comme la tâche du processus. */
+  eraseRemovedComments(): Promise<number>;
+}
 
 /** Doubles du module `accounting` (phase 5). */
 export interface TestAccounting {
@@ -172,6 +214,8 @@ export interface TestEvents {
 /** Doubles des modules de la phase 2. */
 export interface TestCatalog {
   readonly products: InMemoryProductRepository;
+  /** MOD-12 : profils enfants (lus dans `identity`) et suspensions de publication. */
+  readonly publishers: InMemoryPublisherPolicy;
   readonly images: InMemoryImageStore;
   readonly fetcher: FakePageFetcher;
   readonly extractor: FakeProductExtractor;
@@ -215,6 +259,10 @@ export interface TestIdentity {
   readonly wards: InMemoryWardRepository;
   /** Passages, détachements (PRO-12 à PRO-14). */
   readonly transfers: InMemoryTransferRepository;
+  /** RGPD-12, RGPD-13 : demandes d'effacement, avertissements d'inactivité. */
+  readonly lifecycle: InMemoryAccountLifecycle;
+  /** Lance les tâches du cycle de vie des comptes, comme le planificateur. */
+  runAccountLifecycle(): Promise<{ erased: number; warned: number; scheduled: number }>;
   /**
    * Compte neuf avec un profil actif ; sans PIN par défaut (donc déverrouillé), `TEST_PIN`
    * sinon. `withProfile: false` : compte sans aucun profil.
@@ -226,6 +274,8 @@ export interface TestIdentity {
     /** PRO-05 : profil enfant. */
     isChild?: boolean;
     displayName?: string;
+    /** RBAC-01 : rôle de plateforme du compte (`USER` par défaut). */
+    role?: AccountRole;
   }): Promise<SignedIn>;
 }
 
@@ -239,14 +289,30 @@ export async function createTestApp(
   events: TestEvents;
   conversations: TestConversations;
   accounting: TestAccounting;
+  admin: TestAdmin;
 }> {
   const previousEnv = { ...process.env };
   Object.assign(process.env, options.env ?? {});
 
   const sessions = new InMemorySessionStore();
+  const audit = new InMemoryAuditTrail();
+  const publishers = new InMemoryPublisherPolicy();
+  const exports = new InMemoryDataExportStore();
+  const stats = new FixedPlatformStats();
+  const moderation = new InMemoryModerationStore((write) => {
+    audit.append(write);
+  });
+  const platformSettings = new InMemoryPlatformSettings((write) => {
+    audit.append(write);
+  });
+  const searchQuota = new InMemoryAccountSearchQuota();
   const securityLog = new InMemorySecurityLog();
   const mail = new InMemoryMailSender();
   const accounts = new InMemoryAccountRepository(sessions);
+  const lifecycle = new InMemoryAccountLifecycle(sessions, accounts);
+  const administration = new InMemoryAccountAdministration(sessions, accounts, (write) => {
+    audit.append(write);
+  });
   const profiles = new InMemoryProfileLockPolicies(accounts.profiles);
   const profileRepository = new InMemoryProfileRepository(accounts.profiles, sessions);
   const hasher = new FakePasswordHasher();
@@ -271,6 +337,7 @@ export async function createTestApp(
   const visibilityLog = new InMemoryVisibilityLog();
   const catalog: TestCatalog = {
     products,
+    publishers,
     images: new InMemoryImageStore(),
     fetcher: new FakePageFetcher(),
     extractor: new FakeProductExtractor(),
@@ -425,6 +492,33 @@ export async function createTestApp(
     .useValue(conversations.delivery)
     .overrideProvider(DigestRepository)
     .useValue(conversations.digests)
+    .overrideProvider(PlatformStatsReader)
+    .useValue(stats)
+    .overrideProvider(DataExportStore)
+    .useValue(exports)
+    .overrideProvider(ModerationStore)
+    .useValue(moderation)
+    .overrideProvider(PublisherPolicy)
+    .useValue(publishers)
+    .overrideProvider(AuditTrail)
+    .useValue(audit)
+    .overrideProvider(AuditJournal)
+    .useValue({
+      append: (write: Parameters<AuditJournal['append']>[0]) => {
+        audit.append(write);
+        return Promise.resolve();
+      },
+    })
+    .overrideProvider(PlatformSettings)
+    .useValue(platformSettings)
+    .overrideProvider(AccountLifecycle)
+    .useValue(lifecycle)
+    .overrideProvider(AccountAdministration)
+    .useValue(administration)
+    .overrideProvider(AccountDirectory)
+    .useValue(new InMemoryAccountDirectory(sessions, accounts, administration, audit))
+    .overrideProvider(AccountSearchQuota)
+    .useValue(searchQuota)
     .overrideProvider(IdempotencyStore)
     .useValue(idempotency)
     .compile();
@@ -539,7 +633,31 @@ export async function createTestApp(
   };
 
   products.accountOf = (profileId) => accounts.profiles.get(profileId)?.accountId;
+  publishers.isChildOf = (profileId) => accounts.profiles.get(profileId)?.isChild === true;
+  publishers.isSuspendedOf = (profileId) => {
+    const accountId = accounts.profiles.get(profileId)?.accountId;
+    return accountId !== undefined && administration.publicationSuspended.has(accountId);
+  };
+  moderation.authorOf = (target) =>
+    target.kind === 'PRODUCT'
+      ? (products.rows.get(target.id)?.ownerProfileId ?? null)
+      : (conversations.comments.comments.get(target.id)?.authorId ?? null);
+  moderation.isLiveTarget = (target) => {
+    if (target.kind === 'COMMENT') {
+      const row = conversations.comments.comments.get(target.id);
+      return Boolean(row) && !row?.deletedAt;
+    }
+    return catalog.products.rows.has(target.id);
+  };
+  moderation.isLiveRemovedComment = (id) => {
+    const row = conversations.comments.comments.get(id);
+    return Boolean(row?.moderatedAt) && !row?.deletedAt;
+  };
   catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
+  catalog.items.surpriseOf = (listId) => {
+    const event = catalog.lists.lists.get(listId)?.event;
+    return event ? (catalog.lists.eventFactsOf(event.id) ?? event).hiddenFrom : [];
+  };
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
   await app.init();
@@ -568,16 +686,23 @@ export async function createTestApp(
     links,
     wards,
     transfers,
+    lifecycle,
+    async runAccountLifecycle() {
+      const { warned, scheduled } = await app.get(HandleInactiveAccounts).execute();
+      const erased = await app.get(EraseDueAccounts).execute();
+      return { erased, warned, scheduled };
+    },
     async signIn({
       pin = false,
       relock = 'IDLE_15',
       withProfile = true,
       isChild = false,
       displayName,
+      role = 'USER',
     } = {}) {
       const accountId = randomUUID();
       const profileId = randomUUID();
-      sessions.addAccount(accountId);
+      sessions.addAccount(accountId, role);
       if (withProfile) profiles.set({ profileId, accountId, hasPin: pin, relock });
       const created = accounts.profiles.get(profileId);
       if (created && withProfile) {
@@ -590,5 +715,22 @@ export async function createTestApp(
       return signIn(app, { accountId, profileId: withProfile ? profileId : null });
     },
   };
-  return { app, identity, catalog, events, conversations, accounting };
+  return {
+    app,
+    identity,
+    catalog,
+    events,
+    conversations,
+    accounting,
+    admin: {
+      audit,
+      settings: platformSettings,
+      searchQuota,
+      administration,
+      moderation,
+      exports,
+      stats,
+      eraseRemovedComments: () => app.get(EraseRemovedComments).execute(),
+    },
+  };
 }

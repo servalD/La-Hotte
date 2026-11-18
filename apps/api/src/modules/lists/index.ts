@@ -12,3 +12,7 @@ export {
 } from './application/item-access-reader';
 /** CPT-44 : destinataires d'un événement que le lecteur voit en offreur (EVT-37). */
 export { GetEventProgress } from './application/event-progress.use-case';
+/** RGPD-11 : lectures du profil, à travers le moteur, pour son export. */
+export { ListItems, ListLists } from './application/contract';
+/** RGPD-11 : mêmes vues que l'API, champ par champ, pour l'export. */
+export { toItemView, toListView } from './presentation/mappers';

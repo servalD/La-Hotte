@@ -796,6 +796,8 @@ interface MemoryAccountRow {
   pendingInvitationId?: string | null;
   /** PRO-15 : compte tuteur d'un compte sous tutelle. */
   guardianAccountId?: string | null;
+  /** RGPD-12 : effacement demandé. */
+  pendingDeletionAt?: Date | null;
 }
 
 interface MemoryTokenRow extends NewAccountToken {
@@ -836,6 +838,7 @@ export class InMemoryAccountRepository extends AccountRepository {
       email: row.email,
       passwordHash: row.passwordHash,
       active: this.sessions.accounts.get(row.id)?.active ?? false,
+      pendingDeletion: Boolean(row.pendingDeletionAt),
       emailVerified: row.emailVerifiedAt !== null,
       totpEnabled: row.totpEnabled,
     };

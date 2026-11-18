@@ -33,6 +33,10 @@ export class AccountView {
   @ApiProperty({ format: 'email' })
   email!: string;
 
+  /** RBAC-01 : rôle de plateforme ; `ADMIN` et `MODERATOR` ont l'espace d'administration. */
+  @ApiProperty({ enum: ['USER', 'MODERATOR', 'ADMIN'], enumName: 'AccountRole' })
+  role!: 'USER' | 'MODERATOR' | 'ADMIN';
+
   @ApiProperty()
   emailVerified!: boolean;
 
@@ -73,4 +77,9 @@ export class TrustedDeviceView {
 export class TrustedDeviceListView {
   @ApiProperty({ type: [TrustedDeviceView] })
   items!: TrustedDeviceView[];
+}
+
+/** RGPD-12 : date d'effet de l'effacement demandé. */
+export class AccountDeletionView {
+  @ApiProperty({ type: String, format: 'date-time' }) effectiveAt!: string;
 }

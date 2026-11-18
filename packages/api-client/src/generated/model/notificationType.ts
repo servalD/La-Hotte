@@ -30,4 +30,6 @@ export const NotificationType = {
   securitylogin: 'security.login',
   securitytotp_enabled: 'security.totp_enabled',
   securitytotp_disabled: 'security.totp_disabled',
+  moderationremoved: 'moderation.removed',
+  moderationrestored: 'moderation.restored',
 } as const;

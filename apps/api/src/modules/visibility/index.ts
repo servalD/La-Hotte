@@ -43,6 +43,8 @@ export {
   type ProductReference,
   requiresHiddenItemChoice,
   ruleExcludes,
+  globalProductVisible,
+  moderationWithheld,
   sharedProductVisible,
 } from './domain/rules';
 export {
