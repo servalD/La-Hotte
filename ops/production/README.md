@@ -50,18 +50,22 @@ Seuls deux services joignent Internet : le `fetcher` (réseau `egress`, URL d'ut
 Docker contourne `ufw` et les chaînes `INPUT` et `OUTPUT` : le filtrage des conteneurs se fait dans la chaîne `DOCKER-USER`. À poser au provisionnement (et à rendre persistant, par exemple avec `iptables-persistent`) :
 
 ```sh
-# Réponses aux connexions établies, résolution DNS par le résolveur de Docker.
+# Réponses aux connexions établies.
 iptables -I DOCKER-USER 1 -s 172.30.10.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
-# HTTPS (modèle, Google, Web Push) et SMTP de soumission vers le relais choisi.
-iptables -I DOCKER-USER 2 -s 172.30.10.0/24 -p tcp --dport 443 -j RETURN
-iptables -I DOCKER-USER 3 -s 172.30.10.0/24 -p tcp -d <adresse du relais SMTP> --dport 587 -j RETURN
-iptables -I DOCKER-USER 4 -s 172.30.10.0/24 -p udp --dport 53 -j RETURN
-# Tout le reste est refusé : ni autre port, ni réseau privé de l'hôte ou de l'hébergeur.
-iptables -I DOCKER-USER 5 -s 172.30.10.0/24 -d 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16 -j DROP
-iptables -I DOCKER-USER 6 -s 172.30.10.0/24 -j DROP
+# D'abord, aucune adresse interne, sur aucun port : réseaux privés, hôte, métadonnées de l'hébergeur.
+iptables -I DOCKER-USER 2 -s 172.30.10.0/24 -d 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16,100.64.0.0/10 -j DROP
+# Ensuite, HTTPS (modèle, Google, Web Push) et SMTP de soumission vers le relais choisi.
+iptables -I DOCKER-USER 3 -s 172.30.10.0/24 -p tcp --dport 443 -j RETURN
+iptables -I DOCKER-USER 4 -s 172.30.10.0/24 -p tcp -d <adresse du relais SMTP> --dport 587 -j RETURN
+# Tout le reste est refusé, DNS externe compris : le résolveur intégré de Docker (127.0.0.11)
+# relaie depuis l'hôte, hors de cette chaîne (à vérifier sur le serveur : `docker compose exec api
+# node -e "require('dns').lookup('api.anthropic.com', console.log)"`).
+iptables -I DOCKER-USER 5 -s 172.30.10.0/24 -j DROP
 ```
 
-Ces règles limitent les ports et ferment les adresses internes (métadonnées de l'hébergeur comprises), pas les noms d'hôtes : les services de Web Push et les API de Google changent d'adresses. Un filtrage par nom demande un mandataire sortant à liste blanche (par exemple Squid ou Smokescreen) devant `api-egress` ; à décider avec le choix de l'hébergeur. L'API ne joint jamais une URL d'utilisateur : celles-ci passent par le `fetcher` (EXT-40).
+Si IPv6 est activé pour Docker, poser les mêmes règles avec `ip6tables` (plages `fc00::/7`, `fe80::/10`).
+
+Ces règles ferment les adresses internes sur tous les ports (métadonnées de l'hébergeur comprises) et limitent les ports, pas les noms d'hôtes : les services de Web Push et les API de Google changent d'adresses. Un filtrage par nom demande un mandataire sortant à liste blanche (par exemple Squid ou Smokescreen) devant `api-egress` ; à décider avec le choix de l'hébergeur. L'API ne joint jamais une URL d'utilisateur : celles-ci passent par le `fetcher` (EXT-40).
 
 ## Sauvegardes (DEP-05, DEP-06)
 

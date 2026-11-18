@@ -31,6 +31,8 @@ health() {
 load_images() {
   local file="$1" line key value
   local -A seen=()
+  # Une valeur absente du fichier ne doit pas rester celle d'un fichier lu avant.
+  unset RELEASE
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -z "$line" || "$line" == \#* ]] && continue
     if [[ "$line" =~ ^(API|API_MIGRATE|WEB|FETCHER)_IMAGE=([a-z0-9./_:-]+@sha256:[0-9a-f]{64})$ ]]; then
@@ -61,13 +63,19 @@ load_images() {
 
 apply() {
   local images="$1"
+  # Un seul déploiement à la fois.
+  exec 9> "$STATE/lock"
+  flock -n 9 || {
+    echo "un autre déploiement est en cours" >&2
+    exit 4
+  }
   # Copie d'abord, puis validation et lecture de la copie : le fichier lu est celui conservé.
   cp "$images" "$STATE/candidate.env"
   load_images "$STATE/candidate.env"
   "${COMPOSE[@]}" pull api web fetcher migrate
   "${COMPOSE[@]}" --profile migrate run --rm migrate
-  "${COMPOSE[@]}" up -d --no-deps api web fetcher
-  if health; then
+  # Un échec du démarrage lui-même ramène aussi à la version en service.
+  if "${COMPOSE[@]}" up -d --no-deps api web fetcher && health; then
     [[ -f "$STATE/current.env" ]] && cp "$STATE/current.env" "$STATE/previous.env"
     cp "$STATE/candidate.env" "$STATE/current.env"
     echo "déployé : ${RELEASE:-sans version}"
@@ -88,8 +96,10 @@ restore_running() {
     return
   fi
   load_images "$STATE/current.env"
-  "${COMPOSE[@]}" up -d --no-deps api web fetcher
-  health
+  if ! { "${COMPOSE[@]}" up -d --no-deps api web fetcher && health; }; then
+    echo "retour arrière en échec : intervention manuelle nécessaire" >&2
+    exit 3
+  fi
   echo "revenu à : ${RELEASE:-sans version}"
 }
 
@@ -98,6 +108,11 @@ rollback() {
   [[ -f "$STATE/previous.env" ]] || {
     echo "aucune version précédente" >&2
     exit 1
+  }
+  exec 9> "$STATE/lock"
+  flock -n 9 || {
+    echo "un autre déploiement est en cours" >&2
+    exit 4
   }
   load_images "$STATE/previous.env"
   # DAT-07 : la base reste à la nouvelle migration, compatible avec le code précédent.

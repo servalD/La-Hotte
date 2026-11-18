@@ -302,18 +302,16 @@ export interface ProductReference {
   readonly listRecipients: readonly string[];
   /**
    * VIS-36, EVT-29 : honorés de la surprise à laquelle la liste est rattachée ; la liste leur est
-   * cachée comme à ses destinataires. Absent : liste hors d'une surprise.
+   * cachée comme à ses destinataires. Vide : liste hors d'une surprise. Ne sert qu'à la modération
+   * (ADM-05) : au répertoire, une fiche ne disparaît pas quand sa liste rejoint une surprise, ce
+   * serait une trace (REP-10, EVT-04).
    */
-  readonly surpriseFor?: readonly string[];
+  readonly surpriseFor: readonly string[];
 }
 
-/** Profil à qui l'élément est caché : destinataire, honoré d'une surprise ou écarté par la règle. */
+/** REP-07, REP-10 : profil à qui la fiche est cachée au répertoire (destinataire ou écarté). */
 function referenceHides(reference: ProductReference, profileId: string): boolean {
-  return (
-    reference.listRecipients.includes(profileId) ||
-    (reference.surpriseFor?.includes(profileId) ?? false) ||
-    ruleExcludes(reference.rule, profileId)
-  );
+  return reference.listRecipients.includes(profileId) || ruleExcludes(reference.rule, profileId);
 }
 
 /**
@@ -366,7 +364,10 @@ export function moderationWithheld(input: {
   return input.actorProfileIds.some(
     (profileId) =>
       profileId === input.authorId ||
-      input.references.some((reference) => referenceHides(reference, profileId)),
+      input.references.some(
+        (reference) =>
+          referenceHides(reference, profileId) || reference.surpriseFor.includes(profileId),
+      ),
   );
 }
 
