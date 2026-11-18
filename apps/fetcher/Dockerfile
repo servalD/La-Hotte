@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-# Image du service de récupération (EXT-40 à EXT-46, ADR 0016, DEP-02). Construite depuis la
-# racine du dépôt :
+# Image du service de récupération (EXT-40 à EXT-46, ADR 0016, DEP-02, DEP-08). Construite depuis
+# la racine du dépôt :
 #   docker build -f apps/fetcher/Dockerfile -t lahotte-fetcher .
 # Seul service qui joint Internet ; il n'a accès à aucune base (réseau dédié).
 ARG NODE_IMAGE=node:22.20.0-bookworm-slim
@@ -20,6 +20,14 @@ RUN pnpm --filter @wishlist/fetcher deploy --legacy --prod /out \
     && cp -r apps/fetcher/dist /out/dist
 
 FROM ${NODE_IMAGE} AS runtime
+# Mises à jour de sécurité de la base (CI-05), et ni npm, ni corepack, ni pnpm dans l'image
+# livrée : l'application n'en a pas besoin et leurs dépendances ne doivent pas y entrer.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+       /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 ENV NODE_ENV=production \
     FETCHER_HOST=0.0.0.0 \
     FETCHER_PORT=4100

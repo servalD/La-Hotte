@@ -11,6 +11,8 @@ vulnerabilities:
   - id: CVE-2026-40345
     paths:
       - 'pnpm-lock.yaml'
+      # Image de migration (apps/api/Dockerfile, cible `migrate`) : la CLI Prisma seule.
+      - 'migrate/node_modules/deepmerge-ts/package.json'
     statement: >-
       Non exposé : fusion de la configuration du développeur par la CLI Prisma, jamais d'entrée
       d'utilisateur. Corrigé en amont dans une version majeure de Prisma que nous n'avons pas encore adoptée.

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Image du web (DEP-02, DEP-03, DEP-04). Construite depuis la racine du dépôt :
+# Image du web (DEP-02, DEP-03, DEP-04, DEP-08). Construite depuis la racine du dépôt :
 #   docker build -f apps/web/Dockerfile -t lahotte-web .
 # Les variables du navigateur sont inscrites au build (OBS-47) ; aucune n'est un secret.
 ARG NODE_IMAGE=node:22.20.0-bookworm-slim
@@ -24,15 +24,23 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @wishlist/web build
 
 FROM ${NODE_IMAGE} AS runtime
+# Mises à jour de sécurité de la base (CI-05), et ni npm, ni corepack, ni pnpm dans l'image
+# livrée : l'application n'en a pas besoin et leurs dépendances ne doivent pas y entrer.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+       /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 WORKDIR /app
-# Sortie autonome : serveur, dépendances tracées, puis fichiers statiques et publics à côté.
+# Sortie autonome : serveur et dépendances tracées, puis fichiers statiques à côté (pas de
+# dossier `public` : icônes et manifeste sont des routes).
 COPY --from=build --chown=node:node /repo/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /repo/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=node:node /repo/apps/web/public ./apps/web/public
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \

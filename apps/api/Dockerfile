@@ -1,23 +1,21 @@
 # syntax=docker/dockerfile:1.7
-# Image de l'API (DEP-02, DEP-03, DEP-04). Construite depuis la racine du dépôt :
+# Image de l'API (DEP-02, DEP-03, DEP-04, DEP-08). Construite depuis la racine du dépôt :
 #   docker build -f apps/api/Dockerfile --target runtime -t lahotte-api .
 #   docker build -f apps/api/Dockerfile --target migrate -t lahotte-api-migrate .
 # Même base pour la construction et l'exécution : le moteur Prisma généré est celui de l'image.
 ARG NODE_IMAGE=node:22.20.0-bookworm-slim
 
-FROM ${NODE_IMAGE} AS base
+FROM ${NODE_IMAGE} AS build
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     CI=1 \
     TURBO_TELEMETRY_DISABLED=1
-RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
-WORKDIR /repo
-
-FROM base AS build
 # OpenSSL pour le moteur Prisma (détecté à la génération et à l'exécution).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
+WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @wishlist/api build
@@ -29,17 +27,33 @@ RUN pnpm --filter @wishlist/api deploy --legacy --prod /out \
     && cp -r apps/api/prisma /out/prisma
 # Client Prisma généré dans les dépendances de production, par la CLI de la construction.
 RUN cd /out && node /repo/apps/api/node_modules/prisma/build/index.js generate --schema prisma/schema.prisma
+# CLI Prisma seule, à sa version exacte, pour l'image de migration : rien d'autre de la construction.
+COPY apps/api/docker/migrate-package.mjs /tmp/migrate-package.mjs
+RUN mkdir /migrate \
+    && node /tmp/migrate-package.mjs /repo/apps/api/node_modules/prisma/package.json /migrate/package.json \
+    && cd /migrate \
+    && pnpm install --prod --config.node-linker=hoisted
+
+# Base des images livrées : mises à jour de sécurité (CI-05), et ni npm, ni corepack, ni pnpm,
+# dont l'application n'a pas besoin et dont les dépendances ne doivent pas y entrer.
+FROM ${NODE_IMAGE} AS hardened
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+       /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 
 # Migrations au déploiement (DEP-04, DAT-07) : rôle propriétaire, `DATABASE_MIGRATION_URL`.
-FROM build AS migrate
-WORKDIR /repo/apps/api
+FROM hardened AS migrate
+WORKDIR /app
+COPY --from=build --chown=node:node /out/prisma /app/prisma
+COPY --from=build --chown=node:node /migrate /migrate
 USER node
-CMD ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+CMD ["node", "/migrate/node_modules/prisma/build/index.js", "migrate", "deploy", "--schema", "prisma/schema.prisma"]
 
-FROM ${NODE_IMAGE} AS runtime
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+FROM hardened AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out /app
