@@ -647,6 +647,10 @@ export async function createTestApp(
     return Boolean(row?.moderatedAt) && !row?.deletedAt;
   };
   catalog.items.recipientsOf = (listId) => catalog.lists.lists.get(listId)?.recipients ?? [];
+  catalog.items.surpriseOf = (listId) => {
+    const event = catalog.lists.lists.get(listId)?.event;
+    return event ? (catalog.lists.eventFactsOf(event.id) ?? event).hiddenFrom : [];
+  };
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app);
   await app.init();

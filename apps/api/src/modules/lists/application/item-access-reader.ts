@@ -154,7 +154,11 @@ export class ItemAccessReader {
   async referenceOf(itemId: string): Promise<ProductReference | null> {
     const loaded = await this.load(itemId);
     return loaded
-      ? { rule: itemFactsOf(loaded.item).rule, listRecipients: loaded.list.recipients }
+      ? {
+          rule: itemFactsOf(loaded.item).rule,
+          listRecipients: loaded.list.recipients,
+          surpriseFor: loaded.list.event?.hiddenFrom ?? [],
+        }
       : null;
   }
 

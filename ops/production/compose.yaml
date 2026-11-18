@@ -221,8 +221,12 @@ networks:
   internal: { internal: true }
   fetcher: { internal: true }
   egress: {}
-  # Sorties de l'API vers ses fournisseurs (revue SEC-40 de la phase 7, I2).
-  api-egress: {}
+  # Sorties de l'API vers ses fournisseurs (revue SEC-40 de la phase 7, I2, R4) : sous-réseau fixe,
+  # filtré par la chaîne DOCKER-USER de l'hôte (README, « Sorties »).
+  api-egress:
+    ipam:
+      config:
+        - subnet: 172.30.10.0/24
   obs: { internal: true }
   # OBS-43 : GlitchTip envoie ses alertes par SMTP, hors de l'application.
   alerts: {}

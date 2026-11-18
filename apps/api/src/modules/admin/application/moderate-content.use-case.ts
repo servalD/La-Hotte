@@ -110,7 +110,8 @@ export class ModerationTargets {
   ): Promise<boolean> {
     if (target.kind === 'PRODUCT') {
       const product = (loaded as Product | null | undefined) ?? (await this.product(target.id));
-      if (!product) return false;
+      // Cible disparue : rien ne permet plus de juger qui elle concerne, elle est soustraite (R1).
+      if (!product) return true;
       const references = (await this.references.of([product.id])).get(product.id) ?? [];
       return moderationWithheld({
         actorProfileIds,
@@ -120,7 +121,8 @@ export class ModerationTargets {
     }
     const comment =
       (loaded as CommentForModeration | null | undefined) ?? (await this.comment(target.id));
-    if (!comment) return false;
+    // Message supprimé, élément ou liste effacés : soustrait par prudence (revue SEC-40, R1).
+    if (!comment) return true;
     return (
       moderationWithheld({
         actorProfileIds,
@@ -379,19 +381,21 @@ export class DecideModeration {
     const last = await this.store.lastDecisionOn(target);
     const open = await this.store.openReportsOn(target);
     let pending = false;
+    let loaded: Product | CommentForModeration | null;
     if (target.kind === 'PRODUCT') {
       const product = await this.targets.product(target.id);
-      if (!product || (await this.targets.withheld(actor, target, product))) {
-        throw new ReportTargetNotFoundError();
-      }
+      if (!product) throw new ReportTargetNotFoundError();
       pending = product.shareLevel === 'GLOBAL' && product.moderationStatus === 'PENDING';
+      loaded = product;
     } else {
       const comment = await this.targets.comment(target.id);
-      if (!comment || comment.removed || (await this.targets.withheld(actor, target, comment))) {
-        throw new ReportTargetNotFoundError();
-      }
+      if (!comment || comment.removed) throw new ReportTargetNotFoundError();
+      loaded = comment;
     }
+    // Rien à modérer d'abord, soustraction ensuite : sans signalement ni attente, la réponse ne dit
+    // pas si la fiche concerne le modérateur (revue SEC-40, M3).
     if (!open && !pending) throw new NothingToModerateError();
+    if (await this.targets.withheld(actor, target, loaded)) throw new ReportTargetNotFoundError();
     const author = await this.targets.authorOf(target);
     const now = this.recorder.now();
     const recorded = await this.recorder.record({

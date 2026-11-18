@@ -766,7 +766,12 @@ export class PrismaItemRepository extends ItemRepository {
         version: true,
         visibilityMode: true,
         ruleProfiles: { select: { profileId: true } },
-        list: { select: { recipients: { select: { profileId: true } } } },
+        list: {
+          select: {
+            recipients: { select: { profileId: true } },
+            event: { select: { surpriseFor: { select: { profileId: true } } } },
+          },
+        },
       },
     });
     return rows.map((row) => ({
@@ -775,6 +780,7 @@ export class PrismaItemRepository extends ItemRepository {
       version: row.version,
       rule: { mode: row.visibilityMode, profiles: row.ruleProfiles.map((p) => p.profileId) },
       listRecipients: row.list.recipients.map((r) => r.profileId),
+      surpriseFor: row.list.event?.surpriseFor.map((s) => s.profileId) ?? [],
     }));
   }
   async setReceived(itemId: string, at: Date | null): Promise<ItemRecord | null> {

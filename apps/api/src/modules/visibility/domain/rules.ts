@@ -300,6 +300,20 @@ export interface ProductReference {
   readonly rule: ItemRule;
   /** Destinataires de la liste de l'élément (GFT-10 : tous ceux d'une giftlist). */
   readonly listRecipients: readonly string[];
+  /**
+   * VIS-36, EVT-29 : honorés de la surprise à laquelle la liste est rattachée ; la liste leur est
+   * cachée comme à ses destinataires. Absent : liste hors d'une surprise.
+   */
+  readonly surpriseFor?: readonly string[];
+}
+
+/** Profil à qui l'élément est caché : destinataire, honoré d'une surprise ou écarté par la règle. */
+function referenceHides(reference: ProductReference, profileId: string): boolean {
+  return (
+    reference.listRecipients.includes(profileId) ||
+    (reference.surpriseFor?.includes(profileId) ?? false) ||
+    ruleExcludes(reference.rule, profileId)
+  );
 }
 
 /**
@@ -317,11 +331,7 @@ export function sharedProductVisible(input: {
 }): boolean {
   if (input.shareLevel !== 'CIRCLE' || input.ownerId === null) return false;
   if (input.ownerId === input.viewerId || !input.viewerInOwnerCircle) return false;
-  return input.references.every(
-    (reference) =>
-      !reference.listRecipients.includes(input.viewerId) &&
-      !ruleExcludes(reference.rule, input.viewerId),
-  );
+  return input.references.every((reference) => !referenceHides(reference, input.viewerId));
 }
 
 /**
@@ -338,16 +348,13 @@ export function globalProductVisible(input: {
 }): boolean {
   if (input.shareLevel !== 'GLOBAL' || input.moderationStatus !== 'APPROVED') return false;
   if (input.ownerId === input.viewerId) return false;
-  return input.references.every(
-    (reference) =>
-      !reference.listRecipients.includes(input.viewerId) &&
-      !ruleExcludes(reference.rule, input.viewerId),
-  );
+  return input.references.every((reference) => !referenceHides(reference, input.viewerId));
 }
 
 /**
  * ADM-05, MOD-10, RBAC-12 : un contenu à modérer est soustrait au modérateur dont un profil en est
- * l'auteur, ou serait écarté par la règle d'un élément concerné, ou en est destinataire : la
+ * l'auteur, ou serait écarté par la règle d'un élément concerné, ou en est destinataire, ou est honoré
+ * de la surprise à laquelle sa liste est rattachée : la
  * modération ne révèle pas ce qu'on lui prépare (VIS-20), et nul ne tranche sur son propre contenu.
  * Le contenu reste dans la file des autres modérateurs.
  */
@@ -359,10 +366,7 @@ export function moderationWithheld(input: {
   return input.actorProfileIds.some(
     (profileId) =>
       profileId === input.authorId ||
-      input.references.some(
-        (reference) =>
-          reference.listRecipients.includes(profileId) || ruleExcludes(reference.rule, profileId),
-      ),
+      input.references.some((reference) => referenceHides(reference, profileId)),
   );
 }
 

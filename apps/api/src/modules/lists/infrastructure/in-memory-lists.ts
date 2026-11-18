@@ -377,6 +377,7 @@ export class InMemoryItemRepository extends ItemRepository {
 
   /** Destinataires d'une liste, lus dans le double des listes (relié par le banc de test). */
   recipientsOf: (listId: string) => readonly string[] = () => [];
+  surpriseOf: (listId: string) => readonly string[] = () => [];
   /** EVT-28 : événement d'une liste (relié par le banc de test). */
   eventOfList: (listId: string) => { id: string; title: string; date: string } | null = () => null;
   /** EVT-22 : ce que la reprise lit d'une liste (relié par le banc de test). */
@@ -453,6 +454,7 @@ export class InMemoryItemRepository extends ItemRepository {
           version: row.version,
           rule: { mode: row.visibilityMode, profiles: row.visibilityProfiles },
           listRecipients: this.recipientsOf(row.listId),
+          surpriseFor: this.surpriseOf(row.listId),
         })),
     );
   }

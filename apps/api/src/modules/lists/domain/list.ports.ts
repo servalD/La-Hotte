@@ -204,6 +204,8 @@ export interface ItemProductReference {
   readonly version: number;
   readonly rule: RuleSnapshot;
   readonly listRecipients: readonly string[];
+  /** VIS-36 : honorés de la surprise de la liste. */
+  readonly surpriseFor: readonly string[];
 }
 
 export abstract class ItemRepository {

@@ -761,6 +761,20 @@ Sortie : restauration réussie et chronométrée ; aucune fuite trouvée ; ouver
 
 À la charge de l'utilisateur (hors de portée de cette machine, sans Docker) : choisir l'hébergeur et provisionner le VPS, première restauration chronométrée sur le vrai serveur, choix de la sonde externe (OBS-41), analyse d'impact avec un juriste, Lighthouse ≥ 90 et test avec cinq personnes (restes de la phase 6).
 
+**Tranches 0 à 9 faites le 2026-11-18.** CI verte : intégration (RLS, effacement, export, décisions concurrentes), non-fuite OBS-26 étendue à l'administration, à la modération, à l'export et à l'effacement, images construites et analysées par Trivy (CI-05), restauration chronométrée sur une base jetable (DEP-05, SEC-23), Caddyfile validé. Test d'intrusion ciblé sur la surprise (`test/contract/surprise-intrusion.spec.ts`, SEC-42).
+
+**Revue SEC-40.** Cycle 1 : visa refusé (B1 : un modérateur destinataire lisait le fil Offreurs de ses éléments dans la file) ; corrigés B1 (règle `moderationWithheld` de `visibility`, ADM-05 amendé), I1 (page `/auth/totp-reset`), I2 (réseau `api-egress`), I3 (une décision à la fois par cible, une réponse par contestation), I4 (journaux de Caddy sans chaîne de requête), I5 (`deploy.sh` sans `source`) et cinq mineurs. Cycle 2 : visa refusé (R1 : contestation dont la cible a disparu ; R2 : honorés d'une surprise ignorés) ; corrigés R1 (cible illisible soustraite à tous), R2 (`surpriseFor` dans les références, VIS-36), R3 (échec de déploiement : retour à la version en service), R4 (sous-réseau fixe et règles `DOCKER-USER` documentées), M3 (409 avant la soustraction) et M5 (gitleaks épinglé). **Ces corrections du cycle 2 n'ont pas été relues** : deux cycles au plus ; un troisième passage est à décider par l'utilisateur avant fusion.
+
+**Restes** (notés, non bloquants selon la revue) :
+- une contestation dont la cible a disparu reste ouverte, soustraite à tous : la clore d'office, ou relever à la décision les profils concernés (modèle CPT-73) ;
+- M1 : `GET /admin/audit` rend le motif libre d'une décision de modération ; un administrateur destinataire peut y lire un motif écrit à propos d'un message qui lui est soustrait. Appliquer la soustraction aux entrées d'audit de cible, ou cadrer le motif dans l'interface ;
+- M2 : le compteur de signalements ouverts de `/admin/stats` compte aussi les contenus soustraits ; le calculer après soustraction, ou le retirer ;
+- M4 : éléments retirés (`WITHDRAWN`) absents des références d'une fiche ;
+- M6 : contrat pour un profil écarté par `EXCEPT` et pour un autre profil du compte du modérateur (seul l'unitaire les couvre) ;
+- cycle 1, mineurs : `Cache-Control` du 404 d'administration différent d'une route inconnue (2), compteur `adopters` d'une fiche non canonique (4a), jeton `TOTP_RESET` encore valable si le rôle est rendu dans les 30 minutes (6, à invalider à l'attribution d'un rôle), `followup.failed` manquants pour l'e-mail `totp_disabled` et WebSocket non fermés par la commande `admin` (7), annulation de l'effacement par le seul mot de passe (9, accepté par RGPD-12), mot de passe de `TARGET_URL` visible dans `ps` pendant `restore.sh`, migrations par le superutilisateur, `/health/ready` public (11) ;
+- recherche de compte en `GET` (adresse dans l'URL) : retirée des journaux de Caddy, à passer en `POST` si un autre intermédiaire journalise ;
+- filtrage par nom d'hôte des sorties de l'API : mandataire à liste blanche à choisir avec l'hébergeur.
+
 ## Après la v1
 
 Dans l'ordre proposé, sous réserve de vos choix dans `15-suggestions.md` : groupes nommés, tirage au sort, passkeys, rappels d'anniversaire, historique des cadeaux, lien invité.

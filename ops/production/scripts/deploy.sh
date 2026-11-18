@@ -61,8 +61,9 @@ load_images() {
 
 apply() {
   local images="$1"
-  load_images "$images"
+  # Copie d'abord, puis validation et lecture de la copie : le fichier lu est celui conservé.
   cp "$images" "$STATE/candidate.env"
+  load_images "$STATE/candidate.env"
   "${COMPOSE[@]}" pull api web fetcher migrate
   "${COMPOSE[@]}" --profile migrate run --rm migrate
   "${COMPOSE[@]}" up -d --no-deps api web fetcher
@@ -71,12 +72,28 @@ apply() {
     cp "$STATE/candidate.env" "$STATE/current.env"
     echo "déployé : ${RELEASE:-sans version}"
   else
-    echo "santé non atteinte : retour arrière" >&2
-    rollback
+    echo "santé non atteinte : retour à la version en service avant ce déploiement" >&2
+    restore_running
     exit 1
   fi
 }
 
+# Échec d'un déploiement : on revient à la version qui tournait juste avant (`current.env`), la
+# seule dont DAT-07 garantit la compatibilité avec la base migrée. Sans elle (premier
+# déploiement), les services sont arrêtés plutôt que de laisser tourner le candidat défaillant.
+restore_running() {
+  if [[ ! -f "$STATE/current.env" ]]; then
+    echo "aucune version en service : services arrêtés" >&2
+    "${COMPOSE[@]}" stop api web fetcher
+    return
+  fi
+  load_images "$STATE/current.env"
+  "${COMPOSE[@]}" up -d --no-deps api web fetcher
+  health
+  echo "revenu à : ${RELEASE:-sans version}"
+}
+
+# Retour arrière manuel vers la version précédente (`deploy.sh rollback`).
 rollback() {
   [[ -f "$STATE/previous.env" ]] || {
     echo "aucune version précédente" >&2

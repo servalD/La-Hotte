@@ -6,17 +6,17 @@ L'hébergeur n'est pas encore choisi : rien ici n'en dépend. Il faut un VPS dan
 
 ## Fichiers
 
-| Fichier                           | Rôle                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `compose.yaml`                    | Services, réseaux séparés (`internal`, `fetcher`, `egress`, `obs`), conteneurs sans privilèges et en lecture seule |
-| `Caddyfile`                       | TLS automatique, en-têtes, même origine pour le web et l'API, hôtes d'exploitation restreints par adresse          |
-| `.env.example`, `api.env.example` | Variables, à copier en `.env` et `api.env` (droits 600, jamais versionnés)                                         |
-| `postgres/init.sh`                | Rôles DAT-03 au premier démarrage                                                                                  |
-| `security.txt`                    | SEC-43, servi à `/.well-known/security.txt`                                                                        |
-| `scripts/deploy.sh`               | Déploiement et retour arrière (DEP-04)                                                                             |
-| `scripts/backup.sh`               | Sauvegardes chiffrées (DEP-05)                                                                                     |
-| `scripts/restore.sh`              | Restauration chronométrée dans une base neuve (SEC-23)                                                             |
-| `../observability/alerts.yaml`    | Règles d'alerte versionnées (OBS-05, SEC-32)                                                                       |
+| Fichier                           | Rôle                                                                                                                             |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `compose.yaml`                    | Services, réseaux séparés (`internal`, `fetcher`, `egress`, `api-egress`, `obs`), conteneurs sans privilèges et en lecture seule |
+| `Caddyfile`                       | TLS automatique, en-têtes, même origine pour le web et l'API, hôtes d'exploitation restreints par adresse                        |
+| `.env.example`, `api.env.example` | Variables, à copier en `.env` et `api.env` (droits 600, jamais versionnés)                                                       |
+| `postgres/init.sh`                | Rôles DAT-03 au premier démarrage                                                                                                |
+| `security.txt`                    | SEC-43, servi à `/.well-known/security.txt`                                                                                      |
+| `scripts/deploy.sh`               | Déploiement et retour arrière (DEP-04)                                                                                           |
+| `scripts/backup.sh`               | Sauvegardes chiffrées (DEP-05)                                                                                                   |
+| `scripts/restore.sh`              | Restauration chronométrée dans une base neuve (SEC-23)                                                                           |
+| `../observability/alerts.yaml`    | Règles d'alerte versionnées (OBS-05, SEC-32)                                                                                     |
 
 ## Première installation
 
@@ -41,7 +41,27 @@ scripts/deploy.sh images-<sha>.env   # migration, démarrage, santé, bascule
 scripts/deploy.sh rollback           # images précédentes ; la base reste migrée (DAT-07)
 ```
 
-Les images sont désignées par leur empreinte, jamais par une étiquette. Le script refuse un fichier où une image n'a pas d'empreinte.
+Les images sont désignées par leur empreinte, jamais par une étiquette. Le fichier d'images est lu ligne à ligne, jamais exécuté : toute ligne autre que les quatre images (avec empreinte) et `RELEASE` le fait refuser. Si la santé n'est pas atteinte, le script revient à la version qui tournait avant ce déploiement (la seule compatible avec la base migrée, DAT-07), ou arrête les services s'il n'y en avait pas ; `rollback` reste le retour manuel à la version précédente.
+
+## Sorties
+
+Seuls deux services joignent Internet : le `fetcher` (réseau `egress`, URL d'utilisateurs, ADR 0016) et l'API (réseau `api-egress`, sous-réseau fixe `172.30.10.0/24`), qui ne parle qu'à ses fournisseurs : relais SMTP, API du modèle d'extraction, Google (OIDC), services de Web Push.
+
+Docker contourne `ufw` et les chaînes `INPUT` et `OUTPUT` : le filtrage des conteneurs se fait dans la chaîne `DOCKER-USER`. À poser au provisionnement (et à rendre persistant, par exemple avec `iptables-persistent`) :
+
+```sh
+# Réponses aux connexions établies, résolution DNS par le résolveur de Docker.
+iptables -I DOCKER-USER 1 -s 172.30.10.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+# HTTPS (modèle, Google, Web Push) et SMTP de soumission vers le relais choisi.
+iptables -I DOCKER-USER 2 -s 172.30.10.0/24 -p tcp --dport 443 -j RETURN
+iptables -I DOCKER-USER 3 -s 172.30.10.0/24 -p tcp -d <adresse du relais SMTP> --dport 587 -j RETURN
+iptables -I DOCKER-USER 4 -s 172.30.10.0/24 -p udp --dport 53 -j RETURN
+# Tout le reste est refusé : ni autre port, ni réseau privé de l'hôte ou de l'hébergeur.
+iptables -I DOCKER-USER 5 -s 172.30.10.0/24 -d 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16 -j DROP
+iptables -I DOCKER-USER 6 -s 172.30.10.0/24 -j DROP
+```
+
+Ces règles limitent les ports et ferment les adresses internes (métadonnées de l'hébergeur comprises), pas les noms d'hôtes : les services de Web Push et les API de Google changent d'adresses. Un filtrage par nom demande un mandataire sortant à liste blanche (par exemple Squid ou Smokescreen) devant `api-egress` ; à décider avec le choix de l'hébergeur. L'API ne joint jamais une URL d'utilisateur : celles-ci passent par le `fetcher` (EXT-40).
 
 ## Sauvegardes (DEP-05, DEP-06)
 
