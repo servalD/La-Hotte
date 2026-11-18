@@ -72,7 +72,9 @@ services:
       NODE_ENV: development
       ENABLE_API_DOCS: 'true'
       PORT: '4000'
-      WEB_ORIGIN: http://localhost:3000
+      # Doit être l'adresse EXACTE par laquelle on ouvre le site (contrôle d'origine, CSRF) : avec le
+      # profil `lan`, https://<adresse-de-la-machine>:8443 (voir `.env`).
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       DATABASE_URL: postgresql://wishlist_app:wishlist_app@postgres:5432/wishlist
       REDIS_URL: redis://redis:6379
       CSRF_SECRET: dev-only-csrf-secret-0123456789abcdef
@@ -107,6 +109,23 @@ services:
       - '127.0.0.1:3000:3000'
     depends_on:
       - api
+
+  # Site ouvert au réseau local en HTTPS : `docker compose --profile apps --profile lan up -d`, avec
+  # dans `.env` (non versionné) LAN_HOST=<adresse-de-la-machine> et WEB_ORIGIN=https://<adresse>:8443.
+  # Seul ce proxy écoute hors de la machine ; le web, l'API, PostgreSQL et Redis restent sur 127.0.0.1.
+  lan-proxy:
+    profiles: [lan]
+    image: caddy:2.10.2-alpine
+    environment:
+      LAN_HOST: ${LAN_HOST:?renseigner LAN_HOST dans .env}
+    ports:
+      - '0.0.0.0:8443:8443'
+    volumes:
+      - ./docker/caddy/Caddyfile.lan:/etc/caddy/Caddyfile:ro
+      - caddy-lan-data:/data
+      - caddy-lan-config:/config
+    depends_on:
+      - web
 
   # --- Observabilité (OBS-44) : `docker compose --profile obs up -d`. Absente du développement ordinaire (OBS-14).
   postgres-obs:
@@ -174,6 +193,8 @@ services:
       - ./ops/observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
 
 volumes:
+  caddy-lan-data:
+  caddy-lan-config:
   postgres-data:
   redis-data:
   postgres-obs-data:
