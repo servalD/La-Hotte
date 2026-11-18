@@ -65,6 +65,14 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...production, SMTP_URL: 'smtp://smtp.example:25' })).toThrowError(
       /SMTP_URL/,
     );
+    // EXT-44 : le jeton du fetcher de développement est refusé en production.
+    expect(() =>
+      parseEnv({
+        ...production,
+        FETCHER_URL: 'https://fetcher.internal',
+        FETCHER_TOKEN: 'dev-only-fetcher-token-0123456789abcdef',
+      }),
+    ).toThrowError(/FETCHER_TOKEN/);
     expect(
       parseEnv({ ...production, SMTP_URL: 'smtp://smtp.example:587?requireTLS=true' }).SMTP_URL,
     ).toContain('requireTLS');
