@@ -30,6 +30,7 @@ Le produit a beaucoup de règles ; l'utilisateur ne doit en voir aucune tant qu'
 
 - **UX-10** Quatre entrées : **Accueil** (ce qui demande mon attention : invitations, parts à régler, événements proches), **Listes** (les miennes, celles de mes proches), **Événements**, **Panier & comptes**. Notifications et changement de profil dans l'en-tête.
 - **UX-11** L'accueil d'un nouveau profil est un parcours guidé de trois cartes : ajouter un premier souhait, inviter un proche, installer l'application. Aucune visite guidée imposée.
+- **UX-13** Présentation de la navigation : sur mobile, une barre d'onglets en bas avec les quatre entrées d'UX-10 ; sur bureau, la même navigation dans l'en-tête. Un menu attaché à l'avatar du profil actif regroupe le changement de profil, le verrouillage, les réglages du profil, l'espace Compte, la sécurité et la déconnexion ; les notifications sont une cloche à pastille dans l'en-tête. Les autres écrans (répertoire, cercle, invitations, cadeaux) s'atteignent depuis l'accueil et les écrans qui les concernent. Les espaces Compte et Administration n'ont pas de profil actif : ils ont un menu de compte (retour aux profils, thème, déconnexion) et, sous l'en-tête, la rangée de leurs rubriques.
 - **UX-12** Sélecteur de profil : avatars en grand, à la manière d'un écran d'accueil familial ; cadenas sur les profils à PIN.
 
 ## Sélecteur « Qui voit ça ? »
@@ -91,6 +92,10 @@ Le mouvement sert à trois choses : **situer** (d'où vient cet écran), **confi
 - **DS-02** Composants de base accessibles (shadcn/ui sur Radix), stylés par Tailwind à partir des jetons.
 - **DS-03** Chaque profil choisit une couleur d'accent, utilisée pour son avatar et pour marquer « je suis sous ce profil ».
 - **DS-04** Ton chaleureux et sobre : illustrations légères pour les états vides, pas de surcharge festive permanente.
+- **DS-05** Identité visuelle : le nom est « La Hotte ». Palette : rouge canneberge (marque), or chaud (accent, moments spéciaux), vert sapin (« reçu », succès), crème pour le fond ; le rouge d'alerte reste distinct de celui de la marque. Les contrastes d'A11Y-03 s'appliquent à toute la palette, claire comme sombre.
+- **DS-06** Typographie : une police à empattements pour les titres, une police sans empattements pour le texte, toutes deux servies par l'application elle-même (pas de service tiers au chargement). Échelle fixe de tailles ; corps à 16 px sur mobile.
+- **DS-07** Les états vides utilisent un composant commun : une petite illustration, une phrase chaleureuse et une seule action principale.
+- **DS-08** Trois niveaux de bouton (principal, secondaire, discret) ; l'action principale d'un écran est unique et visible. Le thème saisonnier reste facultatif et désactivable (question ouverte 2).
 
 ## Accessibilité
 
@@ -115,5 +120,5 @@ Le mouvement sert à trois choses : **situer** (d'où vient cet écran), **confi
 
 ## Questions ouvertes
 
-1. Identité visuelle (nom, logo, palette) : à définir avant la phase d'interface.
+1. ~~Identité visuelle~~ : tranchée (DS-05, DS-06). Le logo reste à dessiner.
 2. Thème saisonnier optionnel (Noël) : agréable, mais à garder désactivable.
