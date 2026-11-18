@@ -1,6 +1,7 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   type CommentUnderReviewView,
   ContestOutcome,
@@ -193,7 +194,7 @@ export function ModerationQueue() {
     void queryClient.invalidateQueries({ queryKey: getGetModerationQueueQueryKey() });
   };
   if (!queue.data) return null;
-  if (queue.data.items.length === 0) return <p>{t('empty')}</p>;
+  if (queue.data.items.length === 0) return <EmptyState compact title={t('empty')} />;
   return (
     <ul className="flex flex-col gap-4">
       {queue.data.items.map((entry) => (

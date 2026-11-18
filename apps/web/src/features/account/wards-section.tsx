@@ -17,6 +17,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { ConfirmButton } from '@/components/confirm-button';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { authErrorKey } from '@/features/auth/api-errors';
 import { Field } from '@/features/auth/field';
@@ -236,7 +237,7 @@ export function WardsSection() {
       </h2>
       <p className="text-sm text-foreground-muted">{t('who')}</p>
       <FormError message={error} />
-      {list.data?.items.length === 0 ? <p>{t('none')}</p> : null}
+      {list.data?.items.length === 0 ? <EmptyState compact title={t('none')} /> : null}
       <ul className="flex flex-col gap-3">
         {list.data?.items.map((ward) => (
           <li

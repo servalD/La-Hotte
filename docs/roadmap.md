@@ -785,11 +785,8 @@ Décisions : DS-05 à DS-08 (identité, typographie, états vides, boutons) et U
 
 **Restes** :
 
-- fiche article (`/products/[id]`) restylée mais non revue à l'écran (il faut une fiche créée par lien ou photo) ;
-- cercle, invitations ouvertes, partage, comptes sous tutelle, administration : style des composants de base seulement ;
-- icône de l'application (PWA) : toujours les initiales « LH », à remplacer par `BrandMark` ;
-- liens légaux du pied de page, quand ces pages existeront ;
-- relecture `security-reviewer` du balisage touché dans `accounting` et du menu du profil, avant fusion.
+- administration (comptes, modération, audit, réglages) et comptes sous tutelle : style des composants de base seulement, non revus à l'écran (il faut un compte administrateur) ;
+- liens légaux du pied de page, quand ces pages existeront.
 
 ## Après la v1
 

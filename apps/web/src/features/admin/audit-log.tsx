@@ -4,6 +4,7 @@ import { AuditAction, type AuditEntryView, useListAuditEntries } from '@wishlist
 import { useFormatter, useTranslations } from 'next-intl';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 
 /** Les clés de message ne portent pas de point (next-intl). */
@@ -30,7 +31,7 @@ function Page({
     v === null ? '' : typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : String(v);
   return (
     <>
-      {page.data.items.length === 0 && !cursor ? <p>{t('empty')}</p> : null}
+      {page.data.items.length === 0 && !cursor ? <EmptyState compact title={t('empty')} /> : null}
       {page.data.items.map((entry) => (
         <li
           key={entry.id}

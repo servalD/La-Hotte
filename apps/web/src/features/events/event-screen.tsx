@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Card, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
@@ -131,7 +132,7 @@ function InviteDialog({ event }: { event: EventDetailView }) {
         <DialogDescription>{t('who')}</DialogDescription>
         <fieldset className="mt-4 flex flex-col gap-2">
           <legend className="sr-only">{t('title')}</legend>
-          {choices.length === 0 ? <p>{t('empty')}</p> : null}
+          {choices.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
           {choices.map((member) => (
             <label key={member.profileId} className="flex min-h-touch items-center gap-2">
               <input
@@ -319,7 +320,7 @@ function ListsPanel({ event }: { event: EventDetailView }) {
         // EVT-32 : cocher ce qu'on a reçu (sans indication de ce qui a été acheté).
         <p className="text-sm">{t('reception')}</p>
       ) : null}
-      {items.length === 0 ? <p>{t('empty')}</p> : null}
+      {items.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
       <ul className="flex flex-col gap-2">
         {items.map((list) =>
           list.view === 'teaser' ? null : (

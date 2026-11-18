@@ -11,6 +11,7 @@ import {
 import { useFormatter, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { text } from '@/features/auth/form-data';
 
@@ -106,7 +107,7 @@ export function MyModerationSection() {
         {t('title')}
       </h2>
       <p className="text-sm text-foreground-muted">{t('who')}</p>
-      {decisions.data?.items.length === 0 ? <p>{t('empty')}</p> : null}
+      {decisions.data?.items.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
       <ul className="flex flex-col gap-2">
         {decisions.data?.items.map((decision) => (
           <Decision key={decision.id} decision={decision} />

@@ -110,7 +110,7 @@ function AccountMenu({ area, waiting, signingOut, onSignOut }: Controls & { area
         <DropdownMenuContent>
           {account.data ? (
             <DropdownMenuLabel className="max-w-72 text-sm break-all font-semibold text-foreground">
-              {account.data.email}
+              {maskEmail(account.data.email)}
             </DropdownMenuLabel>
           ) : null}
           {waiting > 0 ? (
@@ -142,4 +142,14 @@ function AccountMenu({ area, waiting, signingOut, onSignOut }: Controls & { area
       {signOutConfirm.dialog}
     </>
   );
+}
+
+/**
+ * `g•••@domaine` : l'espace Compte s'ouvre aussi depuis l'écran familial de choix du profil, devant
+ * les proches qui partagent l'appareil. L'adresse entière reste dans la rubrique Compte.
+ */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf('@');
+  if (at < 1) return '•••';
+  return `${email.slice(0, 1)}•••${email.slice(at)}`;
 }

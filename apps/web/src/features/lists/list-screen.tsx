@@ -418,7 +418,7 @@ function Members({ list }: { list: ListGiverView | ListRecipientView }) {
         {t('title')}
       </h2>
       <p className="text-sm text-foreground-muted">{t('who')}</p>
-      {(members.data?.items.length ?? 0) <= 1 ? <p>{t('none')}</p> : null}
+      {(members.data?.items.length ?? 0) <= 1 ? <EmptyState compact title={t('none')} /> : null}
       <ul className="flex flex-col gap-2">
         {members.data?.items.map((member) => (
           <li

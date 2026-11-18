@@ -36,11 +36,22 @@ export function EmptyState({
   title,
   description,
   action,
+  compact = false,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  /** Dans une rubrique d'écran : sans illustration, une simple note encadrée. */
+  compact?: boolean;
 }) {
+  if (compact) {
+    return (
+      <p className="rounded-xl border border-dashed border-border-strong/40 bg-surface px-4 py-3 text-sm text-foreground-muted">
+        {title}
+        {action ? <span className="ml-3 inline-block">{action}</span> : null}
+      </p>
+    );
+  }
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border-strong/40 bg-surface px-6 py-10 text-center">
       <GiftIllustration />

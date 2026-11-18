@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +49,7 @@ function CarryStep({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-foreground-muted">{t('who')}</p>
-      {items.length === 0 ? <p>{t('empty')}</p> : null}
+      {items.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
       <ul className="flex flex-col gap-2">
         {items.map((c) => (
           <li key={c.item.id} className="flex min-h-touch items-start gap-3">
@@ -160,7 +161,7 @@ function IdeasStep({
           {t('submit')}
         </Button>
       </form>
-      {q && ideas.data?.items.length === 0 ? <p>{t('empty')}</p> : null}
+      {q && ideas.data?.items.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
       <ul className="flex flex-col gap-2">
         {(ideas.data?.items ?? []).map((item) => (
           <li key={item.id}>

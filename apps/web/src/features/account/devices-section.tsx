@@ -1,5 +1,6 @@
 'use client';
 
+import { deviceName } from './device-name';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getListSessionsQueryKey,
@@ -11,6 +12,7 @@ import {
 } from '@wishlist/api-client';
 import { useFormatter, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 
 /** Sessions ouvertes (AUTH-05) et appareils de confiance (AUTH-12) : métadonnées seulement. */
 export function DevicesSection() {
@@ -40,7 +42,11 @@ export function DevicesSection() {
             >
               <div className="min-w-0">
                 {/* Texte déclaré par l'appareil : affiché tel quel, jamais interprété. */}
-                <p className="truncate font-medium">{session.userAgent || t('unknownDevice')}</p>
+                <p className="truncate font-medium">
+                  {(session.userAgent && deviceName(session.userAgent)) ||
+                    session.userAgent ||
+                    t('unknownDevice')}
+                </p>
                 <p className="text-sm text-foreground-muted">
                   {t('lastSeen', { date: when(session.lastSeenAt) })}
                 </p>
@@ -77,7 +83,7 @@ export function DevicesSection() {
           {t('trusted.title')}
         </h2>
         <p className="text-sm text-foreground-muted">{t('trusted.who')}</p>
-        {devices.data?.items.length === 0 ? <p>{t('trusted.none')}</p> : null}
+        {devices.data?.items.length === 0 ? <EmptyState compact title={t('trusted.none')} /> : null}
         <ul className="flex flex-col gap-2">
           {devices.data?.items.map((device) => (
             <li
@@ -85,7 +91,11 @@ export function DevicesSection() {
               className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-4"
             >
               <div className="min-w-0">
-                <p className="truncate font-medium">{device.userAgent || t('unknownDevice')}</p>
+                <p className="truncate font-medium">
+                  {(device.userAgent && deviceName(device.userAgent)) ||
+                    device.userAgent ||
+                    t('unknownDevice')}
+                </p>
                 <p className="text-sm text-foreground-muted">
                   {t('trusted.until', { date: when(device.expiresAt) })}
                 </p>

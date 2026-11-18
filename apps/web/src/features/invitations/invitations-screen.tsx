@@ -19,6 +19,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { ConfirmButton } from '@/components/confirm-button';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { authErrorKey } from '@/features/auth/api-errors';
 import { Field } from '@/features/auth/field';
@@ -115,7 +116,10 @@ export function InvitationsScreen() {
           {Object.values(CreateInvitationDtoKind)
             .filter((k) => k === CreateInvitationDtoKind.LINK || !profile?.isChild)
             .map((value) => (
-              <div key={value} className="flex items-center gap-3">
+              <div
+                key={value}
+                className={`flex items-center gap-3 rounded-xl border px-4 ${kind === value ? 'border-primary bg-primary/5' : 'border-border'}`}
+              >
                 <input
                   id={`kind-${value}`}
                   type="radio"
@@ -204,7 +208,7 @@ export function InvitationsScreen() {
         <h2 id="open-title" className="text-lg font-semibold">
           {t('open.title')}
         </h2>
-        {list.data?.items.length === 0 ? <p>{t('open.none')}</p> : null}
+        {list.data?.items.length === 0 ? <EmptyState compact title={t('open.none')} /> : null}
         <ul className="flex flex-col gap-2">
           {list.data?.items.map((invitation) => (
             <li
