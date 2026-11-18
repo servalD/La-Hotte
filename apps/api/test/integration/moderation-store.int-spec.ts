@@ -195,7 +195,10 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
     });
     expect(await listed()).toEqual({ report: true, contest: true });
     expect(await store.contestOpen(contest.id)).toBe(true);
-    await prisma.comment.update({ where: { id: commentId }, data: { deletedAt: new Date() } });
+    await prisma.comment.update({
+      where: { id: commentId },
+      data: { deletedAt: new Date(), body: '' },
+    });
     expect(await listed()).toEqual({ report: false, contest: false });
   });
 
