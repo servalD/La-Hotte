@@ -93,7 +93,7 @@ export function TransferConsentForm() {
         ))}
       </fieldset>
       {choice === 'NONE' ? (
-        <p role="note" className="rounded-md border border-border p-3 text-sm">
+        <p role="note" className="rounded-xl border border-border bg-surface p-4 text-sm">
           {t('consent.noneWarning')}
         </p>
       ) : null}

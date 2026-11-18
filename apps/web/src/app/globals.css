@@ -16,6 +16,8 @@
   --color-primary: var(--ds-color-primary);
   --color-primary-hover: var(--ds-color-primary-hover);
   --color-primary-foreground: var(--ds-color-primary-foreground);
+  --color-accent: var(--ds-color-accent);
+  --color-accent-foreground: var(--ds-color-accent-foreground);
   --color-danger: var(--ds-color-danger);
   --color-danger-foreground: var(--ds-color-danger-foreground);
   --color-success: var(--ds-color-success);
@@ -25,10 +27,12 @@
   --color-profile-accent: var(--ds-color-profile-accent);
 
   --font-sans: var(--ds-font-sans);
+  --font-display: var(--ds-font-display);
 
   --radius-sm: var(--ds-radius-sm);
   --radius-md: var(--ds-radius-md);
   --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
 
   --shadow-sm: var(--ds-shadow-sm);
   --shadow-md: var(--ds-shadow-md);
@@ -47,6 +51,23 @@
     color: var(--ds-color-foreground);
     font-family: var(--ds-font-sans);
     -webkit-text-size-adjust: 100%;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  /* Cases et boutons radio natifs aux couleurs de la marque, à taille tactile confortable. */
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--ds-color-primary);
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--ds-font-display);
+    letter-spacing: -0.01em;
   }
 
   /* A11Y-02 : focus toujours visible au clavier. */

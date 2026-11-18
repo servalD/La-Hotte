@@ -13,8 +13,16 @@ import {
 } from '@wishlist/api-client';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
-import { ConfirmButton } from '@/components/confirm-button';
+import { ConfirmDialog } from '@/components/confirm-button';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { GiftIcon, MoreIcon } from '@/components/ui/icons';
 import { Label } from '@/components/ui/label';
 import { Field } from '@/features/auth/field';
 import { ItemAccountingButton } from '@/features/accounting/item-accounting';
@@ -26,10 +34,16 @@ import { kindKey, type QueuedInput } from '@/lib/offline/queue';
 import { useOfflineAction, usePendingFor } from '@/lib/offline/queue-context';
 import { listErrorKey } from './api-errors';
 import { formatMinor } from './format';
-import { WhoSeesDialog } from './who-sees-dialog';
+import { WhoSeesPanel } from './who-sees-dialog';
 
 /** LST-12, LST-13 : couleur toujours doublée d'un pictogramme et d'un libellé (A11Y). */
 const STATUS_ICON = { OPEN: '○', RESERVED: '◐', PURCHASED: '●', RECEIVED: '✓' } as const;
+const STATUS_TONE = {
+  OPEN: 'neutral',
+  RESERVED: 'accent',
+  PURCHASED: 'info',
+  RECEIVED: 'success',
+} as const;
 
 /**
  * Un élément, tel que l'API le rend : vue destinataire (neutre ou reçu, LST-16) ou vue offreur.
@@ -53,6 +67,8 @@ export function ItemCard({
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [dialog, setDialog] = useState<'whoSees' | 'withdraw' | 'delete' | null>(null);
+  const tw = useTranslations('whoSees');
   const refresh = () =>
     void queryClient.invalidateQueries({ queryKey: getListItemsQueryKey(listId) });
   const onError = (e: unknown) => {
@@ -75,6 +91,9 @@ export function ItemCard({
   const giver = item.view === 'giver' ? item : null;
   const recipient = item.view === 'recipient' ? item : null;
   const canEdit = item.mine || permissions.edit;
+  const canChooseAudience = permissions.editRules || item.mine;
+  const canWithdraw = Boolean(recipient) && !isGiftlist;
+  const hasMenu = canEdit || canChooseAudience || !item.mine || canWithdraw;
   const price =
     item.unitPriceMinor === null
       ? t('freePrice')
@@ -83,7 +102,7 @@ export function ItemCard({
   return (
     // « Élément mis à jour par quelqu'un d'autre » : halo bref à chaque nouvelle version.
     <Highlight trigger={item.version} className="rounded-lg">
-      <article className="relative flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+      <article className="relative flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
         {/* « Réception confirmée » côté destinataire : confettis discrets (MOT-04 : aucun en mouvement réduit). */}
         <Celebration active={celebrate} />
         <div className="flex gap-4">
@@ -92,39 +111,50 @@ export function ItemCard({
               imageKey={item.product.imageKey}
               width={96}
               height={96}
-              className="size-24 shrink-0 rounded-md object-cover"
+              className="size-24 shrink-0 rounded-lg object-cover"
             />
-          ) : null}
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <h3 className="font-semibold break-words">{item.product.title}</h3>
-            <p className="text-sm">
+          ) : (
+            <span
+              aria-hidden="true"
+              className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-primary"
+            >
+              <GiftIcon width={36} height={36} />
+            </span>
+          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <h3 className="font-display text-lg leading-snug font-semibold break-words">
+              {item.product.title}
+            </h3>
+            <p className="font-semibold">
               {price}
               {item.quantity > 1 ? ` · ${t('quantity', { count: item.quantity })}` : ''}
               {item.quantity > 1 && item.unitPriceMinor !== null
                 ? ` · ${t('total', { amount: formatMinor(item.unitPriceMinor * item.quantity, item.currency, locale) })}`
                 : ''}
             </p>
-            <p className="text-sm text-foreground-muted">
-              {t(`priority.${item.priority}`)}
-              {item.manyWelcome ? ` · ${t('manyWelcome')}` : ''}
-              {item.hidden ? ` · ${t('hidden')}` : ''}
-            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge tone={item.priority === 'WANT' ? 'neutral' : 'brand'}>
+                {t(`priority.${item.priority}`)}
+              </Badge>
+              {item.manyWelcome ? <Badge>{t('manyWelcome')}</Badge> : null}
+              {item.hidden ? <Badge>{t('hidden')}</Badge> : null}
+              {recipient?.received ? (
+                <Badge tone="success">
+                  <span aria-hidden="true">✓ </span>
+                  {t('received')}
+                </Badge>
+              ) : null}
+              {giver ? (
+                <Badge tone={STATUS_TONE[giver.status]}>
+                  <Confirmed stateKey={giver.status}>
+                    <span aria-hidden="true">{STATUS_ICON[giver.status]} </span>
+                    {t(`status.${giver.status}`)}
+                  </Confirmed>
+                </Badge>
+              ) : null}
+              {giver?.isSuggestion ? <Badge tone="accent">{t('suggestion')}</Badge> : null}
+            </div>
             {item.note ? <p className="text-sm break-words">{item.note}</p> : null}
-            {recipient?.received ? (
-              <p className="text-sm font-medium text-success">
-                <span aria-hidden="true">✓ </span>
-                {t('received')}
-              </p>
-            ) : null}
-            {giver ? (
-              <p className="text-sm font-medium">
-                <Confirmed stateKey={giver.status}>
-                  <span aria-hidden="true">{STATUS_ICON[giver.status]} </span>
-                  {t(`status.${giver.status}`)}
-                </Confirmed>
-                {giver.isSuggestion ? ` · ${t('suggestion')}` : ''}
-              </p>
-            ) : null}
             {item.product.sourceUrl ? (
               <a
                 href={item.product.sourceUrl}
@@ -162,88 +192,131 @@ export function ItemCard({
             onError={onError}
           />
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-1 border-t border-border pt-3">
             <ItemThreadsButton itemId={item.id} title={item.product.title} />
             {/* CPT-02, CPT-59 : seulement sous la forme offreur. */}
             {giver ? <ItemAccountingButton itemId={item.id} title={item.product.title} /> : null}
             {recipient && !isGiftlist ? (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    if (!recipient.received) {
-                      haptic();
-                      setCelebrate(true);
-                    }
-                    act(offlineActions.received(item.id, listId, !recipient.received));
-                  }}
-                >
-                  {recipient.received ? t('unmarkReceived') : t('markReceived')}
-                </Button>
-                <ConfirmButton
-                  variant="secondary"
-                  label={t('withdraw.action')}
-                  title={t('withdraw.title')}
-                  description={t('withdraw.body')}
-                  confirmLabel={t('withdraw.noLonger')}
-                  cancelLabel={t('cancel')}
-                  onConfirm={() => {
-                    withdraw.mutate(
-                      { id: item.id, data: { reason: WithdrawnReason.NO_LONGER_WANTED } },
-                      { onSuccess: refresh, onError },
-                    );
-                  }}
-                />
-              </>
-            ) : null}
-            {canEdit ? (
               <Button
-                variant="ghost"
-                onClick={() => {
-                  setEditing(true);
-                }}
-              >
-                {t('edit')}
-              </Button>
-            ) : null}
-            {permissions.editRules || item.mine ? (
-              <WhoSeesDialog itemId={item.id} listId={listId} />
-            ) : null}
-            {!item.mine ? (
-              <Button
-                variant="ghost"
-                disabled={copy.isPending}
-                onClick={() => {
-                  copy.mutate(
-                    { id: item.id },
-                    {
-                      onSuccess: () => {
-                        setMessage(t('copied'));
-                      },
-                      onError,
-                    },
-                  );
-                }}
-              >
-                {t('copy')}
-              </Button>
-            ) : null}
-            {canEdit ? (
-              <ConfirmButton
                 variant="secondary"
-                label={t('delete')}
-                title={t('deleteTitle')}
-                description={t('deleteBody')}
-                confirmLabel={t('delete')}
-                cancelLabel={t('cancel')}
-                onConfirm={() => {
-                  act(offlineActions.deleteItem(item.id, listId, item.product.title));
+                onClick={() => {
+                  if (!recipient.received) {
+                    haptic();
+                    setCelebrate(true);
+                  }
+                  act(offlineActions.received(item.id, listId, !recipient.received));
                 }}
-              />
+              >
+                {recipient.received ? t('unmarkReceived') : t('markReceived')}
+              </Button>
+            ) : null}
+            {hasMenu ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="ml-auto" aria-label={t('more')}>
+                    <MoreIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {canEdit ? (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setEditing(true);
+                      }}
+                    >
+                      {t('edit')}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canChooseAudience ? (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setDialog('whoSees');
+                      }}
+                    >
+                      {tw('title')}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {!item.mine ? (
+                    <DropdownMenuItem
+                      disabled={copy.isPending}
+                      onSelect={() => {
+                        copy.mutate(
+                          { id: item.id },
+                          {
+                            onSuccess: () => {
+                              setMessage(t('copied'));
+                            },
+                            onError,
+                          },
+                        );
+                      }}
+                    >
+                      {t('copy')}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canWithdraw ? (
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setDialog('withdraw');
+                      }}
+                    >
+                      {t('withdraw.action')}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canEdit ? (
+                    <DropdownMenuItem
+                      className="text-danger"
+                      onSelect={() => {
+                        setDialog('delete');
+                      }}
+                    >
+                      {t('delete')}
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
           </div>
         )}
       </article>
+      <WhoSeesPanel
+        itemId={item.id}
+        listId={listId}
+        open={dialog === 'whoSees'}
+        onOpenChange={(open) => {
+          setDialog(open ? 'whoSees' : null);
+        }}
+      />
+      <ConfirmDialog
+        variant="secondary"
+        open={dialog === 'withdraw'}
+        onOpenChange={(open) => {
+          setDialog(open ? 'withdraw' : null);
+        }}
+        title={t('withdraw.title')}
+        description={t('withdraw.body')}
+        confirmLabel={t('withdraw.noLonger')}
+        cancelLabel={t('cancel')}
+        onConfirm={() => {
+          withdraw.mutate(
+            { id: item.id, data: { reason: WithdrawnReason.NO_LONGER_WANTED } },
+            { onSuccess: refresh, onError },
+          );
+        }}
+      />
+      <ConfirmDialog
+        open={dialog === 'delete'}
+        onOpenChange={(open) => {
+          setDialog(open ? 'delete' : null);
+        }}
+        title={t('deleteTitle')}
+        description={t('deleteBody')}
+        confirmLabel={t('delete')}
+        cancelLabel={t('cancel')}
+        onConfirm={() => {
+          act(offlineActions.deleteItem(item.id, listId, item.product.title));
+        }}
+      />
     </Highlight>
   );
 }

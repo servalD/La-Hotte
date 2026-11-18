@@ -16,6 +16,7 @@ import {
   useDeleteOneList,
   useGetCircle,
   useGetOneList,
+  useGetOwnProfile,
   useLeaveList,
   useListItems,
   useListMembers,
@@ -28,8 +29,11 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { ConfirmButton } from '@/components/confirm-button';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ChevronRightIcon, PlusIcon } from '@/components/ui/icons';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddItemPanel } from './add-item-panel';
@@ -42,8 +46,11 @@ const SORTS = ['position', 'priority', 'price', 'added'] as const;
 export function ListScreen({ id }: { id: string }) {
   const t = useTranslations('list');
   const tl = useTranslations('lists');
+  const ta = useTranslations('add');
   const list = useGetOneList(id);
   const circle = useGetCircle();
+  const me = useGetOwnProfile();
+  const [adding, setAdding] = useState(false);
   const [sort, setSort] = useState<ItemSort>('position');
   const items = useListItems(id, { sort });
 
@@ -71,75 +78,116 @@ export function ListScreen({ id }: { id: string }) {
 
   const isGiftlist = data.view === 'giver' && data.type === ListType.GIFTLIST;
   const names = new Map((circle.data?.items ?? []).map((m) => [m.profileId, m.displayName]));
+  // Le profil actif n'est pas dans son propre cercle : son nom vient de son profil.
+  if (me.data) names.set(me.data.id, me.data.displayName);
   const recipientNames = data.recipients.map((r) => names.get(r) ?? '…').join(', ');
   const readOnly = data.archivedAt !== null || data.deletedAt !== null;
 
+  const canAdd = !readOnly && data.permissions.add !== AddRight.none;
+  const addLabel =
+    data.permissions.add === AddRight.suggestion
+      ? 'titleSuggestion'
+      : isGiftlist
+        ? 'titleGift'
+        : 'title';
+  const addButton = canAdd ? (
+    <Button
+      variant={adding ? 'secondary' : 'primary'}
+      aria-expanded={adding}
+      onClick={() => {
+        setAdding((open) => !open);
+      }}
+    >
+      {adding ? null : <PlusIcon width={18} height={18} />}
+      {adding ? t('cancel') : ta(addLabel)}
+    </Button>
+  ) : null;
+  const empty = items.data?.items.length === 0;
+
   return (
     <div className="flex flex-col gap-6">
-      <Button asChild variant="ghost" className="self-start">
-        <Link href="/lists">{t('back')}</Link>
-      </Button>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold break-words">
+      <Link
+        href="/lists"
+        className="inline-flex min-h-touch items-center gap-1 self-start rounded-md text-sm font-medium text-foreground-muted hover:text-foreground"
+      >
+        <ChevronRightIcon width={16} height={16} className="rotate-180" />
+        {t('back')}
+      </Link>
+      <header className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold break-words">
           {data.personal ? tl('personal') : data.title}
         </h1>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge tone={isGiftlist ? 'accent' : 'brand'}>
+            {isGiftlist ? tl('giftlist') : tl('wishlist')}
+          </Badge>
+          {/* UX-04 : toujours dire qui voit. */}
+          <Badge>{tl(`audience.${data.audience}`)}</Badge>
+        </div>
         {recipientNames ? (
           <p className="text-sm">{t('recipients', { names: recipientNames })}</p>
         ) : null}
-        {/* UX-04 : toujours dire qui voit. */}
-        <p className="text-sm text-foreground-muted">{tl(`audience.${data.audience}`)}</p>
-        {data.description ? <p className="mt-2 break-words">{data.description}</p> : null}
+        {data.description ? <p className="mt-1 break-words">{data.description}</p> : null}
         {data.archivedAt ? <p role="status">{t('archived')}</p> : null}
         {data.deletedAt ? <p role="status">{t('deleted')}</p> : null}
       </header>
 
-      <ListActions list={data} />
-
       {isGiftlist && data.permissions.edit ? <GiftSettings list={data} /> : null}
 
-      {!readOnly && data.permissions.add !== AddRight.none ? (
+      {canAdd && adding ? (
         <AddItemPanel listId={id} right={data.permissions.add} isGiftlist={isGiftlist} />
       ) : null}
 
       <section aria-labelledby="items-title" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="items-title" className="text-lg font-semibold">
-            {data.personal ? tl('personal') : data.title}
-          </h2>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="sort">{t('sort.label')}</Label>
-            <select
-              id="sort"
-              className="h-touch rounded-md border border-border-strong bg-surface px-3"
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value as ItemSort);
-              }}
-            >
-              {SORTS.map((value) => (
-                <option key={value} value={value}>
-                  {t(`sort.${value}`)}
-                </option>
+        <h2 id="items-title" className="sr-only">
+          {data.personal ? tl('personal') : data.title}
+        </h2>
+        {empty ? (
+          <EmptyState
+            title={t('noItems')}
+            {...(addButton && !adding ? { action: addButton } : {})}
+          />
+        ) : (
+          <>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              {addButton}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="sort">{t('sort.label')}</Label>
+                <select
+                  id="sort"
+                  className="h-touch rounded-md border border-border-strong bg-surface px-3"
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value as ItemSort);
+                  }}
+                >
+                  {SORTS.map((value) => (
+                    <option key={value} value={value}>
+                      {t(`sort.${value}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {items.data?.items.map((item) => (
+                <li key={item.id}>
+                  <ItemCard
+                    item={item}
+                    listId={id}
+                    permissions={data.permissions}
+                    isGiftlist={isGiftlist}
+                  />
+                </li>
               ))}
-            </select>
-          </div>
-        </div>
-        {items.data?.items.length === 0 ? <p>{t('noItems')}</p> : null}
-        <ul className="flex flex-col gap-3">
-          {items.data?.items.map((item) => (
-            <li key={item.id}>
-              <ItemCard
-                item={item}
-                listId={id}
-                permissions={data.permissions}
-                isGiftlist={isGiftlist}
-              />
-            </li>
-          ))}
-        </ul>
+            </ul>
+          </>
+        )}
       </section>
 
       {data.permissions.manageMembers || data.myRole ? <Members list={data} /> : null}
+
+      <ListActions list={data} />
     </div>
   );
 }
@@ -173,13 +221,16 @@ function ListActions({ list }: { list: ListGiverView | ListRecipientView }) {
     void queryClient.invalidateQueries({ queryKey: getListListsQueryKey() });
   };
   const successor = members.data?.items.find((m) => m.role === 'OWNER' || m.role === 'CONTRIBUTOR');
+  const canLeave = Boolean(list.myRole) && !list.personal && list.view === 'giver';
+  // Rien à gérer : aucun bloc vide.
+  if (!list.permissions.archive && !list.permissions.delete && !canLeave && !error) return null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 border-t border-border pt-4">
       <div className="flex flex-wrap gap-2">
         {list.permissions.archive ? (
           <Button
-            variant="secondary"
+            variant="ghost"
             onClick={() => {
               update.mutate(
                 { id: list.id, data: { archived: list.archivedAt === null } },
@@ -192,6 +243,8 @@ function ListActions({ list }: { list: ListGiverView | ListRecipientView }) {
         ) : null}
         {list.permissions.delete ? (
           <ConfirmButton
+            variant="ghost"
+            className="text-danger"
             label={t('delete')}
             title={t('deleteTitle')}
             description={t('deleteBody')}
@@ -213,7 +266,7 @@ function ListActions({ list }: { list: ListGiverView | ListRecipientView }) {
         ) : null}
         {list.myRole && !list.personal && list.view === 'giver' ? (
           <ConfirmButton
-            variant="secondary"
+            variant="ghost"
             label={t('leave')}
             title={t('leaveTitle')}
             description={list.myRole === 'CREATOR' ? t('leaveSuccessor') : t('leaveBody')}
@@ -340,7 +393,9 @@ function Members({ list }: { list: ListGiverView | ListRecipientView }) {
   const removeMember = useRemoveListMember();
   const [candidate, setCandidate] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const me = useGetOwnProfile();
   const names = new Map((circle.data?.items ?? []).map((m) => [m.profileId, m.displayName]));
+  if (me.data) names.set(me.data.id, me.data.displayName);
   const current = new Set((members.data?.items ?? []).map((m) => m.profileId));
   const choices = (circle.data?.items ?? []).filter(
     (m) =>
@@ -368,7 +423,7 @@ function Members({ list }: { list: ListGiverView | ListRecipientView }) {
         {members.data?.items.map((member) => (
           <li
             key={member.profileId}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-4"
           >
             <span>
               {names.get(member.profileId) ?? '…'} · {tl(`role.${member.role}`)}

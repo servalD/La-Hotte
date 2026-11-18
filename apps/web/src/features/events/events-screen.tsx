@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import {
@@ -21,6 +22,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ChevronRightIcon } from '@/components/ui/icons';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
@@ -46,22 +50,38 @@ function honoreeByDefault(type: Type): boolean {
 function EventRow({ event }: { event: EventSummaryView }) {
   const t = useTranslations('events');
   const locale = useLocale();
+  const date = new Date(event.date);
   return (
-    <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <CardTitle>{event.title}</CardTitle>
-          <CardDescription className="mt-1">
-            {formatDay(event.date, locale)} · {t(`type.${event.type}`)}
-            {event.isSurprise ? ` · ${t('surprise')}` : ''}
-            {event.status !== 'UPCOMING' ? ` · ${t(`status.${event.status}`)}` : ''}
-          </CardDescription>
-          <p className="mt-1 text-sm">{t(`rsvp.${event.myRsvp}`)}</p>
+    <Card className="relative flex items-center gap-4 transition-shadow hover:shadow-md">
+      <span
+        aria-hidden="true"
+        className="flex size-14 shrink-0 flex-col items-center justify-center rounded-lg bg-surface-muted leading-none text-primary"
+      >
+        <span className="text-xs font-medium uppercase">
+          {date.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' })}
+        </span>
+        <span className="font-display text-xl font-semibold">
+          {date.toLocaleDateString(locale, { day: 'numeric', timeZone: 'UTC' })}
+        </span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <CardTitle className="truncate">
+          <Link
+            href={`/events/${event.id}`}
+            className="after:absolute after:inset-0 after:rounded-lg"
+          >
+            {event.title}
+          </Link>
+        </CardTitle>
+        <CardDescription className="mt-1">{formatDay(event.date, locale)}</CardDescription>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Badge tone="brand">{t(`type.${event.type}`)}</Badge>
+          {event.isSurprise ? <Badge tone="accent">{t('surprise')}</Badge> : null}
+          {event.status !== 'UPCOMING' ? <Badge>{t(`status.${event.status}`)}</Badge> : null}
+          <Badge>{t(`rsvp.${event.myRsvp}`)}</Badge>
         </div>
-        <Button asChild variant="secondary">
-          <Link href={`/events/${event.id}`}>{t('open')}</Link>
-        </Button>
       </div>
+      <ChevronRightIcon className="text-foreground-muted" aria-hidden="true" />
     </Card>
   );
 }
@@ -230,30 +250,32 @@ export function EventsScreen() {
   const t = useTranslations('events');
   const [scope, setScope] = useState<Scope>(EventScope.upcoming);
   const events = useListEvents({ scope });
+  const empty = !events.isPending && (events.data?.items.length ?? 0) === 0;
+  // DS-07 : l'état vide porte l'action principale ; elle n'est alors pas répétée dans l'en-tête.
+  const emptyAction = empty && scope === EventScope.upcoming;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label={t('scope.label')} className="flex flex-wrap gap-1">
-          {[EventScope.upcoming, EventScope.past].map((value) => (
-            <Button
-              key={value}
-              variant={scope === value ? 'primary' : 'ghost'}
-              aria-pressed={scope === value}
-              onClick={() => {
-                setScope(value);
-              }}
-            >
-              {t(`scope.${value}`)}
-            </Button>
-          ))}
-        </div>
-        <CreateEventDialog />
+        <SegmentedControl
+          label={t('scope.label')}
+          value={scope}
+          onChange={setScope}
+          options={[EventScope.upcoming, EventScope.past].map((value) => ({
+            value,
+            label: t(`scope.${value}`),
+          }))}
+        />
+        {emptyAction ? null : <CreateEventDialog />}
       </div>
       {events.isPending ? (
         <Skeleton className="h-24 w-full" aria-label={t('loading')} />
-      ) : (events.data?.items.length ?? 0) === 0 ? (
-        <p>{t('empty')}</p>
+      ) : empty ? (
+        <EmptyState
+          title={t(`emptyState.${scope}.title`)}
+          {...(scope === EventScope.upcoming ? { description: t('emptyState.upcoming.body') } : {})}
+          {...(emptyAction ? { action: <CreateEventDialog /> } : {})}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {events.data?.items.map((event) => (

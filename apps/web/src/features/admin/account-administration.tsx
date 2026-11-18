@@ -229,7 +229,7 @@ export function AccountAdministration() {
       ) : null}
       {search.data ? (
         search.data.account ? (
-          <section className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-4">
+          <section className="flex flex-col gap-6 rounded-xl border border-border bg-surface p-4">
             <Metadata account={search.data.account} />
             <Actions account={search.data.account} onDone={refresh} />
           </section>

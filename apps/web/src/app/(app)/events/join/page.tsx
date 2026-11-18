@@ -5,7 +5,7 @@ export default async function Page() {
   const t = await getTranslations('events.join');
   return (
     <>
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
+      <h1 className="text-3xl font-semibold">{t('title')}</h1>
       <JoinEvent />
     </>
   );

@@ -119,7 +119,7 @@ function Entry({ entry, onDone }: { entry: ModerationQueueViewItemsItem; onDone:
 
   if (entry.kind === 'CONTEST') {
     return (
-      <li className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+      <li className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
         <h2 className="font-semibold">{t('contest')}</h2>
         <p className="text-sm text-foreground-muted">
           {t('contested', { action: entry.decision.action, reason: entry.decision.reason })}
@@ -153,7 +153,7 @@ function Entry({ entry, onDone }: { entry: ModerationQueueViewItemsItem; onDone:
       ? { kind: 'products' as const, id: entry.product.id }
       : { kind: 'comments' as const, id: entry.comment.id };
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+    <li className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
       <h2 className="font-semibold">{entry.kind === 'PRODUCT' ? t('product') : t('comment')}</h2>
       {entry.kind === 'PRODUCT' ? (
         <Product product={entry.product} />

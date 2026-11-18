@@ -47,7 +47,7 @@ function Decision({ decision }: { decision: DecisionOnMyContentView }) {
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded-md border border-border p-3">
+    <li className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
       <p className="font-medium">
         {t(decision.targetKind)} · {format.dateTime(new Date(decision.at), { dateStyle: 'medium' })}
       </p>

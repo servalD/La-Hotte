@@ -12,6 +12,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
 import { listErrorKey } from '@/features/lists/api-errors';
@@ -84,13 +85,18 @@ export function DirectoryScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div role="tablist" aria-label={t('title')} className="flex gap-2">
+      <div
+        role="tablist"
+        aria-label={t('title')}
+        className="inline-flex gap-1 self-start rounded-full bg-surface-muted p-1"
+      >
         {(['circle', 'global'] as const).map((value) => (
           <Button
             key={value}
             role="tab"
             aria-selected={scope === value}
-            variant={scope === value ? 'secondary' : 'ghost'}
+            variant="ghost"
+            className={`min-h-10 rounded-full ${scope === value ? 'bg-surface text-foreground shadow-sm hover:bg-surface' : 'text-foreground-muted'}`}
             onClick={() => {
               setScope(value);
             }}
@@ -115,12 +121,12 @@ export function DirectoryScreen() {
         <Button type="submit">{t('search')}</Button>
       </form>
       {message ? <p role="status">{message}</p> : null}
-      {loaded && entries.length === 0 ? <p>{t('empty')}</p> : null}
+      {loaded && entries.length === 0 ? <EmptyState title={t('empty')} /> : null}
       <ul className="flex flex-col gap-3">
         {entries.map((entry) => (
           <li
             key={entry.productId}
-            className="flex gap-4 rounded-lg border border-border bg-surface p-4"
+            className="flex gap-4 rounded-xl border border-border bg-surface p-4"
           >
             {entry.imageKey ? (
               <ProfileImage

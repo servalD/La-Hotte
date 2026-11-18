@@ -180,7 +180,10 @@ export function InvitationsScreen() {
       </form>
 
       {created ? (
-        <div role="status" className="flex flex-col gap-2 rounded-md border border-border p-3">
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
+        >
           <p className="font-medium">{t('created.title')}</p>
           <p className="text-sm text-foreground-muted">
             {t('created.once', {
@@ -206,7 +209,7 @@ export function InvitationsScreen() {
           {list.data?.items.map((invitation) => (
             <li
               key={invitation.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4"
             >
               <div>
                 <p className="font-medium">

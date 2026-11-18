@@ -35,7 +35,7 @@ export function ShareScreen() {
   const lists = (data?.items ?? []).filter((list) => list.view !== 'teaser' && list.myRole);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <h1 className="text-3xl font-semibold">{t('title')}</h1>
       {link ? (
         <p className="text-sm break-all text-foreground-muted">{link}</p>
       ) : (

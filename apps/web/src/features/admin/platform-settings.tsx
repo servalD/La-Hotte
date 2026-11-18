@@ -73,7 +73,7 @@ function SettingForm({
 
   return (
     <form
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
       onSubmit={submit}
     >
       <Label htmlFor={id}>{label}</Label>

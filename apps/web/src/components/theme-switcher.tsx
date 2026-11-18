@@ -3,6 +3,11 @@
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useId, useSyncExternalStore } from 'react';
+import {
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
 
 const THEMES = ['system', 'light', 'dark'] as const;
 
@@ -40,5 +45,32 @@ export function ThemeSwitcher() {
         ))}
       </select>
     </div>
+  );
+}
+
+/** Choix du thème dans le menu du profil : trois options exclusives, au clavier comme au toucher. */
+export function ThemeMenuGroup() {
+  const t = useTranslations('theme');
+  const { theme, setTheme } = useTheme();
+  const mounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false,
+  );
+
+  return (
+    <>
+      <DropdownMenuLabel>{t('label')}</DropdownMenuLabel>
+      <DropdownMenuRadioGroup
+        value={mounted ? (theme ?? 'system') : 'system'}
+        onValueChange={setTheme}
+      >
+        {THEMES.map((value) => (
+          <DropdownMenuRadioItem key={value} value={value}>
+            {t(value)}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </>
   );
 }

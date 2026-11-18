@@ -3,48 +3,55 @@
  * Aucun composant n'écrit une valeur en dur : il utilise ces variables, via Tailwind ou motion.ts.
  *
  * Contrastes vérifiés (A11Y-03) : texte ≥ 4,5:1 sur le fond et la surface, bordures d'éléments
- * interactifs ≥ 3:1. L'identité visuelle définitive reste à décider (10, question 1).
+ * interactifs ≥ 3:1. Identité visuelle : DS-05 et DS-06 (spec 10).
  */
 
 :root {
   color-scheme: light;
 
-  /* Couleurs — thème clair */
-  --ds-color-background: #fcfbf9;
+  /* Couleurs — thème clair (DS-05) : crème, canneberge, or chaud, vert sapin. */
+  --ds-color-background: #fbf7f0;
   --ds-color-surface: #ffffff;
-  --ds-color-surface-muted: #f5f3f0;
-  --ds-color-foreground: #1c1917;
-  --ds-color-foreground-muted: #57534e;
-  --ds-color-border: #e7e5e4;
-  --ds-color-border-strong: #78716c;
-  --ds-color-primary: #be123c;
-  --ds-color-primary-hover: #9f1239;
+  --ds-color-surface-muted: #f4ede1;
+  --ds-color-foreground: #2a1a17;
+  --ds-color-foreground-muted: #5c4a44;
+  --ds-color-border: #e8dccb;
+  --ds-color-border-strong: #85705f;
+  --ds-color-primary: #9f1239;
+  --ds-color-primary-hover: #881337;
   --ds-color-primary-foreground: #ffffff;
-  --ds-color-danger: #b91c1c;
+  /* Or chaud : accent et moments spéciaux. Le texte posé dessus est toujours --ds-color-accent-foreground. */
+  --ds-color-accent: #f2b84b;
+  --ds-color-accent-foreground: #3b2a05;
+  /* Alerte : orange brûlé, distinct du rouge de la marque. */
+  --ds-color-danger: #c2410c;
   --ds-color-danger-foreground: #ffffff;
-  /* LST-13 : « reçu », vert ; toujours doublé d'un pictogramme et d'un libellé. */
-  --ds-color-success: #15803d;
+  /* LST-13 : « reçu », vert sapin ; toujours doublé d'un pictogramme et d'un libellé. */
+  --ds-color-success: #166534;
   /* États d'un cadeau : bleu = acheté, vert = reçu. Toujours doublés d'une icône et d'un libellé. */
   --ds-color-state-purchased: #1d4ed8;
-  --ds-color-state-received: #15803d;
+  --ds-color-state-received: #166534;
   --ds-color-focus-ring: #1d4ed8;
   /* Accent du profil actif (DS-03), remplacé à l'exécution par la couleur du profil. */
-  --ds-color-profile-accent: #be123c;
+  --ds-color-profile-accent: #9f1239;
 
-  /* Typographie */
+  /* Typographie (DS-06) : polices servies par l'application (next/font), repli système. */
   --ds-font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    var(--font-body), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --ds-font-display: var(--font-display), ui-serif, Georgia, Cambria, 'Times New Roman', serif;
 
   /* Rayons */
   --ds-radius-sm: 0.375rem;
   --ds-radius-md: 0.625rem;
   --ds-radius-lg: 1rem;
+  --ds-radius-xl: 1.5rem;
   --ds-radius-full: 9999px;
 
   /* Ombres */
-  --ds-shadow-sm: 0 1px 2px rgb(28 25 23 / 0.06);
-  --ds-shadow-md: 0 4px 12px rgb(28 25 23 / 0.08);
-  --ds-shadow-lg: 0 12px 32px rgb(28 25 23 / 0.12);
+  --ds-shadow-sm: 0 1px 2px rgb(42 26 23 / 0.06);
+  --ds-shadow-md: 0 4px 12px rgb(42 26 23 / 0.08);
+  --ds-shadow-lg: 0 12px 32px rgb(42 26 23 / 0.12);
 
   /* Zones tactiles (≥ 44 px) */
   --ds-size-touch: 2.75rem;
@@ -62,18 +69,20 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --ds-color-background: #141210;
-  --ds-color-surface: #1c1917;
-  --ds-color-surface-muted: #292524;
-  --ds-color-foreground: #fafaf9;
-  --ds-color-foreground-muted: #a8a29e;
-  --ds-color-border: #44403c;
-  --ds-color-border-strong: #a8a29e;
+  --ds-color-background: #17110f;
+  --ds-color-surface: #211815;
+  --ds-color-surface-muted: #2d221e;
+  --ds-color-foreground: #fbf3ea;
+  --ds-color-foreground-muted: #c2b0a5;
+  --ds-color-border: #3d2f29;
+  --ds-color-border-strong: #a08c80;
   --ds-color-primary: #fb7185;
   --ds-color-primary-hover: #fda4af;
-  --ds-color-primary-foreground: #1c1917;
-  --ds-color-danger: #f87171;
-  --ds-color-danger-foreground: #1c1917;
+  --ds-color-primary-foreground: #2a1a17;
+  --ds-color-accent: #f2b84b;
+  --ds-color-accent-foreground: #3b2a05;
+  --ds-color-danger: #fb923c;
+  --ds-color-danger-foreground: #2a1a17;
   --ds-color-success: #4ade80;
   --ds-color-state-purchased: #60a5fa;
   --ds-color-state-received: #4ade80;

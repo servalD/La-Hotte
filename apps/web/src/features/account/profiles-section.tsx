@@ -162,7 +162,10 @@ export function ProfilesSection() {
 
       <ul className="flex flex-col gap-3">
         {data?.items.map((profile) => (
-          <li key={profile.id} className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <li
+            key={profile.id}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+          >
             <div className="flex items-center gap-3">
               <ProfileAvatar name={profile.displayName} color={profile.accentColor} size={40} />
               <div>

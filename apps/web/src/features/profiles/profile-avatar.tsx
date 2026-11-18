@@ -27,7 +27,7 @@ export function ProfileAvatar({
   return (
     <span
       aria-hidden="true"
-      className="inline-flex items-center justify-center rounded-full font-semibold"
+      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold"
       style={{
         width: size,
         height: size,

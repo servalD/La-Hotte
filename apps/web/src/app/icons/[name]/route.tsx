@@ -31,9 +31,9 @@ export async function GET(
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#9a3b2f',
+        background: '#9f1239',
         borderRadius: maskable ? 0 : size * 0.22,
-        color: '#fcfbf9',
+        color: '#fbf7f0',
         fontSize: glyph,
         fontWeight: 700,
       }}

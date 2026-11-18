@@ -36,7 +36,7 @@ export function DevicesSection() {
           {sessions.data?.items.map((session) => (
             <li
               key={session.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-4"
             >
               <div className="min-w-0">
                 {/* Texte déclaré par l'appareil : affiché tel quel, jamais interprété. */}
@@ -82,7 +82,7 @@ export function DevicesSection() {
           {devices.data?.items.map((device) => (
             <li
               key={device.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-4"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{device.userAgent || t('unknownDevice')}</p>

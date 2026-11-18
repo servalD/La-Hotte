@@ -8,9 +8,7 @@ import {
   useLockSession,
   useSignOut,
 } from '@wishlist/api-client';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { wipeDevice } from '@/lib/offline/device';
 import { announceIdentity } from '@/lib/offline/identity-channel';
@@ -18,11 +16,10 @@ import { forgetProfileKeys } from '@/lib/offline/keys';
 import { ConnectionStatus } from '@/lib/offline/connection-status';
 import { InstallInvite, PushInvite } from '@/lib/pwa/engagement';
 import { useQueuedActions } from '@/lib/offline/queue-context';
-import { ConfirmButton } from '@/components/confirm-button';
 import { purgeUserData } from '@/lib/session/purge';
-import { Button } from '@/components/ui/button';
-import { ThemeSwitcher } from '@/components/theme-switcher';
-import { NotificationsLink } from '@/features/notifications/notifications-screen';
+import { SiteFooter } from '@/components/site-footer';
+import { AccountHeader } from '@/features/session/account-nav';
+import { BottomTabs, ProfileHeader } from '@/features/session/profile-nav';
 
 type Area = 'profile' | 'account' | 'admin';
 
@@ -59,7 +56,6 @@ const LINKS: Record<Exclude<Area, 'admin'>, { href: string; key: string }[]> = {
 
 /** Cadre des écrans connectés : navigation, verrouillage du profil, déconnexion. */
 export function AppFrame({ area, children }: { area: Area; children: ReactNode }) {
-  const t = useTranslations('nav');
   const router = useRouter();
   const queryClient = useQueryClient();
   const lock = useLockSession();
@@ -105,56 +101,34 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
     });
   }
 
+  const profile = area === 'profile';
+
   return (
-    <div className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-lg font-bold">{t('app')}</span>
-        <nav aria-label={t('label')} className="flex flex-wrap items-center gap-1">
-          {area === 'admin' ? (
-            <Button asChild variant="ghost">
-              <Link href="/account">{t('account')}</Link>
-            </Button>
-          ) : null}
-          {links.map((link) => (
-            <Button key={link.href} asChild variant="ghost">
-              <Link href={link.href}>{t(link.key)}</Link>
-            </Button>
-          ))}
-          {area === 'profile' ? (
-            <>
-              <NotificationsLink label={t('notifications')} />
-              <Button asChild variant="ghost">
-                <Link href="/profiles">{t('switchProfile')}</Link>
-              </Button>
-              <Button variant="ghost" onClick={onLock} disabled={lock.isPending}>
-                {t('lock')}
-              </Button>
-            </>
-          ) : null}
-          {waiting > 0 ? (
-            <Button asChild variant="ghost">
-              <Link href="/actions">{t('actions', { count: waiting })}</Link>
-            </Button>
-          ) : null}
-          {waiting > 0 ? (
-            // OFF-22 : la déconnexion efface la file ; l'utilisateur est prévenu avant.
-            <ConfirmButton
-              variant="secondary"
-              label={t('signOut')}
-              title={t('signOutQueueTitle')}
-              description={t('signOutQueueBody', { count: waiting })}
-              confirmLabel={t('signOutAnyway')}
-              cancelLabel={t('cancel')}
-              onConfirm={onSignOut}
-            />
-          ) : (
-            <Button variant="secondary" onClick={onSignOut} disabled={signOut.isPending}>
-              {t('signOut')}
-            </Button>
-          )}
-        </nav>
-      </header>
-      {area === 'profile' ? (
+    <div
+      className={
+        profile
+          ? 'mx-auto flex min-h-dvh max-w-4xl flex-col gap-6 pr-[max(1rem,env(safe-area-inset-right))] pb-24 pl-[max(1rem,env(safe-area-inset-left))] md:pb-6'
+          : 'mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]'
+      }
+    >
+      {profile ? (
+        <ProfileHeader
+          waiting={waiting}
+          locking={lock.isPending}
+          signingOut={signOut.isPending}
+          onLock={onLock}
+          onSignOut={onSignOut}
+        />
+      ) : (
+        <AccountHeader
+          area={area}
+          links={links}
+          waiting={waiting}
+          signingOut={signOut.isPending}
+          onSignOut={onSignOut}
+        />
+      )}
+      {profile ? (
         <>
           <ConnectionStatus />
           {/* PWA-03, PWA-04 : proposées au moment où elles servent, jamais à la première visite. */}
@@ -165,9 +139,8 @@ export function AppFrame({ area, children }: { area: Area; children: ReactNode }
       <main id="contenu" className="flex flex-1 flex-col gap-6">
         {children}
       </main>
-      <footer className="flex justify-end border-t border-border pt-4">
-        <ThemeSwitcher />
-      </footer>
+      <SiteFooter />
+      {profile ? <BottomTabs /> : null}
     </div>
   );
 }

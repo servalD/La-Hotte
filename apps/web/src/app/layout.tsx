@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Fraunces, Figtree } from 'next/font/google';
 import { headers } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -6,6 +7,10 @@ import type { ReactNode } from 'react';
 import { ServiceWorkerUpdates } from '@/lib/pwa/service-worker';
 import { Providers } from './providers';
 import './globals.css';
+
+// DS-06 : polices auto-hébergées au build, aucune requête vers un service tiers à l'exécution.
+const display = Fraunces({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
+const body = Figtree({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('app');
@@ -18,8 +23,8 @@ export const viewport: Viewport = {
   // PWA-11 : l'écran à encoche est occupé en entier ; les marges sûres sont tenues par le cadre.
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#fcfbf9' },
-    { media: '(prefers-color-scheme: dark)', color: '#141210' },
+    { media: '(prefers-color-scheme: light)', color: '#fbf7f0' },
+    { media: '(prefers-color-scheme: dark)', color: '#17110f' },
   ],
 };
 
@@ -31,7 +36,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   ]);
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <body className="min-h-dvh bg-background text-foreground antialiased">
         <a
           href="#contenu"

@@ -24,7 +24,7 @@ import { ProfileAvatar } from '@/features/profiles/profile-avatar';
 
 function Row({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
       {children}
     </li>
   );

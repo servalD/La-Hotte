@@ -239,7 +239,10 @@ export function WardsSection() {
       {list.data?.items.length === 0 ? <p>{t('none')}</p> : null}
       <ul className="flex flex-col gap-3">
         {list.data?.items.map((ward) => (
-          <li key={ward.id} className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <li
+            key={ward.id}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium">{ward.email}</p>
               <Button

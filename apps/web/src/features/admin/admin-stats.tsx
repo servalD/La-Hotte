@@ -30,7 +30,7 @@ export function AdminStats() {
   return (
     <dl className="grid gap-3 sm:grid-cols-2">
       {rows.map((row) => (
-        <div key={row.key} className="rounded-lg border border-border bg-surface p-4">
+        <div key={row.key} className="rounded-xl border border-border bg-surface p-4">
           <dt className="text-sm text-foreground-muted">{t(row.key)}</dt>
           <dd className="text-2xl font-semibold">
             {row.value === null ? (

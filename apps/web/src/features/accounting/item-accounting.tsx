@@ -512,7 +512,7 @@ export function ShortfallWindow({
   return (
     <section
       aria-label={t('shortfallTitle')}
-      className="flex flex-col gap-2 rounded-md border border-border p-3"
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
     >
       <p>{t('shortfall', { amount })}</p>
       <p className="text-sm text-foreground-muted">{t('shortfallPrivate')}</p>

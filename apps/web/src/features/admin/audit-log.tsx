@@ -32,7 +32,10 @@ function Page({
     <>
       {page.data.items.length === 0 && !cursor ? <p>{t('empty')}</p> : null}
       {page.data.items.map((entry) => (
-        <li key={entry.id} className="flex flex-col gap-1 rounded-md border border-border p-3">
+        <li
+          key={entry.id}
+          className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-4"
+        >
           <p className="font-medium">{t(`actions.${actionKey(entry.action)}`)}</p>
           <p className="text-sm text-foreground-muted">
             {format.dateTime(new Date(entry.at), { dateStyle: 'medium', timeStyle: 'short' })} ·{' '}

@@ -11,10 +11,20 @@ import {
 } from '@wishlist/api-client';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { WalletIcon } from '@/components/ui/icons';
 import { formatMinor } from '@/features/lists/format';
 import { AnimatedAmount, FundingGauge } from '@/lib/motion/moments';
 import { BudgetEditor, OffsetProposals, SettlementActions } from './accounting-extras';
+
+const SETTLEMENT_TONE = {
+  NONE: 'neutral',
+  DUE: 'accent',
+  CLAIMED: 'info',
+  SETTLED: 'success',
+} as const;
 
 /** CPT-11 : panier de l'acheteur, par événement puis par destinataire. */
 export function CartScreen() {
@@ -22,34 +32,46 @@ export function CartScreen() {
   const locale = useLocale();
   const { data } = useGetCart();
   if (!data) return <p className="text-foreground-muted">{t('loading')}</p>;
-  if (data.groups.length === 0) return <p>{t('cartEmpty')}</p>;
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">{t('cart')}</h1>
+      <h1 className="text-3xl font-semibold">{t('cart')}</h1>
+      {data.groups.length === 0 ? <EmptyState title={t('cartEmpty')} /> : null}
       {data.groups.map((group, index) => (
-        <section key={index} className="flex flex-col gap-2">
-          <h2 className="font-medium">
-            {group.event?.title ?? t('noEvent')} ·{' '}
-            {group.recipients.map((p) => p.displayName).join(', ') || t('noRecipient')}
+        <section key={index} className="flex flex-col gap-3">
+          <h2 className="font-display text-lg font-semibold">
+            {group.event?.title ?? t('noEvent')}
+            {' · '}
+            <span className="font-sans text-sm font-normal text-foreground-muted">
+              {group.recipients.map((p) => p.displayName).join(', ') || t('noRecipient')}
+            </span>
           </h2>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-3">
             {group.items.map((line) => (
-              <li key={line.accountingId} className="rounded-md border border-border p-3 text-sm">
-                <p className="font-medium">
-                  {line.sourceUrl ? (
-                    <a
-                      href={line.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      {line.title}
-                    </a>
-                  ) : (
-                    line.title
-                  )}
-                </p>
-                <p>
+              <li
+                key={line.accountingId}
+                className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 shadow-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-display text-base font-semibold">
+                    {line.sourceUrl ? (
+                      <a
+                        href={line.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        {line.title}
+                      </a>
+                    ) : (
+                      line.title
+                    )}
+                  </p>
+                  <Badge tone={line.purchased ? 'info' : 'neutral'}>
+                    <span aria-hidden="true">{line.purchased ? '● ' : '○ '}</span>
+                    {line.purchased ? t('purchased') : t('notPurchased')}
+                  </Badge>
+                </div>
+                <p className="text-sm text-foreground-muted">
                   {line.totalMinor !== null
                     ? t('funding', {
                         covered: formatMinor(line.coveredMinor, line.currency, locale),
@@ -58,13 +80,12 @@ export function CartScreen() {
                     : t('noPrice')}
                 </p>
                 {line.remainingMinor ? (
-                  <p>
+                  <p className="font-semibold">
                     {t('remainingForYou', {
                       amount: formatMinor(line.remainingMinor, line.currency, locale),
                     })}
                   </p>
                 ) : null}
-                <p>{line.purchased ? t('purchased') : t('notPurchased')}</p>
               </li>
             ))}
           </ul>
@@ -95,14 +116,15 @@ export function BalancesScreen() {
   if (data.items.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <p>{t('balancesEmpty')}</p>
+        <h1 className="text-3xl font-semibold">{t('balances')}</h1>
+        <EmptyState title={t('balancesEmpty')} />
         <OffsetProposals />
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{t('balances')}</h1>
+      <h1 className="text-3xl font-semibold">{t('balances')}</h1>
       <p className="text-sm text-foreground-muted">{t('balancesPrivate')}</p>
       <OffsetProposals />
       <ul className="flex flex-col gap-3">
@@ -112,9 +134,15 @@ export function BalancesScreen() {
           return (
             <li
               key={`${balance.other?.id ?? ''}-${balance.currency}`}
-              className="rounded-md border border-border p-3"
+              className="rounded-xl border border-border bg-surface p-5 shadow-sm"
             >
-              <p>
+              <p className="flex items-center gap-3 font-display text-lg font-semibold">
+                <span
+                  aria-hidden="true"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-primary"
+                >
+                  <WalletIcon />
+                </span>
                 {balance.netMinor > 0
                   ? t('youOwe', { name, amount })
                   : balance.netMinor < 0
@@ -125,9 +153,13 @@ export function BalancesScreen() {
               <ul className="flex flex-col gap-2 py-2 text-sm">
                 {balance.lines.map((line) => (
                   <li key={line.contributionId} className="flex flex-col gap-1">
-                    <span>
-                      {line.title} · {formatMinor(line.owedMinor, balance.currency, locale)} ·{' '}
-                      {t(`settlement.${line.settlement}`)}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span>
+                        {line.title} · {formatMinor(line.owedMinor, balance.currency, locale)}
+                      </span>
+                      <Badge tone={SETTLEMENT_TONE[line.settlement]}>
+                        {t(`settlement.${line.settlement}`)}
+                      </Badge>
                     </span>
                     {viewerId ? <SettlementActions line={line} viewerId={viewerId} /> : null}
                   </li>
@@ -168,7 +200,7 @@ export function OverviewScreen({ eventId }: { eventId?: string }) {
     engaged.amountMinor > data.budget.amountMinor;
   return (
     <aside aria-label={t('overview')} className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{data.event?.title ?? t('overview')}</h1>
+      <h1 className="text-3xl font-semibold">{data.event?.title ?? t('overview')}</h1>
       <p className="text-sm text-foreground-muted">{t('budgetPrivate')}</p>
       {data.budget ? (
         <p>

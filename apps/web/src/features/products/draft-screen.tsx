@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -100,36 +101,41 @@ function DraftForm({ product, listId }: { product: ProductView; listId: string |
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <h1 className="text-3xl font-semibold">{t('title')}</h1>
         <p className="text-sm text-foreground-muted">{t('who')}</p>
       </header>
       {pending ? (
-        <p role="status" aria-live="polite">
+        <Callout role="status" aria-live="polite">
           {t('pending')}
-        </p>
+        </Callout>
       ) : null}
       {product.extractionStatus === ExtractionStatus.FAILED ? (
-        <p role="status">{t('failed')}</p>
+        <Callout tone="danger" role="status">
+          {t('failed')}
+        </Callout>
       ) : null}
-      {product.extractionTruncated ? <p className="text-sm">{t('truncated')}</p> : null}
+      {product.extractionTruncated ? <Callout tone="attention">{t('truncated')}</Callout> : null}
       {product.uncertainFields.length > 0 ? (
-        <p role="note" className="text-sm">
+        <Callout tone="attention" role="note">
           {t('uncertain', {
             fields: product.uncertainFields
               .map((f) => (f in FIELD_KEYS ? t(`fieldNames.${f as keyof typeof FIELD_KEYS}`) : f))
               .join(', '),
           })}
-        </p>
+        </Callout>
       ) : null}
       {product.imageKey ? (
         <ProfileImage
           imageKey={product.imageKey}
           width={160}
           height={160}
-          className="size-40 rounded-md object-cover"
+          className="size-40 rounded-xl object-cover"
         />
       ) : null}
-      <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+      <form
+        className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm"
+        onSubmit={onSubmit}
+      >
         <Field
           label={t('fields.title')}
           name="title"
