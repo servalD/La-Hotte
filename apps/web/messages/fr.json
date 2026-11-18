@@ -1047,7 +1047,8 @@
       "someOnly": "Le partager seulement à certaines personnes",
       "someOnlyHint": "Ouvrez l’élément dans sa liste et choisissez « Qui voit ça ? ».",
       "cancel": "Annuler"
-    }
+    },
+    "backToList": "Retour à la liste"
   },
   "directory": {
     "title": "Répertoire",

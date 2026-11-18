@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ItemGiverView, ItemRecipientView, ListPermissionsView } from '@wishlist/api-client';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
@@ -86,5 +87,43 @@ describe('ItemCard', () => {
     wrap(<ItemCard item={item} listId="l" permissions={permissions} isGiftlist={false} />);
     expect(screen.getByText(/Acheté \(supposé reçu\)/)).toBeInTheDocument();
     expect(screen.getByText(/Suggestion : invisible du destinataire/)).toBeInTheDocument();
+  });
+});
+
+describe('ItemCard : menu des actions (UX-13, VIS-20)', () => {
+  const giverItem: ItemGiverView = {
+    ...base,
+    view: 'giver',
+    visibilityMode: 'ALL',
+    status: 'OPEN',
+    isSuggestion: false,
+    shownToRecipient: false,
+    intendedRecipientId: null,
+    addedBy: null,
+    createdAt: '2026-11-15T00:00:00.000Z',
+    carriedFrom: null,
+  };
+
+  it('vue offreur : copier est proposé, ne plus le vouloir ne l’est pas', async () => {
+    wrap(<ItemCard item={giverItem} listId="l" permissions={permissions} isGiftlist={false} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Plus d’actions' }));
+    expect(await screen.findByRole('menuitem', { name: 'Copier dans mes fiches' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: /ne le veux plus/i })).toBeNull();
+  });
+
+  it('vue destinataire : « reçu » reste visible, les gestes d’offreur n’existent pas', async () => {
+    const item: ItemRecipientView = {
+      ...base,
+      mine: true,
+      view: 'recipient',
+      received: false,
+      receivedAt: null,
+    };
+    wrap(<ItemCard item={item} listId="l" permissions={permissions} isGiftlist={false} />);
+    expect(screen.getByRole('button', { name: /reçu/i })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Plus d’actions' }));
+    expect(await screen.findByRole('menuitem', { name: 'Modifier' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: /Copier/ })).toBeNull();
+    expect(screen.queryByText(/Réservé|Acheté/)).toBeNull();
   });
 });

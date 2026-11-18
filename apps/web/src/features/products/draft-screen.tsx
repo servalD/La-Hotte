@@ -21,6 +21,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
+import { ChevronRightIcon } from '@/components/ui/icons';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -219,7 +220,10 @@ function DraftForm({ product, listId }: { product: ProductView; listId: string |
       <ShareCard product={product} onChanged={refresh} />
       {listId ? (
         <Button asChild variant="ghost" className="self-start">
-          <Link href={`/lists/${listId}`}>←</Link>
+          <Link href={`/lists/${listId}`}>
+            <ChevronRightIcon width={16} height={16} className="rotate-180" />
+            {t('backToList')}
+          </Link>
         </Button>
       ) : null}
     </div>
@@ -295,7 +299,7 @@ function ShareCard({ product, onChanged }: { product: ProductView; onChanged: ()
       <div className="mt-3 flex flex-wrap gap-2">
         {product.shareLevel !== ShareLevel.GLOBAL ? (
           <Button
-            variant={shared ? 'primary' : 'secondary'}
+            variant="secondary"
             disabled={share.isPending}
             onClick={() => {
               publish(ShareLevel.GLOBAL);
@@ -324,6 +328,7 @@ function ShareCard({ product, onChanged }: { product: ProductView; onChanged: ()
           </Button>
         ) : (
           <Button
+            variant="secondary"
             disabled={share.isPending}
             onClick={() => {
               publish(ShareLevel.CIRCLE);

@@ -42,7 +42,7 @@ export function HomeSummary() {
   const balances = useGetBalances();
   const lists = useListLists({ scope: 'active' });
   // UX-11 : la liste personnelle du profil (wishlist « Mes envies »).
-  const personal = lists.data?.items.find((l) => l.view !== 'teaser' && l.personal);
+  const personal = lists.data?.items.find((l) => l.view === 'recipient' && l.personal);
   const waiting = links.data?.items.filter((l) => l.awaitingMyApproval).length ?? 0;
 
   if (!profile) return <Skeleton className="h-24 w-full" />;

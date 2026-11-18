@@ -1047,7 +1047,8 @@
       "someOnly": "Share it only with some people",
       "someOnlyHint": "Open the item in its list and choose “Who sees this?”.",
       "cancel": "Cancel"
-    }
+    },
+    "backToList": "Back to the list"
   },
   "directory": {
     "title": "Directory",
