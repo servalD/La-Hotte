@@ -17,7 +17,6 @@ export class PrismaPlatformStats extends PlatformStatsReader {
       accountsCreated30d,
       listsCreated30d,
       catalogProducts,
-      openReports,
       extractionsDone30d,
       extractionsFailed30d,
       median,
@@ -28,7 +27,6 @@ export class PrismaPlatformStats extends PlatformStatsReader {
       // STA-02 : listes de souhaits seulement ; une giftlist ne se devine pas par le compteur.
       this.prisma.list.count({ where: { type: 'WISHLIST', createdAt: { gte: since } } }),
       this.prisma.product.count({ where: { shareLevel: 'GLOBAL', moderationStatus: 'APPROVED' } }),
-      this.prisma.report.count({ where: { status: 'OPEN' } }),
       this.prisma.product.count({
         where: { extractionStatus: 'DONE', extractionStartedAt: { gte: since } },
       }),
@@ -47,7 +45,6 @@ export class PrismaPlatformStats extends PlatformStatsReader {
       accountsCreated30d,
       listsCreated30d,
       catalogProducts,
-      openReports,
       medianReportHours: median[0]?.hours ?? null,
       extractionsDone30d,
       extractionsFailed30d,
@@ -63,7 +60,6 @@ export class FixedPlatformStats extends PlatformStatsReader {
     accountsCreated30d: 0,
     listsCreated30d: 0,
     catalogProducts: 0,
-    openReports: 0,
     medianReportHours: null,
     extractionsDone30d: 0,
     extractionsFailed30d: 0,

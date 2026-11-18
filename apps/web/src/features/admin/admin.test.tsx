@@ -60,7 +60,6 @@ describe('Tableau de bord (STA-01, STA-02)', () => {
       accountsCreated30d: 12,
       listsCreated30d: 30,
       catalogProducts: 0,
-      openReports: 2,
       medianReportHours: 5.25,
       extractionSuccessRate: 0.9,
     };

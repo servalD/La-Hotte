@@ -403,7 +403,6 @@ export const getPlatformStatsResponse = zod.object({
   accountsCreated30d: zod.number().nullable(),
   listsCreated30d: zod.number().nullable(),
   catalogProducts: zod.number().nullable(),
-  openReports: zod.number().nullable(),
   medianReportHours: zod.number().nullable(),
   extractionSuccessRate: zod
     .number()

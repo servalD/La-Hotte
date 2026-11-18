@@ -26,6 +26,8 @@ export class InMemoryModerationStore extends ModerationStore {
   readonly decisions: DecisionRecord[] = [];
   authorOf: (target: ModerationTarget) => string | null = () => null;
   isLiveRemovedComment: (commentId: string) => boolean = () => true;
+  /** Cible encore lisible (message non supprimé, fiche existante), branché par le banc. */
+  isLiveTarget: (target: ModerationTarget) => boolean = () => true;
 
   constructor(private readonly audit: (write: AuditWrite) => void = () => undefined) {
     super();
@@ -60,7 +62,13 @@ export class InMemoryModerationStore extends ModerationStore {
   openReports(limit: number): Promise<OpenReports[]> {
     const targets: ModerationTarget[] = [];
     for (const r of this.reports) {
-      if (r.status === 'OPEN' && !targets.some((t) => same(t, r.target))) targets.push(r.target);
+      if (
+        r.status === 'OPEN' &&
+        this.isLiveTarget(r.target) &&
+        !targets.some((t) => same(t, r.target))
+      ) {
+        targets.push(r.target);
+      }
     }
     return Promise.resolve(
       targets.slice(0, limit).flatMap((t) => {
@@ -127,12 +135,24 @@ export class InMemoryModerationStore extends ModerationStore {
   openContests(limit: number): Promise<OpenContest[]> {
     return Promise.resolve(
       this.decisions
-        .filter((d) => d.action === 'CONTEST' && !this.decisions.some((c) => c.parentId === d.id))
+        .filter(
+          (d) =>
+            d.action === 'CONTEST' &&
+            this.isLiveTarget(d.target) &&
+            !this.decisions.some((c) => c.parentId === d.id),
+        )
         .slice(0, limit)
         .flatMap((contest) => {
           const decision = this.decisions.find((d) => d.id === contest.parentId);
           return decision ? [{ contest, decision }] : [];
         }),
+    );
+  }
+
+  contestOpen(contestId: string): Promise<boolean> {
+    return Promise.resolve(
+      this.decisions.some((d) => d.id === contestId && d.action === 'CONTEST') &&
+        !this.decisions.some((c) => c.parentId === contestId),
     );
   }
 

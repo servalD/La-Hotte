@@ -32,6 +32,17 @@ const isUniqueViolation = (error: unknown): boolean =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 
 /** Signalements et décisions (MOD-07 à MOD-11), décision et audit dans une transaction (AUD-05). */
+/**
+ * MOD-10, MOD-11 (revue SEC-40, cycle 3, I2) : cible encore lisible, pour que les signalements et
+ * contestations d'un contenu supprimé (message, élément, liste ou fiche) n'occupent pas la file,
+ * dont la taille est bornée. Alias de table fixé par l'appelant, jamais une donnée d'utilisateur.
+ */
+const LIVE_TARGET = (alias: 'r' | 'd') =>
+  Prisma.sql`((${Prisma.raw(alias)}.target_kind = 'COMMENT' AND EXISTS (
+      SELECT 1 FROM comment cm WHERE cm.id = ${Prisma.raw(alias)}.target_id AND cm.deleted_at IS NULL))
+    OR (${Prisma.raw(alias)}.target_kind = 'PRODUCT' AND EXISTS (
+      SELECT 1 FROM product pd WHERE pd.id = ${Prisma.raw(alias)}.target_id)))`;
+
 @Injectable()
 export class PrismaModerationStore extends ModerationStore {
   constructor(private readonly prisma: PrismaService) {
@@ -84,9 +95,10 @@ export class PrismaModerationStore extends ModerationStore {
     const targets = await this.prisma.$queryRaw<
       { target_kind: ModerationTarget['kind']; target_id: string; first_at: Date }[]
     >`
-      SELECT target_kind, target_id, MIN(created_at) AS first_at FROM report
-      WHERE status = 'OPEN' GROUP BY target_kind, target_id
-      ORDER BY first_at, target_id LIMIT ${limit}`;
+      SELECT r.target_kind, r.target_id, MIN(r.created_at) AS first_at FROM report r
+      WHERE r.status = 'OPEN' AND ${LIVE_TARGET('r')}
+      GROUP BY r.target_kind, r.target_id
+      ORDER BY first_at, r.target_id LIMIT ${limit}`;
     return Promise.all(
       targets.map((t) => this.summarize({ kind: t.target_kind, id: t.target_id }, t.first_at)),
     );
@@ -179,15 +191,31 @@ export class PrismaModerationStore extends ModerationStore {
   }
 
   async openContests(limit: number): Promise<OpenContest[]> {
+    // Revue SEC-40 (cycle 3, I2) : une contestation dont la cible a disparu, soustraite à tous,
+    // n'occupe pas la file : seules les cibles vivantes y entrent.
+    const ids = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT d.id FROM moderation_decision d
+      WHERE d.action = 'CONTEST'
+        AND NOT EXISTS (SELECT 1 FROM moderation_decision c WHERE c.parent_id = d.id)
+        AND ${LIVE_TARGET('d')}
+      ORDER BY d.at, d.id LIMIT ${limit}`;
+    if (ids.length === 0) return [];
     const rows = await this.prisma.moderationDecision.findMany({
-      where: { action: 'CONTEST', children: { none: {} } },
+      where: { id: { in: ids.map((r) => r.id) } },
       include: { parent: true },
       orderBy: [{ at: 'asc' }, { id: 'asc' }],
-      take: limit,
     });
     return rows.flatMap((row) =>
       row.parent ? [{ contest: toDecision(row), decision: toDecision(row.parent) }] : [],
     );
+  }
+
+  async contestOpen(contestId: string): Promise<boolean> {
+    const row = await this.prisma.moderationDecision.findFirst({
+      where: { id: contestId, action: 'CONTEST', children: { none: {} } },
+      select: { id: true },
+    });
+    return row !== null;
   }
 
   async decisionsOnContentOf(profileId: string): Promise<DecisionOnMyContent[]> {

@@ -1527,7 +1527,6 @@
       "created": "Accounts created over 30 days",
       "lists": "Lists created over 30 days",
       "catalog": "Items in the open catalogue",
-      "reports": "Open reports",
       "median": "Median time to handle a report",
       "hours": "{value} h",
       "extraction": "Successful extractions over 30 days",

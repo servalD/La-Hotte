@@ -15,7 +15,6 @@ export function AdminStats() {
     { key: 'created', value: data.accountsCreated30d },
     { key: 'lists', value: data.listsCreated30d },
     { key: 'catalog', value: data.catalogProducts },
-    { key: 'reports', value: data.openReports },
     {
       key: 'median',
       value: data.medianReportHours,

@@ -401,4 +401,49 @@ describe('Surprise face aux canaux de la phase 7 (SEC-42, VIS-20, VIS-22)', () =
       .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' })
       .expect(404);
   });
+
+  it('un contenu disparu ne garde la file de personne ; on ne signale pas son propre compte (MOD-07, MOD-10, MOD-11)', async () => {
+    const { lea, paul, commentId } = await world();
+    const marc = await person();
+    await link(lea, marc);
+    await link(paul, marc);
+    await http()
+      .post('/api/v1/reports')
+      .set(marc.mutation)
+      .send({ targetKind: 'COMMENT', targetId: commentId, reason: 'SPAM' })
+      .expect(204);
+    const jean = await identity.signIn({ role: 'MODERATOR' });
+    const queue = async () =>
+      JSON.stringify(
+        (await http().get('/api/v1/admin/moderation/queue').set('Cookie', jean.cookie).expect(200))
+          .body,
+      );
+    expect(await queue()).toContain(commentId);
+    await http().delete(`/api/v1/comments/${commentId}`).set(paul.mutation).expect(204);
+    expect(await queue()).not.toContain(commentId);
+
+    // Un autre profil du compte de Paul lit le fil, mais ne signale pas le message de Paul.
+    const { lea: lea2, paul: paul2, commentId: other } = await world();
+    const second = randomUUID();
+    identity.profiles.set({
+      profileId: second,
+      accountId: paul2.accountId,
+      hasPin: false,
+      relock: 'IDLE_15',
+    });
+    await http()
+      .post('/api/v1/session/profile')
+      .set(paul2.mutation)
+      .send({ profileId: second })
+      .expect((res) => {
+        expect(res.status).toBeLessThan(300);
+      });
+    await link(lea2, { ...paul2, profileId: second });
+    const own = await http()
+      .post('/api/v1/reports')
+      .set(paul2.mutation)
+      .send({ targetKind: 'COMMENT', targetId: other, reason: 'SPAM' })
+      .expect(422);
+    expect(own.body.code).toBe('REPORT_OWN_CONTENT');
+  });
 });

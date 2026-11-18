@@ -85,6 +85,7 @@ export abstract class ModerationStore {
     report: NewReport,
   ): Promise<{ readonly created: boolean; readonly distinctAccounts: number }>;
 
+  /** Signalements ouverts sur des cibles qui existent encore (MOD-10). */
   abstract openReports(limit: number): Promise<OpenReports[]>;
   abstract openReportsOn(target: ModerationTarget): Promise<OpenReports | null>;
 
@@ -106,7 +107,10 @@ export abstract class ModerationStore {
   abstract findDecision(id: string): Promise<DecisionRecord | null>;
   /** MOD-11 : `already` si la décision a déjà sa contestation (index unique). */
   abstract contest(contest: DecisionRecord): Promise<'created' | 'already'>;
+  /** Contestations sans réponse dont la cible existe encore (MOD-11). */
   abstract openContests(limit: number): Promise<OpenContest[]>;
+  /** MOD-11 : la contestation attend-elle encore sa réponse ? */
+  abstract contestOpen(contestId: string): Promise<boolean>;
   /** Décisions sur les contenus dont ce profil est l'auteur (MOD-11). */
   abstract decisionsOnContentOf(profileId: string): Promise<DecisionOnMyContent[]>;
   /**

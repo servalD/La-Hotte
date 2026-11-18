@@ -200,7 +200,14 @@ export class ReportContent {
             .then((r) => (r ? { authorId: r.ownerProfileId } : null))
         : await this.comments.readable(input.profileId, input.target.id);
     if (!readable) throw new ReportTargetNotFoundError();
-    if (readable.authorId === input.profileId) throw new ReportOwnContentError();
+    // MOD-07 (revue SEC-40, cycle 3, I2) : ni son propre contenu, ni celui d'un autre profil du
+    // même compte ; un compte ne remplit pas la file à lui seul.
+    if (
+      readable.authorId !== null &&
+      (await this.targets.actorProfiles(input.accountId)).includes(readable.authorId)
+    ) {
+      throw new ReportOwnContentError();
+    }
     const now = this.clock.now();
     const note = input.note?.trim() ? input.note.trim() : null;
     const { created, distinctAccounts } = await this.store.addReport({
@@ -492,8 +499,7 @@ export class DecideContest {
     const actor = await this.targets.actorProfiles(input.actorAccountId);
     if (await this.targets.withheld(actor, decision.target)) throw new DecisionNotFoundError();
     if (decision.actorAccountId === input.actorAccountId) throw new ContestSameModeratorError();
-    const open = (await this.store.openContests(500)).some((c) => c.contest.id === contest.id);
-    if (!open) throw new NothingToModerateError();
+    if (!(await this.store.contestOpen(contest.id))) throw new NothingToModerateError();
     const now = this.recorder.now();
     const target = decision.target;
     const recorded = await this.recorder.record({

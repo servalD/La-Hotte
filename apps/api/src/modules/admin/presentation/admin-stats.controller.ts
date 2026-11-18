@@ -9,7 +9,6 @@ export class PlatformStatsDto {
   @ApiProperty({ type: Number, nullable: true }) accountsCreated30d!: number | null;
   @ApiProperty({ type: Number, nullable: true }) listsCreated30d!: number | null;
   @ApiProperty({ type: Number, nullable: true }) catalogProducts!: number | null;
-  @ApiProperty({ type: Number, nullable: true }) openReports!: number | null;
   @ApiProperty({ type: Number, nullable: true }) medianReportHours!: number | null;
   @ApiProperty({ type: Number, nullable: true, minimum: 0, maximum: 1 })
   extractionSuccessRate!: number | null;

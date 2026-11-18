@@ -172,6 +172,33 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
     expect(await prisma.moderationDecision.count({ where: { parentId: contest.id } })).toBe(1);
   });
 
+  it('cibles disparues : ni signalements ni contestations dans la file (MOD-10, MOD-11)', async () => {
+    const commentId = await authoredComment();
+    const target = { kind: 'COMMENT' as const, id: commentId };
+    const reporter = await createAccountWithProfile(prisma);
+    await store.addReport({
+      id: randomUUID(),
+      reporterProfileId: reporter.profileId,
+      reporterAccountId: reporter.accountId,
+      target,
+      reason: 'SPAM',
+      note: null,
+      at: new Date(),
+    });
+    const removal = decision(commentId);
+    await store.record({ decision: removal, audit: audit(commentId), closeReports: false });
+    const contest = { ...decision(commentId), action: 'CONTEST' as const, parentId: removal.id };
+    expect(await store.contest(contest)).toBe('created');
+    const listed = async () => ({
+      report: (await store.openReports(1000)).some((r) => r.target.id === commentId),
+      contest: (await store.openContests(1000)).some((c) => c.contest.id === contest.id),
+    });
+    expect(await listed()).toEqual({ report: true, contest: true });
+    expect(await store.contestOpen(contest.id)).toBe(true);
+    await prisma.comment.update({ where: { id: commentId }, data: { deletedAt: new Date() } });
+    expect(await listed()).toEqual({ report: false, contest: false });
+  });
+
   it('audit refusé : la décision n’est pas écrite', async () => {
     const commentId = await authoredComment();
     const broken = audit(commentId);

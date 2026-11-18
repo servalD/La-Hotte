@@ -14482,10 +14482,6 @@
             "type": "number",
             "nullable": true
           },
-          "openReports": {
-            "type": "number",
-            "nullable": true
-          },
           "medianReportHours": {
             "type": "number",
             "nullable": true
@@ -14502,7 +14498,6 @@
           "accountsCreated30d",
           "listsCreated30d",
           "catalogProducts",
-          "openReports",
           "medianReportHours",
           "extractionSuccessRate"
         ]

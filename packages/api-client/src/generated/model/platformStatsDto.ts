@@ -16,8 +16,6 @@ export interface PlatformStatsDto {
   /** @nullable */
   catalogProducts: number | null;
   /** @nullable */
-  openReports: number | null;
-  /** @nullable */
   medianReportHours: number | null;
   /**
    * @minimum 0

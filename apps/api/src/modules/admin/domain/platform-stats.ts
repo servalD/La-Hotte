@@ -9,7 +9,6 @@ export interface RawStats {
   readonly accountsCreated30d: number;
   readonly listsCreated30d: number;
   readonly catalogProducts: number;
-  readonly openReports: number;
   /** Délai médian de traitement d'un signalement, en heures, sur 30 jours ; `null` sans données. */
   readonly medianReportHours: number | null;
   readonly extractionsDone30d: number;
@@ -25,7 +24,6 @@ export interface PlatformStatsView {
   readonly accountsCreated30d: number | null;
   readonly listsCreated30d: number | null;
   readonly catalogProducts: number | null;
-  readonly openReports: number | null;
   readonly medianReportHours: number | null;
   readonly extractionSuccessRate: number | null;
 }
@@ -44,7 +42,6 @@ export function thresholdStats(raw: RawStats): PlatformStatsView {
     accountsCreated30d: gate(raw.accountsCreated30d, raw.accountsCreated30d),
     listsCreated30d: gate(raw.listsCreated30d, raw.accountsTotal),
     catalogProducts: gate(raw.catalogProducts, raw.accountsTotal),
-    openReports: gate(raw.openReports, raw.accountsTotal),
     medianReportHours: gate(raw.medianReportHours, raw.accountsTotal),
     extractionSuccessRate: gate(
       extractions === 0 ? null : Math.round((raw.extractionsDone30d / extractions) * 1000) / 1000,

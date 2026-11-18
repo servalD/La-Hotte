@@ -7,7 +7,6 @@ const raw: RawStats = {
   accountsCreated30d: 12,
   listsCreated30d: 30,
   catalogProducts: 7,
-  openReports: 2,
   medianReportHours: 5.5,
   extractionsDone30d: 90,
   extractionsFailed30d: 10,
@@ -20,7 +19,6 @@ describe('Statistiques (STA-01, STA-02)', () => {
       accountsCreated30d: 12,
       listsCreated30d: 30,
       catalogProducts: 7,
-      openReports: 2,
       medianReportHours: 5.5,
       extractionSuccessRate: 0.9,
     });
@@ -28,7 +26,7 @@ describe('Statistiques (STA-01, STA-02)', () => {
 
   it('moins de 10 comptes au total : plus rien', () => {
     expect(Object.values(thresholdStats({ ...raw, accountsTotal: 9 }))).toEqual(
-      Array(7).fill(null),
+      Array(6).fill(null),
     );
   });
 

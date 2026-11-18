@@ -642,6 +642,13 @@ export async function createTestApp(
     target.kind === 'PRODUCT'
       ? (products.rows.get(target.id)?.ownerProfileId ?? null)
       : (conversations.comments.comments.get(target.id)?.authorId ?? null);
+  moderation.isLiveTarget = (target) => {
+    if (target.kind === 'COMMENT') {
+      const row = conversations.comments.comments.get(target.id);
+      return Boolean(row) && !row?.deletedAt;
+    }
+    return catalog.products.rows.has(target.id);
+  };
   moderation.isLiveRemovedComment = (id) => {
     const row = conversations.comments.comments.get(id);
     return Boolean(row?.moderatedAt) && !row?.deletedAt;
