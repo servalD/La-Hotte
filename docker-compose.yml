@@ -41,6 +41,73 @@ services:
       - '127.0.0.1:1025:1025'
       - '127.0.0.1:8025:8025'
 
+  # --- Applications dans Docker : `docker compose --profile apps up -d --build` (web :3000, API :4000).
+  migrate:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    environment:
+      DATABASE_MIGRATION_URL: postgresql://wishlist:wishlist@postgres:5432/wishlist
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+
+  fetcher:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/fetcher/Dockerfile
+    environment:
+      FETCHER_TOKEN: dev-only-fetcher-token-0123456789abcdef
+
+  api:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    environment:
+      NODE_ENV: development
+      ENABLE_API_DOCS: 'true'
+      PORT: '4000'
+      WEB_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://wishlist_app:wishlist_app@postgres:5432/wishlist
+      REDIS_URL: redis://redis:6379
+      CSRF_SECRET: dev-only-csrf-secret-0123456789abcdef
+      KEY_HMAC_SECRET: dev-only-key-hmac-secret-0123456789abcdef
+      CACHE_KEY_SECRET: dev-only-cache-key-secret-0123456789abcdef
+      SECRET_ENCRYPTION_KEYS: 0:ZGV2LW9ubHktc2VjcmV0LWVuY3J5cHRpb24ta2V5LTA=
+      TRUSTED_PROXY_HOPS: '0'
+      REGISTRATION_MODE: OPEN
+      SMTP_URL: smtp://mailpit:1025
+      MAIL_FROM: noreply@lahotte.localhost
+      DEPLOY_ENVIRONMENT: development
+      IMAGE_STORAGE_DIR: /tmp/images
+      FETCHER_URL: http://fetcher:4100
+      FETCHER_TOKEN: dev-only-fetcher-token-0123456789abcdef
+    ports:
+      - '127.0.0.1:4000:4000'
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+      fetcher: { condition: service_started }
+
+  web:
+    profiles: [apps]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        API_ORIGIN: http://api:4000
+        NEXT_PUBLIC_DEPLOY_ENVIRONMENT: development
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      - api
+
   # --- Observabilité (OBS-44) : `docker compose --profile obs up -d`. Absente du développement ordinaire (OBS-14).
   postgres-obs:
     profiles: [obs]
