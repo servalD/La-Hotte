@@ -1,5 +1,6 @@
 # Collecteur OpenTelemetry (OBS-44). Reçoit l'OTLP des applications, exporte vers OpenObserve.
-# Développement local uniquement : identifiants de dev, jamais réutilisés ailleurs.
+# Même fichier en développement (docker-compose.yml) et en production (ops/production) ; seuls
+# l'adresse et l'identifiant d'OpenObserve viennent de l'environnement.
 receivers:
   otlp:
     protocols:
@@ -76,10 +77,12 @@ processors:
 
 exporters:
   otlphttp/openobserve:
-    endpoint: http://openobserve:5080/api/default
+    endpoint: ${env:OPENOBSERVE_ENDPOINT}
     headers:
-      # base64("dev@example.com:Dev-Obs-1!") ; voir docker-compose.yml
-      Authorization: Basic ZGV2QGV4YW1wbGUuY29tOkRldi1PYnMtMSE=
+      # Fourni par l'environnement : identifiant de développement dans docker-compose.yml, secret
+      # du serveur en production (ops/production). Un seul fichier pour les deux, pour que les
+      # listes de nettoyage restent alignées (OBS-29).
+      Authorization: ${env:OPENOBSERVE_AUTHORIZATION}
 
 service:
   pipelines:

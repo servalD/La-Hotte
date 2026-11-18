@@ -1,0 +1,235 @@
+# Production (DEP-02, DEP-03, ADR 0008, ADR 0012, ADR 0021). Un VPS dans l'Union européenne,
+# hébergeur non choisi : rien ici ne dépend de lui. Lancé depuis ce dossier :
+#   docker compose --env-file .env up -d
+# Les images sont construites et analysées en CI (CI-05), puis désignées par leur empreinte dans
+# `.env` (API_IMAGE, WEB_IMAGE, FETCHER_IMAGE) : un retour arrière remet l'empreinte précédente.
+#
+# Réseaux (DEP-02) :
+#   edge     : Caddy seul publie des ports (80, 443).
+#   internal : web, api, base, Redis ; sans sortie vers Internet.
+#   fetcher  : api ↔ fetcher seulement ; sans sortie vers Internet.
+#   egress   : fetcher seul joint Internet (EXT-40 à EXT-45 filtrent les destinations).
+#   obs      : télémétrie et services d'exploitation (OBS-27), sans sortie vers Internet.
+name: lahotte
+
+x-hardened: &hardened
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  tmpfs: ['/tmp']
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '5' }
+
+services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ['no-new-privileges:true']
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      APP_HOST: ${APP_HOST:?}
+      GLITCHTIP_HOST: ${GLITCHTIP_HOST:?}
+      OBSERVE_HOST: ${OBSERVE_HOST:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+      OPS_ALLOWED_IPS: ${OPS_ALLOWED_IPS:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./security.txt:/srv/security.txt:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge, internal, obs]
+    depends_on: [web, api]
+
+  web:
+    <<: *hardened
+    image: ${WEB_IMAGE:?}
+    environment:
+      DEPLOY_ENVIRONMENT: production
+      RELEASE: ${RELEASE:-}
+      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    networks: [internal, obs]
+
+  api:
+    <<: *hardened
+    image: ${API_IMAGE:?}
+    env_file: [./api.env]
+    environment:
+      NODE_ENV: production
+      DEPLOY_ENVIRONMENT: production
+      RELEASE: ${RELEASE:-}
+      PORT: '4000'
+      # SEC-30 : une seule couche de mandataires, Caddy, qui remplace X-Forwarded-For.
+      TRUSTED_PROXY_HOPS: '1'
+      IMAGE_STORAGE_DIR: /data/images
+      FETCHER_URL: http://fetcher:4100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    volumes:
+      - images:/data/images
+    networks: [internal, fetcher, obs]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  # DEP-04 : migrations avant la bascule, avec le rôle propriétaire (DAT-03).
+  migrate:
+    image: ${API_MIGRATE_IMAGE:?}
+    profiles: [migrate]
+    environment:
+      DATABASE_MIGRATION_URL: ${DATABASE_MIGRATION_URL:?}
+    networks: [internal]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+
+  fetcher:
+    <<: *hardened
+    image: ${FETCHER_IMAGE:?}
+    environment:
+      FETCHER_TOKEN: ${FETCHER_TOKEN:?}
+    networks: [fetcher, egress]
+
+  postgres:
+    image: postgres:17.6-bookworm
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      POSTGRES_USER: wishlist
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?}
+      POSTGRES_DB: wishlist
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?}
+    # DEP-05 : journaux de transactions archivés en continu (perte ≤ 15 minutes, DEP-06).
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=300
+      - -c
+      - archive_command=test ! -f /wal-archive/%f && cp %p /wal-archive/%f
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - wal-archive:/wal-archive
+      - ./postgres/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wishlist -d wishlist']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4.6-alpine
+    restart: unless-stopped
+    # ADR 0013 : noeviction ; mot de passe obligatoire même sur le réseau interne.
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD:?}
+    volumes:
+      - redis-data:/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+
+  # --- Observabilité (ADR 0012, OBS-27) : jamais sur le nom d'hôte de l'application (DEP-07).
+  otel-collector:
+    <<: *hardened
+    image: otel/opentelemetry-collector-contrib:0.165.0
+    command: ['--config=/etc/otelcol/config.yaml']
+    environment:
+      OPENOBSERVE_ENDPOINT: http://openobserve:5080/api/default
+      OPENOBSERVE_AUTHORIZATION: ${OPENOBSERVE_AUTHORIZATION:?}
+    volumes:
+      - ../observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    networks: [obs]
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:v1.1.2
+    restart: unless-stopped
+    environment:
+      ZO_ROOT_USER_EMAIL: ${OPENOBSERVE_ROOT_EMAIL:?}
+      ZO_ROOT_USER_PASSWORD: ${OPENOBSERVE_ROOT_PASSWORD:?}
+      ZO_DATA_DIR: /data
+      # OBS-16 : journaux 30 jours (rétention plus longue pour les métriques réglée par flux).
+      ZO_COMPACT_DATA_RETENTION_DAYS: '30'
+      ZO_TELEMETRY: 'false'
+    volumes:
+      - openobserve-data:/data
+    networks: [obs]
+
+  postgres-obs:
+    image: postgres:17.6-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_PASSWORD: ${GLITCHTIP_DB_PASSWORD:?}
+      POSTGRES_DB: glitchtip
+    volumes:
+      - postgres-obs-data:/var/lib/postgresql/data
+    networks: [obs]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U glitchtip -d glitchtip']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  glitchtip:
+    image: glitchtip/glitchtip:7.0.0
+    restart: unless-stopped
+    depends_on:
+      postgres-obs: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD:?}@postgres-obs:5432/glitchtip
+      SECRET_KEY: ${GLITCHTIP_SECRET_KEY:?}
+      GLITCHTIP_DOMAIN: https://${GLITCHTIP_HOST:?}
+      VALKEY_URL: ''
+      ENABLE_USER_REGISTRATION: 'false'
+      ENABLE_ORGANIZATION_CREATION: 'false'
+      DEFAULT_FROM_EMAIL: ${ALERT_FROM_EMAIL:?}
+      EMAIL_URL: ${ALERT_SMTP_URL:?}
+      # OBS-16 : erreurs 90 jours.
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: '90'
+    volumes:
+      - glitchtip-uploads:/code/uploads
+    networks: [obs, alerts]
+
+networks:
+  edge: {}
+  internal: { internal: true }
+  fetcher: { internal: true }
+  egress: {}
+  obs: { internal: true }
+  # OBS-43 : GlitchTip envoie ses alertes par SMTP, hors de l'application.
+  alerts: {}
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  wal-archive:
+  redis-data:
+  images:
+  openobserve-data:
+  postgres-obs-data:
+  glitchtip-uploads:

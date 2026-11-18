@@ -1,0 +1,17 @@
+# Contexte des images (DEP-04) : jamais de dépendances installées, de secrets ni de sorties locales.
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+**/playwright-report
+**/test-results
+**/.env
+**/.env.*
+!**/.env.example
+**/var
+.git
+.github
+docs
+ops
+*.log

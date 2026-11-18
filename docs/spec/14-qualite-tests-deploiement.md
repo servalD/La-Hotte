@@ -62,7 +62,7 @@ modules/<module>/
 - **CI-04** Commits conventionnels ; journal des changements généré.
 - **CI-05** **Analyse Trivy**, bloquante, sur trois objets :
   - **le dépôt** (`trivy fs`) : vulnérabilités des dépendances (`pnpm-lock.yaml`) et mauvaises configurations (Dockerfile, fichiers de configuration), sévérités `HIGH` et `CRITICAL`, **seulement celles qui ont un correctif disponible** (une vulnérabilité sans correctif ne bloque personne et rend la CI rouge pour rien) ;
-  - **chaque image que nous construisons** (`web`, `api`, `worker`, `fetcher`) avant sa publication, mêmes sévérités, même règle (DEP-04) ;
+  - **chaque image que nous construisons** (`web`, `api`, `api-migrate`, `fetcher`) avant sa publication, mêmes sévérités, même règle (DEP-04) ;
   - **les images tierces** que nous déployons (PostgreSQL, Redis, Caddy, collecteur, OpenObserve, GlitchTip) : rapport hebdomadaire planifié, **non bloquant**, qui ouvre une tâche de mise à jour. Une CVE dans l'image de quelqu'un d'autre n'est pas un défaut de notre changement.
 
   Les secrets restent l'affaire de gitleaks (CI-01) : Trivy ne les cherche pas, pour ne pas dupliquer les alertes.
@@ -80,7 +80,7 @@ modules/<module>/
 | `caddy`          | Proxy inverse, TLS automatique, en-têtes de sécurité. Route `/api/*` **directement** vers `api`, sans passer par `web` (adresse du client pour la limitation, ADR 0013)               | 80, 443             |
 | `web`            | Next.js                                                                                                                                                                               | interne             |
 | `api`            | NestJS (REST + WebSocket)                                                                                                                                                             | interne             |
-| `worker`         | Files BullMQ : notifications, e-mails, rappels                                                                                                                                        | interne             |
+| `worker`         | Retiré en v1 : les tâches (notifications, e-mails, rappels, purges, effacements) tournent dans le processus de l'API, chacune sans dommage en double (ADR 0018, ADR 0021). Une file viendra si la charge le demande | —                   |
 | `fetcher`        | Récupération d'URL et d'images, **réseau isolé**, sortie filtrée (EXT-44)                                                                                                             | aucune entrée       |
 | `postgres`       | Données                                                                                                                                                                               | interne             |
 | `redis`          | Sessions, files, pub/sub. `maxmemory-policy noeviction` obligatoire : une marque de révocation évincée rouvrirait une session (ADR 0013)                                              | interne             |
@@ -93,6 +93,8 @@ modules/<module>/
 - **DEP-04** Déploiement : image construite et analysée en CI, migration de base, démarrage, vérification de santé, bascule ; retour arrière par l'image précédente. Les migrations sont compatibles avec la version précédente du code (DAT-07).
 - **DEP-05** Sauvegardes : base complète quotidienne + journaux de transactions en continu, chiffrées, copiées hors du serveur, conservées 30 jours ; images sauvegardées de la même façon. Restauration testée chaque mois (SEC-23).
 - **DEP-06** Objectifs de reprise : perte de données ≤ 15 minutes, remise en service ≤ 4 heures.
+- **DEP-08** **Mise en œuvre** (phase 7, ADR 0021) : `ops/production` (Compose, Caddy, scripts), indépendant de l'hébergeur. Images construites depuis la racine (`apps/*/Dockerfile`) sur une même base Debian (`node:22.20.0-bookworm-slim`), utilisateur `node`, dépendances de production seulement, contrôle de santé ; l'API a une cible `migrate` qui applique les migrations avec le rôle propriétaire. Réseaux : `internal` et `fetcher` sans sortie vers Internet, `egress` pour le seul `fetcher`, `obs` pour l'exploitation. Redis exige un mot de passe même sur le réseau interne. `deploy.sh` n'accepte que des images désignées par empreinte et revient aux précédentes si `/health/ready` n'est pas atteint.
+- **DEP-09** **Sauvegardes, mise en œuvre** : `backup.sh` chiffre avec `age` vers une clé publique (la clé privée n'est jamais sur le serveur) une base physique et un export logique quotidiens, les journaux toutes les 5 minutes (`archive_timeout=300`, perte ≤ 15 minutes) et le volume des images ; `prune` applique les 30 jours. `restore.sh` restaure un export logique dans une base neuve, affiche les durées et vérifie que les tables en ajout seul restent protégées (DAT-02). La CI rejoue sauvegarde et restauration à chaque demande de fusion (job `restore`) ; l'exercice mensuel sur le serveur reste obligatoire (SEC-23).
 - **DEP-07** Le nom d'hôte de l'application ne sert qu'elle, **sur aucun port** : un cookie `__Host-` ne tient pas compte du port, et un autre service sur le même nom (GlitchTip, OpenObserve, outil d'administration) pourrait lire ou poser la pré-session et la session (ADR 0015). Les services restreints (OBS-27) ont leur propre nom d'hôte.
 
 ## Observabilité
