@@ -135,6 +135,43 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
     expect((await store.openContests(50)).some((c) => c.contest.id === contest.id)).toBe(true);
   });
 
+  it('deux modérateurs à la fois : une seule décision, une seule réponse à la contestation (MOD-10, MOD-11)', async () => {
+    const commentId = await authoredComment();
+    const target = { kind: 'COMMENT' as const, id: commentId };
+    const expected = await store.lastDecisionOn(target);
+    const keep = { ...decision(commentId), action: 'KEEP' as const };
+    const remove = decision(commentId);
+    const results = await Promise.all(
+      [keep, remove].map((d) =>
+        store.record({
+          decision: d,
+          audit: audit(commentId),
+          closeReports: true,
+          expectedLastDecisionId: expected,
+        }),
+      ),
+    );
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(await prisma.moderationDecision.count({ where: { targetId: commentId } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { targetId: commentId } })).toBe(1);
+
+    const first = results[0] ? keep : remove;
+    const contest = { ...decision(commentId), action: 'CONTEST' as const, parentId: first.id };
+    expect(await store.contest(contest)).toBe('created');
+    const ruling = (action: 'KEEP' | 'REMOVE') => ({
+      ...decision(commentId),
+      action,
+      parentId: contest.id,
+    });
+    const rulings = await Promise.all(
+      [ruling('KEEP'), ruling('REMOVE')].map((d) =>
+        store.record({ decision: d, audit: audit(commentId), closeReports: false }),
+      ),
+    );
+    expect(rulings.filter(Boolean)).toHaveLength(1);
+    expect(await prisma.moderationDecision.count({ where: { parentId: contest.id } })).toBe(1);
+  });
+
   it('audit refusé : la décision n’est pas écrite', async () => {
     const commentId = await authoredComment();
     const broken = audit(commentId);

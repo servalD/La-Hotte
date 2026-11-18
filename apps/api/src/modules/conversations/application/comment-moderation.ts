@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ItemAccessReader } from '../../lists';
-import type { Thread } from '../../visibility';
+import type { ProductReference, Thread } from '../../visibility';
 import { CommentRepository } from '../domain/conversation.ports';
 import { gatedComment } from './manage-comments.use-case';
 
@@ -11,6 +11,8 @@ export interface CommentForModeration {
   readonly body: string;
   /** Pour l'avis à l'auteur (MOD-11) ; jamais rendu au modérateur. */
   readonly authorId: string | null;
+  /** ADM-05 : élément du message, pour le soustraire au modérateur concerné ; jamais rendu. */
+  readonly reference: ProductReference | null;
   readonly masked: boolean;
   readonly removed: boolean;
   readonly createdAt: Date;
@@ -82,6 +84,7 @@ export class CommentModerationGate {
       thread: row.thread,
       body: row.body,
       authorId: row.authorId,
+      reference: await this.reader.referenceOf(row.itemId),
       masked: row.maskedAt !== null,
       removed: row.moderatedAt !== null,
       createdAt: row.createdAt,

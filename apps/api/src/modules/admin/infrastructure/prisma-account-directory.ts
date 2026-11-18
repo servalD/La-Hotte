@@ -37,7 +37,8 @@ export class PrismaAccountDirectory extends AccountDirectory {
     });
     if (!account) return null;
     const [listCount, suspensions] = await Promise.all([
-      this.prisma.list.count({ where: { creator: { accountId: account.id } } }),
+      // ADM-04 : listes de souhaits seulement ; une giftlist ne doit pas se deviner (VIS-20).
+      this.prisma.list.count({ where: { type: 'WISHLIST', creator: { accountId: account.id } } }),
       this.prisma.auditLog.findMany({
         where: {
           targetId: account.id,

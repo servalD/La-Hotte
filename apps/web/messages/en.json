@@ -156,6 +156,14 @@
       "confirming": "Cancelling…",
       "done": "Change cancelled.",
       "doneHint": "Your profile stays in its current account."
+    },
+    "totpReset": {
+      "title": "Reset two-step verification",
+      "who": "Someone from the administration started this reset at your request. The link is valid for 30 minutes and works once.",
+      "confirm": "Remove two-step verification",
+      "confirming": "Resetting…",
+      "done": "Two-step verification removed.",
+      "doneHint": "Sign in with your password, then turn two-step verification on again in Security. An administration role can only be given back after that."
     }
   },
   "session": {

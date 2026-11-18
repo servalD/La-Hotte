@@ -26,18 +26,43 @@ health() {
   return 1
 }
 
+# Lit un fichier d'images sans l'exécuter : chaque ligne doit être une affectation attendue, les
+# quatre images désignées par empreinte ; toute autre ligne fait refuser le fichier.
+load_images() {
+  local file="$1" line key value
+  local -A seen=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    if [[ "$line" =~ ^(API|API_MIGRATE|WEB|FETCHER)_IMAGE=([a-z0-9./_:-]+@sha256:[0-9a-f]{64})$ ]]; then
+      key="${BASH_REMATCH[1]}_IMAGE"
+      value="${BASH_REMATCH[2]}"
+    elif [[ "$line" =~ ^RELEASE=([A-Za-z0-9._-]{1,64})$ ]]; then
+      key=RELEASE
+      value="${BASH_REMATCH[1]}"
+    else
+      echo "fichier d'images invalide : ligne inattendue" >&2
+      exit 2
+    fi
+    [[ -z "${seen[$key]:-}" ]] || {
+      echo "fichier d'images invalide : $key en double" >&2
+      exit 2
+    }
+    seen[$key]=1
+    # Les variables d'images du fichier passent devant celles de `.env`.
+    export "$key=$value"
+  done < "$file"
+  for key in API_IMAGE API_MIGRATE_IMAGE WEB_IMAGE FETCHER_IMAGE; do
+    [[ -n "${seen[$key]:-}" ]] || {
+      echo "fichier d'images invalide : $key manque" >&2
+      exit 2
+    }
+  done
+}
+
 apply() {
   local images="$1"
-  grep -Eq '^(API|API_MIGRATE|WEB|FETCHER)_IMAGE=.+@sha256:[0-9a-f]{64}$' "$images" || {
-    echo "fichier d'images invalide : une image sans empreinte" >&2
-    exit 2
-  }
+  load_images "$images"
   cp "$images" "$STATE/candidate.env"
-  # Les variables d'images du fichier passent devant celles de `.env`.
-  set -a
-  # shellcheck disable=SC1090
-  . "$STATE/candidate.env"
-  set +a
   "${COMPOSE[@]}" pull api web fetcher migrate
   "${COMPOSE[@]}" --profile migrate run --rm migrate
   "${COMPOSE[@]}" up -d --no-deps api web fetcher
@@ -57,10 +82,7 @@ rollback() {
     echo "aucune version précédente" >&2
     exit 1
   }
-  set -a
-  # shellcheck disable=SC1090
-  . "$STATE/previous.env"
-  set +a
+  load_images "$STATE/previous.env"
   # DAT-07 : la base reste à la nouvelle migration, compatible avec le code précédent.
   "${COMPOSE[@]}" up -d --no-deps api web fetcher
   health

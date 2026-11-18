@@ -29,6 +29,7 @@ export {
   RestorePublication,
   SuspendAccount,
   SuspendPublication,
+  AccountProfileIds,
 } from './application/contract';
 export type { ActiveProfile as ActiveProfileValue } from './application/authorize-profile.use-case';
 

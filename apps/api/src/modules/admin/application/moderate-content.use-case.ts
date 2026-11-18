@@ -10,7 +10,9 @@ import {
 import { type Product, ProductCatalog } from '../../catalog';
 import { type CommentForModeration, CommentModerationGate } from '../../conversations';
 import { DirectoryEntryReader } from '../../directory';
-import { SuspendPublication } from '../../identity';
+import { AccountProfileIds, SuspendPublication } from '../../identity';
+import { ProductReferences } from '../../lists';
+import { moderationWithheld } from '../../visibility';
 import {
   CONTEST_WINDOW_MS,
   ContestNotAllowedError,
@@ -88,7 +90,46 @@ export class ModerationTargets {
   constructor(
     private readonly catalog: ProductCatalog,
     private readonly comments: CommentModerationGate,
+    private readonly references: ProductReferences,
+    private readonly accountProfiles: AccountProfileIds,
   ) {}
+
+  /** Profils du compte du modérateur, lus une fois par requête (ADM-05). */
+  actorProfiles(actorAccountId: string): Promise<string[]> {
+    return this.accountProfiles.execute(actorAccountId);
+  }
+
+  /**
+   * ADM-05, MOD-10 : la cible concerne-t-elle un profil du modérateur (auteur, destinataire ou
+   * écarté) ? Elle lui est alors soustraite comme si elle n'existait pas.
+   */
+  async withheld(
+    actorProfileIds: readonly string[],
+    target: ModerationTarget,
+    loaded?: Product | CommentForModeration | null,
+  ): Promise<boolean> {
+    if (target.kind === 'PRODUCT') {
+      const product = (loaded as Product | null | undefined) ?? (await this.product(target.id));
+      if (!product) return false;
+      const references = (await this.references.of([product.id])).get(product.id) ?? [];
+      return moderationWithheld({
+        actorProfileIds,
+        authorId: product.ownerProfileId || null,
+        references,
+      });
+    }
+    const comment =
+      (loaded as CommentForModeration | null | undefined) ?? (await this.comment(target.id));
+    if (!comment) return false;
+    return (
+      moderationWithheld({
+        actorProfileIds,
+        authorId: comment.authorId,
+        // Sans élément connu, rien ne permet d'écarter un destinataire : le message est soustrait.
+        references: comment.reference ? [comment.reference] : [],
+      }) || comment.reference === null
+    );
+  }
 
   product(id: string): Promise<Product | null> {
     return this.catalog.findById(id);
@@ -184,7 +225,8 @@ export class ReadModerationQueue {
     private readonly targets: ModerationTargets,
   ) {}
 
-  async execute(): Promise<QueueEntry[]> {
+  async execute(actorAccountId: string): Promise<QueueEntry[]> {
+    const actor = await this.targets.actorProfiles(actorAccountId);
     const [reports, pending, contests] = await Promise.all([
       this.store.openReports(MODERATION_QUEUE_MAX),
       this.catalog.pendingGlobal(MODERATION_QUEUE_MAX),
@@ -197,19 +239,23 @@ export class ReadModerationQueue {
         const product = await this.targets.product(open.target.id);
         if (!product) continue;
         seen.add(product.id);
+        if (await this.targets.withheld(actor, open.target, product)) continue;
         entries.push({ kind: 'PRODUCT', product: reviewOf(product), reports: open });
       } else {
         const comment = await this.targets.comment(open.target.id);
         if (!comment || comment.removed) continue;
+        if (await this.targets.withheld(actor, open.target, comment)) continue;
         entries.push({ kind: 'COMMENT', comment: commentView(comment), reports: open });
       }
     }
     for (const product of pending) {
-      if (!seen.has(product.id)) {
+      if (seen.has(product.id)) continue;
+      if (!(await this.targets.withheld(actor, { kind: 'PRODUCT', id: product.id }, product))) {
         entries.push({ kind: 'PRODUCT', product: reviewOf(product), reports: null });
       }
     }
     for (const { contest, decision } of contests) {
+      if (await this.targets.withheld(actor, decision.target)) continue;
       const product =
         decision.target.kind === 'PRODUCT' ? await this.targets.product(decision.target.id) : null;
       const comment =
@@ -271,7 +317,7 @@ export class DecisionRecorder {
     return this.clock.now();
   }
 
-  record(input: Parameters<ModerationStore['record']>[0]): Promise<void> {
+  record(input: Parameters<ModerationStore['record']>[0]): Promise<boolean> {
     return this.store.record(input);
   }
 
@@ -329,20 +375,27 @@ export class DecideModeration {
     readonly reason: string;
   }): Promise<void> {
     const { target } = input;
+    const actor = await this.targets.actorProfiles(input.actorAccountId);
+    const last = await this.store.lastDecisionOn(target);
     const open = await this.store.openReportsOn(target);
     let pending = false;
     if (target.kind === 'PRODUCT') {
       const product = await this.targets.product(target.id);
-      if (!product) throw new ReportTargetNotFoundError();
+      if (!product || (await this.targets.withheld(actor, target, product))) {
+        throw new ReportTargetNotFoundError();
+      }
       pending = product.shareLevel === 'GLOBAL' && product.moderationStatus === 'PENDING';
     } else {
       const comment = await this.targets.comment(target.id);
-      if (!comment || comment.removed) throw new ReportTargetNotFoundError();
+      if (!comment || comment.removed || (await this.targets.withheld(actor, target, comment))) {
+        throw new ReportTargetNotFoundError();
+      }
     }
     if (!open && !pending) throw new NothingToModerateError();
     const author = await this.targets.authorOf(target);
     const now = this.recorder.now();
-    await this.recorder.record({
+    const recorded = await this.recorder.record({
+      expectedLastDecisionId: last,
       decision: {
         id: this.recorder.newId(),
         target,
@@ -355,6 +408,7 @@ export class DecideModeration {
       audit: this.recorder.audit(input, target, input.decision),
       closeReports: true,
     });
+    if (!recorded) throw new NothingToModerateError();
     await this.recorder.effects(input, target, 'moderation.decide', async () => {
       if (input.decision === 'KEEP') {
         await this.targets.keep(target);
@@ -431,12 +485,14 @@ export class DecideContest {
     if (contest?.action !== 'CONTEST' || !contest.parentId) throw new DecisionNotFoundError();
     const decision = await this.store.findDecision(contest.parentId);
     if (!decision) throw new DecisionNotFoundError();
+    const actor = await this.targets.actorProfiles(input.actorAccountId);
+    if (await this.targets.withheld(actor, decision.target)) throw new DecisionNotFoundError();
     if (decision.actorAccountId === input.actorAccountId) throw new ContestSameModeratorError();
     const open = (await this.store.openContests(500)).some((c) => c.contest.id === contest.id);
     if (!open) throw new NothingToModerateError();
     const now = this.recorder.now();
     const target = decision.target;
-    await this.recorder.record({
+    const recorded = await this.recorder.record({
       decision: {
         id: this.recorder.newId(),
         target,
@@ -449,6 +505,7 @@ export class DecideContest {
       audit: this.recorder.audit(input, target, `CONTEST_${input.outcome}`),
       closeReports: false,
     });
+    if (!recorded) throw new NothingToModerateError();
     const author = await this.targets.authorOf(target);
     await this.recorder.effects(input, target, 'moderation.decide', async () => {
       if (input.outcome === 'OVERTURN') {

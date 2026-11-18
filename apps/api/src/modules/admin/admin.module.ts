@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog';
 import { ConversationsModule } from '../conversations';
 import { DirectoryModule } from '../directory';
+import { ListsModule } from '../lists';
 import { IdentityModule } from '../identity';
 import {
   ContestDecision,
@@ -52,7 +53,7 @@ import { AdminAuditController } from './presentation/admin-audit.controller';
  * transaction (AUD-05).
  */
 @Module({
-  imports: [IdentityModule, CatalogModule, ConversationsModule, DirectoryModule],
+  imports: [IdentityModule, CatalogModule, ConversationsModule, DirectoryModule, ListsModule],
   controllers: [
     AdminAuditController,
     AdminStatsController,

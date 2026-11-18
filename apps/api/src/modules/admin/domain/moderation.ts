@@ -93,7 +93,15 @@ export abstract class ModerationStore {
     readonly audit: AuditWrite;
     /** Clôt les signalements ouverts de la cible. */
     readonly closeReports: boolean;
-  }): Promise<void>;
+    /**
+     * Décision de premier niveau : dernière décision connue sur la cible au moment de juger. Une
+     * autre décision écrite entre-temps fait refuser celle-ci (deux modérateurs à la fois).
+     * Absent pour la réponse à une contestation, protégée par un index unique.
+     */
+    readonly expectedLastDecisionId?: string | null;
+  }): Promise<boolean>;
+  /** Dernière décision de premier niveau sur une cible, ou `null`. */
+  abstract lastDecisionOn(target: ModerationTarget): Promise<string | null>;
 
   abstract findDecision(id: string): Promise<DecisionRecord | null>;
   /** MOD-11 : `already` si la décision a déjà sa contestation (index unique). */

@@ -70,6 +70,7 @@ export {
   RestorePublication,
   SuspendAccount,
   SuspendPublication,
+  AccountProfileIds,
 } from './administer-accounts.use-case';
 export { PLATFORM_PERMISSIONS, type PlatformPermission } from '../domain/platform-permissions';
 export type { ClientInfo } from './client-info';

@@ -156,6 +156,14 @@
       "confirming": "Annulation…",
       "done": "Changement annulé.",
       "doneHint": "Votre profil reste dans son compte actuel."
+    },
+    "totpReset": {
+      "title": "Réinitialiser la double authentification",
+      "who": "Une personne de l’administration a lancé cette réinitialisation à votre demande. Le lien est valable 30 minutes et ne sert qu’une fois.",
+      "confirm": "Retirer la double authentification",
+      "confirming": "Réinitialisation…",
+      "done": "Double authentification retirée.",
+      "doneHint": "Connectez-vous avec votre mot de passe, puis activez de nouveau la double authentification dans Sécurité. Un rôle d’administration ne vous sera rendu qu’ensuite."
     }
   },
   "session": {

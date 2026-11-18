@@ -193,7 +193,8 @@ export class ProductCatalog {
       case 'remove':
         await this.products.setModeration(productId, {
           moderation: 'REJECTED',
-          shareLevel: product.shareLevel === 'GLOBAL' ? 'PRIVATE' : product.shareLevel,
+          // Retirée du catalogue comme du cercle (revue SEC-40, phase 7).
+          shareLevel: 'PRIVATE',
         });
         return;
       case 'overturn':

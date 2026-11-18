@@ -25,7 +25,8 @@ export class PrismaPlatformStats extends PlatformStatsReader {
       this.prisma.account.count({ where: { status: 'ACTIVE' } }),
       this.prisma.account.count({ where: { status: 'ACTIVE', lastSignInAt: { gte: since } } }),
       this.prisma.account.count({ where: { createdAt: { gte: since } } }),
-      this.prisma.list.count({ where: { createdAt: { gte: since } } }),
+      // STA-02 : listes de souhaits seulement ; une giftlist ne se devine pas par le compteur.
+      this.prisma.list.count({ where: { type: 'WISHLIST', createdAt: { gte: since } } }),
       this.prisma.product.count({ where: { shareLevel: 'GLOBAL', moderationStatus: 'APPROVED' } }),
       this.prisma.report.count({ where: { status: 'OPEN' } }),
       this.prisma.product.count({

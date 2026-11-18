@@ -32,6 +32,7 @@ const TOKEN_PAGES = [
   '/auth/verify-email',
   '/auth/reset-password',
   '/auth/cancel-email-change',
+  '/auth/totp-reset',
   '/auth/google/return',
   '/auth/register',
   '/invitations/open',

@@ -43,14 +43,15 @@
 	}
 
 	log {
-		# OBS-20 : ni chaîne de requête, ni en-têtes, ni adresse complète dans les journaux d'accès.
+		# OBS-20, ADM-10 : ni chaîne de requête (adresse cherchée, termes de recherche), ni en-têtes
+		# de requête ou de réponse (cookies), ni adresse complète dans les journaux d'accès. Le filtre
+		# `query` ne retire que des clés nommées : la chaîne entière est coupée par expression.
 		format filter {
 			wrap json
 			fields {
-				request>uri query {
-					delete *
-				}
+				request>uri regexp `\?.*$` ""
 				request>headers delete
+				resp_headers delete
 				request>remote_ip ip_mask 16 32
 				request>client_ip ip_mask 16 32
 			}

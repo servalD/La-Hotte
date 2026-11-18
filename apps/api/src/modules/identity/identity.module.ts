@@ -27,6 +27,7 @@ import {
   RestorePublication,
   SuspendAccount,
   SuspendPublication,
+  AccountProfileIds,
 } from './application/administer-accounts.use-case';
 import { AccountAdministration } from './domain/account-administration';
 import { AccountLifecycle } from './domain/account-lifecycle';
@@ -276,6 +277,7 @@ import {
     RequestTotpReset,
     ConfirmTotpReset,
     SuspendPublication,
+    AccountProfileIds,
     RestorePublication,
     { provide: AccountAdministration, useClass: PrismaAccountAdministration },
     { provide: AccountLifecycle, useClass: PrismaAccountLifecycle },
@@ -417,6 +419,7 @@ import {
     GetOwnProfile,
     SecurityLog,
     SuspendPublication,
+    AccountProfileIds,
     RestorePublication,
     SuspendAccount,
     ReactivateAccount,

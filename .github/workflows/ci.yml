@@ -23,11 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -93,11 +93,11 @@ jobs:
       SMTP_URL: smtp://127.0.0.1:1
       MAIL_FROM: noreply@lahotte.test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -124,12 +124,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
       - name: Audit des dépendances
@@ -144,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       # CI-05. L'action est épinglée par commit complet : en mars 2026 les tags de
@@ -178,7 +178,7 @@ jobs:
           - { name: web, dockerfile: apps/web/Dockerfile, target: runtime }
           - { name: fetcher, dockerfile: apps/fetcher/Dockerfile, target: runtime }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
       # Construction sans publication : la publication viendra avec le premier serveur, dans
@@ -219,15 +219,24 @@ jobs:
       DATABASE_MIGRATION_URL: postgresql://wishlist:wishlist@localhost:5432/wishlist
       OWNER_URL: postgresql://wishlist:wishlist@localhost:5432
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Caddyfile de production valide, journaux sans chaîne de requête (OBS-20, ADM-10)
+        run: |
+          docker run --rm -v "$PWD/ops/production/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            -e APP_HOST=app.example.test -e OBSERVE_HOST=observe.example.test \
+            -e GLITCHTIP_HOST=errors.example.test -e ACME_EMAIL=ops@example.test \
+            -e OPS_ALLOWED_IPS=192.0.2.0/24 \
+            caddy:2.10.2-alpine caddy adapt --config /etc/caddy/Caddyfile --validate > caddy.json
+          grep -q '"regexp"' caddy.json
+          grep -q '"resp_headers"' caddy.json
       - name: Outils PostgreSQL 17 et age
         run: |
           sudo apt-get update
@@ -266,11 +275,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -278,7 +287,7 @@ jobs:
       - run: pnpm --filter @wishlist/web exec playwright install --with-deps chromium
       - run: pnpm --filter @wishlist/web build
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: playwright-report

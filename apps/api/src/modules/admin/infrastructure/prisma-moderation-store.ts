@@ -105,29 +105,51 @@ export class PrismaModerationStore extends ModerationStore {
     decision: DecisionRecord;
     audit: Parameters<typeof appendAudit>[1];
     closeReports: boolean;
-  }): Promise<void> {
+    expectedLastDecisionId?: string | null;
+  }): Promise<boolean> {
     const { decision } = input;
-    await this.prisma.$transaction(async (tx) => {
-      await tx.moderationDecision.create({
-        data: {
-          id: decision.id,
-          targetKind: decision.target.kind,
-          targetId: decision.target.id,
-          action: decision.action,
-          reason: decision.reason,
-          actorAccountId: decision.actorAccountId,
-          parentId: decision.parentId,
-          at: decision.at,
-        },
-      });
-      if (input.closeReports) {
-        await tx.report.updateMany({
-          where: { targetKind: decision.target.kind, targetId: decision.target.id, status: 'OPEN' },
-          data: { status: 'DECIDED', decidedAt: decision.at },
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Une décision à la fois par cible : verrou de transaction, puis relecture (I3, SEC-40).
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`moderation:${decision.target.kind}:${decision.target.id}`}, 0))`;
+        if (input.expectedLastDecisionId !== undefined) {
+          const last = await lastDecision(tx, decision.target);
+          if (last !== input.expectedLastDecisionId) return false;
+        }
+        await tx.moderationDecision.create({
+          data: {
+            id: decision.id,
+            targetKind: decision.target.kind,
+            targetId: decision.target.id,
+            action: decision.action,
+            reason: decision.reason,
+            actorAccountId: decision.actorAccountId,
+            parentId: decision.parentId,
+            at: decision.at,
+          },
         });
-      }
-      await appendAudit(tx, input.audit);
-    });
+        if (input.closeReports) {
+          await tx.report.updateMany({
+            where: {
+              targetKind: decision.target.kind,
+              targetId: decision.target.id,
+              status: 'OPEN',
+            },
+            data: { status: 'DECIDED', decidedAt: decision.at },
+          });
+        }
+        await appendAudit(tx, input.audit);
+        return true;
+      });
+    } catch (error) {
+      // MOD-11 : une seule réponse par contestation (index unique).
+      if (isUniqueViolation(error)) return false;
+      throw error;
+    }
+  }
+
+  lastDecisionOn(target: ModerationTarget): Promise<string | null> {
+    return lastDecision(this.prisma, target);
   }
 
   async findDecision(id: string): Promise<DecisionRecord | null> {
@@ -219,4 +241,16 @@ export class PrismaModerationStore extends ModerationStore {
       LIMIT 500`;
     return rows.map((row) => row.id);
   }
+}
+
+async function lastDecision(
+  db: Pick<PrismaService, 'moderationDecision'>,
+  target: ModerationTarget,
+): Promise<string | null> {
+  const row = await db.moderationDecision.findFirst({
+    where: { targetKind: target.kind, targetId: target.id, parentId: null },
+    orderBy: [{ at: 'desc' }, { id: 'desc' }],
+    select: { id: true },
+  });
+  return row?.id ?? null;
 }

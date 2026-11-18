@@ -182,8 +182,10 @@ export class AdminModerationController {
   @Get('queue')
   @AdminScope('moderation.queue')
   @ApiOkResponse({ type: ModerationQueueView })
-  async getModerationQueue(): Promise<ModerationQueueView> {
-    return { items: (await this.queue.execute()).map(entryView) };
+  async getModerationQueue(
+    @CurrentPlatformActor() actor: PlatformActor,
+  ): Promise<ModerationQueueView> {
+    return { items: (await this.queue.execute(actor.accountId)).map(entryView) };
   }
 
   @Post('contests/:id/decide')

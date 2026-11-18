@@ -78,7 +78,21 @@ export class InMemoryModerationStore extends ModerationStore {
     decision: DecisionRecord;
     audit: AuditWrite;
     closeReports: boolean;
-  }): Promise<void> {
+    expectedLastDecisionId?: string | null;
+  }): Promise<boolean> {
+    const { decision } = input;
+    if (
+      input.expectedLastDecisionId !== undefined &&
+      this.last(decision.target) !== input.expectedLastDecisionId
+    ) {
+      return Promise.resolve(false);
+    }
+    if (
+      decision.parentId !== null &&
+      this.decisions.some((d) => d.parentId === decision.parentId && d.action !== 'CONTEST')
+    ) {
+      return Promise.resolve(false);
+    }
     this.audit(input.audit);
     this.decisions.push(input.decision);
     if (input.closeReports) {
@@ -86,7 +100,16 @@ export class InMemoryModerationStore extends ModerationStore {
         if (same(r.target, input.decision.target)) r.status = 'DECIDED';
       }
     }
-    return Promise.resolve();
+    return Promise.resolve(true);
+  }
+
+  lastDecisionOn(target: ModerationTarget): Promise<string | null> {
+    return Promise.resolve(this.last(target));
+  }
+
+  private last(target: ModerationTarget): string | null {
+    const top = this.decisions.filter((d) => d.parentId === null && same(d.target, target));
+    return top.at(-1)?.id ?? null;
   }
 
   findDecision(id: string): Promise<DecisionRecord | null> {

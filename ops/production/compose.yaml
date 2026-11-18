@@ -73,7 +73,9 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     volumes:
       - images:/data/images
-    networks: [internal, fetcher, obs]
+    # SMTP, modèle d'extraction, Google, Web Push : sortie par un réseau dédié, que le pare-feu
+    # de l'hôte limite à ces hôtes (README, « Sorties »). Jamais vers une URL d'utilisateur (fetcher).
+    networks: [internal, fetcher, obs, api-egress]
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -219,6 +221,8 @@ networks:
   internal: { internal: true }
   fetcher: { internal: true }
   egress: {}
+  # Sorties de l'API vers ses fournisseurs (revue SEC-40 de la phase 7, I2).
+  api-egress: {}
   obs: { internal: true }
   # OBS-43 : GlitchTip envoie ses alertes par SMTP, hors de l'application.
   alerts: {}

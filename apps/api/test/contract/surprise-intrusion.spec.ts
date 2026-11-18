@@ -34,9 +34,11 @@ beforeEach(() => {
 const http = () => request(app.getHttpServer());
 type Body = Record<string, unknown>;
 
-async function person(): Promise<SignedIn> {
-  const user = await identity.signIn();
+async function person(role?: 'MODERATOR'): Promise<SignedIn> {
+  const user = await identity.signIn(role ? { role } : {});
   identity.accounts.seed({ id: user.accountId, email: `s-${user.accountId}@lahotte.test` });
+  // `seed` remet le rôle par défaut.
+  if (role) identity.sessions.addAccount(user.accountId, role);
   return user;
 }
 
@@ -70,8 +72,8 @@ const shape = (res: request.Response) => {
   return { status: res.status, body: rest };
 };
 
-async function world() {
-  const lea = await person();
+async function world(leaRole?: 'MODERATOR') {
+  const lea = await person(leaRole);
   const paul = await person();
   await link(lea, paul);
   const list = await http()
@@ -101,7 +103,13 @@ async function world() {
     .send({ thread: 'GIVERS', body: SECRET })
     .expect(201);
   await conversations.settle();
-  return { lea, paul, itemId, commentId: comment.body.id as string };
+  return {
+    lea,
+    paul,
+    itemId,
+    commentId: comment.body.id as string,
+    productId: product.body.id as string,
+  };
 }
 
 describe('Surprise face aux canaux de la phase 7 (SEC-42, VIS-20, VIS-22)', () => {
@@ -179,5 +187,79 @@ describe('Surprise face aux canaux de la phase 7 (SEC-42, VIS-20, VIS-22)', () =
     }
     const after = await http().get(`/api/v1/items/${itemId}/threads`).set('Cookie', lea.cookie);
     expect(after.body).toEqual(before.body);
+  });
+
+  it('une destinataire modératrice ne voit pas le message des offreurs signalé et ne peut pas en décider (ADM-05, MOD-10)', async () => {
+    const { lea, paul, itemId, commentId } = await world('MODERATOR');
+    const marc = await person();
+    await link(lea, marc);
+    await link(paul, marc);
+    const threads = await http().get(`/api/v1/items/${itemId}/threads`).set('Cookie', marc.cookie);
+    expect(threads.status).toBe(200);
+    await http()
+      .post('/api/v1/reports')
+      .set(marc.mutation)
+      .send({ targetKind: 'COMMENT', targetId: commentId, reason: 'OTHER', note: SECRET })
+      .expect(204);
+    // Un modérateur sans lien voit l'entrée : elle existe bien.
+    const other = await identity.signIn({ role: 'MODERATOR' });
+    const seen = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', other.cookie)
+      .expect(200);
+    expect(JSON.stringify(seen.body)).toContain(SECRET);
+    const queue = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', lea.cookie)
+      .expect(200);
+    expect(JSON.stringify(queue.body)).not.toContain(SECRET);
+    expect(JSON.stringify(queue.body)).not.toContain(commentId);
+    const fresh = await reauthenticated(lea);
+    const real = await http()
+      .post(`/api/v1/admin/moderation/comments/${commentId}/decide`)
+      .set(fresh.mutation)
+      .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' });
+    const fake = await http()
+      .post(`/api/v1/admin/moderation/comments/${randomUUID()}/decide`)
+      .set(fresh.mutation)
+      .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' });
+    expect(shape(real)).toEqual(shape(fake));
+    expect(real.status).toBe(404);
+  });
+
+  it('une fiche préparée pour une destinataire modératrice ne paraît pas dans sa file (REP-10, MOD-10)', async () => {
+    const { lea, paul } = await world('MODERATOR');
+    const title = `FICHE-${randomUUID()}`;
+    const list = await http()
+      .post('/api/v1/lists')
+      .set(paul.mutation)
+      .send({ type: 'GIFTLIST', title: 'Pour Léa', recipientIds: [lea.profileId] })
+      .expect(201);
+    const product = await http()
+      .post('/api/v1/products')
+      .set(paul.mutation)
+      .send({ title, unitPriceMinor: 10_000, currency: 'EUR' })
+      .expect(201);
+    await http()
+      .post(`/api/v1/lists/${list.body.id as string}/items`)
+      .set(paul.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(201);
+    await http()
+      .put(`/api/v1/products/${product.body.id as string}/share`)
+      .set(paul.mutation)
+      .send({ level: 'GLOBAL' })
+      .expect(200);
+    const other = await identity.signIn({ role: 'MODERATOR' });
+    const seen = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', other.cookie)
+      .expect(200);
+    expect(JSON.stringify(seen.body)).toContain(title);
+    const queue = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', lea.cookie)
+      .expect(200);
+    expect(JSON.stringify(queue.body)).not.toContain(title);
   });
 });

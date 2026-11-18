@@ -8,6 +8,7 @@ import {
   IdGenerator,
 } from '../../../shared/domain';
 import { tokenExpiry } from '../domain/account';
+import { ProfileRepository } from '../domain/profile.ports';
 import {
   AccountStateConflictError,
   AdminSelfActionError,
@@ -356,5 +357,15 @@ export class ConfirmTotpReset {
     });
     const account = await this.accounts.findById(accountId);
     if (account) await this.mailer.send(account.email, { kind: 'totp_disabled' });
+  }
+}
+
+/** ADM-05 : profils d'un compte de la plateforme, pour soustraire à un modérateur ce qui le concerne. */
+@Injectable()
+export class AccountProfileIds {
+  constructor(private readonly profiles: ProfileRepository) {}
+
+  execute(accountId: string): Promise<string[]> {
+    return this.profiles.listIds(accountId);
   }
 }

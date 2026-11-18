@@ -1,4 +1,9 @@
-import { globalProductVisible, requiresHiddenItemChoice, sharedProductVisible } from './rules';
+import {
+  globalProductVisible,
+  moderationWithheld,
+  requiresHiddenItemChoice,
+  sharedProductVisible,
+} from './rules';
 
 // REP-03, REP-04, REP-06, REP-07, REP-10, MOD-06, MOD-12.
 
@@ -75,5 +80,30 @@ describe('Catalogue global (MOD-06, MOD-12, REP-04, REP-07, REP-10)', () => {
   it('REP-07 : écarté par la règle d’un élément qui la référence', () => {
     const hidden = { rule: { mode: 'EXCEPT' as const, profiles: ['inconnu'] }, listRecipients: [] };
     expect(globalProductVisible({ ...global, references: [open, hidden] })).toBe(false);
+  });
+});
+
+describe('Modération soustraite au modérateur concerné (ADM-05, MOD-10, RBAC-12)', () => {
+  const all = { mode: 'ALL' as const, profiles: [] };
+  const base = { actorProfileIds: ['m1', 'm2'], authorId: 'paul', references: [] };
+
+  it('un modérateur sans lien voit le contenu', () => {
+    expect(moderationWithheld(base)).toBe(false);
+    expect(
+      moderationWithheld({ ...base, references: [{ rule: all, listRecipients: ['lea'] }] }),
+    ).toBe(false);
+  });
+
+  it('soustrait si un profil du compte est destinataire, écarté ou auteur', () => {
+    expect(
+      moderationWithheld({ ...base, references: [{ rule: all, listRecipients: ['m2'] }] }),
+    ).toBe(true);
+    expect(
+      moderationWithheld({
+        ...base,
+        references: [{ rule: { mode: 'EXCEPT', profiles: ['m1'] }, listRecipients: ['lea'] }],
+      }),
+    ).toBe(true);
+    expect(moderationWithheld({ ...base, authorId: 'm1' })).toBe(true);
   });
 });

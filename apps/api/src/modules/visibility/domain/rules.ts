@@ -345,6 +345,27 @@ export function globalProductVisible(input: {
   );
 }
 
+/**
+ * ADM-05, MOD-10, RBAC-12 : un contenu à modérer est soustrait au modérateur dont un profil en est
+ * l'auteur, ou serait écarté par la règle d'un élément concerné, ou en est destinataire : la
+ * modération ne révèle pas ce qu'on lui prépare (VIS-20), et nul ne tranche sur son propre contenu.
+ * Le contenu reste dans la file des autres modérateurs.
+ */
+export function moderationWithheld(input: {
+  readonly actorProfileIds: readonly string[];
+  readonly authorId: string | null;
+  readonly references: readonly ProductReference[];
+}): boolean {
+  return input.actorProfileIds.some(
+    (profileId) =>
+      profileId === input.authorId ||
+      input.references.some(
+        (reference) =>
+          reference.listRecipients.includes(profileId) || ruleExcludes(reference.rule, profileId),
+      ),
+  );
+}
+
 /** REP-06 : publier une fiche référencée par un élément caché exige un choix explicite. */
 export function requiresHiddenItemChoice(references: readonly ProductReference[]): boolean {
   return references.some((reference) => reference.rule.mode !== 'ALL');

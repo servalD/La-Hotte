@@ -99,6 +99,22 @@ describe('page à jeton dans le fragment (AUTH-15, AUTH-16)', () => {
     );
   });
 
+  it('réinitialisation du TOTP : le jeton part au clic vers la bonne route (ADM-07)', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    window.history.replaceState(null, '', `/auth/totp-reset#${token}`);
+    wrap(<TokenConfirm kind="totpReset" />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Retirer la double authentification' }),
+    );
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).includes('/auth/totp/reset/confirm')),
+      ).toBe(true);
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('Double authentification retirée');
+  });
+
   it('refuse un fragment qui n’est pas un jeton', async () => {
     window.history.replaceState(null, '', '/auth/cancel-email-change#nimporte-quoi');
     wrap(<TokenConfirm kind="cancelEmailChange" />);

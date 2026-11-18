@@ -60,7 +60,9 @@ export class PrismaAccountAdministration extends AccountAdministration {
   suspend(input: { accountId: string; authEpoch: number; audit: AuditWrite }): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.account.updateMany({
-        where: { id: input.accountId, status: 'ACTIVE' },
+        // ADM-06 : jamais un administrateur, même nommé entre la lecture et l'écriture (le rôle est
+        // relu sous le verrou de la ligne).
+        where: { id: input.accountId, status: 'ACTIVE', role: { not: 'ADMIN' } },
         data: { status: 'SUSPENDED' },
       });
       if (count !== 1) return false;

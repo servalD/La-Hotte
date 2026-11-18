@@ -20,8 +20,8 @@ set -euo pipefail
 COMPOSE="${COMPOSE:-docker compose --env-file .env}"
 RETENTION="${BACKUP_RETENTION_DAYS:-30}"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$BACKUP_DIR"
 umask 077
+mkdir -p "$BACKUP_DIR"
 
 seal() {
   # $1 : fichier de destination. Écrit d'abord un fichier partiel, renommé une fois complet.

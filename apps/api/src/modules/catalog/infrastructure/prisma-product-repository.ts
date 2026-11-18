@@ -229,7 +229,8 @@ export class PrismaProductRepository extends ProductRepository {
       WITH published AS (
         SELECT p.id, p.created_at, COALESCE(p.normalized_url, p.id::text) AS grp, pr.account_id
         FROM product p
-        JOIN profile pr ON pr.id = p.owner_profile_id
+        -- RGPD-12 : une fiche dont l'auteur est effacé reste au catalogue, sans compter de compte.
+        LEFT JOIN profile pr ON pr.id = p.owner_profile_id
         WHERE p.share_level = 'GLOBAL' AND p.moderation_status = 'APPROVED'
       ),
       canonical AS (
