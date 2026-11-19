@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="600" viewBox="0 0 980 600" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>La Hotte : fonctionnement pour l'utilisateur</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9f1239"/>
+    </marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d99a1e"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b9bcc6"/>
+    </marker>
+    <style>
+      .rail { fill:none; stroke:#d9d6db; stroke-width:1.6; }
+      .flow { fill:none; stroke:#9f1239; stroke-width:2.6; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.05s linear infinite; }
+      .gold { fill:none; stroke:#e0a326; stroke-width:2.6; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.05s linear infinite; }
+      .mute { fill:none; stroke:#aab0ba; stroke-width:2.2; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.6s linear infinite; }
+      @keyframes hotte { to { stroke-dashoffset:-13; } }
+      .t  { fill:#17171f; font-size:12.5px; font-weight:600; }
+      .s  { fill:#7a7a84; font-size:10px; }
+      .lb { fill:#8a8a93; font-size:11px; letter-spacing:2px; }
+      .pl { font-size:9.5px; font-weight:600; }
+    </style>
+  </defs>
+
+  <rect x="4" y="4" width="972" height="592" rx="18" fill="#fffdfc" stroke="#eceaea"/>
+
+  <text x="150" y="74" text-anchor="middle" class="lb">DESTINATAIRE</text>
+  <text x="490" y="74" text-anchor="middle" class="lb">SERVEUR</text>
+  <text x="830" y="74" text-anchor="middle" class="lb">OFFREURS</text>
+
+  <!-- ======== DESTINATAIRE ======== -->
+  <g>
+    <rect x="40" y="100" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="58" y="125" class="t">1 · Colle un lien ou une photo</text>
+    <text x="58" y="143" class="s">page de boutique, capture, appareil photo</text>
+  </g>
+  <g>
+    <rect x="40" y="190" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="58" y="215" class="t">2 · La fiche se remplit seule</text>
+    <text x="58" y="233" class="s">titre · image · prix · vendeur</text>
+  </g>
+  <g>
+    <rect x="40" y="280" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="58" y="305" class="t">3 · Wishlist et visibilité</text>
+    <text x="58" y="323" class="s">TOUS · SEULEMENT · TOUS SAUF</text>
+  </g>
+  <path d="M150,158 L150,186" class="rail" marker-end="url(#arrowGray)"/>
+  <path d="M150,248 L150,276" class="rail" marker-end="url(#arrowGray)"/>
+
+  <g>
+    <rect x="40" y="430" width="220" height="58" rx="11" fill="#f7f6f8" stroke="#e2e2e9" stroke-dasharray="5 4"/>
+    <text x="58" y="455" class="t">Ce qu'il voit de ses souhaits</text>
+    <text x="58" y="473" class="s">« neutre » ou « reçu », rien d'autre</text>
+  </g>
+
+  <!-- destinataire -> serveur -->
+  <path d="M260,129 C310,129 310,176 356,176" class="rail" marker-end="url(#arrow)"/>
+  <path d="M260,129 C310,129 310,176 356,176" class="flow"/>
+  <path d="M358,196 C310,196 310,219 264,219" class="rail" marker-end="url(#arrow)"/>
+  <path d="M358,196 C310,196 310,219 264,219" class="flow"/>
+  <path d="M260,309 C310,309 310,240 356,240" class="rail" marker-end="url(#arrow)"/>
+  <path d="M260,309 C310,309 310,240 356,240" class="flow"/>
+  <rect x="282" y="263" width="56" height="18" rx="9" fill="#fdecef" stroke="#f3b6c4"/>
+  <text x="310" y="275.5" text-anchor="middle" class="pl" fill="#9f1239">souhait</text>
+
+  <!-- serveur -> destinataire : vue filtrée -->
+  <path d="M358,384 C310,384 310,459 264,459" class="rail" stroke-dasharray="5 4" marker-end="url(#arrowGray)"/>
+  <path d="M358,384 C310,384 310,459 264,459" class="mute"/>
+  <rect x="276" y="412" width="68" height="18" rx="9" fill="#f1f1f4" stroke="#d6d6de"/>
+  <text x="310" y="424.5" text-anchor="middle" class="pl" fill="#6b6b75">vue filtrée</text>
+
+  <!-- ======== SERVEUR ======== -->
+  <rect x="360" y="96" width="260" height="320" rx="16" fill="#fff" stroke="#9f1239" stroke-width="1.5"/>
+  <path d="M376,96 H604 A16,16 0 0 1 620,112 V140 H360 V112 A16,16 0 0 1 376,96 z" fill="#9f1239"/>
+  <text x="490" y="124" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">La Hotte</text>
+
+  <g>
+    <rect x="378" y="154" width="224" height="40" rx="9" fill="#faf9fa" stroke="#ebe8ec"/>
+    <text x="392" y="171" class="t" font-size="11.5">Extraction de la fiche</text>
+    <text x="392" y="186" class="s">fetcher isolé · modèle Claude</text>
+  </g>
+  <g>
+    <rect x="378" y="204" width="224" height="40" rx="9" fill="#fdecef" stroke="#f3b6c4"/>
+    <text x="392" y="221" class="t" font-size="11.5" fill="#9f1239">Moteur de visibilité</text>
+    <text x="392" y="236" class="s">un seul juge pour toute lecture</text>
+  </g>
+  <g>
+    <rect x="378" y="254" width="224" height="40" rx="9" fill="#faf9fa" stroke="#ebe8ec"/>
+    <text x="392" y="271" class="t" font-size="11.5">Listes · événements</text>
+    <text x="392" y="286" class="s">wishlists, giftlists, invitations</text>
+  </g>
+  <g>
+    <rect x="378" y="304" width="224" height="40" rx="9" fill="#faf9fa" stroke="#ebe8ec"/>
+    <text x="392" y="321" class="t" font-size="11.5">Compta des participations</text>
+    <text x="392" y="336" class="s">unités mineures · parts = total · ajout seul</text>
+  </g>
+  <g>
+    <rect x="378" y="354" width="224" height="40" rx="9" fill="#faf9fa" stroke="#ebe8ec"/>
+    <text x="392" y="371" class="t" font-size="11.5">Temps réel · notifications</text>
+    <text x="392" y="386" class="s">Socket.IO · Web Push · hors ligne</text>
+  </g>
+
+  <g>
+    <rect x="380" y="432" width="220" height="30" rx="15" fill="#fdf3df" stroke="#f0d39a"/>
+    <rect x="398" y="445" width="11" height="9" rx="2" fill="#b7791f"/>
+    <path d="M400.5,445 V441.5 A3,3 0 0 1 406.5,441.5 V445" fill="none" stroke="#b7791f" stroke-width="1.6"/>
+    <text x="500" y="451" text-anchor="middle" font-size="11" font-weight="600" fill="#7a5410">Surprise garantie par le serveur</text>
+  </g>
+
+  <!-- ======== OFFREURS ======== -->
+  <g>
+    <rect x="720" y="100" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="738" y="125" class="t">Voit les souhaits</text>
+    <text x="738" y="143" class="s">selon la règle de visibilité</text>
+  </g>
+  <g>
+    <rect x="720" y="190" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="738" y="215" class="t">Réserve ou participe</text>
+    <text x="738" y="233" class="s">montant fixe · pourcentage · totalité</text>
+  </g>
+  <g>
+    <rect x="720" y="280" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="738" y="305" class="t">Giftlist secrète</text>
+    <text x="738" y="323" class="s">idées et fil des offreurs</text>
+  </g>
+  <g>
+    <rect x="720" y="370" width="220" height="58" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="738" y="395" class="t">Qui doit quoi à qui</text>
+    <text x="738" y="413" class="s">acheteur · parts · remboursements</text>
+  </g>
+
+  <path d="M622,226 C672,226 670,129 716,129" class="rail" marker-end="url(#arrow)"/>
+  <path d="M622,226 C672,226 670,129 716,129" class="flow"/>
+  <rect x="634" y="160" width="72" height="18" rx="9" fill="#fdecef" stroke="#f3b6c4"/>
+  <text x="670" y="172.5" text-anchor="middle" class="pl" fill="#9f1239">vue offreur</text>
+
+  <path d="M718,219 C670,219 672,270 624,270" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M718,219 C670,219 672,270 624,270" class="gold"/>
+  <path d="M718,309 C670,309 672,286 624,286" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M718,309 C670,309 672,286 624,286" class="gold"/>
+  <rect x="636" y="236" width="64" height="18" rx="9" fill="#fdf3df" stroke="#f0d39a"/>
+  <text x="668" y="248.5" text-anchor="middle" class="pl" fill="#7a5410">réserve</text>
+
+  <path d="M622,326 C672,326 670,399 716,399" class="rail" marker-end="url(#arrow)"/>
+  <path d="M622,326 C672,326 670,399 716,399" class="flow"/>
+
+  <!-- ======== SOCLE ======== -->
+  <line x1="40" y1="500" x2="940" y2="500" stroke="#eceaea"/>
+  <g>
+    <rect x="40" y="516" width="280" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <circle cx="62" cy="543" r="5" fill="#9f1239"/>
+    <text x="76" y="539" class="t">Un compte, plusieurs profils</text>
+    <text x="76" y="556" class="s">parent, enfants, code PIN par profil</text>
+  </g>
+  <g>
+    <rect x="350" y="516" width="280" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <circle cx="372" cy="543" r="5" fill="#e0a326"/>
+    <text x="386" y="539" class="t">Cercle et événements</text>
+    <text x="386" y="556" class="s">liens entre profils · Noël · anniversaires</text>
+  </g>
+  <g>
+    <rect x="660" y="516" width="280" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <circle cx="682" cy="543" r="5" fill="#17171f"/>
+    <text x="696" y="539" class="t">Application installable</text>
+    <text x="696" y="556" class="s">hors ligne, cache chiffré par profil</text>
+  </g>
+</svg>
