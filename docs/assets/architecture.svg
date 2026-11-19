@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="590" viewBox="0 0 980 590" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>La Hotte : architecture</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9f1239"/>
+    </marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d99a1e"/>
+    </marker>
+    <style>
+      .rail { fill:none; stroke:#d9d6db; stroke-width:1.6; }
+      .flow { fill:none; stroke:#9f1239; stroke-width:2.6; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.05s linear infinite; }
+      .gold { fill:none; stroke:#e0a326; stroke-width:2.6; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.05s linear infinite; }
+      @keyframes hotte { to { stroke-dashoffset:-13; } }
+      .t  { fill:#17171f; font-size:12.5px; font-weight:600; }
+      .s  { fill:#7a7a84; font-size:10px; }
+      .r  { fill:#4a4a55; font-size:10.5px; }
+      .lb { fill:#8a8a93; font-size:11px; letter-spacing:2px; }
+      .chip { fill:#faf9fa; stroke:#ebe8ec; }
+      .ct { fill:#3a3a44; font-size:10.5px; font-weight:600; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    </style>
+  </defs>
+
+  <rect x="4" y="4" width="972" height="582" rx="18" fill="#fffdfc" stroke="#eceaea"/>
+
+  <text x="120" y="62" text-anchor="middle" class="lb">CLIENT</text>
+  <text x="337" y="62" text-anchor="middle" class="lb">WEB</text>
+  <text x="613" y="62" text-anchor="middle" class="lb">API</text>
+  <text x="876" y="62" text-anchor="middle" class="lb">DONNÉES · SORTIES</text>
+
+  <!-- ======== NAVIGATEUR ======== -->
+  <rect x="30" y="86" width="180" height="300" rx="14" fill="#fff" stroke="#e2e2e9"/>
+  <text x="46" y="110" class="t">Navigateur · PWA</text>
+  <text x="46" y="125" class="s">React 19 · Next.js 15</text>
+  <g>
+    <rect x="42" y="136" width="156" height="40" rx="8" class="chip"/>
+    <text x="52" y="152" class="t" font-size="11">TanStack Query</text>
+    <text x="52" y="167" class="s">hooks générés</text>
+  </g>
+  <g>
+    <rect x="42" y="184" width="156" height="40" rx="8" class="chip"/>
+    <text x="52" y="200" class="t" font-size="11">IndexedDB par profil</text>
+    <text x="52" y="215" class="s">chiffrée (AES-GCM) si PIN</text>
+  </g>
+  <g>
+    <rect x="42" y="232" width="156" height="40" rx="8" class="chip"/>
+    <text x="52" y="248" class="t" font-size="11">File de mutations</text>
+    <text x="52" y="263" class="s">hors ligne, idempotente</text>
+  </g>
+  <g>
+    <rect x="42" y="280" width="156" height="40" rx="8" class="chip"/>
+    <text x="52" y="296" class="t" font-size="11">Service worker</text>
+    <text x="52" y="311" class="s">installation · Web Push</text>
+  </g>
+  <g>
+    <rect x="42" y="328" width="156" height="40" rx="8" class="chip"/>
+    <text x="52" y="344" class="t" font-size="11">Client Socket.IO</text>
+    <text x="52" y="359" class="s">un par profil actif</text>
+  </g>
+
+  <!-- ======== WEB ======== -->
+  <rect x="244" y="150" width="186" height="150" rx="14" fill="#fff" stroke="#e2e2e9"/>
+  <text x="260" y="176" class="t">Web · Next.js</text>
+  <text x="260" y="192" class="s">rendu serveur, App Router</text>
+  <text x="260" y="222" class="r">CSP à nonce</text>
+  <text x="260" y="242" class="r">relais /api et /realtime</text>
+  <text x="260" y="262" class="r">relais /monitoring (erreurs)</text>
+  <text x="260" y="282" class="r">aucune règle d'accès</text>
+
+  <path d="M210,206 C228,206 226,206 242,206" class="rail" marker-end="url(#arrow)"/>
+  <path d="M210,206 C228,206 226,206 242,206" class="flow"/>
+  <path d="M210,348 C232,348 222,270 242,270" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M210,348 C232,348 222,270 242,270" class="gold"/>
+  <path d="M430,206 L466,206" class="rail" marker-end="url(#arrow)"/>
+  <path d="M430,206 L466,206" class="flow"/>
+  <path d="M430,270 L466,270" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M430,270 L466,270" class="gold"/>
+
+  <!-- ======== API ======== -->
+  <rect x="468" y="86" width="290" height="370" rx="16" fill="#fff" stroke="#9f1239" stroke-width="1.5"/>
+  <path d="M484,86 H742 A16,16 0 0 1 758,102 V126 H468 V102 A16,16 0 0 1 484,86 z" fill="#9f1239"/>
+  <text x="613" y="111" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">API · NestJS 11</text>
+  <text x="484" y="150" class="s">un module par domaine · profil actif lu dans la session</text>
+
+  <g>
+    <rect x="484" y="160" width="80" height="26" rx="7" class="chip"/><text x="524" y="177" text-anchor="middle" class="ct">identity</text>
+    <rect x="573" y="160" width="80" height="26" rx="7" fill="#fdecef" stroke="#f3b6c4"/><text x="613" y="177" text-anchor="middle" class="ct" fill="#9f1239">visibility</text>
+    <rect x="662" y="160" width="80" height="26" rx="7" class="chip"/><text x="702" y="177" text-anchor="middle" class="ct">lists</text>
+
+    <rect x="484" y="192" width="80" height="26" rx="7" class="chip"/><text x="524" y="209" text-anchor="middle" class="ct">catalog</text>
+    <rect x="573" y="192" width="80" height="26" rx="7" class="chip"/><text x="613" y="209" text-anchor="middle" class="ct">events</text>
+    <rect x="662" y="192" width="80" height="26" rx="7" class="chip"/><text x="702" y="209" text-anchor="middle" class="ct">accounting</text>
+
+    <rect x="484" y="224" width="80" height="26" rx="7" class="chip"/><text x="524" y="241" text-anchor="middle" class="ct" font-size="9.5">conversations</text>
+    <rect x="573" y="224" width="80" height="26" rx="7" class="chip"/><text x="613" y="241" text-anchor="middle" class="ct" font-size="9.5">notifications</text>
+    <rect x="662" y="224" width="80" height="26" rx="7" class="chip"/><text x="702" y="241" text-anchor="middle" class="ct">realtime</text>
+
+    <rect x="484" y="256" width="80" height="26" rx="7" class="chip"/><text x="524" y="273" text-anchor="middle" class="ct">directory</text>
+    <rect x="573" y="256" width="80" height="26" rx="7" class="chip"/><text x="613" y="273" text-anchor="middle" class="ct">admin</text>
+    <rect x="662" y="256" width="80" height="26" rx="7" class="chip"/><text x="702" y="273" text-anchor="middle" class="ct">privacy</text>
+  </g>
+
+  <text x="613" y="306" text-anchor="middle" class="s">presentation → application → domain ← infrastructure</text>
+
+  <g>
+    <rect x="484" y="318" width="258" height="44" rx="9" class="chip"/>
+    <text x="496" y="336" class="t" font-size="11">platform</text>
+    <text x="496" y="352" class="s">Prisma · Redis · OpenTelemetry · erreurs RFC 9457</text>
+  </g>
+  <g>
+    <rect x="484" y="372" width="258" height="44" rx="9" fill="#fdf3df" stroke="#f0d39a"/>
+    <text x="496" y="390" class="t" font-size="11" fill="#7a5410">openapi.json</text>
+    <text x="496" y="406" class="s">contrat émis depuis les DTO, vérifié en CI</text>
+  </g>
+
+  <!-- ======== DONNÉES ET SORTIES ======== -->
+  <g>
+    <rect x="796" y="86" width="160" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="810" y="108" class="t">PostgreSQL 17</text>
+    <text x="810" y="125" class="s">compta en ajout seul</text>
+  </g>
+  <g>
+    <rect x="796" y="156" width="160" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="810" y="178" class="t">Redis 7</text>
+    <text x="810" y="195" class="s">sessions · files · pub/sub</text>
+  </g>
+  <g>
+    <rect x="796" y="240" width="160" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="810" y="262" class="t">Fetcher isolé</text>
+    <text x="810" y="279" class="s">anti-SSRF · images (sharp)</text>
+  </g>
+  <g>
+    <rect x="796" y="314" width="160" height="44" rx="11" fill="#f7f6f8" stroke="#d6d6de" stroke-dasharray="5 4"/>
+    <text x="810" y="333" class="t" font-size="11.5">Pages des boutiques</text>
+    <text x="810" y="349" class="s">Internet</text>
+  </g>
+  <g>
+    <rect x="796" y="384" width="160" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="810" y="406" class="t">API Claude</text>
+    <text x="810" y="423" class="s">lecture de la fiche</text>
+  </g>
+  <g>
+    <rect x="796" y="454" width="160" height="54" rx="11" fill="#fff" stroke="#e2e2e9"/>
+    <text x="810" y="476" class="t">Fournisseurs</text>
+    <text x="810" y="493" class="s">SMTP · Google · Web Push</text>
+  </g>
+
+  <path d="M758,113 L794,113" class="rail" marker-end="url(#arrow)"/>
+  <path d="M758,113 L794,113" class="flow"/>
+  <path d="M758,183 L794,183" class="rail" marker-end="url(#arrow)"/>
+  <path d="M758,183 L794,183" class="flow"/>
+  <path d="M758,267 L794,267" class="rail" marker-end="url(#arrow)"/>
+  <path d="M758,267 L794,267" class="flow"/>
+  <path d="M876,294 L876,312" class="rail" marker-end="url(#arrow)"/>
+  <path d="M876,294 L876,312" class="flow"/>
+  <path d="M758,411 L794,411" class="rail" marker-end="url(#arrow)"/>
+  <path d="M758,411 L794,411" class="flow"/>
+  <path d="M758,440 C780,440 772,481 794,481" class="rail" marker-end="url(#arrow)"/>
+  <path d="M758,440 C780,440 772,481 794,481" class="flow"/>
+
+  <!-- ======== CONTRAT PARTAGÉ ======== -->
+  <rect x="30" y="486" width="728" height="50" rx="12" fill="#fffaf0" stroke="#f0d39a" stroke-dasharray="5 4"/>
+  <text x="46" y="507" class="t" fill="#7a5410">packages/api-client</text>
+  <text x="46" y="524" class="s">hooks et schémas Zod générés par Orval depuis openapi.json : le web n'écrit aucun appel à la main</text>
+
+  <path d="M613,416 L613,484" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M613,416 L613,484" class="gold"/>
+  <path d="M120,486 L120,390" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M120,486 L120,390" class="gold"/>
+
+  <!-- légende -->
+  <circle cx="36" cy="562" r="4" fill="#9f1239"/>
+  <text x="46" y="566" class="s">HTTP</text>
+  <circle cx="92" cy="562" r="4" fill="#e0a326"/>
+  <text x="102" y="566" class="s">temps réel (WebSocket) et contrat généré</text>
+</svg>

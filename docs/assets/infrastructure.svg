@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="660" viewBox="0 0 980 660" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title>La Hotte : infrastructure de production et observabilité</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9f1239"/>
+    </marker>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d99a1e"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b9bcc6"/>
+    </marker>
+    <style>
+      .rail { fill:none; stroke:#d9d6db; stroke-width:1.6; }
+      .flow { fill:none; stroke:#9f1239; stroke-width:2.6; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.05s linear infinite; }
+      .gold { fill:none; stroke:#e0a326; stroke-width:2.6; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.05s linear infinite; }
+      .mute { fill:none; stroke:#aab0ba; stroke-width:2.2; stroke-linecap:round; stroke-dasharray:0.1 13; animation:hotte 1.6s linear infinite; }
+      @keyframes hotte { to { stroke-dashoffset:-13; } }
+      .t  { fill:#17171f; font-size:12.5px; font-weight:600; }
+      .s  { fill:#7a7a84; font-size:10px; }
+      .r  { fill:#4a4a55; font-size:10.5px; }
+      .zl { fill:#8a8a93; font-size:9.5px; letter-spacing:1.6px; font-weight:600; }
+      .zone { fill:#fbfafb; stroke:#d6d6de; stroke-dasharray:5 4; }
+      .box { fill:#fff; stroke:#e2e2e9; }
+      .pl { font-size:9.5px; font-weight:600; }
+      .chip { fill:#fff; stroke:#e2e2e9; }
+      .ct { fill:#3a3a44; font-size:10px; font-weight:600; }
+    </style>
+  </defs>
+
+  <rect x="4" y="4" width="972" height="652" rx="18" fill="#fffdfc" stroke="#eceaea"/>
+
+  <!-- ======== ENTRÉE ======== -->
+  <g>
+    <rect x="30" y="100" width="160" height="54" rx="11" class="box"/>
+    <text x="46" y="122" class="t">Utilisateurs</text>
+    <text x="46" y="139" class="s">navigateur · PWA installée</text>
+  </g>
+  <g>
+    <rect x="30" y="196" width="160" height="160" rx="14" fill="#fff" stroke="#9f1239" stroke-width="1.5"/>
+    <text x="46" y="220" class="t">Caddy 2.10</text>
+    <text x="46" y="236" class="s">seul à publier 80 · 443</text>
+    <text x="46" y="264" class="r">TLS automatique</text>
+    <text x="46" y="282" class="r">HTTP/3</text>
+    <text x="46" y="300" class="r">un nom d'hôte</text>
+    <text x="46" y="314" class="r">par service</text>
+    <text x="46" y="338" class="s">exploitation : IP autorisées</text>
+  </g>
+  <g>
+    <rect x="30" y="400" width="160" height="54" rx="11" class="box"/>
+    <text x="46" y="422" class="t">Exploitation</text>
+    <text x="46" y="439" class="s">comptes nominatifs · TOTP</text>
+  </g>
+  <path d="M110,154 L110,192" class="rail" marker-end="url(#arrow)"/>
+  <path d="M110,154 L110,192" class="flow"/>
+  <path d="M110,400 L110,360" class="rail" stroke-dasharray="5 4" marker-end="url(#arrowGray)"/>
+  <path d="M110,400 L110,360" class="mute"/>
+
+  <!-- ======== RÉSEAU internal ======== -->
+  <rect x="226" y="72" width="436" height="282" rx="14" class="zone"/>
+  <text x="244" y="94" class="zl">INTERNAL · SANS SORTIE INTERNET</text>
+  <g>
+    <rect x="250" y="108" width="180" height="54" rx="11" class="box"/>
+    <text x="266" y="130" class="t">web</text>
+    <text x="266" y="147" class="s">Next.js · distroless</text>
+  </g>
+  <g>
+    <rect x="480" y="108" width="160" height="54" rx="11" fill="#f7f6f8" stroke="#d6d6de" stroke-dasharray="5 4"/>
+    <text x="496" y="130" class="t">migrate</text>
+    <text x="496" y="147" class="s">tâche, avant la bascule</text>
+  </g>
+  <g>
+    <rect x="250" y="188" width="180" height="54" rx="11" class="box"/>
+    <text x="266" y="210" class="t">api</text>
+    <text x="266" y="227" class="s">NestJS · distroless</text>
+  </g>
+  <g>
+    <rect x="320" y="282" width="150" height="54" rx="11" class="box"/>
+    <text x="334" y="304" class="t">PostgreSQL 17</text>
+    <text x="334" y="321" class="s">WAL archivé toutes les 5 min</text>
+  </g>
+  <g>
+    <rect x="490" y="282" width="150" height="54" rx="11" class="box"/>
+    <text x="504" y="304" class="t">Redis 7</text>
+    <text x="504" y="321" class="s">mot de passe · noeviction</text>
+  </g>
+
+  <path d="M190,240 C220,240 220,135 248,135" class="rail" marker-end="url(#arrow)"/>
+  <path d="M190,240 C220,240 220,135 248,135" class="flow"/>
+  <path d="M190,290 C222,290 222,215 248,215" class="rail" marker-end="url(#arrow)"/>
+  <path d="M190,290 C222,290 222,215 248,215" class="flow"/>
+  <path d="M340,162 L340,186" class="rail" marker-end="url(#arrow)"/>
+  <path d="M340,162 L340,186" class="flow"/>
+  <path d="M400,242 L400,280" class="rail" marker-end="url(#arrow)"/>
+  <path d="M400,242 L400,280" class="flow"/>
+  <path d="M424,242 C440,266 556,258 562,280" class="rail" marker-end="url(#arrow)"/>
+  <path d="M424,242 C440,266 556,258 562,280" class="flow"/>
+
+  <!-- ======== SORTIES ======== -->
+  <rect x="690" y="72" width="260" height="104" rx="14" class="zone"/>
+  <text x="706" y="94" class="zl">FETCHER · EGRESS</text>
+  <g>
+    <rect x="706" y="108" width="228" height="54" rx="11" class="box"/>
+    <text x="722" y="130" class="t">fetcher</text>
+    <text x="722" y="147" class="s">seul à joindre les URL d'articles</text>
+  </g>
+  <g>
+    <rect x="706" y="198" width="228" height="42" rx="11" fill="#f7f6f8" stroke="#d6d6de" stroke-dasharray="5 4"/>
+    <text x="722" y="216" class="t" font-size="11.5">Internet</text>
+    <text x="722" y="231" class="s">pages des boutiques</text>
+  </g>
+  <g>
+    <rect x="706" y="268" width="228" height="62" rx="11" class="box"/>
+    <text x="722" y="290" class="t">SMTP · Claude · Google · Push</text>
+    <text x="722" y="307" class="s">réseau api-egress</text>
+    <text x="722" y="321" class="s">filtré par la chaîne DOCKER-USER</text>
+  </g>
+
+  <path d="M430,200 C468,200 466,178 510,178 L650,178 C682,178 678,135 704,135" class="rail" marker-end="url(#arrow)"/>
+  <path d="M430,200 C468,200 466,178 510,178 L650,178 C682,178 678,135 704,135" class="flow"/>
+  <path d="M820,162 L820,196" class="rail" marker-end="url(#arrow)"/>
+  <path d="M820,162 L820,196" class="flow"/>
+  <path d="M430,222 C470,222 480,240 560,240 L640,240 C680,240 676,299 704,299" class="rail" marker-end="url(#arrow)"/>
+  <path d="M430,222 C470,222 480,240 560,240 L640,240 C680,240 676,299 704,299" class="flow"/>
+
+  <!-- ======== RÉSEAU obs ======== -->
+  <rect x="226" y="378" width="724" height="204" rx="14" class="zone"/>
+  <text x="244" y="574" class="zl">OBS · SANS SORTIE INTERNET</text>
+
+  <g>
+    <rect x="250" y="412" width="180" height="62" rx="11" class="box"/>
+    <text x="266" y="434" class="t">GlitchTip</text>
+    <text x="266" y="451" class="s">erreurs · source maps</text>
+    <text x="266" y="464" class="s">gardées 90 jours</text>
+  </g>
+  <g>
+    <rect x="490" y="412" width="200" height="62" rx="11" class="box"/>
+    <text x="506" y="434" class="t">Collecteur OpenTelemetry</text>
+    <text x="506" y="451" class="s">OTLP · tampon · filtres</text>
+    <text x="506" y="464" class="s">identifiants d'OpenObserve</text>
+  </g>
+  <g>
+    <rect x="730" y="412" width="200" height="62" rx="11" class="box"/>
+    <text x="746" y="434" class="t">OpenObserve</text>
+    <text x="746" y="451" class="s">journaux · métriques · traces</text>
+    <text x="746" y="464" class="s">journaux gardés 30 jours</text>
+  </g>
+  <g>
+    <rect x="250" y="498" width="180" height="56" rx="11" class="box"/>
+    <text x="266" y="520" class="t">PostgreSQL</text>
+    <text x="266" y="537" class="s">base dédiée à GlitchTip</text>
+  </g>
+  <g>
+    <rect x="490" y="498" width="200" height="56" rx="11" fill="#fdf3df" stroke="#f0d39a"/>
+    <text x="506" y="520" class="t" fill="#7a5410">Deux barrières</text>
+    <text x="506" y="537" class="s">nettoyage à la source, puis au collecteur</text>
+  </g>
+  <g>
+    <rect x="730" y="498" width="200" height="56" rx="11" class="box"/>
+    <text x="746" y="520" class="t">Alertes</text>
+    <text x="746" y="537" class="s">par e-mail (réseau alerts)</text>
+  </g>
+
+  <!-- web et api -> GlitchTip (erreurs) et collecteur (OTLP) -->
+  <path d="M268,242 L268,410" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M268,242 L268,410" class="gold"/>
+  <path d="M292,242 L292,386 C292,393 298,396 306,396 L586,396 C594,396 598,402 598,410" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M292,242 L292,386 C292,393 298,396 306,396 L586,396 C594,396 598,402 598,410" class="gold"/>
+  <rect x="246" y="346" width="66" height="18" rx="9" fill="#fdf3df" stroke="#f0d39a"/>
+  <text x="279" y="358.5" text-anchor="middle" class="pl" fill="#7a5410">télémétrie</text>
+
+  <path d="M690,443 L728,443" class="rail" marker-end="url(#arrowGold)"/>
+  <path d="M690,443 L728,443" class="gold"/>
+  <path d="M340,474 L340,496" class="rail" marker-end="url(#arrowGray)"/>
+  <path d="M430,456 C456,456 456,486 480,486 L700,486 C716,486 712,522 728,522" class="rail" marker-end="url(#arrow)"/>
+  <path d="M430,456 C456,456 456,486 480,486 L700,486 C716,486 712,522 728,522" class="flow"/>
+  <path d="M830,474 L830,496" class="rail" marker-end="url(#arrow)"/>
+  <path d="M830,474 L830,496" class="flow"/>
+
+  <!-- ======== DURCISSEMENT ======== -->
+  <g>
+    <rect x="30" y="604" width="128" height="30" rx="15" class="chip"/><text x="94" y="623" text-anchor="middle" class="ct">distroless · nonroot</text>
+    <rect x="166" y="604" width="104" height="30" rx="15" class="chip"/><text x="218" y="623" text-anchor="middle" class="ct">cap_drop: ALL</text>
+    <rect x="278" y="604" width="126" height="30" rx="15" class="chip"/><text x="341" y="623" text-anchor="middle" class="ct">no-new-privileges</text>
+    <rect x="412" y="604" width="100" height="30" rx="15" class="chip"/><text x="462" y="623" text-anchor="middle" class="ct">lecture seule</text>
+    <rect x="520" y="604" width="146" height="30" rx="15" class="chip"/><text x="593" y="623" text-anchor="middle" class="ct">images par empreinte</text>
+    <rect x="674" y="604" width="114" height="30" rx="15" class="chip"/><text x="731" y="623" text-anchor="middle" class="ct">limites mém. · pids</text>
+    <rect x="796" y="604" width="154" height="30" rx="15" fill="#fdecef" stroke="#f3b6c4"/><text x="873" y="623" text-anchor="middle" class="ct" fill="#9f1239">sauvegardes chiffrées</text>
+  </g>
+</svg>
