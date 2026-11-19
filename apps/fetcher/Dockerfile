@@ -4,7 +4,7 @@
 #   docker build -f apps/fetcher/Dockerfile -t lahotte-fetcher .
 # Seul service qui joint Internet ; il n'a accès à aucune base (réseau dédié).
 ARG NODE_IMAGE=node:22.20.0-bookworm-slim@sha256:b21fe589dfbe5cc39365d0544b9be3f1f33f55f3c86c87a76ff65a02f8f5848e
-ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian12:nonroot@sha256:13593b7570658e8477de39e2f4a1dd25db2f836d68a0ba771251572d23bb4f8e
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian13:nonroot@sha256:39c66687298417dbf3ff2fb8b6012c20554494e16414ef7afd07b9abbb45b501
 
 FROM ${NODE_IMAGE} AS build
 ENV PNPM_HOME=/pnpm \
@@ -39,4 +39,5 @@ COPY --from=build /out /app
 EXPOSE 4100
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \
   CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:4100/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+USER 65532:65532
 CMD ["--enable-source-maps", "dist/main.js"]

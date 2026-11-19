@@ -2,10 +2,11 @@
 # Image de l'API (DEP-02, DEP-03, DEP-04, DEP-08). Construite depuis la racine du dépôt :
 #   docker build -f apps/api/Dockerfile --target runtime -t lahotte-api .
 #   docker build -f apps/api/Dockerfile --target migrate -t lahotte-api-migrate .
-# Construction sur Debian 12 (bookworm), exécution sur distroless Debian 12 : même glibc et même
-# OpenSSL 3, donc le moteur Prisma généré à la construction (`debian-openssl-3.0.x`) s'y charge.
+# Construction sur Debian 12 (bookworm), exécution sur distroless Debian 13 (trixie) : glibc plus
+# récente et même ABI `libssl.so.3`, donc le moteur Prisma généré à la construction
+# (`debian-openssl-3.0.x`) s'y charge. La distroless Debian 12 n'est plus reconstruite (OpenSSL en retard).
 ARG NODE_IMAGE=node:22.20.0-bookworm-slim@sha256:b21fe589dfbe5cc39365d0544b9be3f1f33f55f3c86c87a76ff65a02f8f5848e
-ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian12:nonroot@sha256:13593b7570658e8477de39e2f4a1dd25db2f836d68a0ba771251572d23bb4f8e
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian13:nonroot@sha256:39c66687298417dbf3ff2fb8b6012c20554494e16414ef7afd07b9abbb45b501
 
 FROM ${NODE_IMAGE} AS build
 ENV PNPM_HOME=/pnpm \
@@ -57,6 +58,7 @@ ENV CHECKPOINT_DISABLE=1
 WORKDIR /app
 COPY --from=build /out/prisma /app/prisma
 COPY --from=build /migrate /migrate
+USER 65532:65532
 CMD ["/migrate/node_modules/prisma/build/index.js", "migrate", "deploy", "--schema", "prisma/schema.prisma"]
 
 FROM ${RUNTIME_IMAGE} AS runtime
@@ -68,4 +70,5 @@ COPY --from=build --chown=65532:65532 /skel/images /data/images
 EXPOSE 4000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
   CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:4000/health/live').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+USER 65532:65532
 CMD ["--enable-source-maps", "--import", "./dist/instrument.js", "dist/main.js"]
