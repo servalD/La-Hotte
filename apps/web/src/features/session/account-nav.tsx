@@ -79,7 +79,7 @@ export function AccountHeader({
   );
 }
 
-/** Menu de compte : retour aux profils, thème, déconnexion. L'adresse n'est vue que de son titulaire. */
+/** Menu de compte : retour aux profils, thème, déconnexion. L'adresse y est masquée. */
 function AccountMenu({ area, waiting, signingOut, onSignOut }: Controls & { area: string }) {
   const t = useTranslations('nav');
   const account = useGetAccount();
@@ -109,7 +109,7 @@ function AccountMenu({ area, waiting, signingOut, onSignOut }: Controls & { area
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           {account.data ? (
-            <DropdownMenuLabel className="max-w-72 text-sm break-all font-semibold text-foreground">
+            <DropdownMenuLabel className="max-w-72 text-sm font-semibold text-foreground">
               {maskEmail(account.data.email)}
             </DropdownMenuLabel>
           ) : null}

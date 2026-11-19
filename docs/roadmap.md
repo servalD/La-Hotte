@@ -785,7 +785,8 @@ Décisions : DS-05 à DS-08 (identité, typographie, états vides, boutons) et U
 
 **Restes** :
 
-- administration (comptes, modération, audit, réglages) et comptes sous tutelle : style des composants de base seulement, non revus à l'écran (il faut un compte administrateur) ;
+- ~~administration (comptes, modération, audit, réglages) et comptes sous tutelle : non revus à l'écran~~ Fait le 2026-11-19 : écrans refaits, revus à la main avec un compte administrateur (bureau et mobile, 390 px) et sans violation axe (WCAG 2 A et AA). Tests de bout en bout, lint, types, format et tests unitaires verts ;
+- relecture des textes de la phase 7 avec `design:ux-copy` ;
 - liens légaux du pied de page, quand ces pages existeront.
 
 ## Après la v1

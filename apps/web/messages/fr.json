@@ -1066,6 +1066,7 @@
     "open": "Ouvrir",
     "surprise": "surprise",
     "loading": "Chargement des événements",
+    "loadError": "Impossible de charger les événements. Rechargez la page.",
     "empty": "Aucun événement pour l’instant.",
     "notFound": "Cet événement est introuvable.",
     "who": "Visible des participants de l’événement, et d’eux seuls.",

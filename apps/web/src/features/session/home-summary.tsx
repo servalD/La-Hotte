@@ -49,10 +49,11 @@ export function HomeSummary() {
 
   // UX-10 : « parts à régler ». Les montants restent des entiers par devise (ART-11).
   const owedByCurrency = new Map<string, number>();
-  let owedPeople = 0;
-  for (const balance of balances.data?.items ?? []) {
+  const owedTo = new Set<string>();
+  for (const [index, balance] of (balances.data?.items ?? []).entries()) {
     if (balance.netMinor <= 0) continue;
-    owedPeople += 1;
+    // Une même personne due dans deux devises compte pour une.
+    owedTo.add(balance.other?.id ?? `row-${String(index)}`);
     owedByCurrency.set(
       balance.currency,
       (owedByCurrency.get(balance.currency) ?? 0) + balance.netMinor,
@@ -103,7 +104,7 @@ export function HomeSummary() {
             title={t('owe.title', {
               amount: owed.map((o) => formatMinor(o.minor, o.currency, locale)).join(' · '),
             })}
-            description={t('owe.body', { count: owedPeople })}
+            description={t('owe.body', { count: owedTo.size })}
           >
             <Button asChild variant="secondary">
               <Link href="/balances">{t('owe.action')}</Link>

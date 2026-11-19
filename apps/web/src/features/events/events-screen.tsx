@@ -250,7 +250,7 @@ export function EventsScreen() {
   const t = useTranslations('events');
   const [scope, setScope] = useState<Scope>(EventScope.upcoming);
   const events = useListEvents({ scope });
-  const empty = !events.isPending && (events.data?.items.length ?? 0) === 0;
+  const empty = events.isSuccess && events.data.items.length === 0;
   // DS-07 : l'état vide porte l'action principale ; elle n'est alors pas répétée dans l'en-tête.
   const emptyAction = empty && scope === EventScope.upcoming;
 
@@ -270,6 +270,8 @@ export function EventsScreen() {
       </div>
       {events.isPending ? (
         <Skeleton className="h-24 w-full" aria-label={t('loading')} />
+      ) : events.isError ? (
+        <p role="alert">{t('loadError')}</p>
       ) : empty ? (
         <EmptyState
           title={t(`emptyState.${scope}.title`)}
@@ -278,7 +280,7 @@ export function EventsScreen() {
         />
       ) : (
         <ul className="flex flex-col gap-3">
-          {events.data?.items.map((event) => (
+          {events.data.items.map((event) => (
             <li key={event.id}>
               <EventRow event={event} />
             </li>

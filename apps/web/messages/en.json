@@ -1066,6 +1066,7 @@
     "open": "Open",
     "surprise": "surprise",
     "loading": "Loading events",
+    "loadError": "Could not load events. Reload the page.",
     "empty": "No events yet.",
     "notFound": "This event cannot be found.",
     "who": "Visible to the event’s participants, and only to them.",
