@@ -3,6 +3,7 @@ import { Prisma, type ModerationDecision as DecisionRow } from '@prisma/client';
 import { appendAudit } from '../../../platform/prisma/audit-writer';
 import { PrismaService } from '../../../platform/prisma/prisma.service';
 import {
+  type ModerationConcern,
   type DecisionOnMyContent,
   type DecisionRecord,
   type ModerationDecisionKind,
@@ -113,8 +114,27 @@ export class PrismaModerationStore extends ModerationStore {
     return first ? this.summarize(target, first.createdAt) : null;
   }
 
+  async reportedByAccount(accountId: string, target: ModerationTarget): Promise<boolean> {
+    const row = await this.prisma.report.findFirst({
+      where: { reporterAccountId: accountId, targetKind: target.kind, targetId: target.id },
+      select: { id: true },
+    });
+    return row !== null;
+  }
+
+  async concernsOn(target: ModerationTarget): Promise<ModerationConcern[]> {
+    const rows = await this.prisma.moderationDecision.findMany({
+      where: { targetKind: target.kind, targetId: target.id, concern: { not: Prisma.AnyNull } },
+      select: { concern: true },
+    });
+    return rows.flatMap((row) =>
+      row.concern ? [row.concern as unknown as ModerationConcern] : [],
+    );
+  }
+
   async record(input: {
     decision: DecisionRecord;
+    concern: ModerationConcern;
     audit: Parameters<typeof appendAudit>[1];
     closeReports: boolean;
     expectedLastDecisionId?: string | null;
@@ -138,6 +158,7 @@ export class PrismaModerationStore extends ModerationStore {
             actorAccountId: decision.actorAccountId,
             parentId: decision.parentId,
             at: decision.at,
+            concern: input.concern as unknown as Prisma.InputJsonObject,
           },
         });
         if (input.closeReports) {

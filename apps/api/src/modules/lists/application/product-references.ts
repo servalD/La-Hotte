@@ -17,9 +17,16 @@ export class ProductReferences {
     private readonly setRule: SetItemRule,
   ) {}
 
-  async of(productIds: readonly string[]): Promise<Map<string, ProductReference[]>> {
+  /**
+   * Références de chaque fiche. `withdrawn` : y compris les éléments retirés, pour la modération
+   * (ADM-05, revue SEC-40 M4) : un élément retiré reste dans sa liste, avec ses destinataires.
+   */
+  async of(
+    productIds: readonly string[],
+    options?: { readonly withdrawn?: boolean },
+  ): Promise<Map<string, ProductReference[]>> {
     const out = new Map<string, ProductReference[]>();
-    for (const reference of await this.items.referencesOf(productIds)) {
+    for (const reference of await this.items.referencesOf(productIds, options)) {
       const list = out.get(reference.productId) ?? [];
       list.push({
         rule: reference.rule,

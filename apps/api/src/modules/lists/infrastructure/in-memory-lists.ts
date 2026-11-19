@@ -444,10 +444,17 @@ export class InMemoryItemRepository extends ItemRepository {
     return Promise.resolve();
   }
 
-  referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]> {
+  referencesOf(
+    productIds: readonly string[],
+    options?: { readonly withdrawn?: boolean },
+  ): Promise<ItemProductReference[]> {
     return Promise.resolve(
       [...this.items.values()]
-        .filter((row) => productIds.includes(row.productId) && row.status !== 'WITHDRAWN')
+        .filter(
+          (row) =>
+            productIds.includes(row.productId) &&
+            (options?.withdrawn === true || row.status !== 'WITHDRAWN'),
+        )
         .map((row) => ({
           productId: row.productId,
           itemId: row.id,

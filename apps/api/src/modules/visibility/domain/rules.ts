@@ -371,6 +371,25 @@ export function moderationWithheld(input: {
   );
 }
 
+/**
+ * MOD-05 (revue SEC-40 des restes de la phase 7, I1) : une fiche publiée compte dans « ajouté par N
+ * personnes », et peut représenter son adresse au catalogue, si aucun de ses éléments ne la cache à
+ * qui que ce soit : règle `TOUS` et liste dont le seul destinataire est son auteur. Le compteur est
+ * ainsi le même pour tous les lecteurs ; il ne dit à personne qu'une fiche lui est préparée, ni par
+ * comparaison entre deux profils d'un même compte. Les honorés d'une surprise n'y changent rien,
+ * comme au répertoire (REP-10, EVT-04).
+ */
+export function globalProductCountable(input: {
+  readonly ownerId: string | null;
+  readonly references: readonly ProductReference[];
+}): boolean {
+  return input.references.every(
+    (reference) =>
+      reference.rule.mode === 'ALL' &&
+      reference.listRecipients.every((profileId) => profileId === input.ownerId),
+  );
+}
+
 /** REP-06 : publier une fiche référencée par un élément caché exige un choix explicite. */
 export function requiresHiddenItemChoice(references: readonly ProductReference[]): boolean {
   return references.some((reference) => reference.rule.mode !== 'ALL');

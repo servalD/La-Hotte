@@ -42,6 +42,11 @@ export abstract class AuditTrail {
     readonly entry: AuditEntry;
     readonly filter: AuditFilter;
   }): Promise<AuditRecord[]>;
+  /**
+   * Suite de la même consultation, sans nouvelle entrée : pages relues quand des entrées sont
+   * soustraites au lecteur, pour que la page reste pleine (ADM-05).
+   */
+  abstract read(filter: AuditFilter): Promise<AuditRecord[]>;
 }
 
 export function encodeAuditCursor(cursor: AuditCursor): string {

@@ -248,6 +248,31 @@ describe('File du modérateur (ADM-05, MOD-10)', () => {
     await http().get('/api/v1/admin/moderation/queue').set('Cookie', user.cookie).expect(404);
   });
 
+  it('un modérateur ne tranche pas ce que son compte a signalé : la cible lui est soustraite (ADM-05, revue SEC-40 B1)', async () => {
+    const papa = await person();
+    const id = await globalProduct(papa);
+    const mod = await moderator();
+    identity.accounts.seed({ id: mod.accountId, email: `m-${mod.accountId}@lahotte.test` });
+    identity.sessions.addAccount(mod.accountId, 'MODERATOR');
+    await report(mod, { targetKind: 'PRODUCT', targetId: id }).expect(204);
+    const mine = await queue(mod);
+    expect(JSON.stringify(mine)).not.toContain(id);
+    const res = await http()
+      .post(`/api/v1/admin/moderation/products/${id}/decide`)
+      .set(mod.mutation)
+      .send({ decision: 'KEEP', reason: REASON })
+      .expect(409);
+    expect(res.body.code).toBe('NOTHING_TO_MODERATE');
+    // Un autre modérateur la voit et la tranche.
+    const other = await moderator();
+    expect(JSON.stringify(await queue(other))).toContain(id);
+    await http()
+      .post(`/api/v1/admin/moderation/products/${id}/decide`)
+      .set(other.mutation)
+      .send({ decision: 'KEEP', reason: REASON })
+      .expect(204);
+  });
+
   it('rien à décider : 409', async () => {
     const papa = await person();
     const id = await globalProduct(papa);

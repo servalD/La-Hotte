@@ -224,10 +224,20 @@ export class PrismaProductRepository extends ProductRepository {
   async findGlobal(input: { query: string | null; limit: number }): Promise<GlobalEntry[]> {
     // MOD-05 : une fiche par URL normalisée (la plus ancienne publiée) ; une fiche sans URL est
     // seule de son groupe. Le compteur compte des comptes, jamais des profils. Requête paramétrée.
+    // Les 200 premières fiches de chaque adresse suffisent au compteur et à la fiche montrée (MOD-05).
     const query = input.query;
-    const rows = await this.prisma.$queryRaw<{ id: string; adopters: number }[]>`
+    const rows = await this.prisma.$queryRaw<
+      {
+        id: string;
+        adopters: number;
+        member_ids: string[];
+        member_owners: (string | null)[];
+        member_accounts: (string | null)[];
+      }[]
+    >`
       WITH published AS (
-        SELECT p.id, p.created_at, COALESCE(p.normalized_url, p.id::text) AS grp, pr.account_id
+        SELECT p.id, p.created_at, COALESCE(p.normalized_url, p.id::text) AS grp,
+          p.owner_profile_id, pr.account_id
         FROM product p
         -- RGPD-12 : une fiche dont l'auteur est effacé reste au catalogue, sans compter de compte.
         LEFT JOIN profile pr ON pr.id = p.owner_profile_id
@@ -237,9 +247,13 @@ export class PrismaProductRepository extends ProductRepository {
         SELECT DISTINCT ON (grp) grp, id, created_at FROM published ORDER BY grp, created_at, id
       ),
       counts AS (
-        SELECT grp, COUNT(DISTINCT account_id)::int AS adopters FROM published GROUP BY grp
+        SELECT grp, COUNT(DISTINCT account_id)::int AS adopters,
+          (array_agg(id::text ORDER BY created_at, id))[1:200] AS member_ids,
+          (array_agg(owner_profile_id::text ORDER BY created_at, id))[1:200] AS member_owners,
+          (array_agg(account_id::text ORDER BY created_at, id))[1:200] AS member_accounts
+        FROM published GROUP BY grp
       )
-      SELECT c.id, n.adopters
+      SELECT c.id, n.adopters, n.member_ids, n.member_owners, n.member_accounts
       FROM canonical c
       JOIN counts n ON n.grp = c.grp
       JOIN product p ON p.id = c.id
@@ -254,7 +268,13 @@ export class PrismaProductRepository extends ProductRepository {
     const byId = new Map(products.map((row) => [row.id, toProduct(row)]));
     return rows.flatMap((row) => {
       const product = byId.get(row.id);
-      return product ? [{ product, adopters: row.adopters }] : [];
+      if (!product) return [];
+      const members = row.member_ids.map((productId, i) => ({
+        productId,
+        ownerProfileId: row.member_owners[i] ?? null,
+        accountId: row.member_accounts[i] ?? null,
+      }));
+      return [{ product, adopters: row.adopters, members }];
     });
   }
 

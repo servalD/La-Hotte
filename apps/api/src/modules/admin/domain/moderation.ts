@@ -57,6 +57,26 @@ export interface DecisionRecord {
   readonly at: Date;
 }
 
+/** Élément qui référence une cible : même forme que `ProductReference` du module `visibility`. */
+export interface ConcernReference {
+  readonly rule: { readonly mode: 'ALL' | 'EXCEPT' | 'ONLY'; readonly profiles: readonly string[] };
+  readonly listRecipients: readonly string[];
+  readonly surpriseFor: readonly string[];
+}
+
+/**
+ * ADM-05, AUD-06 (revue SEC-40 des restes de la phase 7, I2) : qui une cible concernait au moment
+ * d'une décision (auteur, éléments qui la référencent). Figé avec la décision, en ajout seul,
+ * jamais rendu : une entrée du journal soustraite à un lecteur ne réapparaît pas quand la cible
+ * disparaît ou que sa règle change. `referenceUnknown` : message dont l'élément est inconnu,
+ * soustrait à tous.
+ */
+export interface ModerationConcern {
+  readonly authorId: string | null;
+  readonly references: readonly ConcernReference[];
+  readonly referenceUnknown: boolean;
+}
+
 /** Contestation sans décision (MOD-11), avec la décision contestée. */
 export interface OpenContest {
   readonly contest: DecisionRecord;
@@ -89,8 +109,19 @@ export abstract class ModerationStore {
   abstract openReports(limit: number): Promise<OpenReports[]>;
   abstract openReportsOn(target: ModerationTarget): Promise<OpenReports | null>;
 
+  /**
+   * ADM-05 (revue SEC-40, B1) : un profil de ce compte a-t-il jamais signalé cette cible ? Un
+   * modérateur ne tranche pas ce qu'il a signalé : sinon l'absence de la cible dans sa file, après
+   * son propre signalement, lui dirait qu'elle le concerne.
+   */
+  abstract reportedByAccount(accountId: string, target: ModerationTarget): Promise<boolean>;
+  /** I2 : faits figés par les décisions sur cette cible. */
+  abstract concernsOn(target: ModerationTarget): Promise<ModerationConcern[]>;
+
   abstract record(input: {
     readonly decision: DecisionRecord;
+    /** I2 : qui la cible concerne au moment de la décision. */
+    readonly concern: ModerationConcern;
     readonly audit: AuditWrite;
     /** Clôt les signalements ouverts de la cible. */
     readonly closeReports: boolean;

@@ -162,7 +162,7 @@ export class InMemoryProductRepository extends ProductRepository {
   }
 
   findGlobal(input: { query: string | null; limit: number }): Promise<GlobalEntry[]> {
-    const words = (input.query ?? '').toLowerCase().split(/s+/).filter(Boolean);
+    const words = (input.query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
     const published = [...this.rows.values()].filter(
       (row) => row.shareLevel === 'GLOBAL' && row.moderationStatus === 'APPROVED',
     );
@@ -176,12 +176,16 @@ export class InMemoryProductRepository extends ProductRepository {
         (a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
       );
       const product = sorted[0] as Product;
+      // MOD-05 : un profil sans compte connu compte pour lui-même.
+      const members = sorted.map((row) => ({
+        productId: row.id,
+        ownerProfileId: row.ownerProfileId || null,
+        accountId: this.accountOf(row.ownerProfileId) ?? row.ownerProfileId,
+      }));
       return {
         product,
-        // MOD-05 : un profil sans compte connu compte pour lui-même.
-        adopters: new Set(
-          rows.map((row) => this.accountOf(row.ownerProfileId) ?? row.ownerProfileId),
-        ).size,
+        adopters: new Set(members.map((m) => m.accountId)).size,
+        members,
       };
     });
     return Promise.resolve(

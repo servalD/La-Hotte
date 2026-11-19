@@ -232,8 +232,14 @@ export abstract class ItemRepository {
   abstract productsOfList(listId: string): Promise<{ itemId: string; productId: string }[]>;
   /** REP-10 : l'élément référence désormais cette fiche (copie privée). */
   abstract repointProduct(itemId: string, productId: string): Promise<void>;
-  /** REP-06, REP-07, REP-10 : éléments non retirés qui référencent ces fiches. */
-  abstract referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]>;
+  /**
+   * REP-06, REP-07, REP-10 : éléments non retirés qui référencent ces fiches ; avec `withdrawn`,
+   * les éléments retirés aussi (ADM-05 : un élément retiré garde ses destinataires et son fil).
+   */
+  abstract referencesOf(
+    productIds: readonly string[],
+    options?: { readonly withdrawn?: boolean },
+  ): Promise<ItemProductReference[]>;
   /**
    * EVT-22 : éléments repris possibles pour `profileId` : sur les wishlists dont il est
    * destinataire, rattachées à un autre événement que `excludeEventId`, hors corbeille ; ni

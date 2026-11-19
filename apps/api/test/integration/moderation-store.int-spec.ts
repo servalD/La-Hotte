@@ -33,6 +33,7 @@ afterAll(async () => {
 });
 
 const http = () => request(app.getHttpServer());
+const NO_CONCERN = { authorId: null, references: [], referenceUnknown: false } as const;
 
 async function authoredComment(): Promise<string> {
   const list = await http()
@@ -107,6 +108,34 @@ describe('Signalements (MOD-07, MOD-08)', () => {
     expect(await report(a.profileId, a.accountId)).toEqual({ created: false, distinctAccounts: 1 });
     expect(await report(b.profileId, b.accountId)).toEqual({ created: true, distinctAccounts: 2 });
     expect((await store.openReportsOn(target))?.reasons).toEqual([{ reason: 'SPAM', count: 2 }]);
+    // ADM-05 (revue SEC-40, B1) : un compte qui a signalé la cible, et lui seul.
+    expect(await store.reportedByAccount(a.accountId, target)).toBe(true);
+    expect(await store.reportedByAccount(randomUUID(), target)).toBe(false);
+  });
+
+  it('qui la cible concerne est figé avec la décision, et relu par cible (ADM-05, AUD-06, I2)', async () => {
+    const commentId = await authoredComment();
+    const concern = {
+      authorId: author.profileId,
+      references: [
+        {
+          rule: { mode: 'EXCEPT' as const, profiles: [randomUUID()] },
+          listRecipients: [randomUUID()],
+          surpriseFor: [],
+        },
+      ],
+      referenceUnknown: false,
+    };
+    expect(
+      await store.record({
+        decision: decision(commentId),
+        concern,
+        audit: audit(commentId),
+        closeReports: true,
+      }),
+    ).toBe(true);
+    expect(await store.concernsOn({ kind: 'COMMENT', id: commentId })).toEqual([concern]);
+    expect(await store.concernsOn({ kind: 'COMMENT', id: randomUUID() })).toEqual([]);
   });
 });
 
@@ -124,7 +153,12 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
       at: new Date(),
     });
     const removal = decision(commentId);
-    await store.record({ decision: removal, audit: audit(commentId), closeReports: true });
+    await store.record({
+      decision: removal,
+      concern: NO_CONCERN,
+      audit: audit(commentId),
+      closeReports: true,
+    });
     expect(await store.openReportsOn({ kind: 'COMMENT', id: commentId })).toBeNull();
     expect(await prisma.auditLog.count({ where: { targetId: commentId } })).toBe(1);
     const mine = await store.decisionsOnContentOf(author.profileId ?? '');
@@ -146,6 +180,7 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
         store.record({
           decision: d,
           audit: audit(commentId),
+          concern: NO_CONCERN,
           closeReports: true,
           expectedLastDecisionId: expected,
         }),
@@ -165,7 +200,12 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
     });
     const rulings = await Promise.all(
       [ruling('KEEP'), ruling('REMOVE')].map((d) =>
-        store.record({ decision: d, audit: audit(commentId), closeReports: false }),
+        store.record({
+          decision: d,
+          concern: NO_CONCERN,
+          audit: audit(commentId),
+          closeReports: false,
+        }),
       ),
     );
     expect(rulings.filter(Boolean)).toHaveLength(1);
@@ -186,7 +226,12 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
       at: new Date(),
     });
     const removal = decision(commentId);
-    await store.record({ decision: removal, audit: audit(commentId), closeReports: false });
+    await store.record({
+      decision: removal,
+      concern: NO_CONCERN,
+      audit: audit(commentId),
+      closeReports: false,
+    });
     const contest = { ...decision(commentId), action: 'CONTEST' as const, parentId: removal.id };
     expect(await store.contest(contest)).toBe('created');
     const listed = async () => ({
@@ -210,6 +255,7 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
       store.record({
         decision: removal,
         audit: { ...broken, entry: { ...broken.entry, ip: 'pas-une-adresse' } },
+        concern: NO_CONCERN,
         closeReports: true,
       }),
     ).rejects.toThrow();
@@ -226,10 +272,16 @@ describe('Décisions et contestations (MOD-10, MOD-11, AUD-05)', () => {
     await store.record({
       decision: decision(erased, old),
       audit: audit(erased),
+      concern: NO_CONCERN,
       closeReports: true,
     });
     const removal = decision(contested, old);
-    await store.record({ decision: removal, audit: audit(contested), closeReports: true });
+    await store.record({
+      decision: removal,
+      concern: NO_CONCERN,
+      audit: audit(contested),
+      closeReports: true,
+    });
     await store.contest({ ...decision(contested), action: 'CONTEST', parentId: removal.id });
     const ids = await store.commentsToErase(new Date(Date.now() - 14 * 24 * 3600 * 1000));
     expect(ids).toContain(erased);

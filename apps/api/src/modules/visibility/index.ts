@@ -43,6 +43,7 @@ export {
   type ProductReference,
   requiresHiddenItemChoice,
   ruleExcludes,
+  globalProductCountable,
   globalProductVisible,
   moderationWithheld,
   sharedProductVisible,
