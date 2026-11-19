@@ -11,7 +11,7 @@ export default async function OfflinePage() {
       id="contenu"
       className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center gap-4 p-6"
     >
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <h1 className="text-3xl font-semibold">{t('title')}</h1>
       <p>{t('body')}</p>
       <div className="flex flex-wrap gap-2">
         <Button asChild>

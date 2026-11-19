@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,19 +130,16 @@ export function AddItemPanel({
       <CardDescription className="mt-1">
         {suggestion ? t('suggestionWho') : t('who')}
       </CardDescription>
-      <div role="group" className="mt-3 flex flex-wrap gap-1">
-        {(['link', 'photo', 'hand'] as const).map((value) => (
-          <Button
-            key={value}
-            variant={mode === value ? 'primary' : 'ghost'}
-            aria-pressed={mode === value}
-            onClick={() => {
-              setMode(value);
-            }}
-          >
-            {value === 'link' ? t('byLink') : value === 'photo' ? t('byPhoto') : t('byHand')}
-          </Button>
-        ))}
+      <div className="mt-3">
+        <SegmentedControl
+          label={suggestion ? t('titleSuggestion') : isGiftlist ? t('titleGift') : t('title')}
+          value={mode}
+          onChange={setMode}
+          options={(['link', 'photo', 'hand'] as const).map((value) => ({
+            value,
+            label: value === 'link' ? t('byLink') : value === 'photo' ? t('byPhoto') : t('byHand'),
+          }))}
+        />
       </div>
       <form className="mt-3 flex flex-col gap-3" onSubmit={onSubmit}>
         {mode === 'link' ? (

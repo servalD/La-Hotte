@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import {
@@ -26,6 +27,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ChevronRightIcon, GiftIcon, ListIcon } from '@/components/ui/icons';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Field } from '@/features/auth/field';
 import { text } from '@/features/auth/form-data';
@@ -40,52 +44,84 @@ function ListRow({ list, scope }: { list: ListCollectionViewItemsItem; scope: Sc
   if (list.view === 'teaser') {
     // GFT-03, GFT-09 : l'existence seule.
     return (
-      <Card>
-        <CardTitle>{t('giftlist')}</CardTitle>
-        <CardDescription className="mt-1">{t('teaser')}</CardDescription>
+      <Card className="relative flex items-center gap-4 transition-shadow hover:shadow-md">
+        <ListTile type={ListType.GIFTLIST} />
+        <div className="min-w-0 flex-1">
+          <CardTitle>{t('giftlist')}</CardTitle>
+          <CardDescription className="mt-1">{t('teaser')}</CardDescription>
+        </div>
         {list.content !== 'NONE' ? (
-          <Button asChild variant="secondary" className="mt-3">
-            <Link href={`/lists/${list.id}`}>{t('open')}</Link>
-          </Button>
+          <Link
+            href={`/lists/${list.id}`}
+            aria-label={t('open')}
+            className="text-foreground-muted after:absolute after:inset-0 after:rounded-lg"
+          >
+            <ChevronRightIcon />
+          </Link>
         ) : null}
       </Card>
     );
   }
   const type = list.view === 'giver' ? list.type : ListType.WISHLIST;
+  const title = list.personal ? t('personal') : list.title;
   return (
-    <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <CardTitle>{list.personal ? t('personal') : list.title}</CardTitle>
-          <CardDescription className="mt-1">
-            {type === ListType.GIFTLIST ? t('giftlist') : t('wishlist')} ·{' '}
-            {t(`audience.${list.audience}`)}
-            {list.myRole ? ` · ${t(`role.${list.myRole}`)}` : ''}
-          </CardDescription>
+    <Card className="relative flex items-center gap-4 transition-shadow hover:shadow-md">
+      <ListTile type={type} />
+      <div className="min-w-0 flex-1">
+        <CardTitle className="truncate">
+          {scope === ListScope.trash ? (
+            title
+          ) : (
+            <Link
+              href={`/lists/${list.id}`}
+              className="after:absolute after:inset-0 after:rounded-lg"
+            >
+              {title}
+            </Link>
+          )}
+        </CardTitle>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Badge tone={type === ListType.GIFTLIST ? 'accent' : 'brand'}>
+            {type === ListType.GIFTLIST ? t('giftlist') : t('wishlist')}
+          </Badge>
+          <Badge>{t(`audience.${list.audience}`)}</Badge>
+          {list.myRole ? <Badge>{t(`role.${list.myRole}`)}</Badge> : null}
         </div>
-        {scope === ListScope.trash ? (
-          <Button
-            variant="secondary"
-            disabled={restore.isPending}
-            onClick={() => {
-              restore.mutate(
-                { id: list.id },
-                {
-                  onSuccess: () =>
-                    void queryClient.invalidateQueries({ queryKey: getListListsQueryKey() }),
-                },
-              );
-            }}
-          >
-            {t('restore')}
-          </Button>
-        ) : (
-          <Button asChild variant="secondary">
-            <Link href={`/lists/${list.id}`}>{t('open')}</Link>
-          </Button>
-        )}
       </div>
+      {scope === ListScope.trash ? (
+        <Button
+          variant="secondary"
+          className="relative"
+          disabled={restore.isPending}
+          onClick={() => {
+            restore.mutate(
+              { id: list.id },
+              {
+                onSuccess: () =>
+                  void queryClient.invalidateQueries({ queryKey: getListListsQueryKey() }),
+              },
+            );
+          }}
+        >
+          {t('restore')}
+        </Button>
+      ) : (
+        <ChevronRightIcon className="text-foreground-muted" aria-hidden="true" />
+      )}
     </Card>
+  );
+}
+
+/** Pastille d'icône d'une liste : un cadeau pour une giftlist, une liste cochée pour une wishlist. */
+function ListTile({ type }: { type: ListType }) {
+  const Icon = type === ListType.GIFTLIST ? GiftIcon : ListIcon;
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-primary"
+    >
+      <Icon />
+    </span>
   );
 }
 
@@ -235,33 +271,35 @@ export function ListsScreen() {
   const t = useTranslations('lists');
   const [scope, setScope] = useState<Scope>(ListScope.active);
   const lists = useListLists({ scope });
+  const empty = !lists.isPending && (lists.data?.items.length ?? 0) === 0;
+  // DS-07 : l'état vide porte l'action principale ; elle n'est alors pas répétée dans l'en-tête.
+  const emptyAction = empty && scope === ListScope.active;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label={t('scope.label')} className="flex flex-wrap gap-1">
-          {[ListScope.active, ListScope.archived, ListScope.trash].map((value) => (
-            <Button
-              key={value}
-              variant={scope === value ? 'primary' : 'ghost'}
-              aria-pressed={scope === value}
-              onClick={() => {
-                setScope(value);
-              }}
-            >
-              {t(`scope.${value}`)}
-            </Button>
-          ))}
-        </div>
-        <CreateListDialog />
+        <SegmentedControl
+          label={t('scope.label')}
+          value={scope}
+          onChange={setScope}
+          options={[ListScope.active, ListScope.archived, ListScope.trash].map((value) => ({
+            value,
+            label: t(`scope.${value}`),
+          }))}
+        />
+        {emptyAction ? null : <CreateListDialog />}
       </div>
       {scope === ListScope.trash ? (
         <p className="text-sm text-foreground-muted">{t('trashHint')}</p>
       ) : null}
       {lists.isPending ? (
         <Skeleton className="h-24 w-full" aria-label={t('loading')} />
-      ) : (lists.data?.items.length ?? 0) === 0 ? (
-        <p>{t('empty')}</p>
+      ) : empty ? (
+        <EmptyState
+          title={t(`emptyState.${scope}.title`)}
+          {...(scope === ListScope.active ? { description: t('emptyState.active.body') } : {})}
+          {...(emptyAction ? { action: <CreateListDialog /> } : {})}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {lists.data?.items.map((list) => (

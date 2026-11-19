@@ -777,6 +777,18 @@ Sortie : restauration réussie et chronométrée ; aucune fuite trouvée ; ouver
 - recherche de compte en `GET` (adresse dans l'URL) : retirée des journaux de Caddy, à passer en `POST` si un autre intermédiaire journalise ;
 - filtrage par nom d'hôte des sorties de l'API : mandataire à liste blanche à choisir avec l'hébergeur.
 
+## Refonte de l'interface (2026-11-18)
+
+Décisions : DS-05 à DS-08 (identité, typographie, états vides, boutons) et UX-13 (navigation), `10`. Fondations : jetons et polices, composants `Badge`, `Callout`, `EmptyState`, `SegmentedControl`, `DropdownMenu`, navigation du profil (barre du bas sur mobile) et menu de compte. Écrans refaits : accueil (tableau de bord UX-10), listes, détail d'une liste, événements, détail d'un événement, panier, comptes, notifications, répertoire, choix du profil, écrans d'accès. Présentation seule : aucune règle d'accès, de compta ni de cache n'a changé.
+
+**Fait ensuite** : réglages du profil en onglets (`Tabs`), actions d'un souhait dans un menu « ⋯ » (boutons principaux seuls visibles), parcours guidé de l'accueil (UX-11, deux cartes qui se cochent ; l'installation reste proposée par `InstallInvite`, PWA-03), logo (`BrandMark`), tests de bout en bout rejoués (84 sur 84, axe compris).
+
+**Restes** :
+
+- ~~administration (comptes, modération, audit, réglages) et comptes sous tutelle : non revus à l'écran~~ Fait le 2026-11-19 : écrans refaits, revus à la main avec un compte administrateur (bureau et mobile, 390 px) et sans violation axe (WCAG 2 A et AA). Tests de bout en bout, lint, types, format et tests unitaires verts ;
+- relecture des textes de la phase 7 avec `design:ux-copy` ;
+- liens légaux du pied de page, quand ces pages existeront.
+
 ## Après la v1
 
 Dans l'ordre proposé, sous réserve de vos choix dans `15-suggestions.md` : groupes nommés, tirage au sort, passkeys, rappels d'anniversaire, historique des cadeaux, lien invité.

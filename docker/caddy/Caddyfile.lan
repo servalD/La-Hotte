@@ -1,0 +1,14 @@
+# Site ouvert au réseau local, en HTTPS (profil `lan` de docker-compose.yml).
+# Le navigateur n'accorde `crypto.randomUUID`, `crypto.subtle` et le service worker qu'aux origines
+# sécurisées : en HTTP sur une adresse du réseau, l'application ne fonctionne pas. L'autorité de
+# certification est locale (`tls internal`) : installer son certificat racine sur chaque appareil
+# (docker compose cp lan-proxy:/data/caddy/pki/authorities/local/root.crt .), ou accepter l'alerte.
+{
+	# Un client qui se connecte par l'adresse IP n'envoie pas de nom de serveur (SNI).
+	default_sni {$LAN_HOST}
+}
+
+https://{$LAN_HOST}:8443 {
+	tls internal
+	reverse_proxy web:3000
+}

@@ -151,7 +151,7 @@ export function TransferPanel({
           </li>
         </ul>
         {created?.token ? (
-          <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
             <p className="text-sm">{t('token.once')}</p>
             <p className="font-mono text-sm break-all">{created.token}</p>
             <Button
@@ -255,7 +255,7 @@ export function TransferPanel({
           ))}
       </fieldset>
       {choice === RequestTransferDtoPinChoice.NONE ? (
-        <p role="note" className="rounded-md border border-border p-3 text-sm">
+        <p role="note" className="rounded-xl border border-border bg-surface p-4 text-sm">
           {t('noneWarning')}
         </p>
       ) : null}

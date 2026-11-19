@@ -158,6 +158,10 @@ function productionProblems(source: NodeJS.ProcessEnv, env: Env): string[] {
   }
   if (NON_PRODUCTION_SECRET.test(env.CSRF_SECRET)) problems.push('CSRF_SECRET');
   if (NON_PRODUCTION_SECRET.test(env.KEY_HMAC_SECRET)) problems.push('KEY_HMAC_SECRET');
+  // Le jeton partagé avec le fetcher (EXT-44) n'est pas celui du docker-compose local.
+  if (env.FETCHER_TOKEN !== undefined && NON_PRODUCTION_SECRET.test(env.FETCHER_TOKEN)) {
+    problems.push('FETCHER_TOKEN');
+  }
   if (env.CACHE_KEY_SECRET === undefined || NON_PRODUCTION_SECRET.test(env.CACHE_KEY_SECRET)) {
     problems.push('CACHE_KEY_SECRET');
   }

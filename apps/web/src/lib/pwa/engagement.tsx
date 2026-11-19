@@ -77,7 +77,7 @@ export function InstallInvite() {
   return (
     <aside
       aria-label={t('installTitle')}
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
     >
       <p className="font-medium">{t('installTitle')}</p>
       <p className="text-sm">{deferred ? t('installBody') : t('installIos')}</p>
@@ -160,7 +160,7 @@ export function PushInvite() {
   return (
     <aside
       aria-label={t('pushTitle')}
-      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
     >
       <p className="font-medium">{t('pushTitle')}</p>
       <p className="text-sm">{t('pushBody')}</p>

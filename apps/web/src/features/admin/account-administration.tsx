@@ -16,6 +16,7 @@ import {
 import { useFormatter, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { useReauth } from '@/features/account/reauth';
 import { Field } from '@/features/auth/field';
@@ -146,7 +147,7 @@ function Actions({ account, onDone }: { account: AccountMetadataView; onDone: ()
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 border-t border-border pt-6">
       <ReasonActions
         pending={pending}
         actions={[
@@ -163,13 +164,13 @@ function Actions({ account, onDone }: { account: AccountMetadataView; onDone: ()
           run(key as Action, reason);
         }}
       />
-      <form className="flex flex-col gap-2" onSubmit={onRole}>
+      <form className="flex flex-col gap-2 rounded-xl bg-surface-muted p-4" onSubmit={onRole}>
         <Label htmlFor={roleId}>{t('role')}</Label>
         <select
           id={roleId}
           name="role"
           defaultValue={account.role}
-          className="min-h-touch rounded-md border border-border bg-surface px-3"
+          className="min-h-touch rounded-md border border-border-strong bg-surface px-3"
         >
           {Object.values(AccountRole).map((role) => (
             <option key={role} value={role}>
@@ -229,12 +230,12 @@ export function AccountAdministration() {
       ) : null}
       {search.data ? (
         search.data.account ? (
-          <section className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-4">
+          <section className="flex flex-col gap-6 rounded-xl border border-border bg-surface p-5 shadow-sm">
             <Metadata account={search.data.account} />
             <Actions account={search.data.account} onDone={refresh} />
           </section>
         ) : (
-          <p>{t('notFound')}</p>
+          <EmptyState compact title={t('notFound')} />
         )
       ) : null}
     </div>

@@ -17,6 +17,7 @@ import { useFormatter, useTranslations } from 'next-intl';
 import { type SyntheticEvent, useState } from 'react';
 import { ConfirmButton } from '@/components/confirm-button';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Label } from '@/components/ui/label';
 import { authErrorKey } from '@/features/auth/api-errors';
 import { Field } from '@/features/auth/field';
@@ -231,17 +232,28 @@ export function WardsSection() {
 
   return (
     <section aria-labelledby="wards-title" className="flex flex-col gap-4">
-      <h2 id="wards-title" className="text-lg font-semibold">
+      <h1 id="wards-title" className="text-3xl font-semibold">
         {t('title')}
-      </h2>
+      </h1>
       <p className="text-sm text-foreground-muted">{t('who')}</p>
       <FormError message={error} />
-      {list.data?.items.length === 0 ? <p>{t('none')}</p> : null}
+      {list.data?.items.length === 0 ? <EmptyState compact title={t('none')} /> : null}
       <ul className="flex flex-col gap-3">
         {list.data?.items.map((ward) => (
-          <li key={ward.id} className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <li
+            key={ward.id}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-medium">{ward.email}</p>
+              <p className="flex items-center gap-3 font-medium">
+                <span
+                  aria-hidden="true"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-sm font-semibold"
+                >
+                  {ward.email.slice(0, 2).toUpperCase()}
+                </span>
+                {ward.email}
+              </p>
               <Button
                 variant="secondary"
                 aria-expanded={open === ward.id}
@@ -260,9 +272,9 @@ export function WardsSection() {
       <form
         onSubmit={submit}
         noValidate
-        className="flex flex-col gap-3 border-t border-border pt-4"
+        className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm"
       >
-        <h3 className="font-semibold">{t('create.title')}</h3>
+        <h3 className="font-display text-lg font-semibold">{t('create.title')}</h3>
         <p className="text-sm text-foreground-muted">{t('create.who')}</p>
         <Field
           label={t('create.email')}

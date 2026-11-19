@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 
 /** Premier lien `https://` d'un texte partagé (une application de marchand met souvent l'URL là). */
 export function sharedLink(params: { url?: string | null; text?: string | null }): string | null {
@@ -35,18 +36,22 @@ export function ShareScreen() {
   const lists = (data?.items ?? []).filter((list) => list.view !== 'teaser' && list.myRole);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <h1 className="text-3xl font-semibold">{t('title')}</h1>
       {link ? (
         <p className="text-sm break-all text-foreground-muted">{link}</p>
       ) : (
         <p className="text-sm">{t('noLink')}</p>
       )}
-      <h2 className="font-medium">{t('chooseList')}</h2>
-      {lists.length === 0 ? <p>{t('noList')}</p> : null}
+      <h2 className="font-display text-lg font-semibold">{t('chooseList')}</h2>
+      {lists.length === 0 ? <EmptyState compact title={t('noList')} /> : null}
       <ul className="flex flex-col gap-2">
         {lists.map((list) => (
           <li key={list.id}>
-            <Button asChild variant="secondary" className="w-full justify-start">
+            <Button
+              asChild
+              variant="secondary"
+              className="h-auto min-h-14 w-full justify-start rounded-xl py-3 text-base"
+            >
               <Link href={`/lists/${list.id}${link ? `?add=${encodeURIComponent(link)}` : ''}`}>
                 {list.view !== 'teaser' && list.personal
                   ? t('personal')

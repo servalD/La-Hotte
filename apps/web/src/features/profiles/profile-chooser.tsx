@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ShieldIcon } from '@/components/ui/icons';
 import { markLaunchHandled } from '@/lib/session/launch';
 import { purgeUserData } from '@/lib/session/purge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,7 +106,7 @@ export function ProfileChooser({ unlockOnly = false }: { unlockOnly?: boolean })
         <li key={profile.id}>
           <Button
             variant="secondary"
-            className="h-auto w-full flex-col gap-2 py-4"
+            className="h-auto! w-full flex-col gap-3 rounded-xl py-6 shadow-sm transition-shadow hover:shadow-md"
             disabled={select.isPending}
             onClick={() => {
               if (profile.hasPin) {
@@ -125,10 +126,13 @@ export function ProfileChooser({ unlockOnly = false }: { unlockOnly?: boolean })
               }
             }}
           >
-            <ProfileAvatar name={profile.displayName} color={profile.accentColor} />
-            <span className="font-medium">{profile.displayName}</span>
+            <ProfileAvatar name={profile.displayName} color={profile.accentColor} size={88} />
+            <span className="font-display text-lg font-semibold">{profile.displayName}</span>
             {profile.hasPin ? (
-              <span className="text-xs text-foreground-muted">{t('protected')}</span>
+              <span className="flex items-center gap-1 text-xs text-foreground-muted">
+                <ShieldIcon width={14} height={14} />
+                {t('protected')}
+              </span>
             ) : null}
           </Button>
         </li>

@@ -63,7 +63,10 @@ export function ProposalsSection() {
       <FormError message={error} />
       <ul className="flex flex-col gap-2">
         {data.items.map((proposal) => (
-          <li key={proposal.id} className="flex flex-col gap-2 rounded-md border border-border p-3">
+          <li
+            key={proposal.id}
+            className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
+          >
             <p>
               {t(proposal.profileIsChild ? 'bodyChild' : 'body', { name: proposal.inviterName })}
             </p>

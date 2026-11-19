@@ -377,7 +377,7 @@ export function OffsetProposals() {
           return (
             <li
               key={proposal.id}
-              className="flex flex-col gap-2 rounded-md border border-border p-3"
+              className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
             >
               <p>
                 {proposal.direction === 'RECEIVED'

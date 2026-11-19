@@ -177,6 +177,9 @@
   "nav": {
     "app": "La Hotte",
     "label": "Navigation principale",
+    "mobileLabel": "Navigation principale mobile",
+    "accountMenuLabel": "Menu du compte",
+    "menuLabel": "Menu du profil",
     "home": "Accueil",
     "circle": "Cercle",
     "invitations": "Invitations",
@@ -229,6 +232,29 @@
       "title": "Une demande de changement de compte vous concerne",
       "body": "Votre profil est en train de changer de compte. Lisez la demande : vous pouvez la refuser à tout moment avant son exécution.",
       "action": "Lire la demande"
+    },
+    "owe": {
+      "title": "Vous devez {amount}",
+      "body": "{count, plural, one {À une personne} other {À # personnes}}",
+      "action": "Voir mes comptes"
+    },
+    "events": {
+      "title": "Événements proches",
+      "all": "Tout voir"
+    },
+    "guide": {
+      "title": "Pour bien démarrer",
+      "done": "Fait",
+      "wish": {
+        "title": "Ajoutez votre premier souhait",
+        "body": "Une envie, une idée : votre cercle saura quoi vous offrir.",
+        "action": "Ajouter"
+      },
+      "invite": {
+        "title": "Invitez un proche",
+        "body": "Chacun partage ses listes avec son cercle.",
+        "action": "Inviter"
+      }
     }
   },
   "secondFactor": {
@@ -452,6 +478,13 @@
       "set": "Enregistrer l’adresse",
       "clear": "Retirer l’adresse",
       "sent": "Un lien de vérification vient d’être envoyé à cette adresse."
+    },
+    "tabs": {
+      "label": "Rubriques des réglages",
+      "profile": "Profil",
+      "security": "PIN et e-mail",
+      "notifications": "Notifications",
+      "data": "Mes données"
     }
   },
   "circle": {
@@ -818,6 +851,18 @@
       "PRODUCT_URL_INVALID": "Ce lien n’est pas une adresse web.",
       "ITEM_INVALID": "Une information de l’élément n’est pas valable.",
       "LIST_INVALID": "Une information de la liste n’est pas valable."
+    },
+    "emptyState": {
+      "active": {
+        "title": "Votre hotte est vide",
+        "body": "Créez une liste pour partager vos envies, ou préparez une giftlist pour quelqu’un de votre cercle."
+      },
+      "archived": {
+        "title": "Aucune liste archivée"
+      },
+      "trash": {
+        "title": "La corbeille est vide"
+      }
     }
   },
   "list": {
@@ -924,7 +969,8 @@
       "purchase_put": "Acheté, à confirmer",
       "settlement_put": "Règlement à confirmer",
       "settlement_claim": "« J'ai payé », à confirmer"
-    }
+    },
+    "more": "Plus d’actions"
   },
   "whoSees": {
     "title": "Qui voit ça ?",
@@ -1001,7 +1047,8 @@
       "someOnly": "Le partager seulement à certaines personnes",
       "someOnlyHint": "Ouvrez l’élément dans sa liste et choisissez « Qui voit ça ? ».",
       "cancel": "Annuler"
-    }
+    },
+    "backToList": "Retour à la liste"
   },
   "directory": {
     "title": "Répertoire",
@@ -1019,6 +1066,7 @@
     "open": "Ouvrir",
     "surprise": "surprise",
     "loading": "Chargement des événements",
+    "loadError": "Impossible de charger les événements. Rechargez la page.",
     "empty": "Aucun événement pour l’instant.",
     "notFound": "Cet événement est introuvable.",
     "who": "Visible des participants de l’événement, et d’eux seuls.",
@@ -1165,6 +1213,15 @@
       "who": "Seul le profil actif rejoint. Pour inscrire un autre profil, changez de profil et rouvrez le lien.",
       "open": "Voir l’événement",
       "accept": "Rejoindre"
+    },
+    "emptyState": {
+      "upcoming": {
+        "title": "Rien de prévu pour l’instant",
+        "body": "Créez un événement (Noël, anniversaire…) pour organiser les cadeaux de chacun sans gâcher la surprise."
+      },
+      "past": {
+        "title": "Aucun événement passé"
+      }
     }
   },
   "threads": {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useListAdminActionsOnAccount } from '@wishlist/api-client';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useFormatter, useTranslations } from 'next-intl';
 
 /** AUD-03, AUD-07 : actions de l'équipe sur le compte, sans acteur ni adresse IP. */
@@ -15,10 +16,13 @@ export function AdminActionsSection() {
         {t('title')}
       </h2>
       <p className="text-sm text-foreground-muted">{t('who')}</p>
-      {actions.data?.items.length === 0 ? <p>{t('empty')}</p> : null}
+      {actions.data?.items.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
       <ul className="flex flex-col gap-2">
         {actions.data?.items.map((item) => (
-          <li key={`${item.action}-${item.at}`} className="rounded-md border border-border p-3">
+          <li
+            key={`${item.action}-${item.at}`}
+            className="rounded-xl border border-border bg-surface p-4"
+          >
             <p className="font-medium">{labels(item.action.replaceAll('.', '_'))}</p>
             <p className="text-sm text-foreground-muted">
               {format.dateTime(new Date(item.at), { dateStyle: 'medium', timeStyle: 'short' })}

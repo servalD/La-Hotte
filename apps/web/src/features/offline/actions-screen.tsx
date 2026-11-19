@@ -4,6 +4,7 @@ import { type ItemPriority, useGetOneItem } from '@wishlist/api-client';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatMinor } from '@/features/lists/format';
 import { offlineActions } from '@/lib/offline/actions';
 import { kindKey, type QueuedAction } from '@/lib/offline/queue';
@@ -44,9 +45,9 @@ export function ActionsScreen() {
   const stuck = actions.filter((a) => a.state !== 'pending');
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <h1 className="text-3xl font-semibold">{t('title')}</h1>
       <p className="text-sm text-foreground-muted">{t('intro')}</p>
-      {actions.length === 0 ? <p>{t('empty')}</p> : null}
+      {actions.length === 0 ? <EmptyState title={t('empty')} /> : null}
       {stuck.length > 0 ? (
         <section aria-labelledby="stuck" className="flex flex-col gap-3">
           <h2 id="stuck" className="font-medium">
@@ -97,7 +98,10 @@ function StuckAction({ action }: { action: QueuedAction }) {
   const remaining = action.outcome?.remainingMinor;
   const itemId = action.subject.itemId;
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-3" role="group">
+    <div
+      className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
+      role="group"
+    >
       <ActionLabel action={action} />
       <p className="text-sm">{t(reasonKey(action))}</p>
       {action.state === 'conflict' && action.kind === 'item.update' && itemId ? (

@@ -100,4 +100,4 @@ Chaque exigence de la demande initiale, et l'endroit où elle est spécifiée. �
 1. ~~Catalogue global dès la v1 ou après rodage~~ Tranchée le 2026-11-17 : ouvert en phase 7.
 2. ~~Valeur de `REGISTRATION_MODE` au lancement~~ Tranchée le 2026-11-17 : `OPEN`.
 3. Suggestions à retenir (`15`).
-4. Identité visuelle : nom, logo, palette (`10` Q1).
+4. Identité visuelle : palette et typographie tranchées (DS-05, DS-06) ; le logo reste à dessiner (`10` Q1).

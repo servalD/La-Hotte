@@ -101,7 +101,7 @@ export function PinEmailSection() {
   return (
     <div className="flex flex-col gap-8">
       {profile.pinResetNoticeAt ? (
-        <div role="alert" className="rounded-md border border-border p-3">
+        <div role="alert" className="rounded-xl border border-border bg-surface p-4">
           <p className="font-medium">
             {t('notices.pinReset', {
               date: format.dateTime(new Date(profile.pinResetNoticeAt), {
@@ -114,7 +114,10 @@ export function PinEmailSection() {
         </div>
       ) : null}
       {profile.childNoticeAt ? (
-        <div role="alert" className="flex flex-col gap-2 rounded-md border border-border p-3">
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4"
+        >
           <p className="font-medium">{t('notices.child')}</p>
           <Button
             variant="secondary"

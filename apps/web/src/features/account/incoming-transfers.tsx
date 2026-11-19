@@ -96,7 +96,7 @@ export function IncomingTransfers() {
       <p className="text-sm text-foreground-muted">{t('who')}</p>
 
       {preview ? (
-        <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
           <div className="flex items-center gap-3">
             <ProfileAvatar
               name={preview.view.profileName}
@@ -149,7 +149,7 @@ export function IncomingTransfers() {
         {list.data?.items.map((item) => (
           <li
             key={item.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4"
           >
             <div className="flex items-center gap-3">
               <ProfileAvatar name={item.profileName} color={item.accentColor} size={40} />

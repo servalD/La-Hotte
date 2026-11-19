@@ -20,11 +20,12 @@ import {
 import { useTranslations } from 'next-intl';
 import { ConfirmButton } from '@/components/confirm-button';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { ProfileAvatar } from '@/features/profiles/profile-avatar';
 
 function Row({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4">
       {children}
     </li>
   );
@@ -116,7 +117,7 @@ export function CircleScreen() {
           {t('links.title')}
         </h2>
         <p className="text-sm text-foreground-muted">{t('links.who')}</p>
-        {items.length === 0 ? <p>{t('links.none')}</p> : null}
+        {items.length === 0 ? <EmptyState compact title={t('links.none')} /> : null}
         <ul className="flex flex-col gap-2">
           {items.map((link) => (
             <Row key={link.id}>
@@ -149,6 +150,8 @@ export function CircleScreen() {
                   }}
                 />
                 <ConfirmButton
+                  variant="ghost"
+                  className="text-danger"
                   label={t('block.action')}
                   title={t('block.title')}
                   description={t('block.body')}
@@ -191,7 +194,7 @@ export function CircleScreen() {
           {t('blocks.title')}
         </h2>
         <p className="text-sm text-foreground-muted">{t('blocks.who')}</p>
-        {blocks.data?.items.length === 0 ? <p>{t('blocks.none')}</p> : null}
+        {blocks.data?.items.length === 0 ? <EmptyState compact title={t('blocks.none')} /> : null}
         <ul className="flex flex-col gap-2">
           {blocks.data?.items.map((entry) => (
             <Row key={entry.profileId}>

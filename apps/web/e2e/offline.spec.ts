@@ -304,7 +304,9 @@ test('déconnexion : plus aucune base de données de l’application sur l’app
     (await indexedDB.databases()).map((d) => d.name ?? ''),
   );
   expect(before.some((name) => name.startsWith('lh-p-'))).toBe(true);
-  await page.getByRole('button', { name: 'Se déconnecter' }).click();
+  // UX-13 : la déconnexion est dans le menu du profil.
+  await page.getByRole('button', { name: 'Menu du profil' }).click();
+  await page.getByRole('menuitem', { name: 'Se déconnecter' }).click();
   await expect(page).toHaveURL(/\/auth\/login/);
   const after = await page.evaluate(async () =>
     (await indexedDB.databases()).map((d) => d.name ?? ''),

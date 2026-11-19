@@ -27,7 +27,8 @@ import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Card, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Callout } from '@/components/ui/callout';
+import { CalendarIcon } from '@/components/ui/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { eventErrorKey } from './api-errors';
 import { formatDay } from './format';
@@ -128,7 +132,7 @@ function InviteDialog({ event }: { event: EventDetailView }) {
         <DialogDescription>{t('who')}</DialogDescription>
         <fieldset className="mt-4 flex flex-col gap-2">
           <legend className="sr-only">{t('title')}</legend>
-          {choices.length === 0 ? <p>{t('empty')}</p> : null}
+          {choices.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
           {choices.map((member) => (
             <label key={member.profileId} className="flex min-h-touch items-center gap-2">
               <input
@@ -316,7 +320,7 @@ function ListsPanel({ event }: { event: EventDetailView }) {
         // EVT-32 : cocher ce qu'on a reçu (sans indication de ce qui a été acheté).
         <p className="text-sm">{t('reception')}</p>
       ) : null}
-      {items.length === 0 ? <p>{t('empty')}</p> : null}
+      {items.length === 0 ? <EmptyState compact title={t('empty')} /> : null}
       <ul className="flex flex-col gap-2">
         {items.map((list) =>
           list.view === 'teaser' ? null : (
@@ -433,13 +437,18 @@ export function EventScreen({ id }: { id: string }) {
   const event = query.data;
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">{event.title}</h1>
-        <p className="text-foreground-muted">
-          {formatDay(event.date, locale)} · {t(`type.${event.type}`)} · {t(`mode.${event.mode}`)}
-          {event.isSurprise ? ` · ${t('surprise')}` : ''}
-          {event.status !== 'UPCOMING' ? ` · ${t(`status.${event.status}`)}` : ''}
+      <header className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold break-words">{event.title}</h1>
+        <p className="flex items-center gap-2 text-foreground-muted">
+          <CalendarIcon width={18} height={18} aria-hidden="true" />
+          {formatDay(event.date, locale)}
         </p>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge tone="brand">{t(`type.${event.type}`)}</Badge>
+          <Badge>{t(`mode.${event.mode}`)}</Badge>
+          {event.isSurprise ? <Badge tone="accent">{t('surprise')}</Badge> : null}
+          {event.status !== 'UPCOMING' ? <Badge>{t(`status.${event.status}`)}</Badge> : null}
+        </div>
         {event.place ? <p>{event.place}</p> : null}
         {event.description ? <p className="whitespace-pre-line">{event.description}</p> : null}
         <p className="text-sm text-foreground-muted">
@@ -447,9 +456,9 @@ export function EventScreen({ id }: { id: string }) {
         </p>
       </header>
       {event.sharedAccountWarning ? (
-        <p role="note" className="rounded-md border border-border p-3 text-sm">
+        <Callout tone="attention" role="note">
           {t('sharedAccount')}
-        </p>
+        </Callout>
       ) : null}
       <RsvpPanel event={event} />
       <section aria-labelledby="people-title" className="flex flex-col gap-2">
@@ -463,17 +472,28 @@ export function EventScreen({ id }: { id: string }) {
             })}
           </p>
         ) : null}
-        <ul className="flex flex-col gap-1">
+        <ul className="flex flex-col gap-2">
           {event.participants.map((p) => (
-            <li key={p.profileId}>
-              <Card>
-                <CardTitle className="text-base">{p.displayName}</CardTitle>
-                <CardDescription>
+            <li
+              key={p.profileId}
+              className="flex items-center gap-3 rounded-xl border border-border bg-surface p-3"
+            >
+              <span
+                aria-hidden="true"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-muted text-sm font-semibold"
+              >
+                {p.displayName.trim().slice(0, 2).toUpperCase() || '?'}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-medium">{p.displayName}</span>
+              <span className="flex flex-wrap justify-end gap-1.5">
+                <Badge
+                  tone={p.rsvp === 'YES' ? 'success' : p.rsvp === 'MAYBE' ? 'accent' : 'neutral'}
+                >
                   {t(`rsvp.${p.rsvp}`)}
-                  {p.role === 'ORGANIZER' ? ` · ${t('organizer')}` : ''}
-                  {p.isHonoree ? ` · ${t('honoree')}` : ''}
-                </CardDescription>
-              </Card>
+                </Badge>
+                {p.role === 'ORGANIZER' ? <Badge tone="brand">{t('organizer')}</Badge> : null}
+                {p.isHonoree ? <Badge tone="accent">{t('honoree')}</Badge> : null}
+              </span>
             </li>
           ))}
         </ul>

@@ -177,6 +177,9 @@
   "nav": {
     "app": "La Hotte",
     "label": "Main navigation",
+    "mobileLabel": "Main navigation, mobile",
+    "accountMenuLabel": "Account menu",
+    "menuLabel": "Profile menu",
     "home": "Home",
     "circle": "Circle",
     "invitations": "Invitations",
@@ -229,6 +232,29 @@
       "title": "An account change request concerns you",
       "body": "Your profile is about to change account. Read the request: you can refuse it at any time before it runs.",
       "action": "Read the request"
+    },
+    "owe": {
+      "title": "You owe {amount}",
+      "body": "{count, plural, one {To one person} other {To # people}}",
+      "action": "See my accounts"
+    },
+    "events": {
+      "title": "Upcoming events",
+      "all": "See all"
+    },
+    "guide": {
+      "title": "Getting started",
+      "done": "Done",
+      "wish": {
+        "title": "Add your first wish",
+        "body": "A wish, an idea: your circle will know what to give you.",
+        "action": "Add"
+      },
+      "invite": {
+        "title": "Invite someone close",
+        "body": "Everyone shares their lists with their circle.",
+        "action": "Invite"
+      }
     }
   },
   "secondFactor": {
@@ -452,6 +478,13 @@
       "set": "Save the address",
       "clear": "Remove the address",
       "sent": "A verification link has just been sent to this address."
+    },
+    "tabs": {
+      "label": "Settings sections",
+      "profile": "Profile",
+      "security": "PIN and email",
+      "notifications": "Notifications",
+      "data": "My data"
     }
   },
   "circle": {
@@ -818,6 +851,18 @@
       "PRODUCT_URL_INVALID": "This link is not a web address.",
       "ITEM_INVALID": "Some item information is not valid.",
       "LIST_INVALID": "Some list information is not valid."
+    },
+    "emptyState": {
+      "active": {
+        "title": "Your sleigh is empty",
+        "body": "Create a list to share your wishes, or start a giftlist for someone in your circle."
+      },
+      "archived": {
+        "title": "No archived lists"
+      },
+      "trash": {
+        "title": "The bin is empty"
+      }
     }
   },
   "list": {
@@ -924,7 +969,8 @@
       "purchase_put": "Bought, to be confirmed",
       "settlement_put": "Payment to be confirmed",
       "settlement_claim": "\"I've paid\", to be confirmed"
-    }
+    },
+    "more": "More actions"
   },
   "whoSees": {
     "title": "Who sees this?",
@@ -1001,7 +1047,8 @@
       "someOnly": "Share it only with some people",
       "someOnlyHint": "Open the item in its list and choose “Who sees this?”.",
       "cancel": "Cancel"
-    }
+    },
+    "backToList": "Back to the list"
   },
   "directory": {
     "title": "Directory",
@@ -1019,6 +1066,7 @@
     "open": "Open",
     "surprise": "surprise",
     "loading": "Loading events",
+    "loadError": "Could not load events. Reload the page.",
     "empty": "No events yet.",
     "notFound": "This event cannot be found.",
     "who": "Visible to the event’s participants, and only to them.",
@@ -1165,6 +1213,15 @@
       "who": "Only the active profile joins. To add another profile, switch profiles and reopen the link.",
       "open": "See the event",
       "accept": "Join"
+    },
+    "emptyState": {
+      "upcoming": {
+        "title": "Nothing planned yet",
+        "body": "Create an event (Christmas, a birthday…) to organise everyone’s gifts without spoiling the surprise."
+      },
+      "past": {
+        "title": "No past events"
+      }
     }
   },
   "threads": {

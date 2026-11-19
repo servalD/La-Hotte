@@ -13,13 +13,7 @@ import {
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { listErrorKey } from './api-errors';
 
 type Mode = (typeof VisibilityMode)[keyof typeof VisibilityMode];
@@ -31,13 +25,38 @@ type Mode = (typeof VisibilityMode)[keyof typeof VisibilityMode];
  */
 export function WhoSeesDialog({ itemId, listId }: { itemId: string; listId: string }) {
   const t = useTranslations('whoSees');
-  const te = useTranslations('lists.errors');
   const [open, setOpen] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost">{t('title')}</Button>
-      </DialogTrigger>
+    <>
+      <Button
+        variant="ghost"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        {t('title')}
+      </Button>
+      <WhoSeesPanel itemId={itemId} listId={listId} open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+
+/** La fenêtre seule, pilotée de l'extérieur : ouverte depuis le menu des actions d'un élément. */
+export function WhoSeesPanel({
+  itemId,
+  listId,
+  open,
+  onOpenChange,
+}: {
+  itemId: string;
+  listId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations('whoSees');
+  const te = useTranslations('lists.errors');
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogTitle>{t('title')}</DialogTitle>
         {open ? (
@@ -45,7 +64,7 @@ export function WhoSeesDialog({ itemId, listId }: { itemId: string; listId: stri
             itemId={itemId}
             listId={listId}
             onDone={() => {
-              setOpen(false);
+              onOpenChange(false);
             }}
             errorText={te}
           />
