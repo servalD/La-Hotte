@@ -27,8 +27,10 @@ L'hébergeur n'est pas encore choisi : rien ici n'en dépend. Il faut un VPS dan
 5. Premier administrateur (RBAC-03). Le compte doit déjà exister, avoir une adresse vérifiée et un TOTP actif :
 
    ```sh
-   docker compose --env-file .env run --rm --entrypoint node api dist/cli/admin.js grant <email>
+   docker compose --env-file .env run --rm api dist/cli/admin.js grant <email>
    ```
+
+   Les images sont distroless (DEP-08) : le point d'entrée est déjà Node, et il n'y a pas de shell (`docker compose exec api sh` échoue ; pour une commande ponctuelle, `exec api /nodejs/bin/node -e …`).
 
    La commande répond par un seul mot (`granted`, `requirements_not_met`…), jamais par l'adresse. S'il perd son second facteur, le dernier administrateur passe par `recover <email>` : son TOTP et son rôle sont retirés, il en active un nouveau, puis `grant` lui rend le rôle.
 
@@ -59,7 +61,7 @@ iptables -I DOCKER-USER 3 -s 172.30.10.0/24 -p tcp --dport 443 -j RETURN
 iptables -I DOCKER-USER 4 -s 172.30.10.0/24 -p tcp -d <adresse du relais SMTP> --dport 587 -j RETURN
 # Tout le reste est refusé, DNS externe compris : le résolveur intégré de Docker (127.0.0.11)
 # relaie depuis l'hôte, hors de cette chaîne (à vérifier sur le serveur : `docker compose exec api
-# node -e "require('dns').lookup('api.anthropic.com', console.log)"`).
+# /nodejs/bin/node -e "require('dns').lookup('api.anthropic.com', console.log)"`).
 iptables -I DOCKER-USER 5 -s 172.30.10.0/24 -j DROP
 ```
 
