@@ -1556,7 +1556,7 @@
   "admin": {
     "who": "Espace d’administration : aucune liste, aucun profil ni aucun message non signalé n’y apparaît.",
     "reason": "Motif",
-    "reasonHint": "10 caractères au moins. Il est écrit au journal d’audit.",
+    "reasonHint": "10 à 500 caractères. Il est écrit au journal d’audit.",
     "yes": "Oui",
     "no": "Non",
     "never": "Jamais",
@@ -1568,7 +1568,7 @@
       "ACCOUNT_NOT_FOUND": "Ce compte n’existe plus.",
       "ADMIN_SELF_ACTION": "Cette action ne se fait pas sur votre propre compte.",
       "ROLE_REQUIREMENTS_NOT_MET": "Ce compte ne remplit pas les conditions de ce rôle (double authentification active, adresse vérifiée, compte autonome).",
-      "LAST_ADMIN": "Le dernier administrateur garde son rôle.",
+      "LAST_ADMIN": "Le dernier administrateur garde son rôle : nommez d’abord un autre administrateur.",
       "ACCOUNT_STATE_CONFLICT": "L’état du compte ne permet pas cette action.",
       "ACCOUNT_SEARCH_RATE_LIMITED": "Trop de recherches : réessayez dans une heure.",
       "SETTING_INVALID": "Valeur refusée pour ce réglage.",
@@ -1593,12 +1593,12 @@
     "moderation": {
       "title": "Modération",
       "who": "Vous voyez le contenu signalé, le motif et le fil, rien d’autre : ni l’auteur, ni la liste, ni les destinataires.",
-      "empty": "Rien à traiter.",
+      "empty": "Rien à traiter pour l’instant.",
       "product": "Fiche",
       "comment": "Message",
       "contest": "Contestation",
       "thread": {
-        "PUBLIC": "Fil Public",
+        "PUBLIC": "Fil public",
         "GIVERS": "Fil des offreurs"
       },
       "status": {
@@ -1617,7 +1617,13 @@
       "overturn": "Annuler le retrait",
       "contestText": "Ce que l’auteur demande",
       "contested": "Décision contestée : {action} — « {reason} »",
-      "done": "Décision enregistrée."
+      "done": "Décision enregistrée.",
+      "actions": {
+        "KEEP": "garder",
+        "REMOVE": "retrait",
+        "REMOVE_AND_SUSPEND": "retrait et suspension de la publication",
+        "CONTEST": "contestation"
+      }
     },
     "accounts": {
       "title": "Comptes",
@@ -1671,7 +1677,7 @@
       "domains": "Domaines bloqués au catalogue",
       "domainsHint": "Un par ligne, sans https://. Les sous-domaines sont compris.",
       "limit": "Extractions par compte et par jour",
-      "limitHint": "Vide : 200, la valeur par défaut.",
+      "limitHint": "Laissez vide pour la valeur par défaut (200).",
       "save": "Enregistrer",
       "saved": "Réglage enregistré."
     },
@@ -1718,9 +1724,9 @@
     "note": "Précision (facultative)",
     "send": "Envoyer le signalement",
     "cancel": "Annuler",
-    "sent": "Merci, la modération va regarder.",
+    "sent": "Merci. L’équipe de modération va examiner ce contenu.",
     "errors": {
-      "generic": "Le signalement n’a pas pu être envoyé.",
+      "generic": "Le signalement n’a pas pu être envoyé. Réessayez.",
       "REPORT_OWN_CONTENT": "Vous ne pouvez pas signaler votre propre contenu.",
       "REPORT_TARGET_NOT_FOUND": "Ce contenu n’existe plus."
     }
@@ -1746,14 +1752,14 @@
   },
   "myModeration": {
     "title": "Mes contenus retirés",
-    "who": "Les décisions de la modération sur vos fiches et vos messages. Vous seul les voyez.",
+    "who": "Les décisions de la modération sur vos fiches et vos messages. Personne d’autre ne les voit.",
     "empty": "Aucun contenu retiré.",
     "PRODUCT": "Une de vos fiches",
     "COMMENT": "Un de vos messages",
     "reason": "Motif : {reason}",
     "contest": "Contester",
     "contestText": "Votre explication",
-    "contestHint": "10 à 500 caractères. Un autre modérateur la lira et décidera ; sa décision sera définitive.",
+    "contestHint": "10 à 500 caractères. Un autre modérateur que celui qui a décidé la lira et tranchera ; sa décision sera définitive.",
     "send": "Envoyer",
     "sent": "Contestation envoyée.",
     "contested": "Contestation en cours",
@@ -1762,17 +1768,17 @@
       "OVERTURN": "Retrait annulé"
     },
     "CONTEST_NOT_ALLOWED": "Cette décision ne peut plus être contestée.",
-    "generic": "La contestation n’a pas pu être envoyée."
+    "generic": "La contestation n’a pas pu être envoyée. Réessayez."
   },
   "myData": {
     "title": "Mes données",
-    "who": "Un fichier avec les données de ce profil, telles que vous les voyez. Vous seul pouvez le télécharger, une fois, dans les 24 heures.",
+    "who": "Un fichier avec les données de ce profil, telles que vous les voyez. Il se télécharge une seule fois, dans les 24 heures, et personne d’autre n’y a accès.",
     "request": "Préparer mon export",
     "download": "Télécharger le fichier",
     "downloaded": "Fichier téléchargé.",
-    "EXPORT_RATE_LIMITED": "Un export a déjà été préparé aujourd’hui pour ce profil.",
+    "EXPORT_RATE_LIMITED": "Un export a déjà été préparé aujourd’hui pour ce profil. Réessayez demain.",
     "EXPORT_NOT_FOUND": "Ce fichier n’est plus disponible.",
-    "generic": "L’export n’a pas abouti."
+    "generic": "L’export n’a pas abouti. Réessayez."
   },
   "accountDeletion": {
     "title": "Supprimer le compte",
@@ -1783,13 +1789,13 @@
     "confirm": "Supprimer dans 30 jours",
     "cancel": "Garder mon compte",
     "HAS_WARDS": "Ce compte est tuteur d’un autre compte : levez d’abord la tutelle.",
-    "LAST_ADMIN": "Le dernier administrateur ne peut pas supprimer son compte.",
-    "generic": "La demande n’a pas abouti."
+    "LAST_ADMIN": "Le dernier administrateur ne peut pas supprimer son compte : nommez d’abord un autre administrateur.",
+    "generic": "La demande n’a pas abouti. Réessayez."
   },
   "adminActions": {
     "title": "Actions de l’équipe sur votre compte",
-    "who": "Ce que les administrateurs ont fait sur votre compte. Vous seul voyez cette liste.",
-    "empty": "Aucune action.",
+    "who": "Ce que les administrateurs ont fait sur votre compte. Personne d’autre ne voit cette liste.",
+    "empty": "Aucune action de l’équipe sur votre compte.",
     "reason": "Motif : {reason}"
   }
 }
