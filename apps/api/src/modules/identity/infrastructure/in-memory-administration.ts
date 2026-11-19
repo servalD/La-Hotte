@@ -70,6 +70,7 @@ export class InMemoryAccountAdministration extends AccountAdministration {
     accountId: string;
     role: AccountRole;
     authEpoch: number;
+    now: Date;
     audits: (before: AccountRole) => readonly AuditWrite[];
   }): Promise<RoleChangeOutcome> {
     const state = this.sessions.accounts.get(input.accountId);
@@ -82,6 +83,17 @@ export class InMemoryAccountAdministration extends AccountAdministration {
     }
     for (const write of input.audits(state.role)) this.audit(write);
     state.role = input.role;
+    if (input.role !== 'USER') {
+      for (const token of this.accounts.tokens.values()) {
+        if (
+          token.accountId === input.accountId &&
+          token.purpose === 'TOTP_RESET' &&
+          token.usedAt === null
+        ) {
+          token.usedAt = input.now;
+        }
+      }
+    }
     this.sessions.commitEpoch(input.accountId, input.authEpoch);
     return Promise.resolve('changed');
   }

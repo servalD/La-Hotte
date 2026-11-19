@@ -15,6 +15,22 @@ FILE="${1:?usage : restore.sh <fichier .dump.age>}"
 : "${AGE_IDENTITY:?AGE_IDENTITY manquant}"
 : "${TARGET_URL:?TARGET_URL manquant}"
 
+# Le mot de passe sort de l'adresse avant tout appel : passé en argument à `pg_restore` ou `psql`,
+# il serait lisible de tout utilisateur du serveur dans la liste des processus (`ps`). Il passe par
+# l'environnement (PGPASSWORD), décodé s'il est encodé en pourcents dans l'adresse.
+if [[ "$TARGET_URL" =~ ^(postgres(ql)?://[^:/@]+):([^@]*)@(.+)$ ]]; then
+  encoded="${BASH_REMATCH[3]}"
+  # Une barre oblique inverse non encodée est doublée d'abord : `printf '%b'` ne décode alors que
+  # les `%XX` (revue SEC-40, m3). Le mot de passe est un argument de `printf`, jamais son format.
+  backslash='\'
+  encoded="${encoded//"$backslash"/"$backslash$backslash"}"
+  hex='\x'
+  PGPASSWORD="$(printf '%b' "${encoded//%/$hex}")"
+  export PGPASSWORD
+  TARGET_URL="${BASH_REMATCH[1]}@${BASH_REMATCH[4]}"
+  unset encoded hex backslash
+fi
+
 start=$(date +%s)
 if [[ -f "$FILE.sha256" ]]; then
   sha256sum -c "$FILE.sha256" >/dev/null

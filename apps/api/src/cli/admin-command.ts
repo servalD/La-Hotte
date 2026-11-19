@@ -72,6 +72,11 @@ export async function runAdminCommand(
         data: { role: 'ADMIN', authEpoch: { increment: 2 } },
         select: { authEpoch: true },
       });
+      // ADM-07 : un lien de réinitialisation du TOTP demandé avant le retour du rôle ne sert plus.
+      await tx.accountToken.updateMany({
+        where: { accountId: account.id, purpose: 'TOTP_RESET', usedAt: null },
+        data: { usedAt: deps.now },
+      });
       await appendAudit(tx, {
         id: deps.newId(),
         at: deps.now,

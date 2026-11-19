@@ -20,6 +20,9 @@ const NO_STORE_ROOTS = [
   '/account',
   '/trusted-devices',
   '/profiles/me',
+  // RBAC-05 (revue SEC-40, cycle 1, point 2) : un refus d'administration et une route inconnue de
+  // l'espace portent le même en-tête.
+  '/admin',
 ].map((path) => `/${API_PREFIX}${path}`);
 
 /** La racine elle-même ou tout chemin en dessous (`/auth/...`), insensible à la casse. */

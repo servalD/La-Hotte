@@ -104,6 +104,7 @@ describe('Rôles (RBAC-03)', () => {
         accountId,
         role: 'USER',
         authEpoch: 10,
+        now: new Date(),
         audits: () => [write('role.revoke', accountId)],
       }),
     ).toBe('last_admin');
@@ -114,10 +115,38 @@ describe('Rôles (RBAC-03)', () => {
         accountId,
         role: 'USER',
         authEpoch: 10,
+        now: new Date(),
         audits: () => [write('role.revoke', accountId)],
       }),
     ).toBe('changed');
     await prisma.account.update({ where: { id: second }, data: { role: 'USER' } });
+  });
+
+  it('attribuer un rôle annule les liens TOTP_RESET encore ouverts, dans la transaction (ADM-07)', async () => {
+    const { accountId } = await createAccountWithProfile(prisma);
+    const now = new Date();
+    const tokenHash = randomUUID().replace(/-/g, '').padEnd(64, '0');
+    await prisma.accountToken.create({
+      data: {
+        id: randomUUID(),
+        accountId,
+        purpose: 'TOTP_RESET',
+        tokenHash,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + 30 * 60_000),
+      },
+    });
+    expect(
+      await administration.setRole({
+        accountId,
+        role: 'MODERATOR',
+        authEpoch: 12,
+        now,
+        audits: () => [write('role.grant', accountId)],
+      }),
+    ).toBe('changed');
+    const row = await prisma.accountToken.findFirstOrThrow({ where: { tokenHash } });
+    expect(row.usedAt).toEqual(now);
   });
 });
 
