@@ -45,12 +45,14 @@ export abstract class AccountAdministration {
 
   /**
    * RBAC-03, RBAC-07 : rôle changé et époque écrite. Retirer `ADMIN` au dernier administrateur
-   * actif est refusé (`last_admin`), vérifié sous verrou dans la transaction.
+   * actif est refusé (`last_admin`), vérifié sous verrou dans la transaction. Attribuer un rôle
+   * annule, dans la même transaction, les liens `TOTP_RESET` encore ouverts (ADM-07).
    */
   abstract setRole(input: {
     readonly accountId: string;
     readonly role: AccountRole;
     readonly authEpoch: number;
+    readonly now: Date;
     readonly audits: (before: AccountRole) => readonly AuditWrite[];
   }): Promise<RoleChangeOutcome>;
 

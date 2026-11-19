@@ -1,4 +1,5 @@
 import {
+  globalProductCountable,
   globalProductVisible,
   moderationWithheld,
   requiresHiddenItemChoice,
@@ -164,5 +165,39 @@ describe('Surprise et répertoire (REP-10, EVT-04, ADM-05)', () => {
     expect(
       moderationWithheld({ actorProfileIds: ['lea'], authorId: 'zoe', references: [honoree] }),
     ).toBe(true);
+  });
+});
+
+describe('Compteur du catalogue, le même pour tous (MOD-05, revue SEC-40 I1)', () => {
+  const all = { mode: 'ALL' as const, profiles: [] };
+  it('une fiche de la wishlist de son auteur, visible de tous, compte', () => {
+    expect(
+      globalProductCountable({
+        ownerId: 'papa',
+        references: [{ rule: all, listRecipients: ['papa'], surpriseFor: ['mamie'] }],
+      }),
+    ).toBe(true);
+    expect(globalProductCountable({ ownerId: 'papa', references: [] })).toBe(true);
+  });
+
+  it('une fiche préparée pour quelqu’un, ou cachée par une règle, ne compte pas', () => {
+    expect(
+      globalProductCountable({
+        ownerId: 'papa',
+        references: [{ rule: all, listRecipients: ['marie'], surpriseFor: [] }],
+      }),
+    ).toBe(false);
+    expect(
+      globalProductCountable({
+        ownerId: 'papa',
+        references: [
+          {
+            rule: { mode: 'EXCEPT', profiles: ['tonton'] },
+            listRecipients: ['papa'],
+            surpriseFor: [],
+          },
+        ],
+      }),
+    ).toBe(false);
   });
 });

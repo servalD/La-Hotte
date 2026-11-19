@@ -22,6 +22,7 @@ import {
   type DecisionOnMyContent,
   type DecisionRecord,
   MODERATION_QUEUE_MAX,
+  type ModerationConcern,
   type ModerationDecisionKind,
   ModerationStore,
   type ModerationTarget,
@@ -84,6 +85,23 @@ const commentView = (c: CommentForModeration) => ({
   createdAt: c.createdAt,
 });
 
+/** Modérateur ou administrateur qui lit ou décide : son compte et ses profils (ADM-05). */
+export interface ModerationActor {
+  readonly accountId: string;
+  readonly profileIds: readonly string[];
+}
+
+function concernWithholds(actor: ModerationActor, concern: ModerationConcern): boolean {
+  return (
+    concern.referenceUnknown ||
+    moderationWithheld({
+      actorProfileIds: actor.profileIds,
+      authorId: concern.authorId,
+      references: concern.references,
+    })
+  );
+}
+
 /** Accès aux cibles : lecture pour la file, auteur pour l'avis, gestes de modération. */
 @Injectable()
 export class ModerationTargets {
@@ -92,45 +110,89 @@ export class ModerationTargets {
     private readonly comments: CommentModerationGate,
     private readonly references: ProductReferences,
     private readonly accountProfiles: AccountProfileIds,
+    private readonly store: ModerationStore,
   ) {}
 
-  /** Profils du compte du modérateur, lus une fois par requête (ADM-05). */
-  actorProfiles(actorAccountId: string): Promise<string[]> {
-    return this.accountProfiles.execute(actorAccountId);
+  /** Compte et profils du modérateur, lus une fois par requête (ADM-05). */
+  async actor(actorAccountId: string): Promise<ModerationActor> {
+    return {
+      accountId: actorAccountId,
+      profileIds: await this.accountProfiles.execute(actorAccountId),
+    };
   }
 
   /**
-   * ADM-05, MOD-10 : la cible concerne-t-elle un profil du modérateur (auteur, destinataire ou
-   * écarté) ? Elle lui est alors soustraite comme si elle n'existait pas.
+   * Qui la cible concerne aujourd'hui (auteur, éléments qui la référencent, retirés compris : M4) ;
+   * `null` si elle a disparu.
    */
-  async withheld(
-    actorProfileIds: readonly string[],
+  async concernOf(
     target: ModerationTarget,
     loaded?: Product | CommentForModeration | null,
-  ): Promise<boolean> {
+  ): Promise<ModerationConcern | null> {
     if (target.kind === 'PRODUCT') {
       const product = (loaded as Product | null | undefined) ?? (await this.product(target.id));
-      // Cible disparue : rien ne permet plus de juger qui elle concerne, elle est soustraite (R1).
-      if (!product) return true;
-      const references = (await this.references.of([product.id])).get(product.id) ?? [];
-      return moderationWithheld({
-        actorProfileIds,
-        authorId: product.ownerProfileId || null,
-        references,
-      });
+      if (!product) return null;
+      const references =
+        (await this.references.of([product.id], { withdrawn: true })).get(product.id) ?? [];
+      return { authorId: product.ownerProfileId || null, references, referenceUnknown: false };
     }
     const comment =
       (loaded as CommentForModeration | null | undefined) ?? (await this.comment(target.id));
-    // Message supprimé, élément ou liste effacés : soustrait par prudence (revue SEC-40, R1).
-    if (!comment) return true;
-    return (
-      moderationWithheld({
-        actorProfileIds,
-        authorId: comment.authorId,
-        // Sans élément connu, rien ne permet d'écarter un destinataire : le message est soustrait.
-        references: comment.reference ? [comment.reference] : [],
-      }) || comment.reference === null
-    );
+    if (!comment) return null;
+    return {
+      authorId: comment.authorId,
+      references: comment.reference ? [comment.reference] : [],
+      // Sans élément connu, rien ne permet d'écarter un destinataire : le message est soustrait.
+      referenceUnknown: comment.reference === null,
+    };
+  }
+
+  /**
+   * ADM-05, MOD-10 : la cible est soustraite au modérateur comme si elle n'existait pas quand elle
+   * concerne un profil de son compte (auteur, destinataire, écarté, honoré), quand elle a disparu
+   * (R1 : plus rien ne dit qui elle concerne), ou quand ce compte l'a signalée (revue SEC-40 des
+   * restes de la phase 7, B1 : sinon son absence, après son propre signalement, le lui dirait).
+   */
+  async withheld(
+    actor: ModerationActor,
+    target: ModerationTarget,
+    loaded?: Product | CommentForModeration | null,
+  ): Promise<boolean> {
+    return (await this.assess(actor, target, loaded)).standing !== 'visible';
+  }
+
+  /**
+   * ADM-05, AUD-06 (revue SEC-40, M1, I2, puis n1 et n2 du cycle 2) : un seul jugement pour la
+   * file, les décisions, les contestations et le journal. `withheld` : la cible le concerne
+   * aujourd'hui, ou le concernait à une décision (faits figés), ou son compte l'a signalée ; `gone` :
+   * elle a disparu sans l'avoir jamais concerné. Les trois lectures sont toujours faites, ensemble :
+   * le temps de réponse ne dit pas laquelle a décidé.
+   */
+  async assess(
+    actor: ModerationActor,
+    target: ModerationTarget,
+    loaded?: Product | CommentForModeration | null,
+  ): Promise<{
+    readonly standing: 'visible' | 'withheld' | 'gone';
+    readonly concern: ModerationConcern | null;
+  }> {
+    const [concern, past, reported] = await Promise.all([
+      this.concernOf(target, loaded),
+      this.store.concernsOn(target),
+      this.store.reportedByAccount(actor.accountId, target),
+    ]);
+    const withheld =
+      reported ||
+      past.some((c) => concernWithholds(actor, c)) ||
+      (concern !== null && concernWithholds(actor, concern));
+    return { standing: withheld ? 'withheld' : concern ? 'visible' : 'gone', concern };
+  }
+
+  async standing(
+    actor: ModerationActor,
+    target: ModerationTarget,
+  ): Promise<'visible' | 'withheld' | 'gone'> {
+    return (await this.assess(actor, target)).standing;
   }
 
   product(id: string): Promise<Product | null> {
@@ -204,7 +266,7 @@ export class ReportContent {
     // même compte ; un compte ne remplit pas la file à lui seul.
     if (
       readable.authorId !== null &&
-      (await this.targets.actorProfiles(input.accountId)).includes(readable.authorId)
+      (await this.targets.actor(input.accountId)).profileIds.includes(readable.authorId)
     ) {
       throw new ReportOwnContentError();
     }
@@ -235,7 +297,7 @@ export class ReadModerationQueue {
   ) {}
 
   async execute(actorAccountId: string): Promise<QueueEntry[]> {
-    const actor = await this.targets.actorProfiles(actorAccountId);
+    const actor = await this.targets.actor(actorAccountId);
     const [reports, pending, contests] = await Promise.all([
       this.store.openReports(MODERATION_QUEUE_MAX),
       this.catalog.pendingGlobal(MODERATION_QUEUE_MAX),
@@ -384,7 +446,7 @@ export class DecideModeration {
     readonly reason: string;
   }): Promise<void> {
     const { target } = input;
-    const actor = await this.targets.actorProfiles(input.actorAccountId);
+    const actor = await this.targets.actor(input.actorAccountId);
     const last = await this.store.lastDecisionOn(target);
     const open = await this.store.openReportsOn(target);
     let pending = false;
@@ -399,10 +461,13 @@ export class DecideModeration {
       if (!comment || comment.removed) throw new ReportTargetNotFoundError();
       loaded = comment;
     }
-    // Rien à modérer d'abord, soustraction ensuite : sans signalement ni attente, la réponse ne dit
-    // pas si la fiche concerne le modérateur (revue SEC-40, M3).
-    if (!open && !pending) throw new NothingToModerateError();
-    if (await this.targets.withheld(actor, target, loaded)) throw new ReportTargetNotFoundError();
+    // Une cible soustraite répond « rien à modérer », comme une cible sans signalement ni attente :
+    // ni un `404` (il dirait à l'auteur d'une fiche qu'elle est signalée, m1), ni un ordre des
+    // contrôles qui ferait différer le temps de réponse (m2). La soustraction est toujours examinée.
+    const { standing, concern } = await this.targets.assess(actor, target, loaded);
+    if ((!open && !pending) || standing !== 'visible' || !concern) {
+      throw new NothingToModerateError();
+    }
     const author = await this.targets.authorOf(target);
     const now = this.recorder.now();
     const recorded = await this.recorder.record({
@@ -416,6 +481,7 @@ export class DecideModeration {
         parentId: null,
         at: now,
       },
+      concern,
       audit: this.recorder.audit(input, target, input.decision),
       closeReports: true,
     });
@@ -496,8 +562,10 @@ export class DecideContest {
     if (contest?.action !== 'CONTEST' || !contest.parentId) throw new DecisionNotFoundError();
     const decision = await this.store.findDecision(contest.parentId);
     if (!decision) throw new DecisionNotFoundError();
-    const actor = await this.targets.actorProfiles(input.actorAccountId);
-    if (await this.targets.withheld(actor, decision.target)) throw new DecisionNotFoundError();
+    const actor = await this.targets.actor(input.actorAccountId);
+    // ADM-05 : soustraite aujourd'hui, à une décision passée (I2), ou signalée par ce compte (B1).
+    const { standing, concern } = await this.targets.assess(actor, decision.target);
+    if (standing !== 'visible' || !concern) throw new DecisionNotFoundError();
     if (decision.actorAccountId === input.actorAccountId) throw new ContestSameModeratorError();
     if (!(await this.store.contestOpen(contest.id))) throw new NothingToModerateError();
     const now = this.recorder.now();
@@ -512,6 +580,7 @@ export class DecideContest {
         parentId: contest.id,
         at: now,
       },
+      concern,
       audit: this.recorder.audit(input, target, `CONTEST_${input.outcome}`),
       closeReports: false,
     });

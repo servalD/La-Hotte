@@ -198,6 +198,7 @@ export class ChangeAccountRole {
         accountId: target.accountId,
         role: input.role,
         authEpoch,
+        now: this.kit.clock.now(),
         audits: (before) => [
           this.kit.write(input, input.role === 'USER' ? 'role.revoke' : 'role.grant', {
             before,
@@ -239,6 +240,7 @@ export class RequestTotpReset {
           accountId: target.accountId,
           role: 'USER',
           authEpoch,
+          now: this.kit.clock.now(),
           audits: (before) => [
             this.kit.write(input, 'role.revoke', { before, after: 'USER' }),
             request,
@@ -318,7 +320,6 @@ export class ConfirmTotpReset {
     private readonly accounts: AccountRepository,
     private readonly tokens: SecretTokens,
     private readonly securityLog: SecurityLog,
-    private readonly mailer: AccountMailer,
   ) {}
 
   async execute(input: { readonly token: string; readonly client: ClientInfo }): Promise<void> {
@@ -356,7 +357,15 @@ export class ConfirmTotpReset {
       at: this.kit.clock.now(),
     });
     const account = await this.accounts.findById(accountId);
-    if (account) await this.mailer.send(account.email, { kind: 'totp_disabled' });
+    // AUD-05 : un avertissement qui ne part pas laisse une entrée « échec de la suite ».
+    if (account) {
+      await this.kit.notify(
+        { actorAccountId: accountId, targetAccountId: accountId, ip: input.client.ip, reason: '' },
+        account.email,
+        { kind: 'totp_disabled' },
+        'account.totp_reset_completed',
+      );
+    }
   }
 }
 

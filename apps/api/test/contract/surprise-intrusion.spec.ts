@@ -3,7 +3,13 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { SessionLifecycle } from '../../src/modules/identity/application/session-lifecycle';
 import { session, type SignedIn } from '../support/sign-in';
-import { createTestApp, type TestConversations, type TestIdentity } from './create-test-app';
+import {
+  createTestApp,
+  type TestAdmin,
+  type TestCatalog,
+  type TestConversations,
+  type TestIdentity,
+} from './create-test-app';
 
 // SEC-42 : test d'intrusion ciblé sur la surprise, pour les canaux ouverts par la phase 7.
 // Léa est destinataire ; Paul participe à un de ses souhaits et en parle au fil des offreurs. Léa
@@ -18,9 +24,11 @@ const AMOUNT = 4_321;
 let app: INestApplication;
 let identity: TestIdentity;
 let conversations: TestConversations;
+let catalog: TestCatalog;
+let admin: TestAdmin;
 
 beforeAll(async () => {
-  ({ app, identity, conversations } = await createTestApp());
+  ({ app, identity, conversations, catalog, admin } = await createTestApp());
 });
 
 afterAll(async () => {
@@ -34,7 +42,7 @@ beforeEach(() => {
 const http = () => request(app.getHttpServer());
 type Body = Record<string, unknown>;
 
-async function person(role?: 'MODERATOR'): Promise<SignedIn> {
+async function person(role?: 'MODERATOR' | 'ADMIN'): Promise<SignedIn> {
   const user = await identity.signIn(role ? { role } : {});
   identity.accounts.seed({ id: user.accountId, email: `s-${user.accountId}@lahotte.test` });
   // `seed` remet le rôle par défaut.
@@ -72,7 +80,7 @@ const shape = (res: request.Response) => {
   return { status: res.status, body: rest };
 };
 
-async function world(leaRole?: 'MODERATOR') {
+async function world(leaRole?: 'MODERATOR' | 'ADMIN') {
   const lea = await person(leaRole);
   const paul = await person();
   await link(lea, paul);
@@ -196,6 +204,13 @@ describe('Surprise face aux canaux de la phase 7 (SEC-42, VIS-20, VIS-22)', () =
     await link(paul, marc);
     const threads = await http().get(`/api/v1/items/${itemId}/threads`).set('Cookie', marc.cookie);
     expect(threads.status).toBe(200);
+    const decide = (user: SignedIn) =>
+      http()
+        .post(`/api/v1/admin/moderation/comments/${commentId}/decide`)
+        .set(user.mutation)
+        .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' });
+    // Avant tout signalement : rien à modérer.
+    const unreported = await decide(lea);
     await http()
       .post('/api/v1/reports')
       .set(marc.mutation)
@@ -214,54 +229,65 @@ describe('Surprise face aux canaux de la phase 7 (SEC-42, VIS-20, VIS-22)', () =
       .expect(200);
     expect(JSON.stringify(queue.body)).not.toContain(SECRET);
     expect(JSON.stringify(queue.body)).not.toContain(commentId);
-    const fresh = await reauthenticated(lea);
-    const real = await http()
-      .post(`/api/v1/admin/moderation/comments/${commentId}/decide`)
-      .set(fresh.mutation)
-      .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' });
-    const fake = await http()
-      .post(`/api/v1/admin/moderation/comments/${randomUUID()}/decide`)
-      .set(fresh.mutation)
-      .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' });
-    expect(shape(real)).toEqual(shape(fake));
-    expect(real.status).toBe(404);
+    // m1 : signalé ou non, la réponse est la même ; elle ne dit pas que le message la concerne.
+    const reported = await decide(lea);
+    expect(shape(reported)).toEqual(shape(unreported));
+    expect(reported.status).toBe(409);
+    expect(reported.body.code).toBe('NOTHING_TO_MODERATE');
+    // Et le message n'est pas retiré pour autant.
+    const kept = await http()
+      .get(`/api/v1/items/${itemId}/comments?thread=GIVERS`)
+      .set('Cookie', marc.cookie)
+      .expect(200);
+    expect(JSON.stringify(kept.body)).toContain(SECRET);
   });
 
-  it('une fiche préparée pour une destinataire modératrice ne paraît pas dans sa file (REP-10, MOD-10)', async () => {
-    const { lea, paul } = await world('MODERATOR');
-    const title = `FICHE-${randomUUID()}`;
-    const list = await http()
-      .post('/api/v1/lists')
-      .set(paul.mutation)
-      .send({ type: 'GIFTLIST', title: 'Pour Léa', recipientIds: [lea.profileId] })
-      .expect(201);
-    const product = await http()
-      .post('/api/v1/products')
-      .set(paul.mutation)
-      .send({ title, unitPriceMinor: 10_000, currency: 'EUR' })
-      .expect(201);
-    await http()
-      .post(`/api/v1/lists/${list.body.id as string}/items`)
-      .set(paul.mutation)
-      .send({ productId: product.body.id as string })
-      .expect(201);
-    await http()
-      .put(`/api/v1/products/${product.body.id as string}/share`)
-      .set(paul.mutation)
-      .send({ level: 'GLOBAL' })
-      .expect(200);
-    const other = await identity.signIn({ role: 'MODERATOR' });
-    const seen = await http()
-      .get('/api/v1/admin/moderation/queue')
-      .set('Cookie', other.cookie)
-      .expect(200);
-    expect(JSON.stringify(seen.body)).toContain(title);
-    const queue = await http()
-      .get('/api/v1/admin/moderation/queue')
-      .set('Cookie', lea.cookie)
-      .expect(200);
-    expect(JSON.stringify(queue.body)).not.toContain(title);
-  });
+  it.each([
+    ['', false],
+    [', même si l’élément est retiré (M4)', true],
+  ])(
+    'une fiche préparée pour une destinataire modératrice ne paraît pas dans sa file%s (REP-10, MOD-10)',
+    async (_label, withdrawn) => {
+      const { lea, paul } = await world('MODERATOR');
+      const title = `FICHE-${randomUUID()}`;
+      const list = await http()
+        .post('/api/v1/lists')
+        .set(paul.mutation)
+        .send({ type: 'GIFTLIST', title: 'Pour Léa', recipientIds: [lea.profileId] })
+        .expect(201);
+      const product = await http()
+        .post('/api/v1/products')
+        .set(paul.mutation)
+        .send({ title, unitPriceMinor: 10_000, currency: 'EUR' })
+        .expect(201);
+      const item = await http()
+        .post(`/api/v1/lists/${list.body.id as string}/items`)
+        .set(paul.mutation)
+        .send({ productId: product.body.id as string })
+        .expect(201);
+      if (withdrawn) {
+        const row = catalog.items.items.get(item.body.id as string);
+        if (!row) throw new Error('élément absent');
+        catalog.items.items.set(row.id, { ...row, status: 'WITHDRAWN' });
+      }
+      await http()
+        .put(`/api/v1/products/${product.body.id as string}/share`)
+        .set(paul.mutation)
+        .send({ level: 'GLOBAL' })
+        .expect(200);
+      const other = await identity.signIn({ role: 'MODERATOR' });
+      const seen = await http()
+        .get('/api/v1/admin/moderation/queue')
+        .set('Cookie', other.cookie)
+        .expect(200);
+      expect(JSON.stringify(seen.body)).toContain(title);
+      const queue = await http()
+        .get('/api/v1/admin/moderation/queue')
+        .set('Cookie', lea.cookie)
+        .expect(200);
+      expect(JSON.stringify(queue.body)).not.toContain(title);
+    },
+  );
 
   it('une contestation dont le message a disparu reste soustraite à la destinataire modératrice (R1)', async () => {
     const { lea, paul, commentId } = await world('MODERATOR');
@@ -399,7 +425,180 @@ describe('Surprise face aux canaux de la phase 7 (SEC-42, VIS-20, VIS-22)', () =
       .post(`/api/v1/admin/moderation/comments/${comment.body.id as string}/decide`)
       .set(lea.mutation)
       .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' })
-      .expect(404);
+      .expect(409);
+  });
+
+  it('le journal d’audit ne montre pas à une destinataire administratrice la décision sur le fil des offreurs (ADM-05, AUD-06, M1)', async () => {
+    const { lea, paul, commentId } = await world('ADMIN');
+    const marc = await person();
+    await link(lea, marc);
+    await link(paul, marc);
+    await http()
+      .post('/api/v1/reports')
+      .set(marc.mutation)
+      .send({ targetKind: 'COMMENT', targetId: commentId, reason: 'SPAM' })
+      .expect(204);
+    const motive = `MOTIF-${randomUUID()}`;
+    const jean = await identity.signIn({ role: 'MODERATOR' });
+    await http()
+      .post(`/api/v1/admin/moderation/comments/${commentId}/decide`)
+      .set(jean.mutation)
+      .send({ decision: 'REMOVE', reason: motive })
+      .expect(204);
+    const audit = async (user: SignedIn) =>
+      JSON.stringify(
+        (
+          await http()
+            .get(`/api/v1/admin/audit?actorAccountId=${jean.accountId}`)
+            .set('Cookie', user.cookie)
+            .expect(200)
+        ).body,
+      );
+    // Un administrateur que le message ne concerne pas voit l'entrée et son motif.
+    const other = await person('ADMIN');
+    expect(await audit(other)).toContain(motive);
+    const seen = await audit(lea);
+    expect(seen).not.toContain(motive);
+    expect(seen).not.toContain(commentId);
+    // Revue SEC-40, m1 : une série d'entrées soustraites ne raccourcit pas la page. Six entrées
+    // récentes sur ce message, puis une entrée sans cible plus ancienne : la page d'une entrée est
+    // pleine pour Léa aussi.
+    const older = new Date(Date.now() - 60_000);
+    admin.audit.append({
+      id: '00000000-0000-7000-8000-000000000001',
+      at: older,
+      entry: {
+        actorAccountId: jean.accountId,
+        action: 'audit.read',
+        targetKind: null,
+        targetId: null,
+        reason: null,
+        ip: '203.0.113.9',
+      },
+    });
+    for (let i = 0; i < 6; i += 1) {
+      admin.audit.append({
+        id: randomUUID(),
+        at: new Date(),
+        entry: {
+          actorAccountId: jean.accountId,
+          action: 'followup.failed',
+          targetKind: 'COMMENT',
+          targetId: commentId,
+          reason: null,
+          ip: '203.0.113.9',
+        },
+      });
+    }
+    const page = await http()
+      .get(`/api/v1/admin/audit?actorAccountId=${jean.accountId}&limit=1`)
+      .set('Cookie', lea.cookie)
+      .expect(200);
+    expect(page.body.items).toHaveLength(1);
+    expect(JSON.stringify(page.body)).not.toContain(commentId);
+    // Le message effacé, plus personne ne lit le motif ; et l'entrée ne réapparaît pas pour Léa
+    // (revue SEC-40, I2 : faits figés à la décision).
+    await http().delete(`/api/v1/comments/${commentId}`).set(paul.mutation).expect(204);
+    const after = await audit(other);
+    expect(after).toContain(commentId);
+    expect(after).not.toContain(motive);
+    expect(await audit(lea)).not.toContain(commentId);
+  });
+
+  it('un message sur un élément dont la modératrice est écartée (EXCEPT) lui est soustrait (ADM-05, M6)', async () => {
+    const lea = await person('MODERATOR');
+    const paul = await person();
+    const marc = await person();
+    await link(paul, lea);
+    await link(paul, marc);
+    const list = await http()
+      .post('/api/v1/lists')
+      .set(paul.mutation)
+      .send({ type: 'WISHLIST', title: 'Anniversaire', recipientIds: [paul.profileId] })
+      .expect(201);
+    const product = await http()
+      .post('/api/v1/products')
+      .set(paul.mutation)
+      .send({ title: 'Cadeau pour Léa' })
+      .expect(201);
+    const item = await http()
+      .post(`/api/v1/lists/${list.body.id as string}/items`)
+      .set(paul.mutation)
+      .send({ productId: product.body.id as string })
+      .expect(201);
+    const itemId = item.body.id as string;
+    await http()
+      .put(`/api/v1/items/${itemId}/visibility`)
+      .set({ ...paul.mutation, 'If-Match': '1' })
+      .send({ mode: 'EXCEPT', profileIds: [lea.profileId] })
+      .expect(200);
+    const body = `ECARTEE-${randomUUID()}`;
+    const comment = await http()
+      .post(`/api/v1/items/${itemId}/comments`)
+      .set(paul.mutation)
+      .send({ thread: 'PUBLIC', body })
+      .expect(201);
+    const commentId = comment.body.id as string;
+    await conversations.settle();
+    await http()
+      .post('/api/v1/reports')
+      .set(marc.mutation)
+      .send({ targetKind: 'COMMENT', targetId: commentId, reason: 'SPAM' })
+      .expect(204);
+    const other = await identity.signIn({ role: 'MODERATOR' });
+    const seen = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', other.cookie)
+      .expect(200);
+    expect(JSON.stringify(seen.body)).toContain(body);
+    const queue = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', lea.cookie)
+      .expect(200);
+    expect(JSON.stringify(queue.body)).not.toContain(body);
+    const res = await http()
+      .post(`/api/v1/admin/moderation/comments/${commentId}/decide`)
+      .set(lea.mutation)
+      .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' })
+      .expect(409);
+    expect(res.body.code).toBe('NOTHING_TO_MODERATE');
+  });
+
+  it('un autre profil du compte de la modératrice est destinataire : le message reste soustrait (ADM-05, M6)', async () => {
+    const { lea, paul, commentId } = await world('MODERATOR');
+    const marc = await person();
+    await link(lea, marc);
+    await link(paul, marc);
+    await http()
+      .post('/api/v1/reports')
+      .set(marc.mutation)
+      .send({ targetKind: 'COMMENT', targetId: commentId, reason: 'SPAM' })
+      .expect(204);
+    const second = randomUUID();
+    identity.profiles.set({
+      profileId: second,
+      accountId: lea.accountId,
+      hasPin: false,
+      relock: 'IDLE_15',
+    });
+    await http()
+      .post('/api/v1/session/profile')
+      .set(lea.mutation)
+      .send({ profileId: second })
+      .expect((res) => {
+        expect(res.status).toBeLessThan(300);
+      });
+    const queue = await http()
+      .get('/api/v1/admin/moderation/queue')
+      .set('Cookie', lea.cookie)
+      .expect(200);
+    // `SECRET` est commun aux mondes de ce fichier : seul l'identifiant désigne ce message-ci.
+    expect(JSON.stringify(queue.body)).not.toContain(commentId);
+    await http()
+      .post(`/api/v1/admin/moderation/comments/${commentId}/decide`)
+      .set(lea.mutation)
+      .send({ decision: 'REMOVE', reason: 'Contenu vérifié par la modération' })
+      .expect(409);
   });
 
   it('un contenu disparu ne garde la file de personne ; on ne signale pas son propre compte (MOD-07, MOD-10, MOD-11)', async () => {

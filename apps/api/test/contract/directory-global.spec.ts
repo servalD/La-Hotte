@@ -190,6 +190,59 @@ describe('Dédoublonnage et compteur (MOD-05)', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ productId: first, adopters: 2 });
   });
+
+  /** Fiche de `papa` dans sa giftlist pour `marie`, publiée au catalogue. */
+  async function prepared(papa: SignedIn, marie: SignedIn, url: string): Promise<string> {
+    const gift = await http()
+      .post('/api/v1/lists')
+      .set(papa.mutation)
+      .send({ type: 'GIFTLIST', title: 'Pour Marie', recipientIds: [marie.profileId] })
+      .expect(201);
+    const id = await linkProduct(papa, 'Casque', url);
+    await http()
+      .post(`/api/v1/lists/${gift.body.id as string}/items`)
+      .set(papa.mutation)
+      .send({ productId: id })
+      .expect(201);
+    await share(papa, id, { level: 'GLOBAL' }).expect(200);
+    return id;
+  }
+
+  const entryFor = async (user: SignedIn, url: string) =>
+    (await global(user)).find((e) => e.sourceUrl === url);
+
+  it('une fiche préparée pour un lecteur, sous la même adresse, ne change ni le compteur ni la fiche montrée (revue SEC-40, 4a, I1)', async () => {
+    const a = await person();
+    const papa = await person();
+    const marie = await person();
+    const viewer = await person();
+    await link(papa, marie);
+    const url = `https://boutique.example/casque-${a.accountId}`;
+    const first = await linkProduct(a, 'Casque', url);
+    await share(a, first, { level: 'GLOBAL' }).expect(200);
+    const before = await entryFor(viewer, url);
+    await prepared(papa, marie, url);
+    // Le même compteur pour tous, avant et après : rien ne dit à Marie qu'on lui prépare la fiche.
+    for (const user of [viewer, marie]) {
+      expect(await entryFor(user, url)).toEqual(before);
+    }
+    expect(before).toMatchObject({ productId: first, adopters: 1 });
+  });
+
+  it('la plus ancienne fiche de l’adresse est préparée pour le lecteur : l’adresse reste au catalogue, la même pour tous (revue SEC-40, I1)', async () => {
+    const papa = await person();
+    const marie = await person();
+    const carol = await person();
+    const viewer = await person();
+    await link(papa, marie);
+    const url = `https://boutique.example/casque-${papa.accountId}`;
+    await prepared(papa, marie, url);
+    const later = await linkProduct(carol, 'Casque', url);
+    await share(carol, later, { level: 'GLOBAL' }).expect(200);
+    const seen = await entryFor(viewer, url);
+    expect(seen).toMatchObject({ productId: later, adopters: 1 });
+    expect(await entryFor(marie, url)).toEqual(seen);
+  });
 });
 
 describe('Ce que le catalogue ne montre pas (REP-04, REP-10)', () => {

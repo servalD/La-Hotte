@@ -114,6 +114,7 @@ export class PrismaAccountAdministration extends AccountAdministration {
     accountId: string;
     role: AccountRole;
     authEpoch: number;
+    now: Date;
     audits: (before: AccountRole) => readonly AuditWrite[];
   }): Promise<RoleChangeOutcome> {
     return this.prisma.$transaction(async (tx) => {
@@ -130,6 +131,13 @@ export class PrismaAccountAdministration extends AccountAdministration {
         return 'last_admin';
       }
       await tx.account.update({ where: { id: input.accountId }, data: { role: input.role } });
+      if (input.role !== 'USER') {
+        // ADM-07 : un lien de réinitialisation demandé avant le retour du rôle ne sert plus.
+        await tx.accountToken.updateMany({
+          where: { accountId: input.accountId, purpose: 'TOTP_RESET', usedAt: null },
+          data: { usedAt: input.now },
+        });
+      }
       await writeEpoch(tx, input.accountId, input.authEpoch);
       for (const write of input.audits(before)) await appendAudit(tx, write);
       return 'changed';

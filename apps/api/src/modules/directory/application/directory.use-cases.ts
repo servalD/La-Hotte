@@ -8,6 +8,7 @@ import {
 } from '../../catalog';
 import { ProductReferences } from '../../lists';
 import {
+  globalProductCountable,
   globalProductVisible,
   requiresHiddenItemChoice,
   sharedProductVisible,
@@ -76,22 +77,55 @@ async function visibleEntries(
   );
 }
 
-/** MOD-12, REP-10 : entrées du catalogue global que `visibility` laisse voir à ce profil. */
+/**
+ * MOD-12, REP-10 : entrées du catalogue global que `visibility` laisse voir à ce profil.
+ *
+ * MOD-05 (revue SEC-40 des restes de la phase 7, 4a puis I1) : une adresse est représentée par la
+ * plus ancienne de ses fiches qui ne sont cachées à personne, et le compteur ne compte que ces
+ * fiches-là. Fiche montrée et compteur sont donc les mêmes pour tous les lecteurs : une fiche
+ * préparée pour l'un d'eux sous la même adresse ne les change pas, et deux profils d'un même compte
+ * voient la même chose. Une adresse dont aucune fiche n'est dans ce cas garde la règle d'avant (la
+ * plus ancienne, si ce profil la voit, comptée seule).
+ */
 async function visibleGlobal(
   references: ProductReferences,
   viewerId: string,
   entries: readonly GlobalEntry[],
+  load: (productId: string) => Promise<Product | null> = () => Promise.resolve(null),
 ): Promise<GlobalEntry[]> {
-  const refs = await references.of(entries.map((entry) => entry.product.id));
-  return entries.filter(({ product }) =>
+  const ids = new Set(entries.map((entry) => entry.product.id));
+  for (const entry of entries) for (const member of entry.members) ids.add(member.productId);
+  const refs = await references.of([...ids]);
+  const visible = (product: Product) =>
     globalProductVisible({
       viewerId,
       ownerId: product.ownerProfileId || null,
       shareLevel: product.shareLevel,
       moderationStatus: product.moderationStatus,
       references: refs.get(product.id) ?? [],
-    }),
-  );
+    });
+  const out: GlobalEntry[] = [];
+  for (const entry of entries) {
+    const countable = entry.members.filter((m) =>
+      globalProductCountable({
+        ownerId: m.ownerProfileId,
+        references: refs.get(m.productId) ?? [],
+      }),
+    );
+    const first = countable[0];
+    if (first) {
+      const product =
+        first.productId === entry.product.id ? entry.product : await load(first.productId);
+      if (!product || !visible(product)) continue;
+      const accounts = new Set(countable.flatMap((m) => (m.accountId ? [m.accountId] : [])));
+      out.push({ product, adopters: accounts.size, members: countable });
+      continue;
+    }
+    if (!visible(entry.product)) continue;
+    const own = entry.members.find((m) => m.productId === entry.product.id);
+    out.push({ product: entry.product, adopters: own?.accountId ? 1 : 0, members: [] });
+  }
+  return out;
 }
 
 /** GET /directory?scope=global&q= (MOD-05, MOD-12, REP-04, REP-10, VIS-40). */
@@ -112,7 +146,8 @@ export class SearchGlobalCatalog {
       query: input.query?.trim() || null,
       limit: limit * 2,
     });
-    return (await visibleGlobal(this.references, input.viewerId, candidates)).slice(0, limit);
+    const load = (id: string) => this.catalog.findById(id);
+    return (await visibleGlobal(this.references, input.viewerId, candidates, load)).slice(0, limit);
   }
 }
 
@@ -164,7 +199,8 @@ export class DirectoryEntryReader {
     if (!product?.ownerProfileId) return null;
     const visible =
       (await visibleEntries(this.visibility, this.references, viewerId, [product])).length > 0 ||
-      (await visibleGlobal(this.references, viewerId, [{ product, adopters: 0 }])).length > 0;
+      (await visibleGlobal(this.references, viewerId, [{ product, adopters: 0, members: [] }]))
+        .length > 0;
     return visible ? { ownerProfileId: product.ownerProfileId } : null;
   }
 }
@@ -185,7 +221,9 @@ export class CopyFromDirectory {
       (await visibleEntries(this.visibility, this.references, input.viewerId, [product])).length >
       0;
     if (inCircle) return this.catalog.copy(product.id, input.viewerId);
-    const global = await visibleGlobal(this.references, input.viewerId, [{ product, adopters: 0 }]);
+    const global = await visibleGlobal(this.references, input.viewerId, [
+      { product, adopters: 0, members: [] },
+    ]);
     if (global.length === 0) throw new DirectoryEntryNotFoundError();
     // REP-04 : la photo de l'auteur ne sort pas du catalogue global.
     return this.catalog.copy(product.id, input.viewerId, { withoutUserPhoto: true });

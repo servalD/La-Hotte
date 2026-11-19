@@ -777,6 +777,32 @@ Sortie : restauration réussie et chronométrée ; aucune fuite trouvée ; ouver
 - recherche de compte en `GET` (adresse dans l'URL) : retirée des journaux de Caddy, à passer en `POST` si un autre intermédiaire journalise ;
 - filtrage par nom d'hôte des sorties de l'API : mandataire à liste blanche à choisir avec l'hébergeur.
 
+**Restes traités le 2026-11-19** (branche `fix/restes-phase-7`) :
+
+- m1 : une décision sur une cible soustraite répond `409 NOTHING_TO_MODERATE`, comme une cible sans signalement (ADM-05 amendé) ;
+- M1 : `GET /admin/audit` soustrait au lecteur les entrées sur un contenu qui le concerne, sans raccourcir la page ; le motif d'une entrée dont la cible a disparu n'est plus rendu (ADM-05, AUD-06) ;
+- M4 : les éléments retirés comptent dans les références d'une fiche pour la modération ;
+- M6 : contrats pour un profil écarté par `EXCEPT` et pour un autre profil du compte du modérateur ;
+- cycle 1 : `Cache-Control` d'un refus d'administration identique à une route inconnue (2) ; compteur MOD-05 calculé par lecteur sur les fiches qu'il peut voir (4a : une fiche préparée pour lui sous la même adresse le faisait monter) ; liens `TOTP_RESET` annulés à l'attribution d'un rôle, par l'interface ou la commande `admin` (6) ; `followup.failed` pour l'avertissement `totp_disabled` (7) ; mot de passe de `TARGET_URL` passé par `PGPASSWORD` dans `restore.sh` (11) ;
+- relecture des textes de la phase 7 avec `design:ux-copy` : erreurs qui disent quoi faire (« Réessayez », « nommez d'abord un autre administrateur »), « Personne d'autre ne les voit » au lieu de « Vous seul », action contestée traduite dans la file (elle s'affichait en code brut).
+
+**Revue SEC-40 de ces restes.** Cycle 1 : visa refusé. Corrigés :
+- B1 : un modérateur qui signalait lui-même une cible apprenait, par son absence de la file et le `409`, qu'elle le concernait. Une cible signalée par son compte lui est désormais toujours soustraite ;
+- I1 : le compteur MOD-05 variait d'un lecteur à l'autre (comparaison entre deux profils d'un compte), et une adresse disparaissait quand sa plus ancienne fiche était préparée pour le lecteur. Compteur et fiche montrée sont désormais les mêmes pour tous (fiches cachées à personne, `globalProductCountable`) ;
+- I2 : une entrée du journal soustraite pouvait réapparaître (cible disparue) ou disparaître (règle changée). Qui la cible concerne est figé avec chaque décision (`moderation_decision.concern`) ;
+- m1 : page du journal complétée par relecture ; m2 : soustraction toujours examinée avant le `409` ; m3 : barres obliques inverses de `TARGET_URL` ; m4 : 200 fiches par adresse au plus.
+
+Restent, acceptés ou hors de portée :
+
+- WebSocket non fermés par la commande `admin` (7) : la session est révoquée par l'époque, et chaque envoi revérifie la session (`alive`) et ferme la socket ; rien ne lui parvient. Fermeture immédiate possible plus tard par un message Redis écouté par l'API ;
+- migrations par le superutilisateur (11) : `wishlist` est le superutilisateur de l'image PostgreSQL. Le corriger demande un modèle de rôles revu (superutilisateur d'exploitation distinct, `wishlist` propriétaire sans `SUPERUSER`, `REPLICATION` pour `pg_basebackup`), avec `init.sh`, la sauvegarde, la restauration et la CI : à faire avant la première mise en production ;
+- `/health/ready` public (11) : voulu, la sonde externe l'interroge (OBS-41) ; la réponse ne porte que l'état du service et de ses dépendances (base, Redis), sans détail ;
+- liens légaux du pied de page : quand ces pages existeront ;
+- I2, borne de l'instantané : une entrée sur un contenu qui ne concernait pas le lecteur à la décision peut lui être soustraite plus tard, si ce contenu vient à le concerner (une disparition, une fois). Écrit dans ADM-05 ;
+- REP-10 au catalogue entre deux profils d'un même compte : une adresse dont aucune fiche n'est visible de tous reste absente pour son destinataire et présente pour ses autres profils (règle d'avant, inchangée) ;
+- revue SEC-40 de ces restes, cycle 2 : **visa accordé**. Corrigés ensuite : n1 (les trois lectures de la soustraction toujours faites ensemble), n2 (la file juge aussi les faits figés), n3 (ADM-05 et `docs/spec/12`). Acceptés : n4, les décisions antérieures à la migration n'ont pas de faits figés (`concern` nul), une entrée sur une cible disparue depuis peut donc réapparaître pour un lecteur qu'elle concernait ; n5, `concern` garde des identifiants de profils après leur effacement (RGPD-12), pseudonymes qui ne renvoient plus à rien, dans une table en ajout seul ; n7, un saut de ligne final dans le mot de passe de `TARGET_URL` est perdu ;
+- charge de `GET /admin/audit` (m5) : jusqu'à quelques centaines de cibles examinées par page, réservé à `ADMIN`.
+
 ## Refonte de l'interface (2026-11-18)
 
 Décisions : DS-05 à DS-08 (identité, typographie, états vides, boutons) et UX-13 (navigation), `10`. Fondations : jetons et polices, composants `Badge`, `Callout`, `EmptyState`, `SegmentedControl`, `DropdownMenu`, navigation du profil (barre du bas sur mobile) et menu de compte. Écrans refaits : accueil (tableau de bord UX-10), listes, détail d'une liste, événements, détail d'un événement, panier, comptes, notifications, répertoire, choix du profil, écrans d'accès. Présentation seule : aucune règle d'accès, de compta ni de cache n'a changé.
@@ -786,7 +812,7 @@ Décisions : DS-05 à DS-08 (identité, typographie, états vides, boutons) et U
 **Restes** :
 
 - ~~administration (comptes, modération, audit, réglages) et comptes sous tutelle : non revus à l'écran~~ Fait le 2026-11-19 : écrans refaits, revus à la main avec un compte administrateur (bureau et mobile, 390 px) et sans violation axe (WCAG 2 A et AA). Tests de bout en bout, lint, types, format et tests unitaires verts ;
-- relecture des textes de la phase 7 avec `design:ux-copy` ;
+- ~~relecture des textes de la phase 7 avec `design:ux-copy`~~ Faite le 2026-11-19 (voir les restes de la phase 7) ;
 - liens légaux du pied de page, quand ces pages existeront.
 
 ## Après la v1

@@ -50,10 +50,25 @@ describe('Commande d’exploitation (RBAC-03, ADM-07)', () => {
   it('donne ADMIN, coupe les sessions par l’époque et journalise sans acteur (AUD-05)', async () => {
     const { id, email } = await account({ totp: true });
     const before = await prisma.account.findUniqueOrThrow({ where: { id } });
+    // ADM-07 : un lien de réinitialisation du TOTP ouvert avant l'attribution ne sert plus après.
+    const tokenHash = randomUUID().replace(/-/g, '').padEnd(64, '0');
+    await prisma.accountToken.create({
+      data: {
+        id: randomUUID(),
+        accountId: id,
+        purpose: 'TOTP_RESET',
+        tokenHash,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 30 * 60_000),
+      },
+    });
     const result = await runAdminCommand(prisma, { kind: 'grant', email }, deps());
     expect(result).toEqual({ outcome: 'granted', accountId: id, epoch: before.authEpoch + 2 });
     const after = await prisma.account.findUniqueOrThrow({ where: { id } });
     expect(after.role).toBe('ADMIN');
+    expect((await prisma.accountToken.findFirstOrThrow({ where: { tokenHash } })).usedAt).not.toBe(
+      null,
+    );
     const audit = await prisma.auditLog.findMany({ where: { targetId: id } });
     expect(audit).toHaveLength(1);
     expect(audit[0]).toMatchObject({

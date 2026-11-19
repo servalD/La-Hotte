@@ -3,6 +3,7 @@ import {
   type DecisionOnMyContent,
   type DecisionRecord,
   type ModerationDecisionKind,
+  type ModerationConcern,
   ModerationStore,
   type ModerationTarget,
   type NewReport,
@@ -24,6 +25,8 @@ const same = (a: ModerationTarget, b: ModerationTarget) => a.kind === b.kind && 
 export class InMemoryModerationStore extends ModerationStore {
   readonly reports: ReportRow[] = [];
   readonly decisions: DecisionRecord[] = [];
+  /** I2 : faits figés par décision. */
+  readonly concerns = new Map<string, ModerationConcern>();
   authorOf: (target: ModerationTarget) => string | null = () => null;
   isLiveRemovedComment: (commentId: string) => boolean = () => true;
   /** Cible encore lisible (message non supprimé, fiche existante), branché par le banc. */
@@ -82,8 +85,24 @@ export class InMemoryModerationStore extends ModerationStore {
     return Promise.resolve(this.summarize(target));
   }
 
+  reportedByAccount(accountId: string, target: ModerationTarget): Promise<boolean> {
+    return Promise.resolve(
+      this.reports.some((r) => r.reporterAccountId === accountId && same(r.target, target)),
+    );
+  }
+
+  concernsOn(target: ModerationTarget): Promise<ModerationConcern[]> {
+    return Promise.resolve(
+      this.decisions.flatMap((d) => {
+        const concern = this.concerns.get(d.id);
+        return concern && same(d.target, target) ? [concern] : [];
+      }),
+    );
+  }
+
   record(input: {
     decision: DecisionRecord;
+    concern: ModerationConcern;
     audit: AuditWrite;
     closeReports: boolean;
     expectedLastDecisionId?: string | null;
@@ -103,6 +122,7 @@ export class InMemoryModerationStore extends ModerationStore {
     }
     this.audit(input.audit);
     this.decisions.push(input.decision);
+    this.concerns.set(input.decision.id, input.concern);
     if (input.closeReports) {
       for (const r of this.reports) {
         if (same(r.target, input.decision.target)) r.status = 'DECIDED';

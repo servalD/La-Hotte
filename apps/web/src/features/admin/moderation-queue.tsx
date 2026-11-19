@@ -123,7 +123,10 @@ function Entry({ entry, onDone }: { entry: ModerationQueueViewItemsItem; onDone:
       <li className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
         <h2 className="font-semibold">{t('contest')}</h2>
         <p className="text-sm text-foreground-muted">
-          {t('contested', { action: entry.decision.action, reason: entry.decision.reason })}
+          {t('contested', {
+            action: t(`actions.${entry.decision.action}`),
+            reason: entry.decision.reason,
+          })}
         </p>
         {entry.product ? <Product product={entry.product} /> : null}
         {entry.comment ? <Comment comment={entry.comment} /> : null}

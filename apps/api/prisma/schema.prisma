@@ -1538,6 +1538,8 @@ model ModerationDecision {
   actorAccountId String           @map("actor_account_id") @db.Uuid
   parentId       String?          @map("parent_id") @db.Uuid
   at             DateTime         @default(now()) @db.Timestamptz(3)
+  /// ADM-05, AUD-06 : qui la cible concernait à la décision ; jamais rendu (revue SEC-40, I2).
+  concern        Json?
 
   parent   ModerationDecision?  @relation("ModerationThread", fields: [parentId], references: [id], onDelete: Restrict)
   children ModerationDecision[] @relation("ModerationThread")

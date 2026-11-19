@@ -1,5 +1,5 @@
 import type { AuditEntry } from '../../../shared/domain';
-import { type AuditRecord, AuditTrail } from '../domain/audit-trail';
+import { type AuditFilter, type AuditRecord, AuditTrail } from '../domain/audit-trail';
 
 /** Double en mémoire ; `failNext` simule une écriture d'audit qui échoue (AUD-05). */
 export class InMemoryAuditTrail extends AuditTrail {
@@ -33,7 +33,10 @@ export class InMemoryAuditTrail extends AuditTrail {
     } catch (error) {
       return Promise.reject(error instanceof Error ? error : new Error('audit'));
     }
-    const { filter } = input;
+    return this.read(input.filter);
+  }
+
+  read(filter: AuditFilter): Promise<AuditRecord[]> {
     const rows = this.rows
       .filter((r) => !filter.actorAccountId || r.actorAccountId === filter.actorAccountId)
       .filter((r) => !filter.action || r.action === filter.action)

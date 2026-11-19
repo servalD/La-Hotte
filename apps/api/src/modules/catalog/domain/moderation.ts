@@ -55,10 +55,23 @@ export function statusOnPublish(
   return contentFlagged(product, lists) ? 'PENDING' : 'APPROVED';
 }
 
-/** Une fiche publiée au catalogue global ; `adopters` compte des comptes distincts (MOD-05). */
+/** Une fiche publiée au catalogue global pour la même adresse (MOD-05). */
+export interface GlobalMember {
+  readonly productId: string;
+  readonly ownerProfileId: string | null;
+  /** Compte de l'auteur ; `null` si l'auteur est effacé (RGPD-12) : il ne compte pas. */
+  readonly accountId: string | null;
+}
+
+/**
+ * Une fiche publiée au catalogue global (la plus ancienne de son adresse) ; `adopters` compte des
+ * comptes distincts (MOD-05). `members` : toutes les fiches publiées de l'adresse, la montrée
+ * comprise ; le compteur se recalcule par lecteur sur celles qu'il peut voir (REP-10).
+ */
 export interface GlobalEntry {
   readonly product: Product;
   readonly adopters: number;
+  readonly members: readonly GlobalMember[];
 }
 
 /** MOD-12, REP-04 : qui publie (profil enfant, compte dont la publication est suspendue). */

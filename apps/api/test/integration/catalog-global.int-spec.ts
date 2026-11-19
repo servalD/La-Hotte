@@ -78,6 +78,19 @@ describe('Catalogue global (MOD-05, MOD-06, VIS-40)', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]?.product.id).toBe(first);
     expect(entries[0]?.adopters).toBe(2);
+    // Revue SEC-40, 4a : toutes les fiches publiées de l'adresse, la plus ancienne d'abord, pour
+    // que le compteur se recalcule par lecteur (REP-10).
+    expect(entries[0]?.members.map((m) => m.ownerProfileId)).toEqual([
+      a.profileId,
+      sibling,
+      b.profileId,
+    ]);
+    expect(entries[0]?.members.map((m) => m.accountId)).toEqual([
+      a.accountId,
+      a.accountId,
+      b.accountId,
+    ]);
+    expect(entries[0]?.members[0]?.productId).toBe(first);
   });
 
   it('une fiche sans adresse reste seule, et une fiche en attente n’apparaît pas', async () => {

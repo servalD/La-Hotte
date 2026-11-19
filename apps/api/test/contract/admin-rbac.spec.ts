@@ -44,11 +44,17 @@ function shape(body: Record<string, unknown>): Record<string, unknown> {
   return rest;
 }
 
-async function unknownRoute(user: SignedIn): Promise<{ status: number; body: unknown }> {
+async function unknownRoute(
+  user: SignedIn,
+): Promise<{ status: number; body: unknown; cacheControl: unknown }> {
   const res = await request(app.getHttpServer())
     .get('/api/v1/admin/route-inconnue')
     .set('Cookie', user.cookie);
-  return { status: res.status, body: shape(res.body as Record<string, unknown>) };
+  return {
+    status: res.status,
+    body: shape(res.body as Record<string, unknown>),
+    cacheControl: res.headers['cache-control'],
+  };
 }
 
 describe('Marques de l’espace d’administration (RBAC-04, RBAC-05)', () => {
@@ -86,6 +92,8 @@ describe('Refus comme une route inconnue (RBAC-02, RBAC-05, SEC-04)', () => {
             key,
             status: res.status,
             body: shape(res.body as Record<string, unknown>),
+            // Revue SEC-40, cycle 1, point 2 : même en-tête de cache qu'une route inconnue.
+            cacheControl: res.headers['cache-control'],
           }).toEqual({
             key,
             ...reference,

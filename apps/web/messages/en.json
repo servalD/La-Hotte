@@ -1556,7 +1556,7 @@
   "admin": {
     "who": "Administration area: no list, no profile and no unreported message ever shows here.",
     "reason": "Reason",
-    "reasonHint": "At least 10 characters. It is written to the audit log.",
+    "reasonHint": "10 to 500 characters. It is written to the audit log.",
     "yes": "Yes",
     "no": "No",
     "never": "Never",
@@ -1568,7 +1568,7 @@
       "ACCOUNT_NOT_FOUND": "This account no longer exists.",
       "ADMIN_SELF_ACTION": "You can’t do this on your own account.",
       "ROLE_REQUIREMENTS_NOT_MET": "This account doesn’t meet the role’s requirements (two-step verification on, verified address, independent account).",
-      "LAST_ADMIN": "The last administrator keeps their role.",
+      "LAST_ADMIN": "The last administrator keeps their role: appoint another administrator first.",
       "ACCOUNT_STATE_CONFLICT": "The account’s state doesn’t allow this.",
       "ACCOUNT_SEARCH_RATE_LIMITED": "Too many searches: try again in an hour.",
       "SETTING_INVALID": "This value isn’t allowed for this setting.",
@@ -1593,7 +1593,7 @@
     "moderation": {
       "title": "Moderation",
       "who": "You see the reported content, the reason and the thread, nothing else: not the author, the list or the recipients.",
-      "empty": "Nothing to handle.",
+      "empty": "Nothing to review right now.",
       "product": "Item",
       "comment": "Message",
       "contest": "Appeal",
@@ -1617,7 +1617,13 @@
       "overturn": "Overturn the removal",
       "contestText": "What the author asks",
       "contested": "Appealed decision: {action} — “{reason}”",
-      "done": "Decision saved."
+      "done": "Decision saved.",
+      "actions": {
+        "KEEP": "keep",
+        "REMOVE": "removal",
+        "REMOVE_AND_SUSPEND": "removal and publication suspended",
+        "CONTEST": "appeal"
+      }
     },
     "accounts": {
       "title": "Accounts",
@@ -1671,7 +1677,7 @@
       "domains": "Domains blocked from the catalogue",
       "domainsHint": "One per line, without https://. Subdomains are included.",
       "limit": "Extractions per account per day",
-      "limitHint": "Empty: 200, the default.",
+      "limitHint": "Leave empty for the default (200).",
       "save": "Save",
       "saved": "Setting saved."
     },
@@ -1718,9 +1724,9 @@
     "note": "Details (optional)",
     "send": "Send report",
     "cancel": "Cancel",
-    "sent": "Thank you, moderation will take a look.",
+    "sent": "Thank you. The moderation team will review this content.",
     "errors": {
-      "generic": "The report couldn’t be sent.",
+      "generic": "The report couldn’t be sent. Try again.",
       "REPORT_OWN_CONTENT": "You can’t report your own content.",
       "REPORT_TARGET_NOT_FOUND": "This content no longer exists."
     }
@@ -1762,7 +1768,7 @@
       "OVERTURN": "Removal overturned"
     },
     "CONTEST_NOT_ALLOWED": "This decision can no longer be appealed.",
-    "generic": "The appeal couldn’t be sent."
+    "generic": "The appeal couldn’t be sent. Try again."
   },
   "myData": {
     "title": "My data",
@@ -1770,9 +1776,9 @@
     "request": "Prepare my export",
     "download": "Download the file",
     "downloaded": "File downloaded.",
-    "EXPORT_RATE_LIMITED": "An export was already prepared today for this profile.",
+    "EXPORT_RATE_LIMITED": "An export was already prepared today for this profile. Try again tomorrow.",
     "EXPORT_NOT_FOUND": "This file is no longer available.",
-    "generic": "The export didn’t work."
+    "generic": "The export didn’t work. Try again."
   },
   "accountDeletion": {
     "title": "Delete the account",
@@ -1783,13 +1789,13 @@
     "confirm": "Delete in 30 days",
     "cancel": "Keep my account",
     "HAS_WARDS": "This account is the guardian of another account: end the guardianship first.",
-    "LAST_ADMIN": "The last administrator can’t delete their account.",
-    "generic": "The request didn’t work."
+    "LAST_ADMIN": "The last administrator can’t delete their account: appoint another administrator first.",
+    "generic": "The request didn’t work. Try again."
   },
   "adminActions": {
     "title": "Team actions on your account",
     "who": "What administrators did on your account. Only you see this list.",
-    "empty": "No actions.",
+    "empty": "No team actions on your account.",
     "reason": "Reason: {reason}"
   }
 }

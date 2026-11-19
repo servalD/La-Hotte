@@ -54,4 +54,13 @@ export class PrismaAuditTrail extends AuditTrail {
       return rows.map(toRecord);
     });
   }
+
+  async read(filter: AuditFilter): Promise<AuditRecord[]> {
+    const rows = await this.prisma.auditLog.findMany({
+      where: whereOf(filter),
+      orderBy: [{ at: 'desc' }, { id: 'desc' }],
+      take: filter.limit,
+    });
+    return rows.map(toRecord);
+  }
 }

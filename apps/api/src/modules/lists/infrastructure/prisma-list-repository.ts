@@ -756,10 +756,16 @@ export class PrismaItemRepository extends ItemRepository {
     await this.prisma.listItem.update({ where: { id: itemId }, data: { productId } });
   }
 
-  async referencesOf(productIds: readonly string[]): Promise<ItemProductReference[]> {
+  async referencesOf(
+    productIds: readonly string[],
+    options?: { readonly withdrawn?: boolean },
+  ): Promise<ItemProductReference[]> {
     if (productIds.length === 0) return [];
     const rows = await this.prisma.listItem.findMany({
-      where: { productId: { in: [...productIds] }, status: { not: 'WITHDRAWN' } },
+      where: {
+        productId: { in: [...productIds] },
+        ...(options?.withdrawn ? {} : { status: { not: 'WITHDRAWN' as const } }),
+      },
       select: {
         id: true,
         productId: true,

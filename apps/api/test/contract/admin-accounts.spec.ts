@@ -396,6 +396,59 @@ describe('Réinitialisation du TOTP (ADM-07)', () => {
     expect(actions).toEqual(['role.revoke', 'account.totp_reset_requested']);
   });
 
+  it('un rôle rendu avant l’ouverture du lien l’annule (ADM-07)', async () => {
+    const actor = await anAdmin();
+    const target = await account({ totp: true });
+    const state = identity.sessions.accounts.get(target.accountId);
+    if (!state) throw new Error('compte absent');
+    state.role = 'MODERATOR';
+    await http()
+      .post(`/api/v1/admin/accounts/${target.accountId}/totp-reset`)
+      .set(actor.mutation)
+      .send({ reason: 'Téléphone perdu, identité vérifiée' })
+      .expect(204);
+    const token = identity.mail.lastToken(target.email);
+    expect(token).not.toBeNull();
+    await http()
+      .put(`/api/v1/admin/accounts/${target.accountId}/role`)
+      .set(actor.mutation)
+      .send({ role: 'MODERATOR', reason: REASON })
+      .expect(204);
+    await http()
+      .post('/api/v1/auth/totp/reset/confirm')
+      .set(await presession())
+      .send({ token })
+      .expect(422);
+    expect(identity.accounts.rows.get(target.accountId)?.totpEnabled).toBe(true);
+  });
+
+  it('un avertissement qui ne part pas laisse une entrée d’échec (AUD-05)', async () => {
+    const actor = await anAdmin();
+    const target = await account({ totp: true });
+    await http()
+      .post(`/api/v1/admin/accounts/${target.accountId}/totp-reset`)
+      .set(actor.mutation)
+      .send({ reason: 'Téléphone perdu, identité vérifiée' })
+      .expect(204);
+    const token = identity.mail.lastToken(target.email);
+    const send = identity.mail.send.bind(identity.mail);
+    identity.mail.send = () => Promise.reject(new Error('relais indisponible'));
+    try {
+      await http()
+        .post('/api/v1/auth/totp/reset/confirm')
+        .set(await presession())
+        .send({ token })
+        .expect(204);
+    } finally {
+      identity.mail.send = send;
+    }
+    expect(admin.audit.rows.at(-1)).toMatchObject({
+      action: 'followup.failed',
+      targetId: target.accountId,
+      after: 'account.totp_reset_completed',
+    });
+  });
+
   it('sans TOTP actif : conflit', async () => {
     const actor = await anAdmin();
     const target = await account();
