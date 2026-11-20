@@ -25,7 +25,7 @@ jobs:
         image:
           # Base des images livrées (DEP-08) : sans gestionnaire de paquets, ses correctifs n'arrivent
           # que par la montée de son empreinte dans apps/*/Dockerfile.
-          - gcr.io/distroless/nodejs22-debian13:nonroot
+          - gcr.io/distroless/nodejs26-debian13:nonroot
           - caddy:2.10.2-alpine
           - postgres:17.6-bookworm
           - redis:7.4.6-alpine

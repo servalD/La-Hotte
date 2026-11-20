@@ -17,6 +17,8 @@ overrides:
   # Next tire sharp ^0.34 (facultatif, pour next/image, que l'application n'utilise pas) : vulnérable
   # (GHSA-f88m-g3jw-g9cj, GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w). Même version que le fetcher.
   sharp: '0.35.5'
+  # effect 3.21.0, tiré par prisma > @prisma/config : ReDoS dans Schema.TemplateLiteral (GHSA-7589-6fvf-x4pw, CVE-2026-121707), corrigé en 3.22.1.
+  effect: '>=3.22.1 <4'
 
 auditConfig:
   # Exception datée (revue de sécurité de la phase 0, à lever au plus tard le 2027-02-12) :

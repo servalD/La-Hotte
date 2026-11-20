@@ -16,7 +16,7 @@
 // GLITCHTIP_ORG, GLITCHTIP_PROJECT, RELEASE (SHA du commit, OBS-13). Le jeton n'est jamais écrit ;
 // une erreur nomme l'étape et le code HTTP, jamais un corps de réponse.
 //
-// Aucune dépendance : Node 22 (fetch, FormData, zlib.crc32). Le script est à supprimer quand une
+// Aucune dépendance : Node 26 (fetch, FormData, zlib.crc32). Le script est à supprimer quand une
 // version de la CLI aura été vérifiée de bout en bout (OBS-31).
 
 import { createHash } from 'node:crypto';

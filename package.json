@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.17.1",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=26"
   },
   "scripts": {
     "dev": "turbo run dev --parallel",

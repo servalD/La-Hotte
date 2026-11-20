@@ -13,6 +13,11 @@ writeFileSync(
     dependencies: { prisma: version },
     // pnpm 10 n'exécute les scripts d'installation que des paquets nommés : le moteur de Prisma
     // se télécharge à l'installation.
-    pnpm: { onlyBuiltDependencies: ['prisma', '@prisma/engines'] },
+    // effect (tiré par @prisma/config) : ReDoS corrigé en 3.22.1 (GHSA-7589-6fvf-x4pw), comme dans
+    // pnpm-workspace.yaml ; la série 4 casse la CLI.
+    pnpm: {
+      onlyBuiltDependencies: ['prisma', '@prisma/engines'],
+      overrides: { effect: '>=3.22.1 <4' },
+    },
   }),
 );
