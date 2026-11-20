@@ -9,7 +9,7 @@
   <a href="https://github.com/servalD/La-Hotte/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/servalD/La-Hotte/ci.yml?branch=main&style=flat&label=CI&colorA=17171f"/></a>
   <a href="LICENSE"><img alt="Licence AGPL-3.0" src="https://img.shields.io/github/license/servalD/La-Hotte?style=flat&label=licence&colorA=17171f&colorB=9f1239"/></a>
   <a href="docs/spec"><img alt="Spec" src="https://img.shields.io/badge/spec-r%C3%A8gles%20num%C3%A9rot%C3%A9es-f2b84b?style=flat&colorA=17171f"/></a>
-  <img alt="Node 22" src="https://img.shields.io/badge/node-22-9f1239?style=flat&logo=nodedotjs&logoColor=white&colorA=17171f"/>
+  <img alt="Node 26" src="https://img.shields.io/badge/node-26-9f1239?style=flat&logo=nodedotjs&logoColor=white&colorA=17171f"/>
   <img alt="pnpm 10" src="https://img.shields.io/badge/pnpm-10-9f1239?style=flat&logo=pnpm&logoColor=white&colorA=17171f"/>
   <img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-9f1239?style=flat&logo=typescript&logoColor=white&colorA=17171f"/>
   <br/>
@@ -64,7 +64,7 @@ Exploitation détaillée : [`ops/production/README.md`](ops/production/README.md
 
 ## Démarrer
 
-Prérequis : **Node 22**, **pnpm 10** (`corepack enable`), **Docker**.
+Prérequis : **Node 26**, **pnpm 10** (`npm install --global pnpm@10`, corepack n'étant plus livré avec Node 26), **Docker**.
 
 ```sh
 # 1. Variables locales (même FETCHER_TOKEN dans les deux fichiers)

@@ -5,8 +5,8 @@
 # Construction sur Debian 12 (bookworm), exécution sur distroless Debian 13 (trixie) : glibc plus
 # récente et même ABI `libssl.so.3`, donc le moteur Prisma généré à la construction
 # (`debian-openssl-3.0.x`) s'y charge. La distroless Debian 12 n'est plus reconstruite (OpenSSL en retard).
-ARG NODE_IMAGE=node:22.20.0-bookworm-slim@sha256:b21fe589dfbe5cc39365d0544b9be3f1f33f55f3c86c87a76ff65a02f8f5848e
-ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian13:nonroot@sha256:39c66687298417dbf3ff2fb8b6012c20554494e16414ef7afd07b9abbb45b501
+ARG NODE_IMAGE=node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs26-debian13:nonroot@sha256:1d736cf8b5716c07a245301f92717143215d248fd55771ee1936ef4b3302e531
 
 FROM ${NODE_IMAGE} AS build
 ENV PNPM_HOME=/pnpm \
@@ -17,7 +17,7 @@ ENV PNPM_HOME=/pnpm \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@10.17.1 --activate
+RUN npm install --global pnpm@10.17.1 # Node 26 n'embarque plus corepack
 ENV npm_config_store_dir=/pnpm/store
 WORKDIR /repo
 # Dépendances d'abord : `pnpm fetch` ne lit que le lockfile, donc cette couche reste en cache tant
